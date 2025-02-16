@@ -1,6 +1,7 @@
 // define a type representing Lambdapi tactics
 
-require open tests.OK.Set tests.OK.Prop;
+require open tests.OK.Set tests.OK.Prop tests.OK.String tests.OK.Option
+             tests.OK.List;
 
 constant symbol Tactic : TYPE;
 
@@ -14,17 +15,17 @@ notation & infix right 10;
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
-//constant symbol #assume : ? → Tactic;
-//builtin "assume" ≔ #assume;
+constant symbol #assume : τ (list string) → Tactic;
+builtin "assume" ≔ #assume;
 
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
-//constant symbol #generalize : Ident → Tactic;
-//builtin "generalize" ≔ #generalize;
+constant symbol #generalize : Π [a], τ a → Tactic;
+builtin "generalize" ≔ #generalize;
 
-//constant symbol #have : Ident → Term → Tactic;
-//builtin "have" ≔ #have;
+constant symbol #have : String → Π p, π p → Tactic;
+builtin "have" ≔ #have;
 
 constant symbol #induction : Tactic;
 builtin "induction" ≔ #induction;
@@ -38,8 +39,8 @@ builtin "refine" ≔ #refine;
 constant symbol #reflexivity : Tactic;
 builtin "reflexivity" ≔ #reflexivity;
 
-//constant symbol #remove : Ident → Tactic;
-//builtin "remove" ≔ #remove;
+constant symbol #remove : Π [a], π a → Tactic;
+builtin "remove" ≔ #remove;
 
 constant symbol #repeat : Tactic → Tactic;
 builtin "repeat" ≔ #repeat;
@@ -47,10 +48,10 @@ builtin "repeat" ≔ #repeat;
 constant symbol #rewrite [p] : π p → Tactic;
 builtin "rewrite" ≔ #rewrite;
 
-//constant symbol #set : Ident → Term → Tactic;
-//builtin "set" ≔ #set;
+constant symbol #set : String → Π [a], τ a → Tactic;
+builtin "set" ≔ #set;
 
-constant symbol #simplify : /* Option Ident → */ Tactic;
+constant symbol #simplify : /* Π [a], τ a → */ Tactic;
 builtin "simplify" ≔ #simplify;
 
 constant symbol #solve : Tactic;
@@ -62,7 +63,7 @@ builtin "symmetry" ≔ #symmetry;
 constant symbol #try : Tactic → Tactic;
 builtin "try" ≔ #try;
 
-constant symbol #why3 : /*Ident Option →*/ Tactic;
+constant symbol #why3 : /*τ (option string) →*/ Tactic;
 builtin "why3" ≔ #why3;
 
 /*****************************************************************************/
