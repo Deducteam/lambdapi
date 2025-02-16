@@ -236,7 +236,9 @@ type tactic =
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
   let t = Hashtbl.create 17 in
-  let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
+  let add n v =
+    try let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v
+    with Not_found -> () in
   add "admit" T_admit;
   add "apply" T_apply;
   add "assume" T_assume;
