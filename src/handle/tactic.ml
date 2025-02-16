@@ -214,6 +214,7 @@ let gen_valid_idopts env ids =
 
 type tactic =
   | T_admit
+  | T_and
   | T_apply
   | T_assume
   | T_fail
@@ -230,7 +231,6 @@ type tactic =
   | T_simplify
   | T_solve
   | T_symmetry
-  | T_then
   | T_try
   | T_why3
 
@@ -239,6 +239,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
   let t = Hashtbl.create 17 in
   let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
   add "admit" T_admit;
+  add "and" T_and;
   (*add "apply" T_apply;*)
   (*add "assume" T_assume;*)
   add "fail" T_fail;
@@ -255,7 +256,6 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
   add "simplify" T_simplify;
   add "solve" T_solve;
   add "symmetry" T_symmetry;
-  add "then" T_then;
   add "try" T_try;
   add "why3" T_why3;
   t
@@ -263,7 +263,8 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
 let get_arg1 = function [x1] -> x1 | _ -> assert false
 let get_args12 = function [x1;x2] -> x1,x2 | _ -> assert false
 
-let p_term_of_term (pos:popt) :term -> p_term =
+(** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
+let p_term (pos:popt) :term -> p_term =
   let mk = Pos.make pos in
   let rec term t = Pos.make pos (term_aux t)
   and params x a = [Some(Pos.make pos (Bindlib.name_of x))],Some(term a),false
@@ -282,8 +283,8 @@ let p_term_of_term (pos:popt) :term -> p_term =
     | _ -> fatal pos "Unhandled term expression: %a." Print.term t
   in term
 
-(** [p_tactic_of_term t] interprets the term [t] as a tactic. *)
-let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
+(** [p_tactic t] interprets the term [t] as a tactic. *)
+let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
   let c = get_config ss pos in
   let rec tac t = Pos.make pos (tac_aux t)
   and tac_aux t =
@@ -293,7 +294,9 @@ let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
           try
             match Hashtbl.find c s.sym_name with
             | T_admit -> P_tac_admit
-            | T_apply -> assert false
+            | T_and -> let t1,t2 = get_args12 ts in P_tac_and(tac t1,tac t2)
+            | T_apply ->
+                let _,t2 = get_args12 ts in P_tac_apply(p_term pos t2)
             | T_assume -> assert false
             | T_fail -> P_tac_fail
             | T_generalize -> assert false
@@ -301,18 +304,18 @@ let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_induction -> P_tac_induction
             | T_orelse ->
                 let t1,t2 = get_args12 ts in P_tac_orelse(tac t1,tac t2)
-            | T_refine -> assert false
+            | T_refine ->
+                let _,t2 = get_args12 ts in P_tac_refine(p_term pos t2)
             | T_reflexivity -> P_tac_refl
             | T_remove -> assert false
             | T_repeat -> P_tac_repeat(tac(get_arg1 ts))
             | T_rewrite ->
                 let _,t2 = get_args12 ts in
-                P_tac_rewrite(false,None,p_term_of_term pos t2)
+                P_tac_rewrite(false,None,p_term pos t2)
             | T_set -> assert false
             | T_simplify -> P_tac_simpl None
             | T_solve -> P_tac_solve
             | T_symmetry -> P_tac_sym
-            | T_then -> let t1,t2 = get_args12 ts in P_tac_and(tac t1,tac t2)
             | T_try -> P_tac_try(tac(get_arg1 ts))
             | T_why3 -> P_tac_why3 None
           with Not_found ->
@@ -559,7 +562,7 @@ let rec handle :
       handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
-      handle ss sym_pos prv ps (p_tactic_of_term ss pos t)
+      handle ss sym_pos prv ps (p_tactic ss pos t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
