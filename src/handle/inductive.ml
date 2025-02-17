@@ -288,7 +288,7 @@ let iter_rec_rules :
       -> (p_rule -> unit) -> unit =
   fun pos ind_list vs ind_pred_map f ->
   (* Rules are declared after recursor declarations. *)
-  let rules_pos = shift (List.length ind_list + 1) (end_pos pos) in
+  let rules_pos = shift (List.length ind_list + 1) (pos_end pos) in
   let n = Array.length vs in
 
   (* variable name used for a recursor case argument *)

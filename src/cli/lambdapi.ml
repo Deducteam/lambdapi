@@ -42,7 +42,7 @@ let index_cmd cfg add_only rules files =
   let handle file =
    Console.reset_default ();
    Time.restore time;
-   Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
+   Tool.Indexing.index_sign ~rules (no_wrn Compile.compile_file file) in
   List.iter handle files;
   Tool.Indexing.dump () in
  Error.handle_exceptions run
@@ -51,7 +51,7 @@ end
 
 (** Running the main type-checking mode. *)
 let check_cmd : Config.t -> int option -> string list -> unit =
-    fun cfg timeout files ->
+    fun cfg tmout files ->
   let run _ =
     let open Timed in
     Config.init cfg;
@@ -61,10 +61,10 @@ let check_cmd : Config.t -> int option -> string list -> unit =
       Console.reset_default ();
       Time.restore time;
       let sign =
-        match timeout with
+        match tmout with
         | None    -> Compile.compile_file file
         | Some(i) ->
-            try with_timeout i Compile.compile_file file
+            try timeout i Compile.compile_file file
             with Timeout ->
               fatal_no_pos "Compilation timed out for [%s]." file
       in
