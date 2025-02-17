@@ -32,7 +32,7 @@ An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/
 
 ::
 
-   symbol do_nothing ≔ #repeat #fail;
+   symbol do_nothing ≔ #try #fail;
 
    require open tests.OK.Nat;
 

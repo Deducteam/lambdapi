@@ -240,14 +240,14 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
   let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
   add "admit" T_admit;
   add "and" T_and;
-  (*add "apply" T_apply;*)
+  add "apply" T_apply;
   (*add "assume" T_assume;*)
   add "fail" T_fail;
   (*add "generalize" T_generalize;*)
   (*add "have" T_have;*)
   add "induction" T_induction;
   add "orelse" T_orelse;
-  (*add "refine" T_refine;*)
+  add "refine" T_refine;
   add "reflexivity" T_reflexivity;
   (*add "remove" T_remove;*)
   add "repeat" T_repeat;

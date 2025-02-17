@@ -68,7 +68,7 @@ builtin "why3" ≔ #why3;
 
 /*****************************************************************************/
 
-symbol nothing ≔ #repeat #fail;
+symbol nothing ≔ #try #fail;
 
 require open tests.OK.Nat;
 
