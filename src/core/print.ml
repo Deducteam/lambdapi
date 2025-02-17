@@ -12,8 +12,8 @@ open Term
 open Sig_state
 
 (** Logging function for printing. *)
-let log_prnt = Logger.make 'p' "prnt" "pretty-printing"
-let log_prnt = log_prnt.pp
+let log = Logger.make 'p' "prnt" "pretty-printing"
+let log = log.pp
 
 (** Current signature state. *)
 let sig_state : sig_state ref = ref Sig_state.dummy

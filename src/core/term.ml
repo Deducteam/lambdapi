@@ -379,8 +379,7 @@ let new_problem : unit -> problem = fun () ->
 let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
-    { elt = sym_name; pos = sym_pos } sym_decl_pos
-    typ sym_impl ->
+    { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
    sym_dtree = ref Tree_type.empty_dtree;
