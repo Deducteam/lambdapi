@@ -3,7 +3,6 @@
    This module contains the definition of the internal representation of
    terms, together with smart constructors and low level operation. *)
 
-open Timed
 open Lplib open Base open Extra
 open Common open Debug
 
@@ -59,7 +58,7 @@ let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
 
 (** [new_var name] creates a new unique variable of name [name]. *)
 let new_var : string -> var =
-  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
+  let n = Stdlib.ref 0 in fun name -> incr n; !n, name
 
 (** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
 let new_var_ind : string -> int -> var = fun s i ->
@@ -83,132 +82,8 @@ module VarMap = Map.Make(Var)
 
 (* Abstract closure env *)
 
-type bvar = int
-type pos = int
-
-module type ClosSig = sig
-  type 'a env
-  val empty : 'a env
-  val env : 'a pp -> 'a env pp
-  val is_id : 'a env -> bool
-  val to_array : 'a env -> 'a array
-  val cmp : ('a->'a->int) -> 'a env -> 'a env -> int
-  val map : ('a->'b)->'a env->'b env
-  val iter : ('a->unit)->'a env->unit
-
-  val is_subs_pos : s:int -> e:int -> int -> bool
-  val get_subs_pos : s:int -> e:int -> int -> pos
-  val get_subs_db  : s:int -> e:int -> pos -> int
-  val get_env_pos  : s:int -> e:int -> int -> pos
-  val next_free_db : s:int -> 'a env -> int
-  val extend_env : 'a env -> 'a -> 'a env
-end
-
-(* 3 implemetations:
-   - List with extension by the tail (Fowist)
-   - List with extension by the head (RevList)
-   - Array
- *)
-module ArrClos : ClosSig = struct
-
-type 'a env = 'a array
-let empty = [| |]
-(* TODO: generalizes to case where env is the identity *)
-let is_id env = Array.length env = 0
-let to_array env = env
-let map = Array.map
-let iter = Array.iter
-let cmp = Array.cmp
-let env trm ppf env = 
-  if Array.length env > 0 then D.array trm ppf env
-        
-let is_subs_pos  : s:int -> e:int -> int -> bool =
-  fun ~s ~e db -> assert (e==e); db<=s
-let get_subs_pos : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> assert (e==e && s==s); db-1
-let get_env_pos  : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> s+e-db
-let get_subs_db  : s:int -> e:int -> pos -> int =
-  fun ~s ~e p -> assert (e==e && s==s); p+1
-let next_free_db : s:int -> 'a env -> int =
-  fun ~s env -> s+Array.length env+1
-let extend_env e t = Array.append [|t|] e
-                     
-end
-
-module RevEnv : ClosSig = struct
-
-type 'a env = 'a list
-let empty = []
-(* TODO: generalizes to case where env is the identity *)
-let is_id env = (env = [])
-let to_array env = Array.of_list env
-let map = List.map
-let iter = List.iter
-let cmp = List.cmp
-let env trm ppf env = 
-  let env = Array.of_list env in
-  if Array.length env > 0 then D.array trm ppf env
-        
-let is_subs_pos  : s:int -> e:int -> int -> bool =
-  fun ~s ~e db -> assert (e==e); db<=s
-let get_subs_pos : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> assert (e==e && s==s); db-1
-let get_env_pos  : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> s+e-db
-let get_subs_db  : s:int -> e:int -> pos -> int =
-  fun ~s ~e p -> assert (e==e && s==s); p+1
-let next_free_db : s:int -> 'a env -> int =
-  fun ~s env -> s+List.length env+1
-let extend_env e t = t::e
-                     
-end
-
-module ForwEnv : ClosSig = struct
-
-type 'a env = 'a list
-let empty = []
-(* TODO: generalizes to case where env is the identity *)
-let is_id env = (env = [])
-let to_array env = Array.of_list env
-let map = List.map
-let iter = List.iter
-let cmp = List.cmp
-let env trm ppf env = 
-  let env = Array.of_list env in
-  if Array.length env > 0 then D.array trm ppf env
-
-let is_subs_pos  : s:int -> e:int -> int -> bool =
-  fun ~s ~e db -> assert (e==e); db<=s
-let get_subs_pos : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> assert (e==e && s==s); db-1
-let get_env_pos  : s:int -> e:int -> int -> pos =
-  fun ~s ~e db -> assert (e==e); db-s-1
-let get_subs_db  : s:int -> e:int -> pos -> int =
-  fun ~s ~e p -> assert (e==e && s==s); p+1
-let next_free_db : s:int -> 'a env -> int =
-  fun ~s env -> s+List.length env+1
-let extend_env e t = e@[t]
-                         
-end
-
-module Clos = ArrClos
-  
-(* In the list implementations, it is important to apply this function
-   as soon as subs and env are known *)
-let db_access ?(chk_occ=fun _->()) ~subs ~env =
-  let env = Clos.to_array env in
-  let s = Array.length subs in
-  let e = Array.length env in
-  fun db ->
-  assert (db<=s+e);
-  if Clos.is_subs_pos ~s ~e db then
-    let p = Clos.get_subs_pos ~s ~e db in (chk_occ p; subs.(p))
-  else
-    let p = Clos.get_env_pos ~s ~e db in env.(p)
-
-
-              
+type bvar = InSub of int | InEnv of int 
+                                  
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -224,12 +99,13 @@ type term =
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
-  | Db of int (** Bound variable as de Bruijn index (starting at 1). *)
+  | Db of bvar (** Bound variables. Only used internally. *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean [b] is
       true if the placeholder stands for a type. *)
-  | TRef of term option ref (** Reference cell (used in surface matching). *)
+  | TRef of term option Timed.ref (** Reference cell (used in surface matching,
+                                      and evaluation with sharing). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
@@ -240,8 +116,8 @@ type term =
     In a binder [(bi,u,e)] of arity [n], dB [i] in [1..n] of [u]
     refers to the bound variable at position [i-1] in the binder array,
     and dB [i] of [u] with [i>n] refers to [e.(n+|e|-i)] *)
-and binder = binder_info * term * term Clos.env
-and mbinder = mbinder_info * term * term Clos.env
+and binder = binder_info * term * term array
+and mbinder = mbinder_info * term * term array
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
@@ -258,14 +134,14 @@ and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
-  ; sym_type  : term ref (** Type. *)
+  ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool ref (** Opacity. *)
-  ; sym_rules : rule list ref (** Rewriting rules. *)
+  ; sym_def   : term option Timed.ref (** Definition with ≔. *)
+  ; sym_opaq  : bool Timed.ref (** Opacity. *)
+  ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_dtree : dtree Timed.ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
   ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
                                 without its definition. *) }
@@ -344,9 +220,9 @@ and sym =
     the form {!constructor:Meta}[(m,env)] can be unfolded. *)
 and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_type  : term ref (** Type. *)
+  ; meta_type  : term Timed.ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
-  ; meta_value : mbinder option ref (** Definition. *) }
+  ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
 let mbinder_arity : mbinder -> int = fun (i,_,_) -> Array.length i.mbinder_name
@@ -365,6 +241,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
+  let open Timed in
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq = ref sym_opaq; sym_rules = ref [];
    sym_dtree = ref Tree_type.empty_dtree;
@@ -376,7 +253,7 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_injective s] tells whether [s] is injective, which is in partiular the
    case if [s] is constant. *)
 let is_injective : sym -> bool = fun s ->
-  match s.sym_prop with Const | Injec -> true | _ -> !(s.sym_opaq)
+  match s.sym_prop with Const | Injec -> true | _ -> Timed.(!(s.sym_opaq))
 
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
@@ -399,7 +276,7 @@ module SymSet = Set.Make(Sym)
 module SymMap = Map.Make(Sym)
 
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
-let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
+let is_unset : meta -> bool = fun m -> Timed.(!(m.meta_value)) = None
 
 (** Sets and maps of metavariables. *)
 module Meta = struct
@@ -423,33 +300,35 @@ let mk_left_comb : sym -> term -> term list -> term = fun s ->
    t3)]. *)
 let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
+
   
 (** Printing functions for debug. *)
 let rec term : term pp = fun ppf t ->
   match unfold t with
-  | Db k -> out ppf "`%d" k
+  | Db (InSub k) -> out ppf "`%d" k
+  | Db (InEnv k) -> out ppf "~%d" k
   | Vari v -> var ppf v
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
   | Prod(a,(n,b,e)) ->
-      out ppf "(Π %s: %a, [%a]#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(Π %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
   | Abst(a,(n,b,e)) ->
-      out ppf "(λ %s: %a, [%a]#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(λ %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
   | Plac(_) -> out ppf "_"
   | Wild -> out ppf "_"
-  | TRef r -> out ppf "&%a" (Option.pp term) !r
+  | TRef r -> out ppf "&%a" (Option.pp term) Timed.(!r)
   | LLet(a,t,(n,b,e)) ->
-      out ppf "let %s : %a ≔ %a in [%a]#(%a)"
+      out ppf "let %s : %a ≔ %a in %a#(%a)"
         n.binder_name term a term t clos_env e term b
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf ts ->
   if Array.length ts > 0 then D.array term ppf ts
-and clos_env : term Clos.env pp = fun ppf e -> Clos.env term ppf e
+and clos_env : term array pp =  fun ppf env -> D.array term ppf env
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
    of [t], until a significant {!type:term} constructor is found.  The term
@@ -459,6 +338,7 @@ and clos_env : term Clos.env pp = fun ppf e -> Clos.env term ppf e
    performed. {b NOTE} that {!val:unfold} must (almost) always be called
    before matching over a value of type {!type:term}. *)
 and unfold : term -> term = fun t ->
+  let open Timed in
   match t with
   | Meta(m, ts) ->
       begin
@@ -473,40 +353,34 @@ and unfold : term -> term = fun t ->
         | Some(v) -> unfold v
       end
   | _ -> t
-  
+
 (** [msubst b vs] substitutes the variables bound by [b] with the values
     [vs].  Note that the length of the [vs] array should match the arity of
     the multiple binder [b]. *)
 and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
-  let chk_occ i = if not bi.mbinder_bound.(i) then assert false in
-  let db_acc = db_access ~chk_occ ~subs:vs ~env in
-  (*assert (_db_closed ~bv:bi.mbinder_bound (n+Array.length env) tm);*)
-  (* [msubst t] replaces
-     [Db(j)] by [vs.(n-j)]  for all [1 <= j <= n] (current substitution)
-     and [Db(j)] by [e.(m-j)] for all [n < j <= m] (propagation of previous
-     substituttions). *)
   let rec msubst t =
 (*    if Logger.log_enabled() then
       log "msubst %a %a" (D.array term) vs term t;*)
     match unfold t with
-    | Db k -> db_acc k
+    | Db (InSub p) -> assert bi.mbinder_bound.(p); vs.(p)
+    | Db (InEnv p) -> env.(p)
     | Appl(a,b) -> mk_Appl(msubst a, msubst b)
-    | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, Clos.map msubst e))
-    | Prod(a,(n,u,e)) -> Prod(msubst a, (n, u, Clos.map msubst e))
+    | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, Array.map msubst e))
+    | Prod(a,(n,u,e)) -> Prod(msubst a, (n, u, Array.map msubst e))
     | LLet(a,t,(n,u,e)) ->
-        LLet(msubst a, msubst t, (n, u, Clos.map msubst e))
+        LLet(msubst a, msubst t, (n, u, Array.map msubst e))
     | Meta(m,ts) -> Meta(m, Array.map msubst ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map msubst ts)
     | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
   in
   let r =
-    if Array.for_all ((=) false) bi.mbinder_bound && Clos.is_id env
+    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0
     then tm
     else msubst tm in
   if Logger.log_enabled() then
-    log "msubst %a[%a] %a = %a" term tm clos_env env (D.array term) vs term r;
+    log "msubst %a#%a %a = %a" clos_env env term tm (D.array term) vs term r;
   r
   
 (** Total order on terms. *)
@@ -537,7 +411,7 @@ and cmp_binder : binder cmp =
   let var = Vari(new_var binder_name) in
   cmp (msubst (mbi,u,e)[|var|]) (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
   fun (_,u,e) (_,u',e') ->
-  lex cmp (Clos.cmp cmp) (u,e) (u',e')
+  lex cmp (Array.cmp cmp) (u,e) (u',e')
   
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
@@ -633,26 +507,6 @@ and mk_Appl : term * term -> term = fun (t, u) ->
     log "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
-(* For debugging purposes, [db_closed i t] checks that all free de Bruijn appearing
-   in [t] are in the range [1..i]. Additionally [bv] specifies which of [1..n] are allowed to occur. *)
-and _db_closed : ?bv:bool array -> int -> term -> bool =
-  fun ?(bv=[||]) i t ->
-  let n = Array.length bv in
-  if Logger.log_enabled () then
-    log "db_closed: fv(%a) in [1..%d]&[%a]" term t i pr_bound bv;
-  let rec check t =
-    match unfold t with
-    | Db k when k>i -> raise Exit
-    | Db k when k<=n(*!*) && bv.(Clos.get_subs_pos ~s:n ~e:(i-n) k)=false -> raise Exit
-    | Appl(a,b) -> check a; check b
-    | Abst(a,(_,_,e))
-    | Prod(a,(_,_,e)) -> check a; Clos.iter check e
-    | LLet(a,t,(_,_,e)) -> check a; check t; Clos.iter check e
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter check ts
-    | _ -> ()
-  in try check t; true with Exit -> false
-
 (* unit test *)
 let _ =
   let s =
@@ -679,19 +533,20 @@ let is_prod : term -> bool = fun t ->
 
 
 (* To be used in iter_atoms and item_atoms_mbinder *)
-let iter_mbinder f db ~s u env =
-  let env = Clos.to_array env in
-  let e = Array.length env in
-  (* dBs occuring in [u], bound vars *excluded* (= env pos) *)
+let iter_mbinder f db u env =
+  (* env positions occuring in [u] *)
   let u_pos = ref IntSet.empty in
   let db_u db =
-    if not (Clos.is_subs_pos ~s ~e db) then
-      u_pos := IntSet.add (Clos.get_env_pos ~s ~e db) !u_pos in
-  (* We iterate on u, recording which dBs occur *)
+    match db with
+    | InEnv p -> u_pos := IntSet.add p !u_pos
+    | _ -> () in
+  (* We iterate on u, recording which env positions occur *)
   f db_u u;
   (* We then check the members of [e] that *actually* occur in u *)
-  Array.iteri (fun i t -> if IntSet.mem i !u_pos then f db t) env
-
+  Array.iteri (fun i t ->
+      if IntSet.mem i !u_pos then f db t
+    (*else if t <> Wild then env.(i) <- Wild*) )
+    env
   
 (** [iter_atoms db f g t] applies f to every occurrence of a variable in t,
     g to every occurrence of a symbol, and db to every occurrence of a dB.
@@ -699,7 +554,7 @@ let iter_mbinder f db ~s u env =
     closure environment may contain slots for variables that don't actually
     appear.
  *)
-let iter_atoms : (int -> unit) -> (var -> unit) -> (sym -> unit) -> term -> unit =
+let iter_atoms : (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term -> unit =
   fun db f g t ->
   let rec check db t =
     match unfold t with
@@ -714,14 +569,13 @@ let iter_atoms : (int -> unit) -> (var -> unit) -> (sym -> unit) -> term -> unit
     | Patt(_,_,ts) -> Array.iter (check db) ts
     | _ -> ()
   and check_binder db (_bi,u,env) =
-    iter_mbinder check db ~s:1 u env in
+    iter_mbinder check db u env in
   check db t
 
 let iter_atoms_mbinder
-    : (int -> unit) -> (var -> unit) -> (sym -> unit) -> mbinder -> unit =
-  fun db f g (bi,u,env) ->
-  let s = Array.length bi.mbinder_bound in
-  iter_mbinder (fun dbs t -> iter_atoms dbs f g t) db ~s u env
+    : (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> mbinder -> unit =
+  fun db f g (_bi,u,env) ->
+  iter_mbinder (fun dbs t -> iter_atoms dbs f g t) db u env
 
 (** [occur x t] tells whether variable [x] occurs in [t]. *)
 let occur : var -> term -> bool =
@@ -737,24 +591,23 @@ let occur_mbinder : var -> mbinder -> bool =
 (** [subst b v] substitutes the variable bound by [b] with the value [v].
     Assumes v is closed (since only called from outside the term library. *)
 let subst : binder -> term -> term = fun (bi,tm,env) v ->
-  let chk_occ _ = if not bi.binder_bound then assert false in
-  let db_acc = db_access ~chk_occ ~subs:[|v|] ~env in
   let rec subst t =
     match unfold t with
-    | Db k -> db_acc k
+    | Db (InSub _) -> assert bi.binder_bound; v
+    | Db (InEnv p) -> env.(p)
     | Appl(a,b) -> mk_Appl(subst a, subst b)
-    | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, Clos.map subst e))
-    | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, Clos.map subst e))
-    | LLet(a,t,(n,u,e)) -> LLet(subst a, subst t, (n, u, Clos.map subst e))
+    | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, Array.map subst e))
+    | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, Array.map subst e))
+    | LLet(a,t,(n,u,e)) -> LLet(subst a, subst t, (n, u, Array.map subst e))
     | Meta(m,ts) -> Meta(m, Array.map subst ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map subst ts)
     | _ -> t
   in
   let r =
-    if bi.binder_bound = false && Clos.is_id env then tm
+    if bi.binder_bound = false &&  Array.length env = 0 then tm
     else subst tm in
   if Logger.log_enabled() then
-    log "subst [%a]#%a [%a] = %a" clos_env env term tm term v term r;
+    log "subst %a#%a [%a] = %a" clos_env env term tm term v term r;
   r
 
 (** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
@@ -787,7 +640,7 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   let rec bind i t =
     (*if Logger.log_enabled() then log "bind_var %d %a" i term t;*)
     match unfold t with
-    | Vari y when y == x -> Stdlib.(bound := true); Db i
+    | Vari y when y == x -> bound := true; Db i
     | Appl(a,b) ->
         let a' = bind i a in
         let b' = bind i b in
@@ -816,46 +669,42 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
     | _ -> t
 
   and bind_binder i (bi,u,env as b) =
-    let env' = Clos.map (bind i) env in
-    let j = Clos.next_free_db ~s:1 env' in
+    let env' = Array.map (bind i) env in
+    let j = InEnv (Array.length env') in
     let u' = bind j u in
     if u==u' then (* If [u==u'] then x does not occur in u *)
-      if Array.for_all2 (==) (Clos.to_array env) (Clos.to_array env') then b
+      if Array.for_all2 (==) env env' then b
       else (bi, u', env')
     else (* x occurs, it has been replaced by [Db(j)],
             corresponding to the head of [e] *)
-      ((*assert (_db_closed j u');*)
-       (bi, u', Clos.extend_env env' (Db i)) ) in
+      (bi, u', Array.append env' [|Db i|]) in
 
   (*assert (_db_closed 0 t);*)
-  let b = bind 1 t in
+  let b = bind (InSub 0) t in
   if Logger.log_enabled() then
     log "bind_var %a %a = %a" var x term t term b;
   (*assert (_db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
-  {binder_name=n; binder_bound=Stdlib.(!bound)}, b, Clos.empty
+  {binder_name=n; binder_bound= !bound}, b, [||]
 
 (** [binder f b] applies f inside [b]. *)
 let binder : (term -> term) -> binder -> binder = fun f b ->
   let x,t = unbind b in bind_var x (f t)
 
+
 (** [bind_mvar xs t] binds the variables of [xs] in [t] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 let bind_mvar : var array -> term -> mbinder =
   let empty = {mbinder_name=[||]; mbinder_bound=[||]} in
-  fun xs t ->
-  let s = Array.length xs in
-  if s = 0 then empty, t, Clos.empty else begin
+  fun xs tm ->
+  if Array.length xs = 0 then empty, tm, [||] else begin
   (*if Logger.log_enabled() then
     log "bind_mvar %a" (D.array var) xs;*)
   let top_map = Stdlib.ref IntMap.empty
-  and mbinder_bound = Array.make s false in
-  Array.iteri (fun i (ki,_) ->
-      Stdlib.(top_map :=
-                IntMap.add ki (Clos.get_subs_db ~s ~e:0 i) !top_map)) xs;
+  and mbinder_bound = Array.make (Array.length xs) false in
+  Array.iteri (fun i (ki,_) -> Stdlib.(top_map := IntMap.add ki i !top_map)) xs;
   let top_fvar key =
-    match Stdlib.(IntMap.find_opt key !top_map) with
-    | Some db -> mbinder_bound.(Clos.get_subs_pos ~s ~e:0 db) <- true; Db db
-    | None -> t in
+    let p = Stdlib.(IntMap.find key !top_map) in
+    mbinder_bound.(p) <- true; Db (InSub p) in
   (* Replace variables [x] in [xs] by de Bruijn index [fvar x] *)
   let rec bind fvar t =
     (*if Logger.log_enabled() then log "bind_mvar %d %a" i term t;*)
@@ -888,37 +737,33 @@ let bind_mvar : var array -> term -> mbinder =
         let ts' = Array.map (bind fvar) ts in
         if Array.for_all2 (==) ts ts' then t else Patt(j,n,ts')
     | _ -> t
-  
+
   and bind_binder fvar (bi,u,u_env as b) =
-    let u_env' = Stdlib.ref (Clos.map (bind fvar) u_env) in
-    let u_map = Stdlib.ref IntMap.empty in
+    let open Stdlib in
+    let u_env' = Array.map (bind fvar) u_env in
+    let u_n = ref 0 in
+    let u_map = ref IntMap.empty in
     let fvar' key =
-      match Stdlib.(IntMap.find_opt key !u_map) with
-      | Some p -> Db p
+      match IntMap.find_opt key !u_map with
+      | Some p -> Db (InEnv p)
       | None ->
-          let open Stdlib in
-          let db' = Clos.next_free_db ~s:1 !u_env' in
-          u_env' := Clos.extend_env !u_env' (fvar key);
-          u_map := IntMap.add key db' !u_map;
-          Db db' in
+          let p' = Array.length u_env' + !u_n in
+          incr u_n;
+          u_map := IntMap.add key p' !u_map;
+          Db (InEnv p') in
     let u' = bind fvar' u in
-    let u_env' = Stdlib.(!u_env') in
-    if u==u' && (* If [u==u'] then none of the vars of [xs] does occur in u 
-                     and hence u_env and u_env' have the same length *)
-       Array.for_all2 (==) (Clos.to_array u_env) (Clos.to_array u_env') then b
-    else (* one var of [xs] occurs *)
+    if u==u' && !u_n = 0 && Array.for_all2 (==) u_env u_env' then b
+    else (* some vars of [xs] occur in u *)
+      let u_env' = Array.append u_env' (Array.make !u_n Wild) in
+      IntMap.iter (fun key p -> u_env'.(p) <- fvar key) !u_map;
       (bi, u', u_env') in
 
-  (*assert (_db_closed 0 t);*)
-  let b = bind top_fvar t in
+  let b = bind top_fvar tm in
   if Logger.log_enabled() then
     log "bind_mvar %a %a = %a %a"
-      (D.array var) xs term t pr_bound mbinder_bound term b;
-  (*assert (_db_closed ~bv:mbinder_bound n b);*)
+      (D.array var) xs term tm pr_bound mbinder_bound term b;
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
-  (* Too strong (or improve cmp) *)
-  (*assert (cmp t (msubst (bi,b,[]) (Array.map (fun x->Vari x) xs)) =0);*)
-  bi, b, Clos.empty
+  bi, b, [||]
   end
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
@@ -995,12 +840,12 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
       end
     | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
     | Prod(a,(n,b,e)) ->
-        mk_Prod(subst_patt a, (n, subst_patt b, Clos.map subst_patt e))
-    | Abst(a,(n,b,e)) -> mk_Abst(subst_patt a, (n, subst_patt b, Clos.map subst_patt e))
+        mk_Prod(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
+    | Abst(a,(n,b,e)) -> mk_Abst(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
     | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
     | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
     | LLet(a,t,(n,b,e)) ->
-      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b, Clos.map subst_patt e))
+      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b, Array.map subst_patt e))
     | Wild
     | Plac _
     | TRef _
@@ -1072,11 +917,11 @@ type problem_aux =
   ; metas : MetaSet.t
   (** Set of unsolved metas. *) }
 
-type problem = problem_aux ref
+type problem = problem_aux Timed.ref
 
 (** Create a new empty problem. *)
 let new_problem : unit -> problem = fun () ->
- ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
+ Timed.ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
 (** Printing functions for debug. *)
 module Raw = struct

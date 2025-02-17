@@ -67,7 +67,7 @@ type term = private
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
-  | Db of bvar (** Bound variable as de Bruijn index. *)
+  | Db of bvar (** Bound variables. Only used internally. *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
@@ -380,7 +380,7 @@ val bind_mvar : var array -> term -> mbinder
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 val binder_occur : binder -> bool
 
-(** [is_closed b] checks whether the [box] [b] is closed. *)
+(** [is_closed b] checks whether the [term] [b] is closed. *)
 val is_closed : term -> bool
 val is_closed_mbinder : mbinder -> bool
 
