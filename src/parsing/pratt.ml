@@ -34,11 +34,11 @@ end = struct
            with Not_found -> (* ... or look into the signature *)
              Some(find_sym ~prt:true ~prv:true ss id)
          in
-         (match Term.SymMap.find_opt sym ss.notations with
-         | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
-         | Some(Prefix(prio)) | Some(Succ(Some(Prefix(prio)))) ->
+         (match Timed.(!(sym.sym_not)) with
+         | Term.Infix(assoc, prio) -> Some(Pratter.Infix assoc, prio)
+         | Term.Prefix(prio) | Succ(Prefix(prio)) ->
              Some(Pratter.Prefix, prio)
-         | Some(Postfix(prio)) | Some(Succ(Some(Postfix(prio)))) ->
+         | Term.Postfix(prio) | Succ(Postfix(prio)) ->
              Some(Pratter.Postfix, prio)
          | _ -> None)
      | _ -> None

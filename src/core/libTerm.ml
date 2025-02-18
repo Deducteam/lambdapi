@@ -152,3 +152,43 @@ let rec codom_binder : int -> term -> binder = fun n t ->
   | Prod(_,b) ->
       if n <= 0 then b else codom_binder (n-1) (subst b mk_Kind)
   | _ -> assert false
+
+(** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
+let rec eq_alpha a b =
+  match unfold a, unfold b with
+  | Vari x, Vari y -> Term.eq_vars x y
+  | Type, Type
+  | Kind, Kind -> true
+  | Symb s1, Symb s2 -> s1==s2
+  | Prod(a1,b1), Prod(a2,b2)
+  | Abst(a1,b1), Abst(a2,b2) ->
+      eq_alpha a1 a2 && let _,b1,b2 = Term.unbind2 b1 b2 in eq_alpha b1 b2
+  | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
+  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq_alpha a1 a2
+  | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
+      eq_alpha a1 a2 && eq_alpha t1 t2
+      && let _,u1,u2 = Term.unbind2 u1 u2 in eq_alpha u1 u2
+  | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      i=j && Array.for_all2 eq_alpha ts us
+  | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+  | TRef _, _| _, TRef _ -> assert false
+  | _ -> false
+
+(** [fold id t a] returns term binder [b] with binder name [id] such that
+    [Bindlib.subst b t ≡ a]. *)
+let fold (x:var) (t:term): term -> term =
+  let rec aux u =
+    if eq_alpha t u then mk_Vari x
+    else
+      match unfold u with
+      | Appl(a,b) -> mk_Appl(aux a, aux b)
+      | Abst(a,b) ->
+          let x,b = Term.unbind b in mk_Abst(aux a, Term.bind_var x b)
+      | Prod(a,b) ->
+          let x,b = Term.unbind b in mk_Prod(aux a, Term.bind_var x b)
+      | LLet(a,d,b) ->
+          let x,b = Term.unbind b in mk_LLet(aux a, aux d, Term.bind_var x b)
+      | Meta(m,us) -> mk_Meta(m,Array.map aux us)
+      | _ -> u
+  in
+  aux

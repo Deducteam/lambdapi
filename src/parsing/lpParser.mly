@@ -52,6 +52,7 @@
 %token NOTATION
 %token OPAQUE
 %token OPEN
+%token ORELSE
 %token POSTFIX
 %token PREFIX
 %token PRINT
@@ -64,6 +65,7 @@
 %token REFINE
 %token REFLEXIVITY
 %token REMOVE
+%token REPEAT
 %token REQUIRE
 %token REWRITE
 %token RULE
@@ -330,14 +332,16 @@ tactic:
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
-  | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
+  | ORELSE t1=tactic t2=tactic { make_pos $sloc (P_tac_orelse(t1,t2)) }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
+  | REPEAT t=tactic { make_pos $sloc (P_tac_repeat t) }
   | REWRITE d=SIDE? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
+  | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
   | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
@@ -389,10 +393,10 @@ equation: l=term EQUIV r=term { (l, r) }
 
 notation:
   | INFIX a=SIDE? p=float_or_int
-    { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | POSTFIX p=float_or_int { Sign.Postfix(p) }
-  | PREFIX p=float_or_int { Sign.Prefix(p) }
-  | QUANTIFIER { Sign.Quant }
+    { Term.Infix(Option.get Pratter.Neither a, p) }
+  | POSTFIX p=float_or_int { Term.Postfix(p) }
+  | PREFIX p=float_or_int { Term.Prefix(p) }
+  | QUANTIFIER { Term.Quant }
 
 float_or_int:
   | s=FLOAT { s }

@@ -546,7 +546,7 @@ let index_sign ~rules:rwrules sign =
  Common.Path.Map.iter
   (fun path rules ->
     Lplib.Extra.StrMap.iter
-     (fun name rules ->
+     (fun name (rules,_) ->
        let sym = Core.Sign.find_sym path name in
        List.iter (index_rule sym) rules)
      rules)
