@@ -269,7 +269,7 @@ and term : term pp = fun ppf t ->
         if !print_meta_args then out ppf "%a%a" meta m env e else meta ppf m
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
-    | Db _        -> assert false
+    | Bvar _      -> assert false
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";

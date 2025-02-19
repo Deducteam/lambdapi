@@ -75,7 +75,7 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
           fatal pos "A metavariable could not be instantiated in the RHS."
       | Plac _      ->
         fatal pos "A placeholder hasn't been instantiated in the RHS."
-      | Db _ -> assert false
+      | Bvar _      -> assert false
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
       | Wild        -> assert false (* Cannot appear in RHS. *)

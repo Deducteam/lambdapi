@@ -139,7 +139,7 @@ let rec term : bool -> term pp = fun b ppf t ->
   | Patt(Some i,_,[||]) -> patt ppf i
   | Patt(Some i,_,ts) ->
     out ppf "(%a%a)" patt i (Array.pp (prefix " " (term b)) "") ts
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false

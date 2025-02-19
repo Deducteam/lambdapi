@@ -170,7 +170,7 @@ let matches : term -> term -> bool =
       | Appl _ -> assert false (* not possible after get_args_len *)
       | Type -> assert false (* not possible because of typing *)
       | Kind -> assert false (* not possible because of typing *)
-      | Db _ -> assert false
+      | Bvar _ -> assert false
       | TRef r ->
         if k > n then raise Not_equal;
         let ts1, ts2 = List.cut ts (n-k) in
@@ -277,7 +277,7 @@ let bind_pattern : term -> term -> binder =  fun p t ->
         let x, body = unbind body in
         mk_LLet (replace typ, replace def, bind_var x (replace body))
     | Meta(m,ts) -> mk_Meta (m, Array.map replace ts)
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | Wild -> assert false
     | TRef _ -> assert false
     | Patt _ -> assert false

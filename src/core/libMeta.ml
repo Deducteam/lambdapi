@@ -62,7 +62,7 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
   in
   let rec iter t =
     match unfold t with
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | Patt _
     | Wild
     | TRef _

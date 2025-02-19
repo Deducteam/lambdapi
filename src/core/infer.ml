@@ -55,10 +55,10 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
       return (bind_var x b)
     in
     match unfold t with
-    | Patt _ | Wild | TRef _ -> assert false
+    | Bvar _ | Patt _ | Wild | TRef _ -> assert false
     | Plac _
     | Kind
-    | Db _ | Type | Vari _ | Symb _ | Meta _ -> return t
+    | Type | Vari _ | Symb _ | Meta _ -> return t
     | Appl (t, u) ->
         let* t = reduce_coercions c t in let* u = reduce_coercions c u in
         return (mk_Appl (t, u))
@@ -136,7 +136,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
  fun pb c t ->
   match unfold t with
   | Patt _ -> assert false
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | Kind -> assert false
   | Wild -> assert false
   | TRef _ -> assert false

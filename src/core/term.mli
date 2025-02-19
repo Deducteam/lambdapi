@@ -39,19 +39,12 @@ type prop =
 (** Type for free variables. *)
 type var
 
-(** Data of a binder. *)
-type binder_info
-type mbinder_info
-
-val binder_name : binder_info -> string
-
 (** Type for binders. *)
 type binder
 type mbinder
    
 (** Type of bound variables. *)
 type bvar
-
 
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
@@ -78,6 +71,7 @@ type 'a notation =
     are considered invalid in unrelated code. *)
 type term = private
   | Vari of var (** Free variable. *)
+  | Bvar of bvar (** Bound variables. Only used internally. *)
   | Type (** "TYPE" constant. *)
   | Kind (** "KIND" constant. *)
   | Symb of sym (** User-defined symbol. *)
@@ -87,7 +81,6 @@ type term = private
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
-  | Db of bvar (** Bound variables. Only used internally. *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
@@ -229,6 +222,12 @@ and meta =
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option ref (** Definition. *) }
+
+(** [binder_name b] gives the name of the bound variable of [b]. *)
+val binder_name : binder -> string
+
+(** [mbinder_names b] gives the names of the bound variables of [b]. *)
+val mbinder_names : mbinder -> string array
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
 val mbinder_arity : mbinder -> int
@@ -400,6 +399,7 @@ val bind_mvar : var array -> term -> mbinder
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 val binder_occur : binder -> bool
+val mbinder_occur : mbinder -> int -> bool
 
 (** [is_closed b] checks whether the [term] [b] is closed. *)
 val is_closed : term -> bool

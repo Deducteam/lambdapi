@@ -92,7 +92,7 @@ let occurs : int -> term -> bool = fun i ->
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -115,7 +115,7 @@ let rec shift : term -> term = fun t ->
   | Meta(m,ts) -> mk_Meta (m, Array.map shift ts)
   | Patt(None,_,_) -> assert false
   | Patt(Some i,n,ts) -> mk_Patt (Some(-i-1), n ^ "'", Array.map shift ts)
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | LLet(a,t,b) -> mk_LLet (shift a, shift t, shift_binder b)
 and shift_binder b =
   let x, t = unbind b in bind_var x (shift t)
@@ -149,7 +149,7 @@ let apply_subs : subs -> term -> term = fun s t ->
       let x,b = unbind b in
       mk_LLet (apply_subs a, apply_subs t, bind_var x (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
@@ -176,7 +176,7 @@ let iter_subterms_from_pos : subterm_pos -> iter =
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -213,7 +213,7 @@ let iter_subterms : iter = fun pos f t ->
   | Type -> assert false
   | Kind -> assert false
   | Meta _ -> assert false
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
@@ -248,7 +248,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Type, Type
       | Kind, Kind -> unif s l
       | Meta _, _ | _, Meta _ -> assert false
-      | Db _, _ | _, Db _ -> assert false
+      | Bvar _, _ | _, Bvar _ -> assert false
       | Wild, _ | _, Wild -> assert false
       | Plac _, _ | _, Plac _ -> assert false
       | TRef _, _ | _, TRef _ -> assert false

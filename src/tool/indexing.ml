@@ -66,7 +66,7 @@ let rec node_of_stack t s v =
  | Plac _ -> assert false (* not for meta-closed terms *)
  | Wild -> assert false (* used only by tactics and reduction *)
  | TRef _  -> assert false (* destroyed by unfold *)
- | Db _ -> assert false
+ | Bvar _ -> assert false
 
 and index_of_stack stack v =
  match stack with
@@ -431,7 +431,7 @@ let rec is_flexible t =
   | Appl(t,_) -> is_flexible t
   | LLet(_,_,b) -> let _, t = unbind b in is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
-  | Meta _ | Plac _ | Wild | TRef _ | Db _ -> assert false
+  | Meta _ | Plac _ | Wild | TRef _ | Bvar _ -> assert false
 
 let enter =
  DB.(function
@@ -457,7 +457,7 @@ let subterms_to_index ~is_spine t =
   let t = Core.Term.unfold t in
   [where,t] @
   match t with
-  | Db _
+  | Bvar _
   | Vari _
   | Type
   | Kind

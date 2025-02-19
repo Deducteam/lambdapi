@@ -70,7 +70,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
     | Plac _      -> h (* may happen when reducing coercions *)
-    | Db _ -> assert false
+    | Bvar _      -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
   in snf
@@ -136,7 +136,6 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Db i, Db j -> if i=j then eq cfg l else raise Exit
     | Kind, Kind
     | Type, Type -> eq cfg l
     | Vari x, Vari y -> if eq_vars x y then eq cfg l else raise Exit
@@ -153,8 +152,8 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type -> raise Exit
-    | ((Symb f, (Vari _|Meta _|Prod _|Abst _|Db _))
-      | ((Vari _|Meta _|Prod _|Abst _|Db _), Symb f)) when is_constant f ->
+    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
+      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
@@ -163,7 +162,6 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Db i, Db j -> if i=j then eq cfg l else raise Exit
     | Kind, Kind
     | Type, Type -> eq cfg l
     | Vari x, Vari y when eq_vars x y -> eq cfg l
@@ -176,6 +174,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
+    | Bvar _, _ | _, Bvar _ -> assert false
     | _ -> raise Exit
   in
   fun cfg a b ->
@@ -456,7 +455,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | Db _ -> assert false
+          | Bvar _     -> assert false
           | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty

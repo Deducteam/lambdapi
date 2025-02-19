@@ -86,7 +86,7 @@ and head : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
@@ -113,7 +113,7 @@ and typ : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
@@ -142,7 +142,7 @@ let add_pvars : sym -> rule -> unit = fun s r ->
     match unfold t with
     | Type -> assert false
     | Kind -> assert false
-    | Db _ -> assert false
+    | Bvar _ -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false

@@ -83,7 +83,6 @@ let link : t -> unit = fun sign ->
   let link_term mk_Appl =
     let rec link_term t =
       match unfold t with
-      | Db _
       | Type
       | Kind
       | Vari _ -> t
@@ -93,6 +92,7 @@ let link : t -> unit = fun sign ->
       | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
       | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
       | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
+      | Bvar _ -> assert false
       | Meta _ -> assert false
       | Plac _ -> assert false
       | Wild -> assert false
@@ -163,9 +163,9 @@ let unlink : t -> unit = fun sign ->
     | Plac _ -> assert false
     | Wild   -> assert false
     | TRef _ -> assert false
+    | Bvar _ -> assert false
     | Vari _
     | Patt _
-    | Db _
     | Type
     | Kind -> ()
   in
@@ -258,7 +258,6 @@ let read : string -> t = fun fname ->
     match unfold t with
     | Type
     | Kind
-    | Db _
     | Vari _ -> ()
     | Symb s -> shallow_reset_sym s
     | Prod(a,b)
@@ -266,6 +265,7 @@ let read : string -> t = fun fname ->
     | LLet(a,t,b) -> reset_term a; reset_term t; reset_term (snd(unbind b))
     | Appl(a,b) -> reset_term a; reset_term b
     | Patt(_,_,ts) -> Array.iter reset_term ts
+    | Bvar _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false

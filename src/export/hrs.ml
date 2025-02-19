@@ -91,7 +91,7 @@ let rec term : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | Db _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false

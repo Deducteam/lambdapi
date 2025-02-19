@@ -280,9 +280,9 @@ module CM = struct
     | Wild -> assert false
     | Plac _ -> assert false
     | LLet _ -> assert false
+    | Bvar _ -> assert false
     | Kind
-    | Patt(_)
-    | Db _ -> false
+    | Patt(_) -> false
     | Vari(_)
     | Abst(_)
     | Prod(_)
