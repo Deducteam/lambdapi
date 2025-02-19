@@ -83,8 +83,8 @@ module VarMap = Map.Make(Var)
    substitution of the parent binder, [InEnv i] refers to the i-th slot in
    the closure environment of the parent binder (variables bound by a binder
    which is not the direct parent). *)
-type bvar = InSub of int | InEnv of int 
-                                  
+type bvar = InSub of int | InEnv of int
+
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
@@ -129,14 +129,15 @@ type term =
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean [b] is
       true if the placeholder stands for a type. *)
-  | TRef of term option Timed.ref (** Reference cell (used in surface matching,
-                                      and evaluation with sharing). *)
+  | TRef of term option Timed.ref
+  (** Reference cell (used in surface matching, and evaluation with
+      sharing). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
-(** Type for binders, implemented as closures. The closure term must have
-    all its bound variables declared eitherde Bruijn indices bound either by the binder itself or by 
-    the closure environment.
+(** Type for binders, implemented as closures. The closure term must have all
+    its bound variables declared eitherde Bruijn indices bound either by the
+    binder itself or by the closure environment.
 
     In a binder [(bi,u,e)] of arity [n], [Bvar(InSub i)] occurring [u] (with
     [i < n]) refers to the bound variable at position [i] in the binder array,
@@ -255,7 +256,8 @@ let binder_name : binder -> string = fun (bi,_,_) -> bi.binder_name
 let mbinder_names : mbinder -> string array = fun (bi,_,_) -> bi.mbinder_name
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
-let mbinder_arity : mbinder -> int = fun (i,_,_) -> Array.length i.mbinder_name
+let mbinder_arity : mbinder -> int =
+  fun (i,_,_) -> Array.length i.mbinder_name
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 let binder_occur : binder -> bool = fun (bi,_,_) -> bi.binder_bound
@@ -323,7 +325,7 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(** Dealing with AC-normalization of terms *)                                                   
+(** Dealing with AC-normalization of terms *)
 let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
 
 (** [mk_left_comb s t ts] builds a left comb of applications of [s] from
@@ -338,7 +340,6 @@ let mk_left_comb : sym -> term -> term list -> term = fun s ->
 let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
 
-  
 (** Printing functions for debug. *)
 let rec term : term pp = fun ppf t ->
   match unfold t with
@@ -421,7 +422,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
   if Logger.log_enabled() then
     log "msubst %a#%a %a = %a" clos_env env term tm (D.array term) vs term r;
   r
-  
+
 (** Total order on terms. *)
 and cmp : term cmp = fun t t' ->
   match unfold t, unfold t' with
@@ -448,10 +449,11 @@ and cmp_binder : binder cmp =
 (*  fun ({binder_name;binder_bound},u,e) (bi',u',e') ->
   let mbi = {mbinder_name=[|binder_name|];mbinder_bound=[|binder_bound|]} in
   let var = Vari(new_var binder_name) in
-  cmp (msubst (mbi,u,e)[|var|]) (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
+  cmp (msubst (mbi,u,e)[|var|])
+    (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
-  
+
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
@@ -570,9 +572,8 @@ let is_abst : term -> bool = fun t ->
 let is_prod : term -> bool = fun t ->
   (match unfold t with Prod(_) -> true | _ -> false)
 
-  
 (** [iter_atoms db f g t] applies f to every occurrence of a variable in t,
-    g to every occurrence of a symbol, and db to every occurrence of a 
+    g to every occurrence of a symbol, and db to every occurrence of a
     bound variable.
     We have to be careful with binders since in the current implementation
     closure environment may contain slots for variables that don't actually
@@ -580,7 +581,8 @@ let is_prod : term -> bool = fun t ->
     bound variables actually occur, and then check the elements of the
     closure environment which occur.
  *)
-let rec iter_atoms : (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term -> unit =
+let rec iter_atoms :
+          (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term -> unit =
   fun db f g t ->
   let rec check db t =
     match unfold t with
@@ -599,7 +601,8 @@ let rec iter_atoms : (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term ->
   check db t
 
 and iter_atoms_closure :
-      (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term -> term array -> unit =
+      (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> term -> term array
+      -> unit =
   fun db f g u env ->
   (* env positions occuring in [u] *)
   let u_pos = ref IntSet.empty in
@@ -614,7 +617,7 @@ and iter_atoms_closure :
       if IntSet.mem i !u_pos then iter_atoms db f g t
     (*else if t <> Wild then env.(i) <- Wild*) )
     env
-  
+
 let iter_atoms_mbinder
     : (bvar -> unit) -> (var -> unit) -> (sym -> unit) -> mbinder -> unit =
   fun db f g (_bi,u,env) -> iter_atoms_closure db f g u env
@@ -622,18 +625,25 @@ let iter_atoms_mbinder
 (** [occur x t] tells whether variable [x] occurs in [t]. *)
 let occur : var -> term -> bool =
   fun x t ->
-  try iter_atoms (fun _ ->()) (fun y -> if x==y then raise Exit) (fun _->()) t; false
+  try iter_atoms
+        (fun _ -> ())
+        (fun y -> if x==y then raise Exit)
+        (fun _-> ()) t;
+      false
   with Exit -> true
 
 let occur_mbinder : var -> mbinder -> bool =
   fun x b ->
-  try iter_atoms_mbinder (fun _ ->()) (fun y -> if x==y then raise Exit) (fun _->()) b; false
+  try iter_atoms_mbinder
+        (fun _ -> ())
+        (fun y -> if x==y then raise Exit)
+        (fun _-> ()) b;
+      false
   with Exit -> true
 
-(** [is_closed t] checks whether [t] is closed (w.r.t. variables).
-    We have to be careful with binders since in the current implementation
-    closure environment may contain slots for variables that don't actually appear
- *)
+(** [is_closed t] checks whether [t] is closed (w.r.t. variables).  We have to
+    be careful with binders since in the current implementation closure
+    environment may contain slots for variables that don't actually appear *)
 let is_closed : term -> bool =
   fun t ->
   try iter_atoms (fun _ -> ()) (fun _ -> raise Exit) (fun _ -> ()) t; true
@@ -641,9 +651,10 @@ let is_closed : term -> bool =
 
 let is_closed_mbinder : mbinder -> bool =
   fun b ->
-  try iter_atoms_mbinder (fun _ -> ()) (fun _ -> raise Exit) (fun _ -> ()) b; true
+  try iter_atoms_mbinder
+        (fun _ -> ()) (fun _ -> raise Exit) (fun _ -> ()) b; true
   with Exit -> false
-             
+
 (** [subst b v] substitutes the variable bound by [b] with the value [v].
     Assumes v is closed (since only called from outside the term library. *)
 let subst : binder -> term -> term = fun (bi,tm,env) v ->
@@ -688,7 +699,7 @@ let unmbind : mbinder -> var array * term =
   fun (({mbinder_name=names;_},_,_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
-  
+
 (** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
 let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   let bound = Stdlib.ref false in
@@ -755,7 +766,8 @@ let bind_mvar : var array -> term -> mbinder =
     log "bind_mvar %a" (D.array var) xs;*)
   let top_map = Stdlib.ref IntMap.empty
   and mbinder_bound = Array.make (Array.length xs) false in
-  Array.iteri (fun i (ki,_) -> Stdlib.(top_map := IntMap.add ki i !top_map)) xs;
+  Array.iteri
+    (fun i (ki,_) -> Stdlib.(top_map := IntMap.add ki i !top_map)) xs;
   let top_fvar key =
     let p = Stdlib.(IntMap.find key !top_map) in
     mbinder_bound.(p) <- true; Bvar (InSub p) in
@@ -878,11 +890,13 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
     | Prod(a,(n,b,e)) ->
         mk_Prod(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
-    | Abst(a,(n,b,e)) -> mk_Abst(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
+    | Abst(a,(n,b,e)) ->
+        mk_Abst(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
     | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
     | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
     | LLet(a,t,(n,b,e)) ->
-      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b, Array.map subst_patt e))
+        mk_LLet(subst_patt a, subst_patt t,
+                (n, subst_patt b, Array.map subst_patt e))
     | Wild
     | Plac _
     | TRef _
@@ -958,7 +972,8 @@ type problem = problem_aux Timed.ref
 
 (** Create a new empty problem. *)
 let new_problem : unit -> problem = fun () ->
- Timed.ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
+  Timed.ref
+    {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
 (** Printing functions for debug. *)
 module Raw = struct

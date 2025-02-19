@@ -30,7 +30,8 @@ let _ =
   let expected_succ_type ss _pos =
     let typ_0 =
       try !((StrMap.find "nat_zero" ss.builtins).sym_type)
-      with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+      with Not_found ->
+        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in

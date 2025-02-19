@@ -42,7 +42,7 @@ type var
 (** Type for binders. *)
 type binder
 type mbinder
-   
+
 (** Type of bound variables. *)
 type bvar
 
