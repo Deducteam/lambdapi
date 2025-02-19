@@ -44,6 +44,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/NOTATION/"notation"/g' \
 	-e 's/OPEN/"open"/g' \
 	-e 's/OPAQUE/"opaque"/g' \
+        -e 's/ORELSE/"orelse"/g' \
 	-e 's/POSTFIX/"postfix"/g' \
 	-e 's/PREFIX/"prefix"/g' \
 	-e 's/PRINT/"print"/g' \
@@ -56,6 +57,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/REFLEXIVITY/"reflexivity"/g' \
 	-e 's/REFINE/"refine"/g' \
         -e 's/REMOVE/"remove"/g' \
+        -e 's/REPEAT/"repeat"/g' \
 	-e 's/REQUIRE/"require"/g' \
         -e 's/RESOLVE/"resolve"/g' \
 	-e 's/REWRITE/"rewrite"/g' \
