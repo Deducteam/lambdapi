@@ -262,7 +262,7 @@ let mbinder_arity : mbinder -> int =
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 let binder_occur : binder -> bool = fun (bi,_,_) -> bi.binder_bound
 let mbinder_occur : mbinder -> int -> bool =
-  fun (bi,_,_) i -> assert (i<Array.length bi.mbinder_name);
+  fun (bi,_,_) i -> assert (i < Array.length bi.mbinder_name);
                     bi.mbinder_bound.(i)
 
 (** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
@@ -755,7 +755,6 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
 let binder : (term -> term) -> binder -> binder = fun f b ->
   let x,t = unbind b in bind_var x (f t)
 
-
 (** [bind_mvar xs t] binds the variables of [xs] in [t] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 let bind_mvar : var array -> term -> mbinder =
@@ -818,7 +817,7 @@ let bind_mvar : var array -> term -> mbinder =
           u_map := IntMap.add key p' !u_map;
           Bvar (InEnv p') in
     let u' = bind fvar' u in
-    if u==u' && !u_n = 0 && Array.for_all2 (==) u_env u_env' then b
+    if u==u' && !u_n = 0 && Lplib.Array.for_all2 (==) u_env u_env' then b
     else (* some vars of [xs] occur in u *)
       let u_env' = Array.append u_env' (Array.make !u_n Wild) in
       IntMap.iter (fun key p -> u_env'.(p) <- fvar key) !u_map;
