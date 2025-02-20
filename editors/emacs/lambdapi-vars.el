@@ -31,6 +31,7 @@
     "builtin"
     "coerce_rule"
     "end"
+    "eval"
     "in"
     "inductive"
     "let"

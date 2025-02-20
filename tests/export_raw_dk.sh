@@ -52,7 +52,7 @@ do
         # "as"
         729);;
         # "notation"
-        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|706|1101|1190b|1190c);;
+        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|991|706|1101|1190b|1190c);;
         # "quantifier"
         683|650|573|565|430);;
         # nested module name
@@ -60,7 +60,7 @@ do
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|Option|String);;
         # "inductive"
         strictly_positive_*|inductive|989|904|830|341);;
         # underscore in query
@@ -71,7 +71,6 @@ do
         298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
         # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
         547);;
-
         # default case:
         *) translate $f.lp;;
     esac

@@ -1,4 +1,6 @@
-require open tests.OK.Prop tests.OK.Set;
+// polymorphic Leibniz equality
+
+require open tests.OK.Set tests.OK.Prop;
 
 constant symbol = [a] : τ a → τ a → Prop;
 

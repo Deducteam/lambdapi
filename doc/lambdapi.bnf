@@ -30,7 +30,7 @@ QID ::= [UID "."]+ UID
             | [<exposition>] <param_list>* "inductive" <inductive> ("with"
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <stringlit> "≔" <qid> ";"
+            | "builtin" <string> "≔" <qid> ";"
             | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid> <notation> ";"
@@ -42,13 +42,13 @@ QID ::= [UID "."]+ UID
           | "compute" <term>
           | "print" [<qid_or_rule>]
           | "proofterm"
-          | "debug" ("+"|"-") <string>
-          | "flag" <stringlit> <switch>
-          | "prover" <stringlit>
-          | "prover_timeout" "in"T
-          | "verbose" "in"T
+          | "debug" ("+"|"-") <char>+
+          | "flag" <string> <switch>
+          | "prover" <string>
+          | "prover_timeout" <integer>
+          | "verbose" <integer>
           | "type" <term>
-          | "search" <stringlit>
+          | "search" <string>
 
 <qid_or_rule> ::= <qid>
                 | "unif_rule"
@@ -96,7 +96,8 @@ QID ::= [UID "."]+ UID
           | "$" UID [<env>]
           | "(" <term> ")"
           | "[" <term> "]"
-          | "in"T
+          | <integer>
+          | <string>
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
@@ -135,6 +136,7 @@ QID ::= [UID "."]+ UID
            | "admit"
            | "apply" <term>
            | "assume" <param>+
+           | "eval" <term>
            | "fail"
            | "generalize" <uid>
            | "have" <uid> ":" <term>
@@ -150,7 +152,7 @@ QID ::= [UID "."]+ UID
            | "solve"
            | "symmetry"
            | "try" <tactic>
-           | "why3" [<stringlit>]
+           | "why3" [<string>]
 
 <rw_patt> ::= <term>
             | "in" <term>
@@ -178,7 +180,7 @@ QID ::= [UID "."]+ UID
              | "quantifier"
 
 <float_or_int> ::= <float>
-                 | "in"T
+                 | <integer>
 
 <maybe_generalize> ::= ["generalize"]
 

@@ -26,10 +26,11 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/COMMUTATIVE/"commutative"/g' \
 	-e 's/COMPUTE/"compute"/g' \
 	-e 's/CONSTANT/"constant"/g' \
-	-e 's/DEBUG_FLAGS/("+"|"-") <string>/g' \
+	-e 's/DEBUG_FLAGS/("+"|"-") <char>+/g' \
 	-e 's/DEBUG/"debug"/g' \
 	-e 's/DOT/"."/g' \
 	-e 's/END/"end"/g' \
+        -e 's/EVAL/"eval"/g' \
 	-e 's/FAIL/"fail"/g' \
 	-e 's/FLAG/"flag"/g' \
 	-e 's/GENERALIZE/"generalize"/g' \
@@ -69,7 +70,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/SEQUENTIAL/"sequential"/g' \
 	-e 's/SIMPLIFY/"simplify"/g' \
 	-e 's/SOLVE/"solve"/g' \
-        -e 's/STRINGLIT/<stringlit>/g' \
+        -e 's/STRINGLIT/<string>/g' \
 	-e 's/SYMBOL/"symbol"/g' \
 	-e 's/SYMMETRY/"symmetry"/g' \
 	-e 's/TRY/"try"/g' \
@@ -78,6 +79,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/VERBOSE/"verbose"/g' \
 	-e 's/WHY3/"why3"/g' \
 	-e 's/WITH/"with"/g' \
+        -e 's/INT/<integer>/g' \
         -e 's/IN/"in"/g' \
 	-e 's/FLOAT/<float>/g' \
 	-e 's/HOOK_ARROW/"↪"/g' \

@@ -152,9 +152,12 @@ let rec term : p_term pp = fun ppf t ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
     | (P_NLit(i)           , _    ) -> out ppf "%s" i
+    | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
-    | (_                   , _    ) -> out ppf "(@[<hv2>%a@])" func t
+    | (P_Appl _, `Atom)
+    | ((P_Arro _|P_Abst _|P_Prod _|P_LLet _), (`Atom|`Appl))
+      -> out ppf "(@[<hv2>%a@])" func t
   in
   let rec toplevel ppf t =
     match t.elt with
@@ -260,30 +263,32 @@ let query : p_query pp = fun ppf { elt; _ } ->
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
+  | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
-  | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
   | P_tac_induction -> out ppf "induction"
+  | P_tac_orelse(t1,t2) -> out ppf "orelse %a %a" tactic t1 tactic t2
   | P_tac_query q -> query ppf q
   | P_tac_refine t -> out ppf "refine %a" term t
   | P_tac_refl -> out ppf "reflexivity"
   | P_tac_remove ids ->
       out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
+  | P_tac_repeat t -> out ppf "repeat %a" tactic t
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " .[%a]" rw_patt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
+  | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
   | P_tac_simpl None -> out ppf "simplify"
   | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_try t -> out ppf "try %a" tactic t
-  | P_tac_orelse(t1,t2) -> out ppf "orelse %a %a" tactic t1 tactic t2
-  | P_tac_repeat t -> out ppf "repeat %a" tactic t
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p

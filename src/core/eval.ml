@@ -44,7 +44,7 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
     | Abst(a,t) ->
-      let x, t = Bindlib.unbind t in mk_Abst(a, bind x lift (hnf t))
+      let x, t = unbind t in mk_Abst(a, bind_var x (hnf t))
     | t -> t
   in hnf
 
@@ -59,16 +59,18 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Type
     | Kind
     | Symb _ -> h
-    | LLet(_,t,b) -> snf (Bindlib.subst b t)
+    | LLet(_,t,b) -> snf (subst b t)
     | Prod(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Prod(snf a, bind x lift (snf b))
+      let x, b = unbind b in
+      mk_Prod(snf a, bind_var x (snf b))
     | Abst(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Abst(snf a, bind x lift (snf b))
+      let x, b = unbind b in
+      mk_Abst(snf a, bind_var x (snf b))
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
     | Plac _      -> h (* may happen when reducing coercions *)
-    | TEnv(_,_)   -> assert false
+    | Bvar _      -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
   in snf
@@ -126,26 +128,25 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
-      let x,u = Bindlib.unbind u in
+      let x,u = unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((u,b)::l)
     | _, LLet(_,t,u) ->
-      let x,u = Bindlib.unbind u in
+      let x,u = unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
-    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq cfg l else raise Exit
+    | Vari x, Vari y -> if eq_vars x y then eq cfg l else raise Exit
     | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | Abst _, (Type|Kind|Prod _)
     | (Type|Kind|Prod _), Abst _ -> raise Exit
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
@@ -161,19 +162,19 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq cfg l
+    | Vari x, Vari y when eq_vars x y -> eq cfg l
     | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
+    | Bvar _, _ | _, Bvar _ -> assert false
     | _ -> raise Exit
   in
   fun cfg a b ->
@@ -214,9 +215,9 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
   | Abst(_,f), u::stk when cfg.Config.beta ->
-    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst f u) stk
+    Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
-    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst u t) stk
+    Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
       (* The invariant that defined symbols are subject to no
@@ -287,7 +288,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
   fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
-  let bound = Array.make capacity TE_None in
+  let bound = Array.make capacity None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
      array described in {!module:Term} as the environment of the RHS during
@@ -298,35 +299,26 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     let open Tree_type in
     match tree with
     | Fail -> None
-    | Leaf(rhs_subst, (act, xvars)) -> (* Apply the RHS substitution *)
+    | Leaf(rhs_subst, r) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
-        let env_len = Bindlib.mbinder_arity act in
-        assert (List.length rhs_subst = env_len - xvars);
-        let env = Array.make env_len TE_None in
+        assert (List.length rhs_subst = r.vars_nb);
+        let env_len = r.vars_nb + r.xvars_nb in
+        let env = Array.make env_len None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let f (pos, (slot, xs)) =
           match bound.(pos) with
-          | TE_Vari(_) -> assert false
-          | TE_Some(_) -> env.(slot) <- bound.(pos)
-          | TE_None    ->
-              if Array.length xs = 0 then
-                let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
-                in env.(slot) <- TE_Some(b)
-              else
+          | Some(_) -> env.(slot) <- bound.(pos)
+          | None    ->
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- TE_Some(binds xs lift vars.(pos))
+                env.(slot) <- Some(bind_mvar xs vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
-        for i = env_len - xvars to env_len - 1 do
-          let b =
-            Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> mk_Plac false)
-          in
-          env.(i) <- TE_Some(b)
+        for i = r.vars_nb to env_len - 1 do
+          env.(i) <- Some(bind_mvar [||] (mk_Plac false))
         done;
-        Some (Bindlib.msubst act env, stk)
+        Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
@@ -346,17 +338,17 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               in
               (* Ensure there are no variables from [forbidden] in [b]. *)
               let no_forbidden b =
-                not (IntMap.exists (fun _ x -> Bindlib.occur x b) forbidden)
+                not (IntMap.exists (fun _ x -> occur_mbinder x b)
+                       forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)
-              let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
+              let b = bind_mvar allowed vars.(i) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              then (bound.(i) <- Some b; ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed
-                        (lift (snf (whnf cfg) vars.(i))) in
+              let b = bind_mvar allowed (snf (whnf cfg) vars.(i)) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+              then (bound.(i) <- Some b; ok)
               else fail
         in
         walk next stk cursor vars_id id_vars
@@ -409,7 +401,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
              introducing variable  [id] and branching  on tree [tr].  The type
              [a] and [b] substituted are re-inserted in the stack.*)
           let walk_binder a b id tr =
-            let (bound, body) = Bindlib.unbind b in
+            let (bound, body) = unbind b in
             let vars_id = VarMap.add bound id vars_id in
             let id_vars = IntMap.add id bound id_vars in
             let stk = List.reconstruct left (a::body::args) right in
@@ -467,7 +459,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | TEnv(_)    -> assert false (* Should not appear in terms. *)
+          | Bvar _     -> assert false
           | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty
@@ -538,7 +530,8 @@ let simplify : ctxt -> term -> term = fun c ->
   let rec simp t =
     match get_args (whnf ~tags c t) with
     | Prod(a,b), _ ->
-        let x, b = Bindlib.unbind b in mk_Prod (simp a, bind x lift (simp b))
+       let x, b = unbind b in
+       mk_Prod (simp a, bind_var x (simp b))
     | h, ts -> add_args_map h (whnf ~tags c) ts
   in simp
 
@@ -567,7 +560,7 @@ let unfold_sym : sym -> term -> term =
             | _ -> h
           in add_args h args
     and unfold_sym_binder b =
-      let x, b = Bindlib.unbind b in bind x lift (unfold_sym b)
+      let x, b = unbind b in bind_var x (unfold_sym b)
     in unfold_sym
   in
   fun s ->
