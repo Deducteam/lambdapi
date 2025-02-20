@@ -99,7 +99,7 @@ let sym : sym pp = fun ppf s ->
         else out ppf "%a.%a" path p uid n
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
-let var : 'a Bindlib.var pp = fun ppf x -> uid ppf (Bindlib.name_of x)
+let var : var pp = fun ppf x -> uid ppf (base_name x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
@@ -166,6 +166,7 @@ and term : term pp = fun ppf t ->
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
   and pp p ppf t =
+    if Logger.log_enabled() then log_prnt "%a" Raw.term t;
     let (h, args) = get_args t in
     (* standard application *)
     let pp_appl h args =
@@ -242,7 +243,7 @@ and term : term pp = fun ppf t ->
         begin
           match unfold b with
           | Abst(a,b) ->
-              let (x,p) = Bindlib.unbind b in
+              let (x,p) = unbind b in
               out ppf "`%a %a%a, %a" sym s var x typ a func p
           | _ -> assert false
         end
@@ -251,11 +252,6 @@ and term : term pp = fun ppf t ->
   and head wrap ppf t =
     let env ppf ts =
       if Array.length ts > 0 then out ppf ".[%a]" (Array.pp func ";") ts in
-    let term_env ppf te =
-      match te with
-      | TE_Vari(m) -> var ppf m
-      | _          -> assert false
-    in
     match unfold t with
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
@@ -273,55 +269,51 @@ and term : term pp = fun ppf t ->
         if !print_meta_args then out ppf "%a%a" meta m env e else meta ppf m
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
-    | TEnv(t,e)   -> out ppf "$%a%a" term_env t env e
+    | Bvar _      -> assert false
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = Bindlib.unbind b in
+        let (x,t) = unbind b in
         out ppf "λ %a" bvar (b,x);
         if !print_domains then out ppf ": %a, %a" func a func t
         else abstractions ppf t;
         if wrap then out ppf ")"
     | Prod(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = Bindlib.unbind b in
-        if Bindlib.binder_occur b then
+        let (x,t) = unbind b in
+        if binder_occur b then
           out ppf "Π %a: %a, %a" var x appl a func t
         else out ppf "%a → %a" appl a func t;
         if wrap then out ppf ")"
     | LLet(a,t,b) ->
         if wrap then out ppf "(";
         out ppf "let ";
-        let (x,u) = Bindlib.unbind b in
+        let (x,u) = unbind b in
         bvar ppf (b,x);
         if !print_domains then out ppf ": %a" atom a;
         out ppf " ≔ %a in %a" func t func u;
         if wrap then out ppf ")"
   and bvar ppf (b,x) =
-    if Bindlib.binder_occur b then out ppf "%a" var x else out ppf "_"
+    if binder_occur b then out ppf "%a" var x else out ppf "_"
   and abstractions ppf t =
     match unfold t with
     | Abst(_,b) ->
-        let (x,t) = Bindlib.unbind b in
+        let (x,t) = unbind b in
         out ppf " %a%a" bvar (b,x) abstractions t
     | t -> out ppf ", %a" func t
   in
   func ppf t
 
-let term : term pp = fun ppf t -> term ppf (cleanup t)
-let term_in : Bindlib.ctxt -> term pp = fun c ppf t ->
-  term ppf (cleanup ~ctxt:c t)
-
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
-(*let term = Term.term*)
+(*let term = Raw.term*)
 
 let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
   | Prod(a,b), true::impl ->
-      let x, b = Bindlib.unbind b in
+      let x, b = unbind b in
       out ppf "Π [%a: %a], %a" var x term a prod (b, impl)
   | Prod(a,b), false::impl ->
-      let x, b = Bindlib.unbind b in
+      let x, b = unbind b in
       out ppf "Π %a: %a, %a" var x term a prod (b, impl)
   | _ -> term ppf t
 
@@ -349,16 +341,17 @@ let typing : constr pp = fun ppf (ctx, t, u) ->
   out ppf "@[<h>%a%a : %a@]" ctxt ctx term t term u
 
 let constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "@[<h>%a%a ≡ %a@]" ctxt ctx term t term u
+  out ppf "@[<h>%a%a@ ≡ %a@]" ctxt ctx term t term u
 
-let constrs : constr list pp = List.pp constr "; "
+let constrs : constr list pp = fun ppf cs ->
+  let pp_sep ppf () = out ppf "@ ;" in
+  out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
 
 (* for debug only *)
 let metaset : MetaSet.t pp =
-  D.iter ~sep:(fun fmt () -> out fmt ",@ ") MetaSet.iter meta
+  D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta
 
 let problem : problem pp = fun ppf p ->
   out ppf
-    "{ recompute=%b;@ metas={%a};@ to_solve=[%a];@  unsolved=[%a] }"
-    !p.recompute metaset !p.metas constrs !p.to_solve constrs
-    !p.unsolved
+    "{ recompute=%b;@ metas={%a};@ to_solve=%a;@ unsolved=%a }"
+    !p.recompute metaset !p.metas constrs !p.to_solve constrs !p.unsolved

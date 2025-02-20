@@ -99,14 +99,12 @@ let string_of_goal : Proof.goal -> goal =
   in
   fun g ->
   let open Print in
-  let bctx = Proof.Goal.bindlib_ctxt g in
-  let term = term_in bctx in
   let env_elt (s,(_,t,d)) =
-    let t = to_string term (Bindlib.unbox t) in
+    let t = to_string term t in
     s,
     match d with
     | None -> t
-    | Some d -> t^" ≔ "^to_string term (Bindlib.unbox d)
+    | Some d -> t^" ≔ "^to_string term d
   in
   let ctx_elt (x,a,d) =
     let a = to_string term a in

@@ -39,7 +39,7 @@ let log = log.pp
     portion [S─∘─Z] is made possible by a swap. *)
 
 (** Representation of a tree (see {!type:Tree_type.tree}). *)
-type tree = (rhs * int) Tree_type.tree
+type tree = rule Tree_type.tree
 
 (** {1 Conditions for decision trees}
 
@@ -223,8 +223,8 @@ module CM = struct
   type clause =
     { c_lhs       : term array
     (** Left hand side of a rule. *)
-    ; c_rhs       : rhs * int
-    (** Right hand side of a rule. *)
+    ; c_rhs       : rule
+    (** Right hand side of a rule, and number of extra variables. *)
     ; c_subst     : rhs_substit
     (** Substitution of RHS variables. *)
     ; xvars_nb    : int
@@ -275,11 +275,12 @@ module CM = struct
       {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
-    | TRef _ | TEnv _ | Appl _ -> assert false (*Cannot happen with get_args*)
+    | TRef _ | Appl _ -> assert false (*Cannot happen with get_args*)
     | Meta _ -> assert false (* No metavars in rewrite rules LHS *)
     | Wild -> assert false
     | Plac _ -> assert false
     | LLet _ -> assert false
+    | Bvar _ -> assert false
     | Kind
     | Patt(_) -> false
     | Vari(_)
@@ -290,10 +291,9 @@ module CM = struct
 
   (** [of_rules rs] transforms rewriting rules [rs] into a clause matrix. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r {lhs; rhs; xvars_nb; _} =
+    let r2r ({lhs; xvars_nb; _} as c_rhs) =
       let c_lhs = Array.of_list lhs in
-      { c_lhs; c_rhs = (rhs, xvars_nb); cond_pool = CP.empty; c_subst = []
-      ; xvars_nb }
+      { c_lhs; c_rhs; cond_pool = CP.empty; c_subst = []; xvars_nb }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -449,7 +449,7 @@ module CM = struct
     List.exists st_r cm.clauses
 
   let index_var : int VarMap.t -> term -> int = fun vi t ->
-    VarMap.find (to_tvar t) vi
+    VarMap.find (to_var t) vi
 
   (** [mk_wildcard vs] creates a pattern variable that accepts anything and in
       which variables [vs] can appear free. There is no order on [vs] because
@@ -532,7 +532,7 @@ module CM = struct
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | Vari(x), Vari(y) ->
-          if lenh = lenp && Bindlib.eq_vars x y
+          if lenh = lenp && eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | Type, Type ->
@@ -585,8 +585,8 @@ module CM = struct
       clause [cls]. The domain [a] of the binder and [b[v/x]] are put back
       into the stack (in that order), with [a] with argument position 0 and
       [b[v/x]] as argument 1. *)
-  let binder : (term -> (term * tbinder)) -> VarSet.t -> int ->
-    tvar -> arg list -> clause list -> arg list * clause list =
+  let binder : (term -> (term * binder)) -> VarSet.t -> int ->
+    var -> arg list -> clause list -> arg list * clause list =
     fun get free_vars col v pos cls ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
     let ab = {arg_path = 1 :: arg_path; arg_rank = arg_rank + 1} in
@@ -608,7 +608,7 @@ module CM = struct
       | t        ->
           let (a, b) = get t in
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mk_Vari v) in
+          let b = subst b (mk_Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
 
     in
@@ -620,13 +620,13 @@ module CM = struct
       is the position of terms in clauses [cls] and [free_vars] is the set of
       {e free} variables introduced by other binders that may appear in
       patterns. *)
-  let abstract : VarSet.t -> int -> tvar -> arg list -> clause list ->
+  let abstract : VarSet.t -> int -> var -> arg list -> clause list ->
     arg list * clause list =
     binder (function Abst(a,b) -> a, b | _ -> assert false)
 
   (** [product free_vars col v pos cls] is like [abstract free_vars col v pos
       cls] for products. *)
-  let product : VarSet.t -> int -> tvar -> arg list -> clause list ->
+  let product : VarSet.t -> int -> var -> arg list -> clause list ->
     arg list * clause list =
     binder (function Prod(a, b) -> a, b | _ -> assert false)
 
@@ -655,15 +655,15 @@ end
     [vi] contains variables that may appear free in patterns. [slot] is the
     number of subterms that must be memorised. *)
 let harvest :
-    term array -> rhs * int -> rhs_substit -> int VarMap.t -> int -> tree =
-  fun lhs rhs subst vi slot ->
+    term array -> rule -> rhs_substit -> int VarMap.t -> int -> tree =
+  fun lhs r subst vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; product = None ; default = Some(child) }
   in
   let rec loop lhs subst slot =
     match lhs with
-    | []                    -> Leaf(subst, rhs)
+    | []                    -> Leaf(subst, r)
     | Patt(Some(i),_,e)::ts ->
         let subst =
           (slot, (i, Array.map (CM.index_var vi) e)) :: subst
@@ -755,7 +755,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       let binder recon mat_transf =
         if List.for_all (fun x -> not (recon x)) column then None else
         let v_lvl = VarMap.cardinal vars_id in (* Level of the variable. *)
-        let var = new_tvar (Printf.sprintf "d%dv" v_lvl) in
+        let var = new_var (Printf.sprintf "d%dv" v_lvl) in
         let (positions, clauses) =
           mat_transf (keys vars_id) swap var positions updated
         in
