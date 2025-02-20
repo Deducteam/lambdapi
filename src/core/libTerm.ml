@@ -7,15 +7,15 @@ open Lplib open Extra
 let rec is_kind : term -> bool = fun t ->
   match unfold t with
   | Type -> true
-  | Prod(_,b) -> is_kind (Bindlib.subst b mk_Kind)
+  | Prod(_,b) -> is_kind (subst b mk_Kind)
   | _ -> false
 
-(** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
+(** [to_var t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
-let to_tvar : term -> tvar = fun t ->
+let to_var : term -> var = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the [Array.map to_tvar] function is useful when working
+(** {b NOTE} the [Array.map to_var] function is useful when working
    with multiple binders. For example, this is the case when manipulating
    pattern variables ([Patt] constructor) or metatavariables ([Meta]
    constructor).  Remark that it is important for these constructors to hold
@@ -23,7 +23,7 @@ let to_tvar : term -> tvar = fun t ->
    be substituted when if it is injected in a term (using the [Vari]
    constructor). *)
 
-(** {b NOTE} the result of {!val:to_tvar} can generally NOT be precomputed. A
+(** {b NOTE} the result of {!val:to_var} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
     going to arise when working under binders,  for which fresh variables will
     often be generated. A second reason is that free variables should never be
@@ -49,6 +49,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     let t = unfold t in
     action t;
     match t with
+    | Bvar _ -> assert false
     | Wild
     | Plac _
     | TRef(_)
@@ -57,34 +58,16 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Kind
     | Symb(_)     -> ()
     | Patt(_,_,ts)
-    | TEnv(_,ts)
     | Meta(_,ts)  -> Array.iter iter ts
     | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
+    | Abst(a,b)   -> iter a; iter (subst b mk_Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (subst u mk_Kind)
   in iter
-
-(** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
-    name when [b] binds no variable. The string [s] is the prefix of the
-    variable's name.*)
-let unbind_name : string -> tbinder -> tvar * term = fun s b ->
-  if Bindlib.binder_occur b then Bindlib.unbind b
-  else let x = new_tvar s in (x, Bindlib.subst b (mk_Vari x))
-
-(** [unbind2_name b1 b2 s] is like [Bindlib.unbind2 b1 b2] but returns a valid
-   variable name when [b1] or [b2] binds no variable. The string [s] is the
-   prefix of the variable's name.*)
-let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
-  fun s b1 b2 ->
-  if Bindlib.binder_occur b1 || Bindlib.binder_occur b2 then
-    Bindlib.unbind2 b1 b2
-  else let x = new_tvar s in
-       (x, Bindlib.subst b1 (mk_Vari x), Bindlib.subst b2 (mk_Vari x))
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
-let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
+let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
   let exception Not_unique_var in
   let open Stdlib in
   let vars = ref VarSet.empty in
@@ -107,14 +90,14 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
    The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
    metavariables into fresh symbols, and those metavariables are introduced by
    [sr.ml] which replaces pattern variables by metavariables. *)
-let nl_distinct_vars : term array -> (tvar array * tvar StrMap.t) option =
+let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
   fun ts ->
   let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty (* variables already seen (linear or not) *)
   and nl_vars = ref VarSet.empty (* variables occurring more then once *)
   and patt_vars = ref StrMap.empty in
-  (* map from pattern variables to actual Bindlib variables *)
+  (* map from pattern variables to actual variables *)
   let rec to_var t =
     match unfold t with
     | Vari(v) ->
@@ -126,14 +109,14 @@ let nl_distinct_vars : term array -> (tvar array * tvar StrMap.t) option =
         let v =
           try StrMap.find f.sym_name !patt_vars
           with Not_found ->
-            let v = new_tvar f.sym_name in
+            let v = new_var f.sym_name in
             patt_vars := StrMap.add f.sym_name v !patt_vars;
             v
         in to_var (mk_Vari v)
     | _ -> raise Not_a_var
   in
   let replace_nl_var v =
-    if VarSet.mem v !nl_vars then new_tvar "_" else v
+    if VarSet.mem v !nl_vars then new_var "_" else v
   in
   try
     let vs = Array.map to_var ts in
@@ -146,7 +129,7 @@ let nl_distinct_vars : term array -> (tvar array * tvar StrMap.t) option =
 
 (** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
    to the map [map]. *)
-let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
+let sym_to_var : var StrMap.t -> term -> term = fun map ->
   let rec to_var t =
     match unfold t with
     | Symb f -> (try mk_Vari (StrMap.find f.sym_name map) with Not_found -> t)
@@ -156,56 +139,55 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
     | Appl(a,b)  -> mk_Appl(to_var a, to_var b)
     | Meta(m,ts) -> mk_Meta(m, Array.map to_var ts)
     | Patt _ -> assert false
-    | TEnv _ -> assert false
     | TRef _ -> assert false
     | _ -> t
   and to_var_binder b =
-    let (x,b) = Bindlib.unbind b in bind x lift (to_var b)
+    let (x,b) = unbind b in bind_var x (to_var b)
   in fun t -> if StrMap.is_empty map then t else to_var t
 
 (** [codom_binder n t] returns the [n]-th binder of [t] if [t] is a product of
     arith >= [n]. *)
-let rec codom_binder : int -> term -> tbinder = fun n t ->
+let rec codom_binder : int -> term -> binder = fun n t ->
   match unfold t with
   | Prod(_,b) ->
-      if n <= 0 then b else codom_binder (n-1) (Bindlib.subst b mk_Kind)
+      if n <= 0 then b else codom_binder (n-1) (subst b mk_Kind)
   | _ -> assert false
 
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
 let rec eq_alpha a b =
   match unfold a, unfold b with
-  | Vari x, Vari y -> Bindlib.eq_vars x y
+  | Vari x, Vari y -> Term.eq_vars x y
   | Type, Type
   | Kind, Kind -> true
   | Symb s1, Symb s2 -> s1==s2
   | Prod(a1,b1), Prod(a2,b2)
   | Abst(a1,b1), Abst(a2,b2) ->
-      eq_alpha a1 a2 && let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq_alpha b1 b2
+      eq_alpha a1 a2 && let _,b1,b2 = Term.unbind2 b1 b2 in eq_alpha b1 b2
   | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
   | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq_alpha a1 a2
   | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
       eq_alpha a1 a2 && eq_alpha t1 t2
-      && let _,u1,u2 = Bindlib.unbind2 u1 u2 in eq_alpha u1 u2
+      && let _,u1,u2 = Term.unbind2 u1 u2 in eq_alpha u1 u2
   | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       i=j && Array.for_all2 eq_alpha ts us
   | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
-  | TEnv _, _| _, TEnv _ -> assert false
+  | TRef _, _| _, TRef _ -> assert false
   | _ -> false
 
 (** [fold id t a] returns term binder [b] with binder name [id] such that
     [Bindlib.subst b t ≡ a]. *)
-let fold (x:tvar) (t:term): term -> term =
+let fold (x:var) (t:term): term -> term =
   let rec aux u =
     if eq_alpha t u then mk_Vari x
     else
       match unfold u with
       | Appl(a,b) -> mk_Appl(aux a, aux b)
       | Abst(a,b) ->
-          let x,b = Bindlib.unbind b in mk_Abst(aux a, bind x lift b)
+          let x,b = Term.unbind b in mk_Abst(aux a, Term.bind_var x b)
       | Prod(a,b) ->
-          let x,b = Bindlib.unbind b in mk_Prod(aux a, bind x lift b)
+          let x,b = Term.unbind b in mk_Prod(aux a, Term.bind_var x b)
       | LLet(a,d,b) ->
-          let x,b = Bindlib.unbind b in mk_LLet(aux a, aux d, bind x lift b)
+          let x,b = Term.unbind b in mk_LLet(aux a, aux d, Term.bind_var x b)
       | Meta(m,us) -> mk_Meta(m,Array.map aux us)
       | _ -> u
   in

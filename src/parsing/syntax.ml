@@ -66,7 +66,8 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of string (** Natural number literal. *)
+  | P_NLit of string (** Integer literal. *)
+  | P_SLit of string (** String literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
@@ -116,6 +117,7 @@ let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
   | P_Wild
   | P_Patt(None,_)
   | P_NLit _
+  | P_SLit _
     -> StrSet.empty
   | P_Meta _
   | P_LLet _
@@ -149,8 +151,8 @@ module P  = struct
   (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
-  let var : Term.tvar -> p_term = fun v -> iden (Bindlib.name_of v)
+  (** [var v] builds a [P_Iden] from [base_name v]. *)
+  let var : Term.var -> p_term = fun v -> iden (Term.base_name v)
 
   (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
@@ -356,7 +358,8 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
       && Option.eq eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
-  | P_NLit n1, P_NLit n2 -> n1 = n2
+  | P_NLit s1, P_NLit s2
+  | P_SLit s1, P_SLit s2 -> s1 = s2
   | _,_ -> false
 
 and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
@@ -526,7 +529,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_Type
     | P_Wild
     | P_Patt (_, None)
-    | P_NLit _ -> a
+    | P_NLit _
+    | P_SLit _
+      -> a
 
     | P_Meta (_, ts)
     | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts

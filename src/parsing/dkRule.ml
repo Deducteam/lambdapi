@@ -73,6 +73,7 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
+      | P_SLit(_)         -> assert false
       | P_Wrap(_)         -> assert false
       | P_Expl(_)         -> assert false
     end;
@@ -160,6 +161,7 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
     | P_Patt(_,_)       -> fatal h.pos "Pattern in dk rule."
     | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
     | P_NLit(_)         -> fatal h.pos "Nat literal in dk rule."
+    | P_SLit(_)         -> fatal h.pos "String literal in dk rule."
     | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in dk rule."
     | P_Expl(_)         -> fatal h.pos "Explicit argument in dk rule."
   in

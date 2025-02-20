@@ -7,15 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- tacticals orelse and repeat
+- Tacticals orelse and repeat.
 
 ### Changed
 
-- tactic set x ≔ t: replace all subterms equal to t by x
+- Replaced Bindlib by de Bruijn (Frédéric) and closures (Bruno). The performances are slightly better than with Bindlib, especially on rewriting intensive files (the new version is 3.7 times faster on `tests/OK/perf_rw_engine.lp`). Lambdapi is now 2 times faster than dkcheck on matita, and only 2 times slower than dkcheck on holide.
+- Tactic set x ≔ t: replace all subterms equal to t by x.
 
 ### Fixed
 
-- Notations on external symbols are now exported
+- Notations on external symbols are now exported.
 
 ## 2.6.0 (2025-01-25)
 
@@ -31,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Improved Core.Term.eq_modulo (Claudio Sacerdoti) -> speed up factor between 2 and 9
+- Improved Core.Term.eq_modulo (Claudio Sacerdoti) -> speed up factor between 2 and 9.
 - The export option `--requiring` does not require as argument a file with extension `.v` anymore: the argument must be a module name.
 - Option '--erasing' renamed into '--mapping'.
 - Builtins necessary for the decimal notation.

@@ -283,6 +283,7 @@ aterm:
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit n) }
+  | s=STRINGLIT { make_pos $sloc (P_SLit s) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 

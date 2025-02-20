@@ -5,8 +5,8 @@ open Lplib open Base
 (** [err_fmt] warning/error output formatter. *)
 let err_fmt = Stdlib.ref Format.err_formatter
 
-(** [no_wrn] disables warnings when set to [true]. *)
-let no_wrn = Stdlib.ref false
+(** [no_warnings] disables warnings when set to [true]. *)
+let no_warnings = Stdlib.ref false
 
 (** [wrn popt fmt] prints a yellow warning message with [Format] format [fmt].
     Note that the output buffer is flushed by the function, and that output is
@@ -15,21 +15,20 @@ let no_wrn = Stdlib.ref false
 let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   Color.update_with_color !err_fmt;
   let open Stdlib in
-  let fprintf = if !no_wrn then Format.ifprintf else out in
+  let fprintf = if !no_warnings then Format.ifprintf else out in
   match pos with
   | None   -> fprintf !err_fmt (Color.yel fmt ^^ "@.")
   | Some _ ->
     fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt) ^^ "@.") Pos.pp pos
 
-(** [with_no_wrn f x] disables warnings before executing [f x] and then
-    restores the initial state of warnings. The result of [f x] is returned.
- *)
-let with_no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
+(** [no_wrn f x] disables warnings before executing [f x] and then restores
+    the initial state of warnings. The result of [f x] is returned. *)
+let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
   let open Stdlib in
-  let w = !no_wrn in
-  no_wrn := true;
+  let w = !no_warnings in
+  no_warnings := true;
   let res = f x in
-  no_wrn := w;
+  no_warnings := w;
   res
 
 (** Exception raised in case of failure. Note that we use an optional optional

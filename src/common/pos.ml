@@ -47,8 +47,8 @@ let none : 'a -> 'a loc = fun elt -> make None elt
 (** [in_pos pos elt] associates the position [pos] to [elt]. *)
 let in_pos : pos -> 'a -> 'a loc = fun p elt -> make (Some p) elt
 
-(** [end_pos po] creates a position from the end of position [po]. *)
-let end_pos : popt -> popt = fun po ->
+(** [pos_end po] creates a position from the end of position [po]. *)
+let pos_end : popt -> popt = fun po ->
   match po with
   | None -> None
   | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
