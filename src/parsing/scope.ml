@@ -3,7 +3,7 @@
    modules. *)
 
 open Lplib
-open Common open Error open Pos open Debug
+open Common open Error open Pos open Debug open Extra
 open Syntax
 open Core open Term open Env open Sig_state open Print
 
@@ -273,19 +273,33 @@ and scope_binder :
 (** [scope_head ~find_sym ~typ k md ss env t] scopes [t] as term head. *)
 and scope_head : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
-  fun ?find_sym ?(typ=false) k md ss env t ->
-  match (t.elt, md) with
+  fun ?find_sym ?(typ=false) k md ss env ({elt;pos} as t) ->
+  match elt, md with
   | (P_Type, _) -> mk_Type
 
   | (P_Iden(qid,_), _) -> scope_iden ?find_sym md ss env qid
 
-  | (P_NLit(s), _) ->
+  | (P_SLit s, _) ->
+      begin
+        let s = "\""^s^"\"" in
+        let sym =
+          match StrMap.find_opt s Timed.(!(Ghost.sign.sign_symbols)) with
+          | Some sym -> sym
+          | None ->
+              let str = mk_Symb (Builtin.get ss pos "String") in
+              Sign.add_symbol Ghost.sign Public Const Eager true
+                {elt=s;pos} pos str []
+        in
+        mk_Symb sym
+      end
+
+  | (P_NLit s, _) ->
       let neg, s =
         let neg = s.[0] = '-' in
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss t.pos s) in
+      let sym_of s = mk_Symb (Builtin.get ss pos s) in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
@@ -320,21 +334,21 @@ and scope_head : ?find_sym:find_sym ->
                      metavariables can only be created by the system."
             Pretty.meta_ident mk
       | Some m -> mk_Meta (m, Array.map (scope ?find_sym (k+1) md ss env) ts))
-  | (P_Meta(_), _) -> fatal t.pos "Metavariables are not allowed here."
+  | (P_Meta(_), _) -> fatal pos "Metavariables are not allowed here."
 
   | (P_Patt(id,ts), (M_LHS(d) | M_SearchPatt(_,d))) ->
       (* Check that [ts] are variables. *)
       let scope_var t =
         match unfold (scope ?find_sym (k+1) md ss env t) with
         | Vari(x) -> x
-        | _       -> fatal t.pos "Only bound variables are allowed in the \
+        | _       -> fatal pos "Only bound variables are allowed in the \
                                   environment of pattern variables."
       in
       let ts =
         match ts with
         | None ->
             if env = [] then [||] (* $M stands for $M[] *)
-            else fatal t.pos "Missing square brackets under binder."
+            else fatal pos "Missing square brackets under binder."
         | Some ts ->
             let vs = Array.map scope_var ts in
             (* Check that [vs] are distinct variables. *)
@@ -352,7 +366,7 @@ and scope_head : ?find_sym:find_sym ->
       begin
         match id with
         | None when List.length env = Array.length ts ->
-            wrn t.pos
+            wrn pos
               "Pattern [%a] could be replaced by [_]." Pretty.term t;
         | Some {elt=id;pos} when not (List.mem id d.m_lhs_in_env) ->
             if List.length env = Array.length ts then
@@ -365,7 +379,7 @@ and scope_head : ?find_sym:find_sym ->
       let i =
         match id with
         | None ->
-            fatal t.pos "Wildcard pattern not allowed in the right \
+            fatal pos "Wildcard pattern not allowed in the right \
                          hand-side of a unification rule."
         | Some {elt=id;_} ->
             (* Search in variables declared in LHS. *)
@@ -389,11 +403,11 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Patt(id,ts), M_RHS(r)) ->
       let i =
         match id with
-        | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
+        | None     -> fatal pos "Wildcard pattern not allowed in a RHS."
         | Some(id) ->
             (* Search in variables declared in LHS. *)
             try Hashtbl.find r.m_rhs_data id.elt
-            with Not_found -> fatal t.pos "Variable must be in LHS."
+            with Not_found -> fatal pos "Variable must be in LHS."
       in
       let ts =
         match ts with
@@ -403,23 +417,23 @@ and scope_head : ?find_sym:find_sym ->
       let name = match id with Some {elt;_} -> elt | None -> assert false in
       mk_Patt (Some i, name, ts)
   | (P_Patt(_,_), _) ->
-      fatal t.pos "Pattern variables are only allowed in rewriting rules."
+      fatal pos "Pattern variables are only allowed in rewriting rules."
 
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
 
   | (P_Arro(_,_), M_Patt) ->
-      fatal t.pos "Arrows are not allowed in patterns."
+      fatal pos "Arrows are not allowed in patterns."
   | (P_Arro(a,b), _) ->
     mk_Arro (scope ?find_sym ~typ:true (k+1) md ss env a,
              scope ?find_sym ~typ:true (k+1) md ss env b)
 
   | (P_Abst(_,_), M_Patt) ->
-      fatal t.pos "Abstractions are not allowed in patterns."
+      fatal pos "Abstractions are not allowed in patterns."
   | (P_Abst(xs,t), _) ->
       scope_binder ?find_sym k md ss mk_Abst env xs (Some t)
 
   | (P_Prod(_,_), M_Patt) ->
-      fatal t.pos "Dependent products are not allowed in patterns."
+      fatal pos "Dependent products are not allowed in patterns."
   | (P_Prod(xs,b), _) ->
     scope_binder ?find_sym ~typ:true k md ss mk_Prod env xs (Some b)
 
@@ -433,16 +447,16 @@ and scope_head : ?find_sym:find_sym ->
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       mk_LLet (a, t, bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
-      fatal t.pos "Let-bindings are not allowed in a LHS."
+      fatal pos "Let-bindings are not allowed in a LHS."
   | (P_LLet(_), M_Patt) ->
-      fatal t.pos "Let-bindings are not allowed in patterns."
+      fatal pos "Let-bindings are not allowed in patterns."
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->
     scope_head ?find_sym ~typ k md ss env id
   | (P_Wrap t, _) -> scope ?find_sym ~typ k md ss env t
 
-  | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
+  | (P_Expl(_), _) -> fatal pos "Explicit argument not allowed here."
 
 let scope =
   let open Stdlib in
@@ -484,15 +498,17 @@ let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
 let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars acc t =
     match t.elt with
-    | P_Type             -> acc
-    | P_Iden(_)          -> acc
-    | P_Wild             -> acc
-    | P_Meta(_,ts)       -> Array.fold_left patt_vars acc ts
-    | P_Patt(id,ts)      -> add_patt acc id ts
-    | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
-    | P_Arro(a,b)        -> patt_vars (patt_vars acc a) b
-    | P_Abst(args,t)     -> patt_vars (patt_vars_args acc args) t
-    | P_Prod(args,b)     -> patt_vars (patt_vars_args acc args) b
+    | P_Type
+    | P_Iden _
+    | P_Wild
+    | P_NLit _
+    | P_SLit _ -> acc
+    | P_Meta(_,ts) -> Array.fold_left patt_vars acc ts
+    | P_Patt(id,ts) -> add_patt acc id ts
+    | P_Appl(t,u)
+    | P_Arro(t,u) -> patt_vars (patt_vars acc t) u
+    | P_Abst(args,b)
+    | P_Prod(args,b) -> patt_vars (patt_vars_args acc args) b
     | P_LLet(_,args,a,t,u) ->
         let pvs = patt_vars (patt_vars (patt_vars_args acc args) t) u in
         begin
@@ -500,9 +516,8 @@ let patt_vars : p_term -> (string * int) list * string list =
           | None    -> pvs
           | Some(a) -> patt_vars pvs a
         end
-    | P_NLit(_)          -> acc
-    | P_Wrap(t)          -> patt_vars acc t
-    | P_Expl(t)          -> patt_vars acc t
+    | P_Wrap t
+    | P_Expl t -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =
     let acc, arity =
       match ts with

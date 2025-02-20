@@ -12,8 +12,8 @@ open Term
 open Sig_state
 
 (** Logging function for printing. *)
-let log_prnt = Logger.make 'p' "prnt" "pretty-printing"
-let log_prnt = log_prnt.pp
+let log = Logger.make 'p' "prnt" "pretty-printing"
+let log = log.pp
 
 (** Current signature state. *)
 let sig_state : sig_state ref = ref Sig_state.dummy
@@ -166,7 +166,7 @@ and term : term pp = fun ppf t ->
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
   and pp p ppf t =
-    if Logger.log_enabled() then log_prnt "%a" Raw.term t;
+    if Logger.log_enabled() then log "%a" Raw.term t;
     let (h, args) = get_args t in
     (* standard application *)
     let pp_appl h args =
