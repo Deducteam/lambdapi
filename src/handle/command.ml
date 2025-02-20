@@ -364,7 +364,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           Console.out 2 (Color.red "symbol %a : %a")
             uid rec_name term rec_typ;
           (* Recursors are declared after the types and constructors. *)
-          let pos = after (end_pos pos) in
+          let pos = after (pos_end pos) in
           let id = Pos.make pos rec_name in
           let r =
             Sig_state.add_symbol ss expo Defin Eager false id
@@ -384,8 +384,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Sign.add_rule ss.signature r;
         Console.out 2 (Color.red "rule %a") sym_rule r
       in
-      with_no_wrn
-        (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
+      no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
       List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
@@ -430,7 +429,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | Some pt ->
           let pt =
             if p_sym_arg = [] then pt
-            else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) pt.pos) in
                  Pos.make pos (P_Abst(p_sym_arg, pt))
           in Some pt, Some (scope pt)
       | None -> None, None
@@ -448,7 +447,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | Some a ->
           let a =
             if p_sym_arg = [] then a
-            else let pos = Pos.(cat (end_pos p_sym_nam.pos) a.pos) in
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) a.pos) in
                  Pos.make pos (P_Prod(p_sym_arg, a))
           in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
@@ -485,7 +484,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Get tactics and proof end. *)
       let pdata_proof, pe =
         match p_sym_prf with
-        | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end
         | Some (ts, pe) -> ts, pe
       in
       (* Build finalizer. *)
