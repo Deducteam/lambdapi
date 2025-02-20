@@ -44,15 +44,15 @@ type l2y =
   (* Mapping of type symbols. *)
   ; t2ts : (term * Why3.Ty.tysymbol) list
   (* Mapping of non-Why3 subtypes. *)
-  ; v2tv : (tvar * Why3.Ty.tvsymbol) list
+  ; v2tv : (var * Why3.Ty.tvsymbol) list
   (* Mapping of type variables. *)
   ; s2ls : (sym * (Why3.Term.lsymbol * bool)) list
   (* Mapping of function symbols. [true] is for predicates. *)
-  ; v2ls : (tvar * (Why3.Term.lsymbol * bool)) list
+  ; v2ls : (var * (Why3.Term.lsymbol * bool)) list
   (* Mapping of environment variables. [true] is for predicates. *)
   ; t2ls : (term * Why3.Term.lsymbol) list
   (* Mapping of non-Why3 subterms. *)
-  ; v2vs : (tvar * Why3.Term.vsymbol) list
+  ; v2vs : (var * Why3.Term.vsymbol) list
   (* Mapping of object variables. *)
   }
 
@@ -95,7 +95,7 @@ let rec translate_set m t =
       m, Why3.Ty.ty_app s ts
   | Vari x, [] ->
       begin
-        match List.assoc_eq_opt Bindlib.eq_vars x m.v2tv with
+        match List.assoc_eq_opt eq_vars x m.v2tv with
         | Some tv -> m, Why3.Ty.ty_var tv
         | None -> raise Exit
       end
@@ -134,7 +134,7 @@ let translate_pred_type cfg =
     | Symb s -> if s == cfg.symb_Prop then m, List.rev acc else raise Exit
     | Prod(a,b) ->
         let m,a = translate_type cfg m a in
-        let _,b = Bindlib.unbind b in
+        let _,b = unbind b in
         aux (a::acc) m b
     | _ -> raise Exit
   in aux []
@@ -148,7 +148,7 @@ let translate_fun_type cfg =
     match unfold t with
     | Prod(a,b) ->
         let m,a = translate_type cfg m a in
-        let _,b = Bindlib.unbind b in
+        let _,b = unbind b in
         aux (a::acc) m b
     | _ ->
         let m,a = translate_type cfg m t in
@@ -181,11 +181,11 @@ let rec translate_term cfg m t =
       end
   | Vari x, ts ->
       begin
-        match List.assoc_eq_opt Bindlib.eq_vars x m.v2vs with
+        match List.assoc_eq_opt eq_vars x m.v2vs with
         | Some v ->
             if ts = [] then m, Why3.Term.t_var v else raise Exit
         | None ->
-            match List.assoc_eq_opt Bindlib.eq_vars x m.v2ls with
+            match List.assoc_eq_opt eq_vars x m.v2ls with
             | Some(_, true) -> assert false
             | Some(s, false) ->
                 let m, ts = translate_terms cfg m ts in
@@ -240,8 +240,8 @@ let rec translate_prop : config -> l2y -> term -> l2y * Why3.Term.term =
       m, Why3.Term.t_true
   | Symb s, [a;Abst(_,t)] when s == cfg.symb_ex ->
       let m,a = translate_set m a
-      and x,t = Bindlib.unbind t in
-      let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
+      and x,t = unbind t in
+      let id = Why3.Ident.id_fresh (base_name x) in
       let v = Why3.Term.create_vsymbol id a in
       if Logger.log_enabled() then
         log "add vsymbol %a" Why3.Pretty.print_vs v;
@@ -251,8 +251,8 @@ let rec translate_prop : config -> l2y -> term -> l2y * Why3.Term.term =
       m, Why3.Term.t_exists_close [v] [] t
   | Symb s, [a;Abst(_,t)] when s == cfg.symb_all ->
       let m,a = translate_set m a
-      and x,t = Bindlib.unbind t in
-      let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
+      and x,t = unbind t in
+      let id = Why3.Ident.id_fresh (base_name x) in
       let v = Why3.Term.create_vsymbol id a in
       if Logger.log_enabled() then
         log "add vsymbol %a" Why3.Pretty.print_vs v;
@@ -262,7 +262,7 @@ let rec translate_prop : config -> l2y -> term -> l2y * Why3.Term.term =
       m, Why3.Term.t_forall_close [v] [] t
   | Vari x, ts ->
       begin
-        match List.assoc_eq_opt Bindlib.eq_vars x m.v2ls with
+        match List.assoc_eq_opt eq_vars x m.v2ls with
         | Some(_, false) -> assert false
         | Some(s, true) ->
             begin
@@ -309,7 +309,6 @@ let translate_goal :
   let cfg = get_config ss pos in
   (* Translate environment. *)
   let translate_env_elt (name,(x,a,_)) (m,hyps) =
-    let a = Bindlib.unbox a in
     (*if Logger.log_enabled() then log "translate_env_elt %a %a %s : %a"
       l2y m Debug.D.(list (pair string Why3.Pretty.print_term)) hyps
       name term a;*)
