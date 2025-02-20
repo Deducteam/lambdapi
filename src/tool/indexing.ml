@@ -52,22 +52,21 @@ let rec node_of_stack t s v =
  | Symb sym  -> IRigid(ISymb (name_of_sym sym), index_of_stack s v)
  | Appl(t1,t2) -> IRigid(IAppl, index_of_stack (t1::t2::s) v)
  | Abst(t1,bind) ->
-    let _, t2 = Bindlib.unbind bind in
+    let _, t2 = unbind bind in
     IRigid(IAbst, index_of_stack (t1::t2::s) v)
  | Prod(t1,bind) ->
-    let _, t2 = Bindlib.unbind bind in
+    let _, t2 = unbind bind in
     IRigid(IProd, index_of_stack (t1::t2::s) v)
  | Patt (_var,_varname,_args) ->
     IHOLE (index_of_stack s v)
  | LLet (_typ, bod, bind) ->
     (* Let-ins are expanded during indexing *)
-    node_of_stack (Bindlib.subst bind bod) s v
- | Meta _
+    node_of_stack (subst bind bod) s v
+ | Meta _ -> assert false
  | Plac _ -> assert false (* not for meta-closed terms *)
  | Wild -> assert false (* used only by tactics and reduction *)
  | TRef _  -> assert false (* destroyed by unfold *)
- | TEnv _ (* used in rewriting rules RHS *) ->
-     assert false (* use term_of_rhs *)
+ | Bvar _ -> assert false
 
 and index_of_stack stack v =
  match stack with
@@ -79,20 +78,16 @@ exception NoMatch
 (* match a rigid with a term, either raising NoMatch or returning the
    (ordered) list of immediate subterms of the term *)
 let rec match_rigid r term =
- match r,unfold term with
+ match r, unfold term with
  | IKind, Kind -> []
  | IType, Type -> []
  | IVar, Vari _ -> []
  | ISymb n, Symb sym  when n = name_of_sym sym -> []
  | IAppl, Appl(t1,t2) -> [t1;t2]
- | IAbst, Abst(t1,bind) ->
-    let _, t2 = Bindlib.unbind bind in
-    [t1;t2]
- | IProd, Prod(t1,bind) ->
-    let _, t2 = Bindlib.unbind bind in
-    [t1;t2]
- | _, LLet (_typ, bod, bind) -> match_rigid r (Bindlib.subst bind bod)
- | _, (Meta _ | Plac _ | Wild | TRef _ | TEnv _) -> assert false
+ | IAbst, Abst(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
+ | IProd, Prod(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
+ | _, LLet (_typ, bod, bind) -> match_rigid r (subst bind bod)
+ | _, (Meta _ | Plac _ | Wild | TRef _) -> assert false
  | _, _ -> raise NoMatch
 
 (* match anything with a flexible term *)
@@ -374,8 +369,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
 
 let search_pterm ~generalize ~mok env pterm =
  let sig_state = Core.Sig_state.dummy in
- let env =
-  ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
+ let env = ("V#", (new_var "V#", Term.mk_Type, None))::env in
  let query =
   Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
  DB.search ~generalize query
@@ -392,17 +386,14 @@ let no_implicits_in_term t =
     | _ -> ()) t ;
  !res
 
-let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun (r as rr) ->
+let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun pr ->
  let ss = Core.Sig_state.dummy in
- let pr = Parsing.Scope.scope_rule ~find_sym false ss r in
- let s = pr.elt.pr_sym in
- let r = Parsing.Scope.rule_of_pre_rule pr in
- if no_implicits_in_term (snd (Bindlib.unmbind r.rhs)) then
-  s, r
+ let (_,r) as sr = Parsing.Scope.scope_rule ~find_sym false ss pr in
+ if no_implicits_in_term r.rhs then sr
  else
-  Common.Error.fatal (rr.pos)
+  Common.Error.fatal pr.pos
    "The rule has implicit terms in the right-hand-side: %a"
-   (Parsing.Pretty.rule "") rr
+   (Parsing.Pretty.rule "") pr
 
 let load_meta_rules () =
  let rules = ref [] in
@@ -438,9 +429,9 @@ let rec is_flexible t =
  match Core.Term.unfold t with
   | Patt _ -> true
   | Appl(t,_) -> is_flexible t
-  | LLet(_,_,b) -> let _, t = Bindlib.unbind b in is_flexible t
+  | LLet(_,_,b) -> let _, t = unbind b in is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
-  | Meta _ | Plac _ | Wild | TRef _ | TEnv _ -> assert false
+  | Meta _ | Plac _ | Wild | TRef _ | Bvar _ -> assert false
 
 let enter =
  DB.(function
@@ -466,22 +457,23 @@ let subterms_to_index ~is_spine t =
   let t = Core.Term.unfold t in
   [where,t] @
   match t with
+  | Bvar _
   | Vari _
   | Type
   | Kind
   | Symb _ -> []
   | Abst(t,b) ->
-     let _, t2 = Bindlib.unbind b in
+     let _, t2 = unbind b in
      aux ~where:(enter where) t @ aux ~where:(enter where) t2
   | Prod(t,b) ->
      (match where with
        | Spine _ ->
-          let t2 = Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])) in
+          let t2 = subst b (Core.Term.mk_Patt (None,"dummy",[||])) in
           aux ~where:(enter_pi_source where) t @
            aux ~where:(enter_pi_target ~is_prod:(Core.Term.is_prod t2) where)
             t2
        | _ ->
-         let _, t2 = Bindlib.unbind b in
+         let _, t2 = unbind b in
          aux ~where:(enter_pi_source where) t @
           aux ~where:(enter_pi_target ~is_prod:false where) t2)
   | Appl(t1,t2) ->
@@ -490,10 +482,10 @@ let subterms_to_index ~is_spine t =
      List.concat (List.map (aux ~where:(enter where)) (Array.to_list args))
   | LLet (t1,t2,b) ->
      (* we do not expand the let-in when indexing subterms *)
-     let _, t3 = Bindlib.unbind b in
+     let _, t3 = unbind b in
      aux ~where:(enter where) t1 @ aux ~where:(enter where) t2 @
       aux ~where:(enter where) t3
-  | Meta _ | Plac _ | Wild | TRef _ | TEnv _ -> assert false
+  | Meta _ | Plac _ | Wild | TRef _ -> assert false
  in aux ~where:(if is_spine then Spine Exact else Conclusion Exact) t
 
 let insert_rigid t v =
@@ -523,7 +515,7 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
                               happens and let the team decide what to do *)
     | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
- let rhs = Core.Term.term_of_rhs rule in
+ let rhs = rule.rhs in
  let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
  let filename = Option.get rule_pos.fname in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in

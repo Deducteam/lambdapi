@@ -46,6 +46,7 @@ syntax keyword KeywordOK contained compute
 syntax keyword KeywordOK contained constant
 syntax keyword KeywordOK contained debug
 syntax keyword KeywordOK contained end
+syntax keyword KeywordOK contained eval
 syntax keyword KeywordOK contained fail
 syntax keyword KeywordOK contained flag
 syntax keyword KeywordOK contained focus
@@ -116,6 +117,7 @@ syntax keyword KeywordKO contained compute
 syntax keyword KeywordKO contained constant
 syntax keyword KeywordKO contained debug
 syntax keyword KeywordKO contained end
+syntax keyword KeywordKO contained eval
 syntax keyword KeywordKO contained fail
 syntax keyword KeywordKO contained flag
 syntax keyword KeywordKO contained focus

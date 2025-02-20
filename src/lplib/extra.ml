@@ -36,13 +36,13 @@ let time : ('a -> 'b) -> 'a -> float * 'b =
   let r = f x in
   (Sys.time () -. t, r)
 
-(** Exception raised by the [with_timeout] function on a timeout. *)
+(** Exception raised by the [timeout] function on a timeout. *)
 exception Timeout
 
-(** [with_timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
+(** [timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
     exception [Timeout] is raised if the computation takes too long, otherwise
     everything goes the usual way. *)
-let with_timeout : int -> ('a -> 'b) -> 'a -> 'b =
+let timeout : int -> ('a -> 'b) -> 'a -> 'b =
  fun nbs f x ->
   let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) in
   let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in

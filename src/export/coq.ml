@@ -29,6 +29,7 @@ let rec term oc t =
   | P_Meta _ -> wrn t.pos "TODO"; assert false
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
+  | P_SLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
   | P_NLit i ->

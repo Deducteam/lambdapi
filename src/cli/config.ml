@@ -52,7 +52,7 @@ let init : config -> unit = fun cfg ->
   Library.set_lib_root cfg.lib_root;
   List.iter Library.add_mapping cfg.map_dir;
   Option.iter Console.set_default_verbose cfg.verbose;
-  Error.no_wrn := cfg.no_warnings;
+  Error.no_warnings := cfg.no_warnings;
   Logger.set_default_debug cfg.debug;
   Color.color := not cfg.no_colors;
   Debug.do_record_time := cfg.record_time;
