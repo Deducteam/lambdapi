@@ -135,13 +135,21 @@ type term =
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
-(** Type for binders, implemented as closures. The closure term must have all
-    its bound variables declared eitherde Bruijn indices bound either by the
-    binder itself or by the closure environment.
+(** Type for binders, implemented as closures. The bound variables of a closure
+    term always refer either to a variable bound by the parent binder or to a
+    slot in the closure environment of the parent binder. No direct reference
+    to variables bound by an ancestor binder!
 
-    In a binder [(bi,u,e)] of arity [n], [Bvar(InSub i)] occurring [u] (with
-    [i < n]) refers to the bound variable at position [i] in the binder array,
-    and [Bvar(InEnv i)] refers to the term [e.(i)] *)
+    In a binder [(bi,u,e)] of arity [n], [Bvar(InSub i)] occurring in the closure
+    term [u] (with [i < n]) refers to the bound variable at position [i] in the
+    given substitution (e.g. argument [vs] of msubst), and [Bvar(InEnv i)] refers
+    to the term [e.(i)]
+
+    For instance, the term [λx. λy. x y] is represented as
+    [Abst(_,(_,Abst(_,(_,Appl(Bvar(InSub 0)|Bvar(InEnv 0)),
+                       [|Bvar(InSub 0)|])),
+             [||]))]
+ *)
 and binder = binder_info * term * term array
 and mbinder = mbinder_info * term * term array
 
