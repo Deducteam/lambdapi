@@ -49,8 +49,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     sig_state * sym =
   fun ss expo prop mstrat opaq id pos typ impl def ->
   let sym =
-    Sign.add_symbol ss.signature expo prop mstrat opaq id pos
-      (cleanup typ) impl in
+    Sign.add_symbol ss.signature expo prop mstrat opaq id pos typ impl in
   begin
     match def with
     | Some t when not opaq -> sym.sym_def := Some (cleanup t)
