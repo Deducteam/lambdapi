@@ -334,7 +334,6 @@ module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
 (** Dealing with AC-normalization of terms *)
-
 let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
 
 (** [mk_left_comb s t ts] builds a left comb of applications of [s] from
