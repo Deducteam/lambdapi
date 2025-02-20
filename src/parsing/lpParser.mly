@@ -39,6 +39,7 @@
 %token CONSTANT
 %token DEBUG
 %token END
+%token EVAL
 %token FAIL
 %token FLAG
 %token GENERALIZE
@@ -330,6 +331,7 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | EVAL t=term { make_pos $sloc (P_tac_eval t) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }

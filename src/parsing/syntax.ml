@@ -237,26 +237,28 @@ type p_query = p_query_aux loc
 (** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
+  | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_eval of p_term
   | P_tac_fail
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
-  | P_tac_set of p_ident * p_term
   | P_tac_induction
+  | P_tac_orelse of p_tactic * p_tactic
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
   | P_tac_remove of p_ident list
+  | P_tac_repeat of p_tactic
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
+  | P_tac_set of p_ident * p_term
   | P_tac_simpl of p_qident option
   | P_tac_solve
   | P_tac_sym
-  | P_tac_why3 of string option
   | P_tac_try of p_tactic
-  | P_tac_orelse of p_tactic * p_tactic
-  | P_tac_repeat of p_tactic
+  | P_tac_why3 of string option
 and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
@@ -604,6 +606,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   let rec fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
     fun (vs,a) t ->
     match t.elt with
+    | P_tac_eval t
     | P_tac_refine t
     | P_tac_apply t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
@@ -625,9 +628,10 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_fail
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
-    | P_tac_try tactic -> fold_tactic (vs,a) tactic
-    | P_tac_orelse(t1,t2) -> fold_tactic (fold_tactic (vs,a) t1) t2
-    | P_tac_repeat tactic -> fold_tactic (vs,a) tactic
+    | P_tac_try t
+    | P_tac_repeat t -> fold_tactic (vs,a) t
+    | P_tac_orelse(t1,t2)
+    | P_tac_and(t1,t2) -> fold_tactic (fold_tactic (vs,a) t1) t2
   in
 
   let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =

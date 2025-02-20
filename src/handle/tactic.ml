@@ -212,6 +212,118 @@ let gen_valid_idopts env ids =
   in
   List.fold_right f ids []
 
+type tactic =
+  | T_admit
+  | T_and
+  | T_apply
+  | T_assume
+  | T_fail
+  | T_generalize
+  | T_have
+  | T_induction
+  | T_orelse
+  | T_refine
+  | T_reflexivity
+  | T_remove
+  | T_repeat
+  | T_rewrite
+  | T_set
+  | T_simplify
+  | T_solve
+  | T_symmetry
+  | T_try
+  | T_why3
+
+(** [get_config ss pos] build the configuration using [ss]. *)
+let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
+  let t = Hashtbl.create 17 in
+  let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
+  add "admit" T_admit;
+  add "and" T_and;
+  add "apply" T_apply;
+  (*add "assume" T_assume;*)
+  add "fail" T_fail;
+  (*add "generalize" T_generalize;*)
+  (*add "have" T_have;*)
+  add "induction" T_induction;
+  add "orelse" T_orelse;
+  add "refine" T_refine;
+  add "reflexivity" T_reflexivity;
+  (*add "remove" T_remove;*)
+  add "repeat" T_repeat;
+  add "rewrite" T_rewrite;
+  (*add "set" T_set;*)
+  add "simplify" T_simplify;
+  add "solve" T_solve;
+  add "symmetry" T_symmetry;
+  add "try" T_try;
+  add "why3" T_why3;
+  t
+
+let get_arg1 = function [x1] -> x1 | _ -> assert false
+let get_args12 = function [x1;x2] -> x1,x2 | _ -> assert false
+
+(** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
+let p_term (pos:popt) :term -> p_term =
+  let mk = Pos.make pos in
+  let rec term t = Pos.make pos (term_aux t)
+  and params x a = [Some(Pos.make pos (base_name x))],Some(term a),false
+  and term_aux (t:term) :p_term_aux =
+    match unfold t with
+    | Type -> P_Type
+    | Symb s -> P_Iden(mk(s.sym_path,s.sym_name),false)
+    | Vari v -> P_Iden(mk([],base_name v),false)
+    | Appl(u,v) -> P_Appl(term u,term v)
+    | Prod(a,b) -> let x,b = unbind b in P_Prod([params x a],term b)
+    | Abst(a,b) -> let x,b = unbind b in P_Abst([params x a],term b)
+    | LLet(a,t,b) ->
+        let x,b = unbind b in
+        let id = Pos.make pos (base_name x) in
+        P_LLet(id,[],Some(term a),term t,term b)
+    | _ -> fatal pos "Unhandled term expression: %a." Print.term t
+  in term
+
+(** [p_tactic t] interprets the term [t] as a tactic. *)
+let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
+  let c = get_config ss pos in
+  let rec tac t = Pos.make pos (tac_aux t)
+  and tac_aux t =
+    match get_args t with
+    | Symb s, ts ->
+        begin
+          try
+            match Hashtbl.find c s.sym_name with
+            | T_admit -> P_tac_admit
+            | T_and -> let t1,t2 = get_args12 ts in P_tac_and(tac t1,tac t2)
+            | T_apply ->
+                let _,t2 = get_args12 ts in P_tac_apply(p_term pos t2)
+            | T_assume -> assert false
+            | T_fail -> P_tac_fail
+            | T_generalize -> assert false
+            | T_have -> assert false
+            | T_induction -> P_tac_induction
+            | T_orelse ->
+                let t1,t2 = get_args12 ts in P_tac_orelse(tac t1,tac t2)
+            | T_refine ->
+                let _,t2 = get_args12 ts in P_tac_refine(p_term pos t2)
+            | T_reflexivity -> P_tac_refl
+            | T_remove -> assert false
+            | T_repeat -> P_tac_repeat(tac(get_arg1 ts))
+            | T_rewrite ->
+                let _,t2 = get_args12 ts in
+                P_tac_rewrite(false,None,p_term pos t2)
+            | T_set -> assert false
+            | T_simplify -> P_tac_simpl None
+            | T_solve -> P_tac_solve
+            | T_symmetry -> P_tac_sym
+            | T_try -> P_tac_try(tac(get_arg1 ts))
+            | T_why3 -> P_tac_why3 None
+          with Not_found ->
+            fatal pos "Unhandled tactic expression: %a." term t
+        end
+    | _ -> fatal pos "Unhandled tactic expression: %a." term t
+  in tac
+
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
 let rec handle :
@@ -221,7 +333,7 @@ let rec handle :
   | [] -> assert false (* done before *)
   | g::gs ->
   match elt with
-  | P_tac_fail
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl None ->
@@ -335,7 +447,7 @@ let rec handle :
           let m = LibMeta.fresh p (Env.to_prod e' v) n in
           let ts = Env.to_terms env in
           let u = mk_Meta (m, Array.append ts [|t|]) in
-          (*tac_refine pos ps gt gs p (Bindlib.unbox u)*)
+          (*tac_refine pos ps gt gs p u*)
           LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
           (*let g = Goal.of_meta m in*)
           let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
@@ -440,6 +552,12 @@ let rec handle :
           else handle ss sym_pos prv ps tac
         with Fatal(_, _s) -> ps
       end
+  | P_tac_and(t1,t2) ->
+      let ps = handle ss sym_pos prv ps t1 in
+      handle ss sym_pos prv ps t2
+  | P_tac_eval pt ->
+      let t = Eval.snf (Env.to_ctxt env) (scope pt) in
+      handle ss sym_pos prv ps (p_tactic ss pos t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
