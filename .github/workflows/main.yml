@@ -2,6 +2,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
+    paths-ignore:
+      - '**/*.md'
   workflow_dispatch:
 jobs:
   lambdapi:
