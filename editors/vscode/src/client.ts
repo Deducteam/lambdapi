@@ -57,7 +57,7 @@ import { assert, time } from 'console';
 
 let client: BaseLanguageClient;
 let panel: WebviewPanel | null;
-let currentPos: Position;
+let currentPos: Position | undefined;
 
 // Client Factory types
 export type ClientFactoryType = (
@@ -71,13 +71,12 @@ export type ClientFactoryType = (
 // The implementation of the VSCode lambdapi extension commands.
 function goToProofState(context: ExtensionContext) {
 
-    const proofState: Position | undefined = currentPos;
-    if (!proofState) {
-        console.log("goToProofState : proofState workspace variable not set properly");
+    if (!currentPos) {
+        console.log("goToProofState called but currentPos not yet set");
         return;
     }
 
-    commands.executeCommand('revealLine', { lineNumber: proofState.line, at: 'center' });
+    commands.executeCommand('revealLine', { lineNumber: currentPos.line, at: 'center' });
 }
 
 function toggleCursorMode(context: ExtensionContext): boolean {
@@ -130,14 +129,12 @@ function checkProofForward(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = currentPos;
-
-    if (!proofState) {
-        console.log('checkProofForward : Workspace variables are not properly defined');
+    if (!currentPos) {
+        console.log('checkProofForward called but currentPos not set yet');
         return;
     }
 
-    let newPos = stepCommand(openEditor.document, proofState, true);
+    let newPos = stepCommand(openEditor.document, currentPos, true);
     if (newPos)
         lpRefresh(context, newPos, panel, openEditor);
 }
@@ -149,13 +146,12 @@ function checkProofBackward(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = currentPos;
-    if (!proofState) {
-        console.log('checkProofBackward : Workspace variables are not properly defined');
+    if (!currentPos) {
+        console.log('checkProofBackward called but not yet set');
         return;
     }
 
-    let newPos = stepCommand(openEditor.document, proofState, false);
+    let newPos = stepCommand(openEditor.document, currentPos, false);
 
     //Case the end has not been reached
     if (newPos)
@@ -197,13 +193,6 @@ function checkProofUntilCursor(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = currentPos;
-
-    if (!proofState) {
-        console.log('checkProofUntilCursor : workspace variables are not properly defined');
-        return;
-    }
-
     //The current position of the cursor
     let cursorPosition: Position = openEditor.selection.active;
 
@@ -241,15 +230,13 @@ function nextProof(context: ExtensionContext, direction: boolean) {
         return;
     }
 
-    const proofState: Position | undefined = currentPos;
-
-    if (!proofState) {
-        console.log('nextProof : workspace variables are not properly defined');
+    if (!currentPos) {
+        console.log('nextProof called but currentPos not yet set');
         return;
     }
 
     //The position of the next proof
-    let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
+    let nextProofPos: Position = stepCommand(openEditor.document, currentPos, direction, ['begin']);
 
     currentPos = nextProofPos; //proof state is set to the position of the next proof keyword
 
@@ -295,14 +282,12 @@ export function activateClientLSP(context: ExtensionContext,
 
     window.onDidChangeActiveTextEditor(e => {
 
-        const proofState: Position | undefined = currentPos;
-
-        if (!proofState || !panel) {
+        if (!currentPos || !panel) {
             console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
             return;
         }
 
-        refreshGoals(panel, e, proofState, context);
+        refreshGoals(panel, e, currentPos, context);
     });
 
     window.onDidChangeTextEditorSelection(e => {
@@ -317,14 +302,13 @@ export function activateClientLSP(context: ExtensionContext,
     //___Declaration of workspace variables___
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
-    let proofState: Position = new Position(0, 0);
-    currentPos = proofState;
+    currentPos = new Position(0, 0);
 
     //Cursor mode (proof cursor is the regular cursor) activated or not
     context.workspaceState.update('cursorMode', false);
 
     //The range of text to highlight
-    let range: Range = new Range(new Position(0, 0), proofState);
+    let range: Range = new Range(new Position(0, 0), currentPos);
     context.workspaceState.update('range', range);
 
     //The highlight parameters
@@ -445,7 +429,7 @@ function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionCo
 
     if (firstChange && firstChange.isBefore(proofPos)) {
         // region inside proved region is changed
-        // update the proofState
+        // update currentPos
         let newPos = stepCommand(event.document, firstChange, false);
 
         if (!panel) {
