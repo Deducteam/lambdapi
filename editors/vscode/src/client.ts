@@ -56,6 +56,8 @@ import {
 import { assert, time } from 'console';
 
 let client: BaseLanguageClient;
+let panel: WebviewPanel | null;
+let currentPos: Position;
 
 // Client Factory types
 export type ClientFactoryType = (
@@ -69,7 +71,7 @@ export type ClientFactoryType = (
 // The implementation of the VSCode lambdapi extension commands.
 function goToProofState(context: ExtensionContext) {
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
+    const proofState: Position | undefined = currentPos;
     if (!proofState) {
         console.log("goToProofState : proofState workspace variable not set properly");
         return;
@@ -128,8 +130,7 @@ function checkProofForward(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    let panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+    const proofState: Position | undefined = currentPos;
 
     if (!proofState) {
         console.log('checkProofForward : Workspace variables are not properly defined');
@@ -148,8 +149,7 @@ function checkProofBackward(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+    const proofState: Position | undefined = currentPos;
     if (!proofState) {
         console.log('checkProofBackward : Workspace variables are not properly defined');
         return;
@@ -197,8 +197,7 @@ function checkProofUntilCursor(context: ExtensionContext) {
     if (!openEditor)
         return;
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+    const proofState: Position | undefined = currentPos;
 
     if (!proofState) {
         console.log('checkProofUntilCursor : workspace variables are not properly defined');
@@ -218,7 +217,7 @@ function checkProofUntilCursor(context: ExtensionContext) {
         cursorPosition = stepCommand(openEditor.document, cursorPosition, true);
     }
 
-    context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
+    currentPos = cursorPosition; //proof state is set to the cursor position
 
     refreshGoals(panel, openEditor, cursorPosition, context); //Goals panel is refreshed
 
@@ -242,8 +241,7 @@ function nextProof(context: ExtensionContext, direction: boolean) {
         return;
     }
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+    const proofState: Position | undefined = currentPos;
 
     if (!proofState) {
         console.log('nextProof : workspace variables are not properly defined');
@@ -253,7 +251,7 @@ function nextProof(context: ExtensionContext, direction: boolean) {
     //The position of the next proof
     let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
 
-    context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
+    currentPos = nextProofPos; //proof state is set to the position of the next proof keyword
 
     refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
 
@@ -297,8 +295,7 @@ export function activateClientLSP(context: ExtensionContext,
 
     window.onDidChangeActiveTextEditor(e => {
 
-        const proofState: Position | undefined = context.workspaceState.get('proofState');
-        const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+        const proofState: Position | undefined = currentPos;
 
         if (!proofState || !panel) {
             console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
@@ -321,7 +318,7 @@ export function activateClientLSP(context: ExtensionContext,
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
     let proofState: Position = new Position(0, 0);
-    context.workspaceState.update('proofState', proofState);
+    currentPos = proofState;
 
     //Cursor mode (proof cursor is the regular cursor) activated or not
     context.workspaceState.update('cursorMode', false);
@@ -414,7 +411,7 @@ export function activateClientLSP(context: ExtensionContext,
 
 //This function creates the Goals panel when proofs are navigated
 function createInfoPanel(context: ExtensionContext) {
-    let panel: WebviewPanel | null = window.createWebviewPanel(
+    panel = window.createWebviewPanel(
         'goals',
         'Goals',
         { preserveFocus: true, viewColumn: ViewColumn.Two },
@@ -422,9 +419,8 @@ function createInfoPanel(context: ExtensionContext) {
     );
     // When the panel is closed for some reason, put null to reopen it when the user naviagate proofs again
     panel.onDidDispose(() => {
-        context.workspaceState.update('panel', null);
+        panel =  null;
     });
-    context.workspaceState.update('panel', panel);
 }
 
 function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionContext) {
@@ -434,7 +430,7 @@ function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionCo
         console.log("Changes not on the active TextEditor");
         return;
     }
-    let proofPos: Position | undefined = context.workspaceState.get('proofState');
+    let proofPos: Position | undefined = currentPos;
     if (!proofPos) proofPos = new Position(0, 0);
 
     let firstChange: Position | undefined = undefined;
@@ -452,12 +448,11 @@ function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionCo
         // update the proofState
         let newPos = stepCommand(event.document, firstChange, false);
 
-        const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
         if (!panel) {
             console.log('lpDocChangeHandler : workspace variables are not properly defined');
             return;
         }
-        context.workspaceState.update('proofState', newPos);
+        currentPos = newPos;
         refreshGoals(panel, window.activeTextEditor, newPos, context);
         highlight(context, newPos, window.activeTextEditor);
     }
@@ -515,7 +510,7 @@ function highlight(context: ExtensionContext, newProofState: Position, openEdito
 
 function lpRefresh(context: ExtensionContext, proofPos: Position, panel: WebviewPanel | null | undefined, openEditor: TextEditor) {
 
-    context.workspaceState.update('proofState', proofPos);
+    currentPos = proofPos;
 
     refreshGoals(panel, openEditor, proofPos, context); //Goals panel is refreshed
 
@@ -570,7 +565,6 @@ function refreshGoals(panel: WebviewPanel | null | undefined, editor: TextEditor
     // Check the panel is open. Recreate it otherwise
     if (panel == null || !panel) {
         createInfoPanel(context);
-        panel = context.workspaceState.get('panel')!;
     }
 
     const styleUri = panel!.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
