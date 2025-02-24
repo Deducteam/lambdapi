@@ -20,16 +20,30 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg s =
- Config.init cfg;
- let run () = out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt s) in
- Error.handle_exceptions run
+let sig_state_of_require =
+ function
+   None -> Core.Sig_state.dummy
+ | Some req ->
+    (* Search for a package from the current working directory. *)
+    Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+    Core.Sig_state.of_sign
+     (Compile.compile (Parsing.Parser.path_of_string req))
 
-let websearch_cmd cfg port =
+let search_cmd cfg rules require s =
  Config.init cfg;
  let run () =
-  Tool.Websearch.start ~port () in
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ss s) in
+ Error.handle_exceptions run
+
+let websearch_cmd cfg rules port require =
+ Config.init cfg;
+ let run () =
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  Tool.Websearch.start ss ~port () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files =
@@ -42,7 +56,8 @@ let index_cmd cfg add_only rules files =
   let handle file =
    Console.reset_default ();
    Time.restore time;
-   Tool.Indexing.index_sign ~rules (no_wrn Compile.compile_file file) in
+   Tool.Indexing.load_rewriting_rules rules;
+   Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
   Tool.Indexing.dump () in
  Error.handle_exceptions run
@@ -408,23 +423,29 @@ let rules_arg : string list CLT.t =
      multiple times to fetch rules from multiple files." in
   Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
 
+let require_arg : string option CLT.t =
+  let doc =
+    "LP file to be required before starting the search engine." in
+  Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
-   add_only_arg $ rules_arg $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
+   $ add_only_arg $ rules_arg $ files)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
-   $ query_as_arg)
+   $ rules_arg $ require_arg $ query_as_arg)
 
 let websearch_cmd =
  let doc =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
+   $ rules_arg $ port_arg $ require_arg )
 
 let _ =
   let t0 = Sys.time () in

@@ -220,11 +220,15 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
     Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
-    | Some t ->
+      (* The invariant that defined symbols are subject to no
+         rewriting rules is false during indexing for websearch;
+         that's the reason for the when in the next line *)
+    | Some t when cfg.dtree s = Tree_type.empty_dtree ->
       if !(s.sym_opaq) || not cfg.Config.expand_defs then r else
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
-    | None ->
+    | _ ->
+      log_eval "trying to rewrite %a" term t ;
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
       let stk =
