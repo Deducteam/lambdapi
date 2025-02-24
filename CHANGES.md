@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Replaced Bindlib by de Bruijn (Frédéric) and closures (Bruno). The performances are slightly better than with Bindlib, especially on rewriting intensive files (the new version is 3.7 times faster on `tests/OK/perf_rw_engine.lp`). Lambdapi is now 2 times faster than dkcheck on matita, and only 2 times slower than dkcheck on holide.
+- Several improvements to use the search engine:
+  * normalize queries in websearch/search
+  * pre-load a file in websearch (e.g. to declare implicit args)
+  * paginate the output in the generated webpage
+  * allow to declare rewriting rules (e.g. alignments) over defined and constant symbols
+  * improve error message for overloaded symbols
 - Tactic set x ≔ t: replace all subterms equal to t by x.
 
 ### Fixed
