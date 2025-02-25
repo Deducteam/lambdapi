@@ -343,7 +343,7 @@ let mk_left_comb : sym -> term -> term list -> term = fun s ->
   List.fold_left (mk_bin s)
 
 (** [mk_right_comb s ts t] builds a right comb of applications of [s] to
-   [ts@[p]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
+   [ts@[t]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
    t3)]. *)
 let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
