@@ -156,3 +156,6 @@ type 'a dtree = int Lazy.t * 'a tree Lazy.t
 
 (** [empty_dtree] is the empty decision tree. *)
 let empty_dtree : 'a dtree = (lazy 0, lazy Fail)
+
+(** [is_empty dt] tells whether [dt] is empty. *)
+let is_empty (dt:'a dtree) :bool = Lazy.force (snd dt) = Fail
