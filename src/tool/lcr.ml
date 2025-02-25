@@ -406,7 +406,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
           let m = LibMeta.fresh p typ 0 in
           p2m := IntMap.add i m !p2m; m2p := MetaMap.add m (i,n) !m2p; m
       in mk_Meta(m,[||])
-    | Appl(a,b) -> mk_Appl_not_canonical(patt_to_meta a, patt_to_meta b)
+    | Appl(a,b) -> mk_Appl(patt_to_meta a, patt_to_meta b)
     | Symb _ | Vari _ -> t
     | Abst(a,b) ->
       let x,b = unbind b in
@@ -445,7 +445,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
         | Some i -> mk_Patt(Some i, s.sym_name, [||])
         | None -> t
       end
-    | Appl(a,b) -> mk_Appl_not_canonical(sym_to_patt a, sym_to_patt b)
+    | Appl(a,b) -> mk_Appl(sym_to_patt a, sym_to_patt b)
     | _ -> t
   in
   (* Function converting a pair of terms into a rule, if possible. *)

@@ -305,8 +305,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
 let rec replace_wild_by_tref : term -> term = fun t ->
   match unfold t with
   | Wild -> mk_TRef(ref None)
-  | Appl(t,u) ->
-    mk_Appl_not_canonical(replace_wild_by_tref t, replace_wild_by_tref u)
+  | Appl(t,u) -> mk_Appl(replace_wild_by_tref t, replace_wild_by_tref u)
   | _ -> t
 
 (** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic

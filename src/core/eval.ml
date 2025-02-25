@@ -108,6 +108,31 @@ end
 
 type config = Config.t
 
+(** [insert t ts] inserts [t] in [ts] assuming that [ts] is sorted. *)
+let insert t =
+  let rec aux ts =
+    match ts with
+    | t1::ts when cmp t t1 > 0 -> t1::aux ts
+    | _ -> t::ts
+  in aux
+
+(** [aliens f t] computes the f-aliens of [t]. *)
+let aliens f =
+  let rec aliens acc ts =
+    match ts with
+    | [] -> acc
+    | t::ts ->
+        match get_args t with
+        | Symb g, [u1;u2] when g == f -> aliens acc (u1::u2::ts)
+        | _ -> aliens (insert t acc) ts
+  in aliens []
+
+(*let eq_ac t u =
+  match get_args t, get_args u with
+  | (Symb f,ts), (Symb g,us) when is_modulo f && f == g ->
+      aliens f ts = aliens f us
+  | _ ->*)
+
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
 let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =

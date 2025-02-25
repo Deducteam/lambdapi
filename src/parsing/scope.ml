@@ -193,30 +193,26 @@ and scope_parsed : ?find_sym:find_sym ->
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
-  let appl =
-   match md with
-   | M_LHS _ | M_SearchPatt _ -> mk_Appl_not_canonical
-   | _ -> mk_Appl in
-  let appl_p_term t u = appl(t, scope_parsed ?find_sym (k+1) md ss env u) in
-  let appl_meta t = appl(t, scope_head ?find_sym (k+1) md ss env P.wild) in
+  let app_term t u = mk_Appl(t, scope_parsed ?find_sym (k+1) md ss env u) in
+  let app_meta t = mk_Appl(t, scope_head ?find_sym (k+1) md ss env P.wild) in
   match impl, args with
   (* The remaining arguments are all explicit. *)
-  | [], _ -> List.fold_left appl_p_term h args
+  | [], _ -> List.fold_left app_term h args
   (* Only implicit arguments remain. *)
-  | true::impl, [] -> add_impl ?find_sym k md ss env loc (appl_meta h) impl []
+  | true::impl, [] -> add_impl ?find_sym k md ss env loc (app_meta h) impl []
   (* The first argument is implicit (could be [a] if made explicit). *)
   | true::impl, a::args ->
       begin match a.elt with
       | P_Expl b ->
           add_impl ?find_sym k md ss env loc
-            (appl_p_term h {a with elt = P_Wrap b}) impl args
-      | _ -> add_impl ?find_sym k md ss env loc (appl_meta h) impl (a::args)
+            (app_term h {a with elt = P_Wrap b}) impl args
+      | _ -> add_impl ?find_sym k md ss env loc (app_meta h) impl (a::args)
       end
   (* The first argument [a] is explicit. *)
   | false::impl, a::args ->
       begin match a.elt with
       | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
-      | _ -> add_impl ?find_sym k md ss env loc (appl_p_term h a) impl args
+      | _ -> add_impl ?find_sym k md ss env loc (app_term h a) impl args
       end
   (* The application is too "partial" to insert all implicit arguments. *)
   | false::_, [] ->

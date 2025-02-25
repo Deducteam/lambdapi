@@ -255,6 +255,7 @@ val is_private : sym -> bool
 
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 val is_modulo : sym -> bool
+val is_assoc : sym -> bool
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
@@ -326,17 +327,7 @@ val get_args_len : term -> term * term list * int
 (** Total orders terms. *)
 val cmp : term cmp
 
-(** Construction functions of the private type [term]. They ensure some
-   invariants:
-
-- In a commutative function symbol application, the first argument is smaller
-   than the second one wrt [cmp].
-
-- In an associative and commutative function symbol application, the
-   application is built as a left or right comb depending on the associativity
-   of the symbol, and arguments are ordered in increasing order wrt [cmp].
-
-- In [LLet(_,_,b)], [binder_occur b = true] (useless let's are erased). *)
+(* to be removed except mk_Arro *)
 val mk_Vari : var -> term
 val mk_Type : term
 val mk_Kind : term
@@ -351,10 +342,6 @@ val mk_Wild : term
 val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * binder -> term
-
-(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
-   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
-val mk_Appl_not_canonical : term * term -> term
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
@@ -387,13 +374,13 @@ val unbind2 : ?name:string -> binder -> binder -> var * term * term
     create the fresh variables are based on those of the multiple binder. *)
 val unmbind : mbinder -> var array * term
 
-(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
+(** [bind_var x b] binds the variable [x] in [b], producing a binder. *)
 val bind_var  : var -> term -> binder
 
 (** [binder f b] applies f inside [b]. *)
 val binder : (term -> term) -> binder -> binder
 
-(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
+(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 val bind_mvar : var array -> term -> mbinder
 
@@ -405,7 +392,7 @@ val mbinder_occur : mbinder -> int -> bool
 val is_closed : term -> bool
 val is_closed_mbinder : mbinder -> bool
 
-(** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
+(** [occur x b] tells whether variable [x] occurs in [b]. *)
 val occur : var -> term -> bool
 val occur_mbinder : var -> mbinder -> bool
 

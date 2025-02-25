@@ -307,6 +307,8 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 let is_modulo : sym -> bool = fun s ->
   match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
+let is_assoc : sym -> bool = fun s ->
+  match s.sym_prop with Assoc _ | AC _ -> true | _ -> false
 
 (** Sets and maps of symbols. *)
 module Sym = struct
@@ -333,20 +335,31 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(** Dealing with AC-normalization of terms *)
-let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
+(* to be removed *)
+let mk_Vari x = Vari x
+let mk_Type = Type
+let mk_Kind = Kind
+let mk_Symb x = Symb x
+let mk_Prod (a,b) = Prod (a,b)
+let mk_Abst (a,b) = Abst (a,b)
+let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
+let mk_Patt (i,s,ts) = Patt (i,s,ts)
+let mk_Wild = Wild
+let mk_Plac b = Plac b
+let mk_TRef x = TRef x
+let mk_LLet (a,t,b) = LLet (a,t,b)
+let mk_Appl (t,u) = Appl (t,u)
 
-(** [mk_left_comb s t ts] builds a left comb of applications of [s] from
-   [t::ts] so that [mk_left_comb s t1 [t2; t3] = mk_bin s (mk_bin s t1 t2)
-   t3]. *)
-let mk_left_comb : sym -> term -> term list -> term = fun s ->
-  List.fold_left (mk_bin s)
+(** [add_args t args] builds the application of the {!type:term} [t] to a list
+    arguments [args]. When [args] is empty, the returned value is (physically)
+    equal to [t]. *)
+let add_args : term -> term list -> term =
+  List.fold_left (fun t u -> Appl(t,u))
 
-(** [mk_right_comb s ts t] builds a right comb of applications of [s] to
-   [ts@[t]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
-   t3)]. *)
-let mk_right_comb : sym -> term list -> term -> term = fun s ->
-  List.fold_right (mk_bin s)
+(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+   more efficient. *)
+let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
+  List.fold_left (fun t u -> Appl(t, f u)) t ts
 
 (** Printing functions for debug. *)
 let rec term : term pp = fun ppf t ->
@@ -384,17 +397,16 @@ and clos_env : term array pp =  fun ppf env -> D.array term ppf env
    performed. {b NOTE} that {!val:unfold} must (almost) always be called
    before matching over a value of type {!type:term}. *)
 and unfold : term -> term = fun t ->
-  let open Timed in
   match t with
   | Meta(m, ts) ->
       begin
-        match !(m.meta_value) with
+        match Timed.(!(m.meta_value)) with
         | None    -> t
         | Some(b) -> unfold (msubst b ts)
       end
   | TRef(r) ->
       begin
-        match !r with
+        match Timed.(!r) with
         | None    -> t
         | Some(v) -> unfold v
       end
@@ -407,7 +419,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
   let rec msubst t =
-(*    if Logger.log_enabled() then
+    (*if Logger.log_enabled() then
       log "msubst %a %a" (D.array term) vs term t;*)
     match unfold t with
     | Bvar (InSub p) -> assert bi.mbinder_bound.(p); vs.(p)
@@ -427,12 +439,32 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0
     then tm
     else msubst tm in
-  if Logger.log_enabled() then
-    log "msubst %a#%a %a = %a" clos_env env term tm (D.array term) vs term r;
+  (*if Logger.log_enabled() then
+  log "msubst %a#%a %a = %a" clos_env env term tm (D.array term) vs term r;*)
   r
 
+(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
+    [h] is the head term of [t] and [args] is the list of arguments applied to
+    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get_args t acc =
+    match unfold t with
+    | Appl(t,u) -> get_args t (u::acc)
+    | t         -> t, acc
+  in get_args t []
+
+(** [get_args_len t] is similar to [get_args t] but it also returns the length
+    of the list of arguments. *)
+let get_args_len : term -> term * term list * int = fun t ->
+  let rec get_args_len acc len t =
+    match unfold t with
+    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
+    | t          -> (t, acc, len)
+  in
+  get_args_len [] 0 t
+
 (** Total order on terms. *)
-and cmp : term cmp = fun t t' ->
+let rec cmp : term cmp = fun t t' ->
   match unfold t, unfold t' with
   | Vari x, Vari x' -> compare_vars x x'
   | Type, Type
@@ -445,8 +477,7 @@ and cmp : term cmp = fun t t' ->
   | Meta(m,ts), Meta(m',ts') ->
     lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
   | Patt(i,s,ts), Patt(i',s',ts') ->
-    lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp)
-      (i,s,ts) (i',s',ts')
+    lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp) (i,s,ts) (i',s',ts')
   | Bvar i, Bvar j -> Stdlib.compare i j
   | TRef r, TRef r' -> Stdlib.compare r r'
   | LLet(a,t,u), LLet(a',t',u') ->
@@ -462,115 +493,9 @@ and cmp_binder : binder cmp =
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
 
-(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
-    [h] is the head term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
-and get_args : term -> term * term list = fun t ->
-  let rec get_args t acc =
-    match unfold t with
-    | Appl(t,u) -> get_args t (u::acc)
-    | t         -> t, acc
-  in get_args t []
-
-(** [get_args_len t] is similar to [get_args t] but it also returns the length
-    of the list of arguments. *)
-and get_args_len : term -> term * term list * int = fun t ->
-  let rec get_args_len acc len t =
-    match unfold t with
-    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
-    | t          -> (t, acc, len)
-  in
-  get_args_len [] 0 t
-
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
-and is_symb : sym -> term -> bool = fun s t ->
+let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with Symb(r) -> r == s | _ -> false
-
-(* We make the equality of terms modulo commutative and
-   associative-commutative symbols syntactic by always ordering arguments in
-   increasing order and by putting them in a comb form.
-
-   The term [t1 + t2 + t3] is represented by the left comb [(t1 + t2) + t3] if
-   + is left associative and [t1 + (t2 + t3)] if + is right associative. *)
-
-(** [left_aliens s t] returns the list of the biggest subterms of [t] not
-   headed by [s], assuming that [s] is left associative and [t] is in
-   canonical form. This is the reverse of [mk_left_comb]. *)
-and left_aliens : sym -> term -> term list = fun s ->
-  let rec aliens acc = function
-    | [] -> acc
-    | u::us ->
-        let h, ts = get_args u in
-        if is_symb s h then
-          match ts with
-          | t1 :: t2 :: _ -> aliens (t2 :: acc) (t1 :: us)
-          | _ -> aliens (u :: acc) us
-        else aliens (u :: acc) us
-  in fun t -> aliens [] [t]
-
-(** [right_aliens s t] returns the list of the biggest subterms of [t] not
-   headed by [s], assuming that [s] is right associative and [t] is in
-   canonical form. This is the reverse of [mk_right_comb]. *)
-and right_aliens : sym -> term -> term list = fun s ->
-  let rec aliens acc = function
-    | [] -> acc
-    | u::us ->
-        let h, ts = get_args u in
-        if is_symb s h then
-          match ts with
-          | t1 :: t2 :: _ -> aliens (t1 :: acc) (t2 :: us)
-          | _ -> aliens (u :: acc) us
-        else aliens (u :: acc) us
-  in fun t -> let r = aliens [] [t] in
-  if Logger.log_enabled () then
-    log "right_aliens %a %a = %a" sym s term t (D.list term) r;
-  r
-
-(** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
-   or AC symbols. *)
-and mk_Appl : term * term -> term = fun (t, u) ->
-  (* if Logger.log_enabled () then
-    log "mk_Appl(%a, %a)" term t term u;
-  let r = *)
-  match get_args t with
-  | Symb s, [t1] ->
-      begin
-        match s.sym_prop with
-        | Commu when cmp t1 u > 0 -> mk_bin s u t1
-        | AC true -> (* left associative symbol *)
-            let ts = left_aliens s t1 and us = left_aliens s u in
-            begin
-              match List.sort cmp (ts @ us) with
-              | v::vs -> mk_left_comb s v vs
-              | _ -> assert false
-            end
-        | AC false -> (* right associative symbol *)
-            let ts = right_aliens s t1 and us = right_aliens s u in
-            let vs, v = List.split_last (List.sort cmp (ts @ us))
-            in mk_right_comb s vs v
-        | _ -> Appl (t, u)
-      end
-  | _ -> Appl (t, u)
-  (* in
-  if Logger.log_enabled () then
-    log "mk_Appl(%a, %a) = %a" term t term u term r;
-  r *)
-
-(* unit test *)
-let _ =
-  let s =
-    create_sym [] Privat (AC true) Eager false (Pos.none "+") None Kind [] in
-  let t1 = Vari (new_var "x1") in
-  let t2 = Vari (new_var "x2") in
-  let t3 = Vari (new_var "x3") in
-  let left = mk_bin s (mk_bin s t1 t2) t3 in
-  let right = mk_bin s t1 (mk_bin s t2 t3) in
-  let eq = eq_of_cmp cmp in
-  assert (eq (mk_left_comb s t1 [t2; t3]) left);
-  assert (eq (mk_right_comb s [t1; t2] t3) right);
-  let eq = eq_of_cmp (List.cmp cmp) in
-  assert (eq (left_aliens s left) [t1; t2; t3]);
-  assert (eq (right_aliens s right) [t3; t2; t1])
 
 (** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
 let is_abst : term -> bool = fun t ->
@@ -759,6 +684,8 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
     log "bind_var %a %a = %a" var x term t term b;
   {binder_name=n; binder_bound= !bound}, b, [||]
 
+let mk_Arro (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
+
 (** [binder f b] applies f inside [b]. *)
 let binder : (term -> term) -> binder -> binder = fun f b ->
   let x,t = unbind b in bind_var x (f t)
@@ -838,52 +765,6 @@ let bind_mvar : var array -> term -> mbinder =
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
   bi, b, [||]
   end
-
-(** Construction functions of the private type [term]. They ensure some
-   invariants:
-
-- In a commutative function symbol application, the first argument is smaller
-   than the second one wrt [cmp].
-
-- In an associative and commutative function symbol application, the
-   application is built as a left or right comb depending on the associativity
-   of the symbol, and arguments are ordered in increasing order wrt [cmp].
-
-- In [LLet(_,_,b)], [binder_occur b = true] (useless let's are erased). *)
-let mk_Vari x = Vari x
-let mk_Type = Type
-let mk_Kind = Kind
-let mk_Symb x = Symb x
-let mk_Prod (a,b) = Prod (a,b)
-let mk_Arro (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
-let mk_Abst (a,b) = Abst (a,b)
-let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
-let mk_Patt (i,s,ts) = Patt (i,s,ts)
-let mk_Wild = Wild
-let mk_Plac b = Plac b
-let mk_TRef x = TRef x
-let mk_LLet (a,t,b) = LLet (a,t,b)
-
-(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
-   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
-let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
-
-(** [add_args t args] builds the application of the {!type:term} [t] to a list
-    arguments [args]. When [args] is empty, the returned value is (physically)
-    equal to [t]. *)
-let add_args : term -> term list -> term = fun t ts ->
-  match get_args t with
-  | Symb s, _ when is_modulo s ->
-    List.fold_left (fun t u -> mk_Appl(t,u)) t ts
-  | _ -> List.fold_left (fun t u -> Appl(t,u)) t ts
-
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
-   more efficient. *)
-let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
-  match get_args t with
-  | Symb s, _ when is_modulo s ->
-    List.fold_left (fun t u -> mk_Appl(t, f u)) t ts
-  | _ -> List.fold_left (fun t u -> Appl(t, f u)) t ts
 
 (** Patt substitution. *)
 let subst_patt : mbinder option array -> term -> term = fun env ->

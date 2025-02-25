@@ -80,29 +80,25 @@ let link : t -> unit = fun sign ->
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let link_term mk_Appl =
-    let rec link_term t =
-      match unfold t with
-      | Type
-      | Kind
-      | Vari _ -> t
-      | Symb s -> mk_Symb(link_symb s)
-      | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
-      | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
-      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
-      | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
-      | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
-      | Bvar _ -> assert false
-      | Meta _ -> assert false
-      | Plac _ -> assert false
-      | Wild -> assert false
-      | TRef _ -> assert false
-    in link_term
+  let rec link_term t =
+    match unfold t with
+    | Type
+    | Kind
+    | Vari _ -> t
+    | Symb s -> mk_Symb(link_symb s)
+    | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
+    | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
+    | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
+    | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
+    | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
+    | Bvar _ -> assert false
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+    | Wild -> assert false
+    | TRef _ -> assert false
   in
-  let link_lhs = link_term mk_Appl_not_canonical
-  and link_term = link_term mk_Appl in
   let link_rule r =
-    let lhs = List.map link_lhs r.lhs in
+    let lhs = List.map link_term r.lhs in
     let rhs = link_term r.rhs in
     {r with lhs ; rhs}
   in
@@ -135,7 +131,7 @@ let link : t -> unit = fun sign ->
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
   let link_cp_pos (pos,l,r,p,l_p) =
-    pos, link_lhs l, link_term r, p, link_lhs l_p in
+    pos, link_term l, link_term r, p, link_term l_p in
   let f s cps m = SymMap.add (link_symb s) (List.map link_cp_pos cps) m in
   sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
 
