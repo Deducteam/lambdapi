@@ -255,7 +255,7 @@ val is_private : sym -> bool
 
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 val is_modulo : sym -> bool
-val is_assoc : sym -> bool
+val is_ac : sym -> bool
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym

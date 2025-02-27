@@ -108,7 +108,10 @@ end
 
 type config = Config.t
 
-(** [insert t ts] inserts [t] in [ts] assuming that [ts] is sorted. *)
+type whnf = Config.t -> term -> term
+
+(** [insert t ts] inserts [t] in [ts] assuming that [ts] is in increasing
+    order wrt [Term.comp]. *)
 let insert t =
   let rec aux ts =
     match ts with
@@ -116,32 +119,91 @@ let insert t =
     | _ -> t::ts
   in aux
 
-(** [aliens f t] computes the f-aliens of [t]. *)
-let aliens f =
+(** [aliens f whnf cfg ts] computes the f-aliens of [ts]. f-aliens are in whnf
+    and ordered in increasing order wrt [Term.comp]. *)
+let aliens f whnf cfg =
   let rec aliens acc ts =
     match ts with
     | [] -> acc
-    | t::ts ->
-        match get_args t with
-        | Symb g, [u1;u2] when g == f -> aliens acc (u1::u2::ts)
-        | _ -> aliens (insert t acc) ts
+    | t::ts -> aux acc t ts
+  and aux acc t ts =
+    match get_args t with
+    | Symb g, [u1;u2] when g == f -> aux acc u1 (u2::ts)
+    | _ ->
+        let n = !steps in
+        let t' = whnf cfg t in
+        if !steps = n then aliens (insert t acc) ts
+        else aux acc t' ts
   in aliens []
 
-(*let eq_ac t u =
-  match get_args t, get_args u with
-  | (Symb f,ts), (Symb g,us) when is_modulo f && f == g ->
-      aliens f ts = aliens f us
-  | _ ->*)
+let left_comb_aliens f =
+  let rec aliens acc t =
+    match get_args t with
+    | Symb g, [t1;t2] when g == f -> aliens (t2::acc) t1
+    | _ -> t::acc
+  in aliens []
 
-(** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
+let right_comb_aliens f =
+  let rec aliens acc t =
+    match get_args t with
+    | Symb g, [t1;t2] when g == f -> aliens (t1::acc) t2
+    | _ -> t::acc
+  in aliens []
+
+let _comb_aliens f =
+  match f.sym_prop with
+  | AC true -> left_comb_aliens f
+  | AC false -> right_comb_aliens f
+  | _ -> assert false
+
+let app2 whnf cfg s t1 t2 = whnf cfg (mk_Appl(mk_Appl(mk_Symb s, t1), t2))
+
+(** [left_comb whnf cfg (+) [t1;t2;t3]] computes [whnf(whnf(t1+t2)+t3)]. *)
+let left_comb s whnf cfg =
+  let rec comb acc ts =
+    match ts with
+    | [] -> acc
+    | t::ts -> comb (app2 whnf cfg s acc t) ts
+  in
+  function
+  | [] | [_] -> assert false
+  | t::ts -> comb t ts
+
+(** [right_comb whnf cfg (+) [t1;t2;t3]] computes [whnf(t1+whnf(t2+t3))]. *)
+let right_comb s whnf cfg =
+  let rec comb ts acc =
+    match ts with
+    | [] -> acc
+    | t::ts -> comb ts (app2 whnf cfg s t acc)
+  in
+  fun ts ->
+  match List.rev ts with
+  | [] | [_] -> assert false
+  | t::ts -> comb ts t
+
+let comb s =
+  match s.sym_prop with
+  | AC true -> left_comb s
+  | AC false -> right_comb s
+  | _ -> assert false
+
+let ac whnf cfg t =
+  let t = whnf cfg t in
+  match get_args t with
+  | Symb f, ([_;_] as ts) when is_ac f ->
+      (*if Logger.log_enabled() then log_conv "ac_whnf %a" term t;*)
+      comb f whnf cfg (aliens f whnf cfg ts)
+  | _ -> t
+
+(** [eq_modulo whnf cfg a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
-let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
-  fun whnf ->
+let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
   let rec eq : config -> (term * term) list -> unit = fun cfg l ->
     match l with
     | [] -> ()
     | (a,b)::l ->
-    if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
+    if Logger.log_enabled () then
+      log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
     if LibTerm.eq_alpha a b then eq cfg l else
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
@@ -174,7 +236,8 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
-    let a = whnf cfg a and b = whnf cfg b in
+    let whnf t = Logger.set_debug_in "c" false (fun () -> ac whnf cfg t) in
+    let a = whnf a and b = whnf b in
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
@@ -191,12 +254,22 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | Bvar _, _ | _, Bvar _ -> assert false
+    (*| _ ->
+    match get_args a, get_args b with
+    | (Symb f,([_;_]as ts)), (Symb g,([_;_]as us)) when is_ac f && g == f ->
+        log_conv "compute ac whnf";
+        let ts = aliens f whnf cfg ts and us = aliens f whnf cfg us in
+        let a = comb f whnf cfg ts and b = comb f whnf cfg us in
+        let ts = comb_aliens f a and us = comb_aliens f b in
+        if List.length ts <> List.length us then raise Exit
+        else eq cfg (List.rev_append2 ts us l)
+    | _ ->
+    match a, b with*)
+    | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
   fun cfg a b ->
-  if Logger.log_enabled () then log_conv "eq_modulo: %a ≡ %a" term a term b;
   try eq cfg [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
@@ -214,12 +287,13 @@ let to_tref : term -> term = fun t ->
 (** {1 Define the main {!whnf} function that takes a {!config} as argument} *)
 let depth = Stdlib.ref 0
 
+let incr_depth f = incr depth; let v = f() in decr depth; v
+
 (** [whnf cfg t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun cfg t ->
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk cfg t [] in
-  let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
-  r
+  if Stdlib.(!steps) <> n then add_args u stk else unfold t
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
@@ -227,10 +301,10 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
-  (*| _ ->
+  | _ ->
   if Logger.log_enabled () then
-    log_eval "%awhnf_stk %a%a %a" D.depth !depth term t (D.list term) stk;
-  match t, stk with*)
+    log_eval "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
+  match t, stk with
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
@@ -247,7 +321,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
     | _ ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
-      let stk =
+      (*let stk =
         if is_modulo s then
           let n = Stdlib.(!steps) in
           (* We put the arguments in whnf. *)
@@ -258,7 +332,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
             (* We put the term in AC-canonical form. *)
             snd (get_args (add_args h stk'))
         else stk
-      in
+      in*)
       match tree_walk cfg (cfg.dtree s) stk with
       | None -> h, stk
       | Some (t', stk') ->
@@ -338,7 +412,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         let next =
           match cond with
           | CondNL(i, j) ->
-            if eq_modulo whnf cfg vars.(i) vars.(j) then ok else fail
+              if incr_depth (fun () -> eq_modulo whnf cfg vars.(i) vars.(j))
+              then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -388,9 +463,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           Option.bind default fn
         else
           let s = Stdlib.(!steps) in
-          incr depth;
-          let (t, args) = whnf_stk cfg examined [] in
-          decr depth;
+          let (t, args) = incr_depth (fun () -> whnf_stk cfg examined []) in
           let args = if store then List.map to_tref args else args in
           (* If some reduction has been performed by [whnf_stk] ([steps <>
              0]), update the value of [examined] which may be stored into
@@ -521,7 +594,10 @@ let eq_modulo =
     [c] with no side effects. *)
 let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
   fun ?tags c a b ->
-  Timed.pure_test (fun (c,a,b) -> eq_modulo ?tags c a b) (c,a,b)
+  Timed.pure_test
+    (fun (c,a,b) ->
+      Logger.set_debug_in "ce" false (fun () -> eq_modulo ?tags c a b))
+    (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)

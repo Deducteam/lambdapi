@@ -307,8 +307,8 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 let is_modulo : sym -> bool = fun s ->
   match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
-let is_assoc : sym -> bool = fun s ->
-  match s.sym_prop with Assoc _ | AC _ -> true | _ -> false
+let is_ac : sym -> bool = fun s ->
+  match s.sym_prop with AC _ -> true | _ -> false
 
 (** Sets and maps of symbols. *)
 module Sym = struct
@@ -475,13 +475,12 @@ let rec cmp : term cmp = fun t t' ->
   | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
   | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
   | Meta(m,ts), Meta(m',ts') ->
-    lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
+      lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
   | Patt(i,s,ts), Patt(i',s',ts') ->
     lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp) (i,s,ts) (i',s',ts')
   | Bvar i, Bvar j -> Stdlib.compare i j
   | TRef r, TRef r' -> Stdlib.compare r r'
-  | LLet(a,t,u), LLet(a',t',u') ->
-    lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
+  | LLet(a,t,u), LLet(a',t',u') -> lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
   | t, t' -> cmp_tag t t'
 
 and cmp_binder : binder cmp =
@@ -490,8 +489,7 @@ and cmp_binder : binder cmp =
   let var = Vari(new_var binder_name) in
   cmp (msubst (mbi,u,e)[|var|])
     (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
-  fun (_,u,e) (_,u',e') ->
-  lex cmp (Array.cmp cmp) (u,e) (u',e')
+  fun (_,u,e) (_,u',e') -> lex cmp (Array.cmp cmp) (u,e) (u',e')
 
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->

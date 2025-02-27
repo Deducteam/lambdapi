@@ -95,7 +95,6 @@ let get_activated_loggers () =
    Without the optional argument, use [!default_loggers] *)
 let reset_loggers ?(default=Stdlib.(! default_loggers)) () =
   let default_value = String.contains default in
-
   let fn { logger_key; logger_enabled; _ } =
     logger_enabled := default_value logger_key
   in
@@ -106,10 +105,17 @@ let reset_loggers ?(default=Stdlib.(! default_loggers)) () =
 let log_summary () =
   List.map (fun d -> (d.logger_key, d.logger_desc)) Stdlib.(!loggers)
 
-(** [set_debug_in b c f x] sets [c] logger to [b] for evaluating [f x]. *)
-let set_debug_in : bool -> char -> ('a -> 'b) -> 'a -> 'b = fun b c f x ->
+(** [set_debug_in c b f] sets [c] logger to [b] for evaluating [f()]. *)
+let set_debug_in : char -> bool -> (unit -> 'a) -> 'a = fun c b f ->
   let is_activated = String.contains (get_activated_loggers()) in
   let v = is_activated c in
   let s = String.make 1 c in
   set_debug b s;
-  try let r = f x in set_debug v s; r with e -> set_debug v s; raise e
+  try let r = f() in set_debug v s; r with e -> set_debug v s; raise e
+
+(** [set_debug_in c b f] sets the loggers in [c] to [b] to evaluate [f()]. *)
+let set_debug_in : string -> bool -> (unit -> 'a) -> 'a = fun s b f ->
+  let default = get_activated_loggers() in
+  set_debug b s;
+  try let r = f() in reset_loggers ~default (); r
+  with e -> reset_loggers ~default (); raise e
