@@ -57,7 +57,7 @@ QID ::= [UID "."]+ UID
 <path> ::= UID
          | QID
 
-<modifier> ::= [<side>] "associative"
+<modifier> ::= <side> "associative" "commutative"
              | "commutative"
              | "constant"
              | "injective"
