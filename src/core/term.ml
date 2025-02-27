@@ -335,21 +335,6 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(* to be removed *)
-let mk_Vari x = Vari x
-let mk_Type = Type
-let mk_Kind = Kind
-let mk_Symb x = Symb x
-let mk_Prod (a,b) = Prod (a,b)
-let mk_Abst (a,b) = Abst (a,b)
-let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
-let mk_Patt (i,s,ts) = Patt (i,s,ts)
-let mk_Wild = Wild
-let mk_Plac b = Plac b
-let mk_TRef x = TRef x
-let mk_LLet (a,t,b) = LLet (a,t,b)
-let mk_Appl (t,u) = Appl (t,u)
-
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
@@ -424,7 +409,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     match unfold t with
     | Bvar (InSub p) -> assert bi.mbinder_bound.(p); vs.(p)
     | Bvar (InEnv p) -> env.(p)
-    | Appl(a,b) -> mk_Appl(msubst a, msubst b)
+    | Appl(a,b) -> Appl(msubst a, msubst b)
     (* No need to substitute in the closure term: all bound variables appear
        in the closure environment *)
     | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, Array.map msubst e))
@@ -593,7 +578,7 @@ let subst : binder -> term -> term = fun (bi,tm,env) v ->
     match unfold t with
     | Bvar (InSub _) -> assert bi.binder_bound; v
     | Bvar (InEnv p) -> env.(p)
-    | Appl(a,b) -> mk_Appl(subst a, subst b)
+    | Appl(a,b) -> Appl(subst a, subst b)
     | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, Array.map subst e))
     | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, Array.map subst e))
     | LLet(a,t,(n,u,e)) -> LLet(subst a, subst t, (n, u, Array.map subst e))
@@ -643,7 +628,7 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
         let a' = bind i a in
         let b' = bind i b in
         if a==a' && b==b' then t else Appl(a', b')
-    (* No need to call mk_Appl here as we only replace free variables by de
+    (* No need to call Appl here as we only replace free variables by de
        Bruijn indices. *)
     | Abst(a,b) ->
         let a' = bind i a in
@@ -682,7 +667,13 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
     log "bind_var %a %a = %a" var x term t term b;
   {binder_name=n; binder_bound= !bound}, b, [||]
 
+(** Build a non-dependent product. *)
 let mk_Arro (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
+
+(** Curryfied versions of some constructors. *)
+let mk_Vari v = Vari v
+let mk_Abst (a,b) = Abst (a,b)
+let mk_Prod (a,b) = Prod (a,b)
 
 (** [binder f b] applies f inside [b]. *)
 let binder : (term -> term) -> binder -> binder = fun f b ->
@@ -713,7 +704,7 @@ let bind_mvar : var array -> term -> mbinder =
         let a' = bind fvar a in
         let b' = bind fvar b in
         if a==a' && b==b' then t else Appl(a', b')
-    (* No need to call mk_Appl here as we only replace free variables by de
+    (* No need to call Appl here as we only replace free variables by de
        Bruijn indices. *)
     | Abst(a,b) ->
         let a' = bind fvar a in
@@ -771,17 +762,17 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->
       begin match env.(i) with
       | Some b -> msubst b (Array.map subst_patt ts)
-      | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
+      | None -> Patt(Some i,n,Array.map subst_patt ts)
       end
-    | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
+    | Patt(i,n,ts) -> Patt(i, n, Array.map subst_patt ts)
     | Prod(a,(n,b,e)) ->
-        mk_Prod(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
+        Prod(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
     | Abst(a,(n,b,e)) ->
-        mk_Abst(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
-    | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
-    | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
+        Abst(subst_patt a, (n, subst_patt b, Array.map subst_patt e))
+    | Appl(a,b) -> Appl(subst_patt a, subst_patt b)
+    | Meta(m,ts) -> Meta(m, Array.map subst_patt ts)
     | LLet(a,t,(n,b,e)) ->
-        mk_LLet(subst_patt a, subst_patt t,
+        LLet(subst_patt a, subst_patt t,
                 (n, subst_patt b, Array.map subst_patt e))
     | Wild
     | Plac _
@@ -796,12 +787,12 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 let rec cleanup : term -> term = fun t ->
   match unfold t with
-  | Patt(i,n,ts) -> mk_Patt(i, n, Array.map cleanup ts)
-  | Prod(a,b) -> mk_Prod(cleanup a, binder cleanup b)
-  | Abst(a,b) -> mk_Abst(cleanup a, binder cleanup b)
-  | Appl(a,b) -> mk_Appl(cleanup a, cleanup b)
-  | Meta(m,ts) -> mk_Meta(m, Array.map cleanup ts)
-  | LLet(a,t,b) -> mk_LLet(cleanup a, cleanup t, binder cleanup b)
+  | Patt(i,n,ts) -> Patt(i, n, Array.map cleanup ts)
+  | Prod(a,b) -> Prod(cleanup a, binder cleanup b)
+  | Abst(a,b) -> Abst(cleanup a, binder cleanup b)
+  | Appl(a,b) -> Appl(cleanup a, cleanup b)
+  | Meta(m,ts) -> Meta(m, Array.map cleanup ts)
+  | LLet(a,t,b) -> LLet(cleanup a, cleanup t, binder cleanup b)
   | Wild -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
@@ -814,7 +805,7 @@ let rec cleanup : term -> term = fun t ->
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule
 
-let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
+let lhs : sym_rule -> term = fun (s, r) -> add_args (Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
 (** Positions in terms in reverse order. The i-th argument of a constructor

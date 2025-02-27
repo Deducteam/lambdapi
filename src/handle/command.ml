@@ -24,14 +24,14 @@ let _ =
       match !((StrMap.find "nat_succ" ss.builtins).sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
-    with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+    with Not_found -> Meta (LibMeta.fresh (new_problem()) Type 0, [||])
   in
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
       try !((StrMap.find "nat_zero" ss.builtins).sym_type)
       with Not_found ->
-        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+        Meta (LibMeta.fresh (new_problem()) Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in
@@ -512,7 +512,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+                Option.map (fun m -> unfold (Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
@@ -524,7 +524,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+                Option.map (fun m -> unfold (Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;

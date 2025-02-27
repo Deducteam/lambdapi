@@ -67,14 +67,14 @@ let replace : term -> subterm_pos -> term -> term = fun t p u ->
     | [] -> u
     | 0::p ->
       begin match unfold t with
-        | Appl(a,b) -> mk_Appl (replace a p, b)
-        | Abst(a,b) -> mk_Abst (replace a p, b)
-        | Prod(a,b) -> mk_Prod (replace a p, b)
+        | Appl(a,b) -> Appl (replace a p, b)
+        | Abst(a,b) -> Abst (replace a p, b)
+        | Prod(a,b) -> Prod (replace a p, b)
         | _ -> assert false
       end
     | 1::p ->
       begin match unfold t with
-        | Appl(a,b) -> mk_Appl (a, replace b p)
+        | Appl(a,b) -> Appl (a, replace b p)
         | _ -> assert false
       end
     | _ -> assert false
@@ -109,14 +109,14 @@ let rec shift : term -> term = fun t ->
   | Wild
   | Plac _
   | TRef _ -> t
-  | Prod(a,b) -> mk_Prod (shift a, shift_binder b)
-  | Abst(a,b) -> mk_Abst (shift a, shift_binder b)
-  | Appl(a,b) -> mk_Appl (shift a, shift b)
-  | Meta(m,ts) -> mk_Meta (m, Array.map shift ts)
+  | Prod(a,b) -> Prod (shift a, shift_binder b)
+  | Abst(a,b) -> Abst (shift a, shift_binder b)
+  | Appl(a,b) -> Appl (shift a, shift b)
+  | Meta(m,ts) -> Meta (m, Array.map shift ts)
   | Patt(None,_,_) -> assert false
-  | Patt(Some i,n,ts) -> mk_Patt (Some(-i-1), n ^ "'", Array.map shift ts)
+  | Patt(Some i,n,ts) -> Patt (Some(-i-1), n ^ "'", Array.map shift ts)
   | Bvar _ -> assert false
-  | LLet(a,t,b) -> mk_LLet (shift a, shift t, shift_binder b)
+  | LLet(a,t,b) -> LLet (shift a, shift t, shift_binder b)
 and shift_binder b =
   let x, t = unbind b in bind_var x (shift t)
 
@@ -136,19 +136,19 @@ let apply_subs : subs -> term -> term = fun s t ->
     | Patt(None, _, _) -> assert false
     | Patt(Some i,_,[||]) ->
       begin try IntMap.find i s with Not_found -> t end
-    | Patt(i,n,ts) -> mk_Patt (i, n, Array.map apply_subs ts)
+    | Patt(i,n,ts) -> Patt (i, n, Array.map apply_subs ts)
     | Vari _ | Symb _ | Type | Kind -> t
-    | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
+    | Appl(u,v) -> Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
       let x,b = unbind b in
-      mk_Abst (apply_subs a, bind_var x (apply_subs b))
+      Abst (apply_subs a, bind_var x (apply_subs b))
     | Prod(a,b) ->
       let x,b = unbind b in
-      mk_Prod (apply_subs a, bind_var x (apply_subs b))
+      Prod (apply_subs a, bind_var x (apply_subs b))
     | LLet(a,t,b) ->
       let x,b = unbind b in
-      mk_LLet (apply_subs a, apply_subs t, bind_var x (apply_subs b))
-    | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
+      LLet (apply_subs a, apply_subs t, bind_var x (apply_subs b))
+    | Meta(m,ts) -> Meta (m, Array.map apply_subs ts)
     | Bvar _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
@@ -237,7 +237,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Abst(a,b), Abst(c,d)
       | Prod(a,b), Prod(c,d) ->
         let x,b = unbind b in
-        let d = subst d (mk_Vari x) in
+        let d = subst d (Vari x) in
         unif s ((a,c)::(b,d)::l)
       | Vari x, Vari y ->
         if eq_vars x y then unif s l else raise NotUnifiable
@@ -266,17 +266,16 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
 
 (* Unit tests. *)
 let _ =
-  let var i = mk_Patt (Some i, string_of_int i, [||]) in
+  let var i = Patt (Some i, string_of_int i, [||]) in
   let v0 = var 0
   and v1 = var 1 in
   let sym name =
-    create_sym [] Public Defin Eager false (Pos.none name) None
-     mk_Type [] in
+    create_sym [] Public Defin Eager false (Pos.none name) None Type [] in
   let a_ = sym "a"
   and b_ = sym "b"
   and s_ = sym "s"
   and f_ = sym "f" in
-  let app s ts = add_args (mk_Symb s) ts in
+  let app s ts = add_args (Symb s) ts in
   let a = app a_ []
   and b = app b_ []
   and s t = app s_ [t]
@@ -401,16 +400,16 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
         match IntMap.find_opt i !p2m with
         | Some m -> m
         | None ->
-          let m_typ = LibMeta.fresh p mk_Type 0 in
-          let typ = mk_Meta(m_typ,[||]) in
+          let m_typ = LibMeta.fresh p Type 0 in
+          let typ = Meta(m_typ,[||]) in
           let m = LibMeta.fresh p typ 0 in
           p2m := IntMap.add i m !p2m; m2p := MetaMap.add m (i,n) !m2p; m
-      in mk_Meta(m,[||])
-    | Appl(a,b) -> mk_Appl(patt_to_meta a, patt_to_meta b)
+      in Meta(m,[||])
+    | Appl(a,b) -> Appl(patt_to_meta a, patt_to_meta b)
     | Symb _ | Vari _ -> t
     | Abst(a,b) ->
       let x,b = unbind b in
-      mk_Abst(patt_to_meta a, bind_var x (patt_to_meta b))
+      Abst(patt_to_meta a, bind_var x (patt_to_meta b))
     | _ -> assert false
   in
   let t = patt_to_meta t in
@@ -423,8 +422,8 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     try
       let i,n = MetaMap.find m !m2p in
       let s = create_sym (Sign.current_path())
-          Public Defin Eager false (Pos.none n) None mk_Kind [] in
-      let t = bind_mvar [||] (mk_Symb s) in
+          Public Defin Eager false (Pos.none n) None Kind [] in
+      let t = bind_mvar [||] (Symb s) in
       Timed.(m.meta_value := Some t);
       s2p := SymMap.add s i !s2p
     with Not_found -> ()
@@ -442,10 +441,10 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     match unfold t with
     | Symb s ->
       begin match SymMap.find_opt s !s2p with
-        | Some i -> mk_Patt(Some i, s.sym_name, [||])
+        | Some i -> Patt(Some i, s.sym_name, [||])
         | None -> t
       end
-    | Appl(a,b) -> mk_Appl(sym_to_patt a, sym_to_patt b)
+    | Appl(a,b) -> Appl(sym_to_patt a, sym_to_patt b)
     | _ -> t
   in
   (* Function converting a pair of terms into a rule, if possible. *)
@@ -564,7 +563,7 @@ let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
     match !(s.sym_def) with
     | Some d ->
       let j = match s.sym_pos with Some p -> p | None -> assert false in
-      cp_cand_fun check_cp pos i l r p l_p j (mk_Symb s) d
+      cp_cand_fun check_cp pos i l r p l_p j (Symb s) d
     (*FIXME? what if s is applied to some arguments? *)
     | None ->
       let h y =

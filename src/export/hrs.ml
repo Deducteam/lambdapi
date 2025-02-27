@@ -126,7 +126,7 @@ let sym_rule : sym -> rule pp = fun s ppf r ->
 (** Translate the rules of symbol [s]. *)
 let rules_of_sym : sym pp = fun ppf s ->
   match Timed.(!(s.sym_def)) with
-  | Some d -> rule ppf (mk_Symb s, d)
+  | Some d -> rule ppf (Symb s, d)
   | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
 
 (** Translate the rules of a dependency except if it is a ghost signature. *)

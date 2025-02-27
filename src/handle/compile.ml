@@ -64,10 +64,10 @@ let rec compile_with :
         Console.out 1 "Write \"%s\" ..." obj; Sign.write sign obj
       end;
       loading := List.tl !loading;
-      Console.out 1 "Checked \"%s\"" src;
+      Console.out 2 "Checked \"%s\"" src;
       begin
         match !loading with
-        | p::_ -> Console.out 1 "Continue checking %a ..." Path.pp p
+        | p::_ -> Console.out 2 "Continue checking %a ..." Path.pp p
         | [] -> ()
       end;
       sign

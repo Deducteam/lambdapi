@@ -18,19 +18,19 @@ let build_meta_type : problem -> int -> term = fun p k ->
   let xs = Array.init k (new_var_ind "x") in
   let ts = Array.map mk_Vari xs in
   (* We create the types for the “Mi” metavariables. *)
-  let ty_m = Array.make (k+1) mk_Type in
+  let ty_m = Array.make (k+1) Type in
   for i = 0 to k do
     for j = (i-1) downto 0 do
-      ty_m.(i) <- mk_Prod (ty_m.(j), bind_var xs.(j) ty_m.(i))
+      ty_m.(i) <- Prod (ty_m.(j), bind_var xs.(j) ty_m.(i))
     done
   done;
   (* We create the “Ai” terms and the “Mi” metavariables. *)
-  let f i = mk_Meta (LibMeta.fresh p ty_m.(i) i, Array.sub ts 0 i) in
+  let f i = Meta (LibMeta.fresh p ty_m.(i) i, Array.sub ts 0 i) in
   let a = Array.init (k+1) f in
   (* We finally construct our type. *)
   let res = ref a.(k) in
   for i = k - 1 downto 0 do
-    res := mk_Prod (a.(i), bind_var xs.(i) !res)
+    res := Prod (a.(i), bind_var xs.(i) !res)
   done;
   !res
 
@@ -53,24 +53,24 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
                        Please contact the developers." f.sym_name
           | Some (Some (i, arity)) ->
             let (ts1, ts2) = List.cut ts arity in
-            (mk_Patt (Some i, string_of_int i, Array.of_list ts1), ts2)
-          | None -> (mk_Symb f, ts)
+            (Patt (Some i, string_of_int i, Array.of_list ts1), ts2)
+          | None -> (Symb f, ts)
         end
-      | Vari(x)     -> (mk_Vari x, ts)
-      | Type        -> (mk_Type  , ts)
-      | Kind        -> (mk_Kind  , ts)
+      | Vari(x)     -> (Vari x, ts)
+      | Type        -> (Type  , ts)
+      | Kind        -> (Kind  , ts)
       | Abst(a,b)   ->
           let (x, t) = unbind b in
           let b = bind_var x (symb_to_patt t) in
-          (mk_Abst (symb_to_patt a, b), ts)
+          (Abst (symb_to_patt a, b), ts)
       | Prod(a,b)   ->
           let (x, t) = unbind b in
           let b = bind_var x (symb_to_patt t) in
-          (mk_Prod (symb_to_patt a, b), ts)
+          (Prod (symb_to_patt a, b), ts)
       | LLet(a,t,b) ->
           let (x, u) = unbind b in
           let b = bind_var x (symb_to_patt u) in
-          (mk_LLet (symb_to_patt a, symb_to_patt t, b), ts)
+          (LLet (symb_to_patt a, symb_to_patt t, b), ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
       | Plac _      ->
@@ -106,10 +106,10 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   let f m =
     let xs = Array.init m.meta_arity (new_var_ind "x") in
     let ts = Array.map mk_Vari xs in
-    Some(bind_mvar xs (mk_Meta (m, ts)))
+    Some(bind_mvar xs (Meta (m, ts)))
   in
   let su = Array.map f metas in
-  let lhs_with_metas = subst_patt su (add_args (mk_Symb s) lhs)
+  let lhs_with_metas = subst_patt su (add_args (Symb s) lhs)
   and rhs_with_metas = subst_patt su rhs in
   if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
@@ -134,7 +134,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       match !(m.meta_value) with
       | Some _ ->
         (* Instantiate recursively the meta-variables of the definition. *)
-        let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
+        let t = Meta(m, Array.make m.meta_arity Kind) in
         LibMeta.iter true (instantiate None) [] t
       | None ->
         (* Instantiate recursively the meta-variables of the type. *)
@@ -147,8 +147,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         Stdlib.(symbols := SymSet.add s !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_var_ind "x") in
-        let app_var t x = _Appl t (mk_Vari x)) in
-        let d = Array.fold_left app_var (mk_Symb s) xs in
+        let app_var t x = _Appl t (Vari x)) in
+        let d = Array.fold_left app_var (Symb s) xs in
         m.meta_value := Some(bind_mvar xs d)
     in
     Array.iter instantiate metas;
@@ -167,8 +167,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       in
       Stdlib.(map := SymMap.add s None !map; m2s := MetaMap.add m s !m2s);
       let xs = Array.init m.meta_arity (new_var_ind "x") in
-      let s = mk_Symb s in
-      let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
+      let s = Symb s in
+      let def = Array.fold_left (fun t x -> Appl (t, Vari x)) s xs in
       m.meta_value := Some(bind_mvar xs def)
   in
   MetaSet.iter instantiate !p.metas;
@@ -216,7 +216,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   let is_inst ((_c1,t1,u1) as x1) ((_c2,t2,u2) as x2) =
     if Logger.log_enabled() then
       log_subj "is_inst [%a] [%a]" constr x1 constr x2;
-    let cons t u = add_args (mk_Symb Unif_rule.equiv) [t; u] in
+    let cons t u = add_args (Symb Unif_rule.equiv) [t; u] in
     matches (cons t1 u1) (cons t2 u2) || matches (cons t1 u1) (cons u2 t2)
   in
   let is_lhs_constr rc = List.exists (fun lc -> is_inst lc rc) lhs_constrs in

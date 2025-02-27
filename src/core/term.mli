@@ -69,7 +69,7 @@ type 'a notation =
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
     are considered invalid in unrelated code. *)
-type term = private
+type term =
   | Vari of var (** Free variable. *)
   | Bvar of bvar (** Bound variables. Only used internally. *)
   | Type (** "TYPE" constant. *)
@@ -327,21 +327,13 @@ val get_args_len : term -> term * term list * int
 (** Total orders terms. *)
 val cmp : term cmp
 
-(* to be removed except mk_Arro *)
-val mk_Vari : var -> term
-val mk_Type : term
-val mk_Kind : term
-val mk_Symb : sym -> term
-val mk_Prod : term * binder -> term
+(** Build a non-dependent product. *)
 val mk_Arro : term * term -> term
+
+(** Curryfied versions of some constructors. *)
+val mk_Vari : var -> term
 val mk_Abst : term * binder -> term
-val mk_Appl : term * term -> term
-val mk_Meta : meta * term array -> term
-val mk_Patt : int option * string * term array -> term
-val mk_Wild : term
-val mk_Plac : bool -> term
-val mk_TRef : term option ref -> term
-val mk_LLet : term * term * binder -> term
+val mk_Prod : term * binder -> term
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)

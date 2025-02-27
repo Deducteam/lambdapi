@@ -31,10 +31,10 @@ let find_qid :
   (* Check for variables in the environment first. *)
   try
     if mp <> [] then raise Not_found; (* Variables cannot be qualified. *)
-    mk_Vari (Env.find s env)
+    Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    mk_Symb (find_sym ~prt ~prv ss qid)
+    Symb (find_sym ~prt ~prv ss qid)
 
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
@@ -125,10 +125,10 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      mk_Patt (Some i, name, ts)
+      Patt (Some i, name, ts)
   | None ->
       let i = fresh_index () in
-      mk_Patt (Some i, string_of_int i, ts)
+      Patt (Some i, string_of_int i, ts)
 
 (* used in desugaring decimal notations *)
 let strint = Array.init 11 string_of_int
@@ -193,8 +193,8 @@ and scope_parsed : ?find_sym:find_sym ->
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
-  let app_term t u = mk_Appl(t, scope_parsed ?find_sym (k+1) md ss env u) in
-  let app_meta t = mk_Appl(t, scope_head ?find_sym (k+1) md ss env P.wild) in
+  let app_term t u = Appl(t, scope_parsed ?find_sym (k+1) md ss env u) in
+  let app_meta t = Appl(t, scope_head ?find_sym (k+1) md ss env P.wild) in
   match impl, args with
   (* The remaining arguments are all explicit. *)
   | [], _ -> List.fold_left app_term h args
@@ -227,7 +227,7 @@ and scope_domain : ?find_sym:find_sym ->
   match a, md with
   | (Some {elt=P_Wild;_}|None), (M_LHS data | M_SearchPatt (_,data)) ->
       fresh_patt data None (Env.to_terms env)
-  | (Some {elt=P_Wild;_}|None), _ -> mk_Plac true
+  | (Some {elt=P_Wild;_}|None), _ -> Plac true
   | Some a, _ -> scope ?find_sym ~typ:true k md ss env a
 
 (** [scope_binder ~find_sym ~typ k md ss cons env params_list t] scopes [t],
@@ -244,7 +244,7 @@ and scope_binder :
         begin
           match t with
           | Some t -> scope ?find_sym ~typ (k+1) md ss env t
-          | None -> mk_Plac true
+          | None -> Plac true
         end
     | (idopts,typopt,_implicit)::params_list ->
       let dom = scope_domain ?find_sym (k+1) md ss env typopt in
@@ -271,7 +271,7 @@ and scope_head : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) k md ss env ({elt;pos} as t) ->
   match elt, md with
-  | (P_Type, _) -> mk_Type
+  | (P_Type, _) -> Type
 
   | (P_Iden(qid,_), _) -> scope_iden ?find_sym md ss env qid
 
@@ -282,11 +282,11 @@ and scope_head : ?find_sym:find_sym ->
           match StrMap.find_opt s Timed.(!(Ghost.sign.sign_symbols)) with
           | Some sym -> sym
           | None ->
-              let str = mk_Symb (Builtin.get ss pos "String") in
+              let str = Symb (Builtin.get ss pos "String") in
               Sign.add_symbol Ghost.sign Public Const Eager true
                 {elt=s;pos} pos str []
         in
-        mk_Symb sym
+        Symb sym
       end
 
   | (P_NLit s, _) ->
@@ -295,7 +295,7 @@ and scope_head : ?find_sym:find_sym ->
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss pos s) in
+      let sym_of s = Symb (Builtin.get ss pos s) in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
@@ -303,24 +303,24 @@ and scope_head : ?find_sym:find_sym ->
         | '8' -> sym.(8) | '9' -> sym.(9) | _ -> assert false
       in
       let sym_add = sym_of "+" in
-      let add x y = mk_Appl(mk_Appl(sym_add,x),y) in
+      let add x y = Appl(Appl(sym_add,x),y) in
       let sym_mul = sym_of "*" in
-      let mul x y = mk_Appl(mk_Appl(sym_mul,x),y) in
+      let mul x y = Appl(Appl(sym_mul,x),y) in
       let rec unsugar i =
         if i <= 0 then digit s.[0]
         else add (digit s.[i]) (mul sym.(10) (unsugar (i-1)))
       in
       let n = unsugar (String.length s - 1) in
-      if neg then mk_Appl(sym_of "-",n) else n
+      if neg then Appl(sym_of "-",n) else n
 
   | (P_Wild, M_URHS(data)) ->
     let i = data.m_urhs_vars_nb in
     data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
-    mk_Patt (Some i, "_", Env.to_terms env)
+    Patt (Some i, "_", Env.to_terms env)
   | (P_Wild, (M_LHS data | M_SearchPatt (_,data))) ->
       fresh_patt data None (Env.to_terms env)
-  | (P_Wild, M_Patt) -> mk_Wild
-  | (P_Wild, (M_RHS _|M_Term _)) -> mk_Plac typ
+  | (P_Wild, M_Patt) -> Wild
+  | (P_Wild, (M_RHS _|M_Term _)) -> Plac typ
 
   | (P_Meta({elt;pos} as mk,ts),
     (M_Term {m_term_meta_of_key;_} | M_SearchPatt(m_term_meta_of_key,_))) -> (
@@ -329,7 +329,7 @@ and scope_head : ?find_sym:find_sym ->
           fatal pos "Metavariable %a not found among generated variables: \
                      metavariables can only be created by the system."
             Pretty.meta_ident mk
-      | Some m -> mk_Meta (m, Array.map (scope ?find_sym (k+1) md ss env) ts))
+      | Some m -> Meta (m, Array.map (scope ?find_sym (k+1) md ss env) ts))
   | (P_Meta(_), _) -> fatal pos "Metavariables are not allowed here."
 
   | (P_Patt(id,ts), (M_LHS(d) | M_SearchPatt(_,d))) ->
@@ -395,7 +395,7 @@ and scope_head : ?find_sym:find_sym ->
         | Some ts -> Array.map (scope ?find_sym (k+1) md ss env) ts
       in
       let name = match id with Some {elt;_} -> elt | None -> assert false in
-      mk_Patt (Some i, name, ts)
+      Patt (Some i, name, ts)
   | (P_Patt(id,ts), M_RHS(r)) ->
       let i =
         match id with
@@ -411,7 +411,7 @@ and scope_head : ?find_sym:find_sym ->
         | Some ts -> Array.map (scope ?find_sym (k+1) md ss env) ts
       in
       let name = match id with Some {elt;_} -> elt | None -> assert false in
-      mk_Patt (Some i, name, ts)
+      Patt (Some i, name, ts)
   | (P_Patt(_,_), _) ->
       fatal pos "Pattern variables are only allowed in rewriting rules."
 
@@ -441,7 +441,7 @@ and scope_head : ?find_sym:find_sym ->
         scope ?find_sym ~typ (k+1) md ss (Env.add x.elt v a (Some t) env) u in
       if not (occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
-      mk_LLet (a, t, bind_var v u)
+      LLet (a, t, bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
       fatal pos "Let-bindings are not allowed in a LHS."
   | (P_LLet(_), M_Patt) ->
@@ -456,7 +456,7 @@ and scope_head : ?find_sym:find_sym ->
 
 let scope =
   let open Stdlib in
-  let r = ref mk_Kind in
+  let r = ref Kind in
   fun ?find_sym ?(typ=false) k md ss env t ->
   Debug.(record_time Scoping
            (fun () -> r := scope ?find_sym ~typ k md ss env t)); !r
@@ -637,19 +637,19 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
   | Rw_InTerm(t) -> Rw_InTerm(scope_pattern ss env t)
   | Rw_InIdInTerm(x,t) ->
       let v = new_var x.elt in
-      let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, Kind, None))::env) t in
       Rw_InIdInTerm(bind_var v t)
   | Rw_IdInTerm(x,t) ->
       let v = new_var x.elt in
-      let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, Kind, None))::env) t in
       Rw_IdInTerm(bind_var v t)
   | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_var x.elt in
-      let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, Kind, None))::env) t in
       Rw_TermInIdInTerm(u, bind_var v t)
   | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_var x.elt in
-      let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, Kind, None))::env) t in
       Rw_TermAsIdInTerm(u, bind_var v t)

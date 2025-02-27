@@ -29,7 +29,7 @@ let fresh : problem -> term -> int -> meta = fun p a n ->
    care. *)
 let set : problem -> meta -> mbinder -> unit = fun p m v ->
   m.meta_value := Some v;
-  m.meta_type := mk_Kind (* to save memory *);
+  m.meta_type := Kind (* to save memory *);
   p := {!p with metas = MetaSet.remove m !p.metas}
 
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
@@ -37,14 +37,14 @@ let set : problem -> meta -> mbinder -> unit = fun p m v ->
 let make : problem -> ctxt -> term -> term = fun p ctx a ->
   let a,k = Ctxt.to_prod ctx a in
   let m = fresh p a k in
-  mk_Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx))
+  Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and
     updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> binder = fun p ctx a ->
   let x = new_var "x" in
-  bind_var x (make p ((x, a, None) :: ctx) mk_Type)
+  bind_var x (make p ((x, a, None) :: ctx) Type)
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,
    if [x] is a variable of [t] mapped to [v] in the context [c], then to every
@@ -76,10 +76,10 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
         | None -> ()
         end
     | Prod(a,b)
-    | Abst(a,b) -> iter a; iter (subst b mk_Kind)
+    | Abst(a,b) -> iter a; iter (subst b Kind)
     | Appl(t,u) -> iter t; iter u
     | Meta(m,ts) -> f m; Array.iter iter ts; if b then iter !(m.meta_type)
-    | LLet(a,t,u) -> iter a; iter t; iter (subst u mk_Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (subst u Kind)
   in iter
 
 (** [occurs m c t] tests whether the metavariable [m] occurs in the term [t]

@@ -85,12 +85,12 @@ let link : t -> unit = fun sign ->
     | Type
     | Kind
     | Vari _ -> t
-    | Symb s -> mk_Symb(link_symb s)
-    | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
-    | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
-    | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
-    | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
-    | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
+    | Symb s -> Symb(link_symb s)
+    | Prod(a,b) -> Prod(link_term a, binder link_term b)
+    | Abst(a,b) -> Abst(link_term a, binder link_term b)
+    | LLet(a,t,b) -> LLet(link_term a, link_term t, binder link_term b)
+    | Appl(a,b)   -> Appl(link_term a, link_term b)
+    | Patt(i,n,ts)-> Patt(i, n, Array.map link_term ts)
     | Bvar _ -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
@@ -146,7 +146,7 @@ let unlink : t -> unit = fun sign ->
   let unlink_sym s =
     s.sym_dtree := Tree_type.empty_dtree;
     if s.sym_path <> sign.sign_path then
-      (s.sym_type := mk_Kind; s.sym_rules := [])
+      (s.sym_type := Kind; s.sym_rules := [])
   in
   let rec unlink_term t =
     match unfold t with

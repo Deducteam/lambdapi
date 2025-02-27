@@ -47,7 +47,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
      metavariable. *)
   let meta_value =
     let vars = Array.init m.meta_arity (new_var_ind "x") in
-    let ax = add_args (mk_Symb sym) (List.map mk_Vari (Array.to_list vars)) in
+    let ax = add_args (Symb sym) (List.map mk_Vari (Array.to_list vars)) in
     bind_mvar vars ax
   in
   LibMeta.set (new_problem()) m meta_value; sym
@@ -166,13 +166,13 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       let p = new_problem () in
       let metas =
         let fresh_meta _ =
-          let mt = LibMeta.make p ctx mk_Type in
+          let mt = LibMeta.make p ctx Type in
           LibMeta.make p ctx mt
         in
         (* Reverse to have goals properly sorted. *)
         List.(rev (init (n - 1) fresh_meta))
       in
-      let t = add_args (mk_Symb ind.ind_prop) metas in
+      let t = add_args (Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
   | _ -> fatal pos "[%a] is not a product." term goal_type
 
@@ -181,7 +181,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
 let count_products : ctxt -> term -> int = fun c ->
   let rec count acc t =
     match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (subst b mk_Kind)
+    | Prod(_,b) -> count (acc + 1) (subst b Kind)
     | _ -> acc
   in count 0
 
@@ -398,9 +398,9 @@ let rec handle :
           let u = gt.goal_type in
           let q = Env.to_prod [x] (Env.to_prod e2 u) in
           let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
-          let me1 = mk_Meta (m, Env.to_terms e1) in
+          let me1 = Meta (m, Env.to_terms e1) in
           let t =
-            List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
+            List.fold_left (fun t (_,(v,_,_)) -> Appl(t, Vari v))
               me1 (x :: List.rev e2)
           in
           tac_refine pos ps gt gs p t
@@ -415,7 +415,7 @@ let rec handle :
       (* Generate the constraints for [t] to be of type [Type]. *)
       let c = Env.to_ctxt env in
       begin
-        match Infer.check_noexn p c t mk_Type with
+        match Infer.check_noexn p c t Type with
         | None -> fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
@@ -426,7 +426,7 @@ let rec handle :
         let env' = Env.add id.elt v t None env in
         let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
         let ts = Env.to_terms env in
-        let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
+        let u = Meta (m2, Array.append ts [|Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end
   | P_tac_set(id,t) ->
@@ -446,7 +446,7 @@ let rec handle :
           let v = LibTerm.fold x t gt.goal_type in
           let m = LibMeta.fresh p (Env.to_prod e' v) n in
           let ts = Env.to_terms env in
-          let u = mk_Meta (m, Array.append ts [|t|]) in
+          let u = Meta (m, Array.append ts [|t|]) in
           (*tac_refine pos ps gt gs p u*)
           LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
           (*let g = Goal.of_meta m in*)
@@ -467,7 +467,7 @@ let rec handle :
         | Typ gt::gs ->
             let cfg = Rewrite.get_eq_config ss pos in
             let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
-            let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
+            let prf = add_args (Symb cfg.symb_refl) [a; l] in
             tac_refine pos ps gt gs (new_problem()) prf
       end
   | P_tac_remove ids ->
@@ -491,7 +491,7 @@ let rec handle :
             let a' = Env.to_prod env' gt.goal_type in
             let p = new_problem() in
             let m' = LibMeta.fresh p a' n in
-            let t = mk_Meta(m',Env.to_terms env') in
+            let t = Meta(m',Env.to_terms env') in
             LibMeta.set p m (bind_mvar (Env.vars env) t);
             Goal.of_meta m'
       in
@@ -516,8 +516,8 @@ let rec handle :
       let (a,l,r),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
       let p = new_problem() in
       let prf =
-        let mt = mk_Appl(mk_Symb cfg.symb_P,
-                         add_args (mk_Symb cfg.symb_eq) [a;r;l]) in
+        let mt = Appl(Symb cfg.symb_P,
+                         add_args (Symb cfg.symb_eq) [a;r;l]) in
         let meta_term = LibMeta.make p (Env.to_ctxt env) mt in
         (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
         Rewrite.swap cfg a r l meta_term
