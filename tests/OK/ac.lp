@@ -6,7 +6,7 @@ commutative symbol + : A → A → A;
 notation + infix 10;
 //assert x y ⊢ x + y ≡ y + x;
 
-associative commutative symbol * : A → A → A;
+right associative commutative symbol * : A → A → A;
 notation * infix 10;
 assert x y ⊢ x * y ≡ y * x;
 assert x y z ⊢ (x * y) * z ≡ x * (y * z);
@@ -38,7 +38,7 @@ symbol Max : Nat → LvlSet → Lvl;
 symbol Plus : Nat → Lvl → LvlSet;
 symbol mapPlus : Nat → LvlSet → LvlSet;
 
-associative commutative symbol Union : LvlSet → LvlSet → LvlSet;
+right associative commutative symbol Union : LvlSet → LvlSet → LvlSet;
 
 rule Max $i (Union (Plus $j (Max $k $l)) $tl) ↪ Max (plus_N $i (plus_N $j $k)) (Union (mapPlus $j $l) $tl);
 

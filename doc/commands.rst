@@ -116,8 +116,8 @@ the system with additional information on its properties and behavior.
 
   - ``constant``: No rule or definition can be given to the symbol
   - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
-  - ``commutative``: Adds in the conversion the equation ``f t u ≡ f u t``.
-  - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only).
+  - ``commutative``: Adds the conditional rewriting rule ``f t u ↪ f u t`` if ``t > u`` where ``>`` is a total ordering on terms.
+  - ``associative`` ``commutative``: Adds the conditional rewriting rule ``f (f t u) v ↪ f t (f u v)`` (in conjonction with ``commutative`` only).
 
     For handling commutative and associative-commutative symbols,
     terms are systemically put in some canonical form following a

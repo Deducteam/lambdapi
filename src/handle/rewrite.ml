@@ -308,16 +308,16 @@ let rec replace_wild_by_tref : term -> term = fun t ->
   | Appl(t,u) -> Appl(replace_wild_by_tref t, replace_wild_by_tref u)
   | _ -> t
 
-(** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic
+(** [rewrite ss p pos gt side pat t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
    [gt]. Every occurrence of the first instance of the left-hand side is
    replaced by the right-hand side of the obtained proof (or the reverse if
-   l2r is false). [pat] is an optional SSReflect pattern. [t] is the
+   side=Left). [pat] is an optional SSReflect pattern. [t] is the
    equational lemma that is appied. It handles the full set of SSReflect
    patterns. *)
-let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
+let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> side ->
               (term, binder) Parsing.Syntax.rw_patt option -> term -> term =
-  fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
+  fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} side pat t ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -333,8 +333,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t = Array.fold_left (fun t x -> Appl(t, Vari x)) t vars in
 
-  (* Reverse the members of the equation if l2r is false. *)
-  let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
+  (* Reverse the members of the equation if side=Left. *)
+  let (t,l,r) = if side=Right then (t,l,r) else (swap cfg a l r t, r, l) in
 
   (* Bind the variables in this new witness. *)
   let bound = let bind = bind_mvar vars in bind t, bind l, bind r in

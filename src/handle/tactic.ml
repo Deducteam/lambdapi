@@ -311,7 +311,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_repeat -> P_tac_repeat(tac(get_arg1 ts))
             | T_rewrite ->
                 let _,t2 = get_args12 ts in
-                P_tac_rewrite(false,None,p_term pos t2)
+                P_tac_rewrite(Right,None,p_term pos t2)
             | T_set -> assert false
             | T_simplify -> P_tac_simpl None
             | T_solve -> P_tac_solve
@@ -506,11 +506,11 @@ let rec handle :
       let ids = List.map fst (List.sort cmp (List.map id_pos ids)) in
       let g = List.fold_left remove g ids in
       {ps with proof_goals = g::gs}
-  | P_tac_rewrite(l2r,pat,eq) ->
+  | P_tac_rewrite(side,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in
       tac_refine pos ps gt gs p
-        (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
+        (Rewrite.rewrite ss p pos gt side pat (scope eq))
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,r),_ = Rewrite.get_eq_data cfg pos gt.goal_type in

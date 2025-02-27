@@ -27,14 +27,15 @@ type expo =
   | Protec (** Visible everywhere but usable in LHS arguments only. *)
   | Privat (** Not visible and thus not usable. *)
 
+type side = Left | Right
+
 (** Symbol properties. *)
 type prop =
   | Defin (** Definable. *)
   | Const (** Constant. *)
   | Injec (** Injective. *)
   | Commu (** Commutative. *)
-  | Assoc of bool (** Associative left if [true], right if [false]. *)
-  | AC of bool (** Associative and commutative. *)
+  | AC of side (** Associative and commutative. *)
 
 (** Type for free variables. *)
 type var

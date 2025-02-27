@@ -41,7 +41,7 @@
     let defin lps = make_pos lps (P_prop Defin)
     let const lps = make_pos lps (P_prop Const)
     let inj lps = make_pos lps (P_prop Injec)
-    let ac lps = make_pos lps (P_prop (AC false))
+    let ac lps = make_pos lps (P_prop (AC Right))
 
     let opaq lps = make_pos lps P_opaq
     let protec lps = make_pos lps (P_expo Protec)

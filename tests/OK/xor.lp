@@ -1,7 +1,8 @@
 symbol B:TYPE;
 
 symbol O:B;
-associative commutative symbol +:B → B → B; notation + infix right 20;
+right associative commutative symbol +:B → B → B;
+notation + infix right 20;
 
 rule O + $x ↪ $x
 with $x + O ↪ $x

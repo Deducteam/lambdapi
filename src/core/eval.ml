@@ -152,8 +152,8 @@ let right_comb_aliens f =
 
 let _comb_aliens f =
   match f.sym_prop with
-  | AC true -> left_comb_aliens f
-  | AC false -> right_comb_aliens f
+  | AC Left -> left_comb_aliens f
+  | AC Right -> right_comb_aliens f
   | _ -> assert false
 
 let app2 whnf cfg s t1 t2 = whnf cfg (Appl(Appl(Symb s, t1), t2))
@@ -183,8 +183,8 @@ let right_comb s whnf cfg =
 
 let comb s =
   match s.sym_prop with
-  | AC true -> left_comb s
-  | AC false -> right_comb s
+  | AC Left -> left_comb s
+  | AC Right -> right_comb s
   | _ -> assert false
 
 let ac whnf cfg t =

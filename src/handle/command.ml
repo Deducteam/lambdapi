@@ -99,12 +99,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   let props, expos, strats = get_modifiers ([],[],[]) ms in
   let prop =
     match props with
-    | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
-    | [{elt=P_prop Commu;_};{elt=P_prop (Assoc b);_}] -> AC b
     | _::{pos;_}::_ -> fatal pos "Incompatible or duplicated properties."
-    | [{elt=P_prop (Assoc _);pos}] ->
-        fatal pos "Associativity alone is not allowed as \
-                   you can use a rewriting rule instead."
     | [{elt=P_prop p;_}] -> p
     | [] -> Defin
     | _ -> assert false
@@ -256,8 +251,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check that the notation is compatible with the theory. *)
       begin
         match s.sym_prop, n with
-        | (Assoc true | AC true), Infix (Pratter.Right,_)
-        | (Assoc false | AC false), Infix (Pratter.Left,_)
+        | AC Left, Infix (Pratter.Right,_)
+        | AC Right, Infix (Pratter.Left,_)
           -> fatal pos
                "notation incompatible with symbol property \
                 (e.g. infix right notation on left associative symbol)"

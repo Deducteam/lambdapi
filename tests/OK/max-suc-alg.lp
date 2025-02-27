@@ -29,7 +29,7 @@ with ($x + $y) + $z ↪ $x + ($y + $z);
 // s-max algebra: successor iterator and max operator on levels
 constant symbol z : L;
 symbol s : ℕ → L → L;
-associative commutative symbol ⊕ : L → L → L; // associative right by default
+right associative commutative symbol ⊕ : L → L → L;
 notation ⊕ infix right 10;
 
 // Translation of Agda's levels to the s-max algebra 

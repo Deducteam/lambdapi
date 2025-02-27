@@ -29,14 +29,15 @@ type expo =
   | Protec (** Visible everywhere but usable in LHS arguments only. *)
   | Privat (** Not visible and thus not usable. *)
 
+type side = Left | Right
+
 (** Symbol properties. *)
 type prop =
   | Defin (** Definable. *)
   | Const (** Constant. *)
   | Injec (** Injective. *)
   | Commu (** Commutative. *)
-  | Assoc of bool (** Associative left if [true], right if [false]. *)
-  | AC of bool (** Associative and commutative. *)
+  | AC of side (** Associative and commutative. *)
 
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool}
@@ -306,7 +307,7 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 let is_modulo : sym -> bool = fun s ->
-  match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
+  match s.sym_prop with Commu | AC _ -> true | _ -> false
 let is_ac : sym -> bool = fun s ->
   match s.sym_prop with AC _ -> true | _ -> false
 
