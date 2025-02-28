@@ -88,3 +88,10 @@ let apply_config : string -> unit = fun fname ->
   let {root_path; _} = read cfg_file in
   let root = Filename.dirname cfg_file in
   Library.add_mapping (root_path, root)
+
+(** [root_path fname] tries to find a configuration file from [fname] and
+    return the root_path if any. *)
+let root_path fname =
+  match find_config fname with
+  | None -> None
+  | Some cfg_file -> Some (read cfg_file).root_path
