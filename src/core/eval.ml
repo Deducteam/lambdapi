@@ -1,6 +1,6 @@
 (** Evaluation and conversion. *)
 
-open Lplib open Extra
+open Lplib open Base open Extra
 open Common open Error open Debug
 open Term
 open Print
@@ -93,22 +93,9 @@ module Config = struct
     let rewrite = not @@ List.mem `NoRw tags in
     {varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
 
-  (** [unfold cfg a] unfolds [a] if it's a variable defined in the
-      configuration [cfg]. *)
-  let rec unfold : t -> term -> term = fun cfg a ->
-    match Term.unfold a with
-    | Vari x as a ->
-      begin match VarMap.find_opt x cfg.varmap with
-        | None -> a
-        | Some v -> unfold cfg v
-      end
-    | a -> a
-
 end
 
 type config = Config.t
-
-type whnf = Config.t -> term -> term
 
 (** [insert t ts] inserts [t] in [ts] assuming that [ts] is in increasing
     order wrt [Term.comp]. *)
@@ -209,7 +196,7 @@ let ac whnf cfg t =
 
 (** [eq_modulo whnf cfg a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
-let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
+let eq_modulo : (config -> term -> term) -> config -> term eq = fun whnf ->
   let rec eq : config -> (term * term) list -> unit = fun cfg l ->
     match l with
     | [] -> ()
@@ -218,41 +205,6 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
       log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
     (* We first check equality modulo alpha. *)
     if LibTerm.eq_alpha a b then eq cfg l else
-    (* FIXME? We then test equality modulo alpha again after having unfolded
-       local variables, except in the case of an application. This seems to be
-       useless and inefficient and should perhaps be removed. The unfolding of
-       local definitions is done in whnf when necessary. *)
-    let a = Config.unfold cfg a and b = Config.unfold cfg b in
-    match a, b with
-    | LLet(_,t,u), _ ->
-      let x,u = unbind u in
-      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((u,b)::l)
-    | _, LLet(_,t,u) ->
-      let x,u = unbind u in
-      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
-    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
-    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Kind, Kind
-    | Type, Type -> eq cfg l
-    | Vari x, Vari y -> if eq_vars x y then eq cfg l else raise Exit
-    | Symb f, Symb g when f == g -> eq cfg l
-    | Prod(a1,b1), Prod(a2,b2)
-    | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
-    | Abst _, (Type|Kind|Prod _)
-    | (Type|Kind|Prod _), Abst _ -> raise Exit
-    | (Abst(_ ,b), t | t, Abst(_ ,b)) when Timed.(!eta_equality) ->
-      let x,b = unbind b in eq cfg ((b, Appl(t, Vari x))::l)
-    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    (* cases of failure *)
-    | Kind, _ | _, Kind
-    | Type, _ | _, Type -> raise Exit
-    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
-      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
-      raise Exit
-    | _ ->
     (* FIXME? Instead of computing the whnf of each side right away, we could
        perhaps do it more incrementally (the reduction of beta-redexes, let's
        and local definitions as done in whnf could be integrated here) and,
@@ -266,8 +218,7 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
         let a = comb f whnf cfg ts and b = comb f whnf cfg us in
         let ts = comb_aliens f a and us = comb_aliens f b in
         if List.length ts <> List.length us then raise Exit
-        else eq cfg (List.rev_append2 ts us l)
-    *)
+        else eq cfg (List.rev_append2 ts us l) *)
     let whnf t = (*Logger.set_debug_in "c" false (fun () ->*) ac whnf cfg t in
     let a = whnf a and b = whnf b in
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
@@ -329,9 +280,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
-      (*FIXME: instead of doing a substitution now, add a local definition
-        instead to postpone the substitution when it will be necessary. *)
-    Stdlib.incr steps; whnf_stk cfg (subst u t) stk
+      let x,u = unbind u in
+      whnf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk
   | (Symb s as h, stk) as r ->
     begin match Timed.(!(s.sym_def)) with
       (* The invariant that defined symbols are subject to no
@@ -342,20 +292,6 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
-      (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
-         them to have a term in AC-canonical form. *)
-      (*let stk =
-        if is_modulo s then
-          let n = Stdlib.(!steps) in
-          (* We put the arguments in whnf. *)
-          let stk' = List.map (whnf cfg) stk in
-          if Stdlib.(!steps) = n then (* No argument has been reduced. *)
-            stk
-          else (* At least one argument has been reduced. *)
-            (* We put the term in AC-canonical form. *)
-            snd (get_args (add_args h stk'))
-        else stk
-      in*)
       match tree_walk cfg (cfg.dtree s) stk with
       | None -> h, stk
       | Some (t', stk') ->
@@ -619,14 +555,14 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
   fun ?tags c a b ->
   Timed.pure_test
     (fun (c,a,b) ->
-      Logger.set_debug_in "ce" false (fun () -> eq_modulo ?tags c a b))
+      ((*Logger.set_debug_in "ce" false (fun () ->*) eq_modulo ?tags c a b))
     (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
 let whnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
-  let u = whnf (Config.make ?tags c) t in
+  let u = ac whnf (Config.make ?tags c) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let whnf = time_reducer whnf
