@@ -530,7 +530,7 @@ let time_reducer (f: reducer): reducer =
     the context [c]. The function [dtree] maps symbols to dtrees. *)
 let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (Config.make ?dtree ?tags c)) t in
+  let u = snf (ac whnf (Config.make ?dtree ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let snf ?dtree = time_reducer (snf ?dtree)
@@ -539,7 +539,7 @@ let snf ?dtree = time_reducer (snf ?dtree)
     context [c], and using user-defined rewrite rules. *)
 let hnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
-  let u = hnf (whnf (Config.make ?tags c)) t in
+  let u = hnf (ac whnf (Config.make ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let hnf = time_reducer hnf
