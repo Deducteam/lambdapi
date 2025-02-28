@@ -45,6 +45,16 @@ let show_form ~from ?(message="") ?output request =
      Search Engine</h1>
 
     <p>
+    This web page offers facilities to search objects in the <a href="https://github.com/Deducteam/lambdapi">HOL-Light</a> library translated and available in 
+    <a href="https://github.com/Deducteam/Dedukti/">Dedukti</a>,
+    <a href="https://github.com/Deducteam/lambdapi">Lambdapi</a>  and 
+    <a href="https://coq.inria.fr/">Coq/Rocq</a>.
+    </p>
+    <p>
+    The translation has been performed using the hol2dk tool and The resulting theorems are gathered in the Opam package coq-hol-light available in the Coq Opam repository released.
+    It currently contains a translation of the Multivariate library with more than 20,000 theorems on arithmetic, wellfounded relations, lists, real numbers, integers, basic set theory, permutations, group theory, matroids, metric spaces, homology, vectors, determinants, topology, convex sets and functions, paths, polytopes, Brouwer degree, derivatives, Clifford algebra, integration, measure theory, complex numbers and analysis, transcendental numbers, real analysis, complex line integrals, etc.
+    </p>
+    <p>
     The <b>search</b> button answers the query. Read the <a
     href="https://lambdapi.readthedocs.io/en/latest/query_language.html">query
     language specification</a> to learn about the query language.<br>
