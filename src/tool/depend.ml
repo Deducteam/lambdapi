@@ -16,7 +16,6 @@ let string_of_file filename =
 (* FIXME: does not handle escaped names {|...|}. *)
 let re_mod = Str.regexp "\\([^ \n\t]+\\)"
 
-(* FIXME: do not print files starting with the root_path. *)
 let search_mod root_path content =
   print_endline ("search_mod: "^content);
   let rec search start =
@@ -47,6 +46,6 @@ let print_deps = function
   | [] -> ()
   | (f::_) as fs ->
       match Parsing.Package.root_path f with
-      | None -> Common.Error.fatal_no_pos "No lambdapi.pkd found."
+      | None -> Common.Error.fatal_no_pos "No file lambdapi.pkg found."
       | Some root_path ->
           List.iter (print_deps_file (String.concat "." root_path)) fs
