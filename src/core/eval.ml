@@ -189,9 +189,12 @@ let comb s =
 let ac whnf cfg t =
   let t = whnf cfg t in
   match get_args t with
-  | Symb f, ([_;_] as ts) when is_ac f ->
-      (*if Logger.log_enabled() then log_conv "ac_whnf %a" term t;*)
-      comb f whnf cfg (aliens f whnf cfg ts)
+  | Symb f, ([t1;t2] as ts) ->
+      begin match f.sym_prop with
+      | AC _ -> comb f whnf cfg (aliens f whnf cfg ts)
+      | Commu when cmp t1 t2 > 0 -> app2 f t2 t1
+      | _ -> t
+      end
   | _ -> t
 
 (** [eq_modulo whnf cfg a b] tests the convertibility of [a] and [b] using

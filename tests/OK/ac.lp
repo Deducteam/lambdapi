@@ -4,7 +4,7 @@ constant symbol A : TYPE;
 
 commutative symbol + : A → A → A;
 notation + infix 10;
-//assert x y ⊢ x + y ≡ y + x;
+assert x y ⊢ x + y ≡ y + x;
 
 right associative commutative symbol * : A → A → A;
 notation * infix 10;
