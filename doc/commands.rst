@@ -123,7 +123,9 @@ the system with additional information on its properties and behavior.
 
     * ``f t u ↪ f u t`` if ``t > u``
 
-    where ``≤`` is a total ordering on terms left unspecified.
+    where ``≤`` is a total ordering on terms such that:
+    * ``f t₁ t₂ < g u`` iff ``f <ᶠ g``, where ``≤ᶠ`` is a total ordering on function symbols and term constructors left unspecified;
+    * ``f t₁ t₂ < f u₁ u₂`` iff ``t₁ < u₁`` or else ``t₁ = u₁`` and ``t₂ < u₂`` (arguments are compare lexicographically from left to right).
 
   - ``left associative commutative``: In this case, the reduction
     relation is enriched with the following conditional rewriting
