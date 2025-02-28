@@ -459,7 +459,7 @@ let rec cmp : term cmp = fun t t' ->
   | Symb s, Symb s' -> Sym.compare s s'
   | Prod(t,u), Prod(t',u')
   | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
-  | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
+  | Appl(t,u), Appl(t',u') -> lex cmp cmp (t,u) (t',u')
   | Meta(m,ts), Meta(m',ts') ->
       lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
   | Patt(i,s,ts), Patt(i',s',ts') ->

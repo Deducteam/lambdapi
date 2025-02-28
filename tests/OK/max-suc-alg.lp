@@ -28,23 +28,23 @@ with ($x + $y) + $z ↪ $x + ($y + $z);
 
 // s-max algebra: successor iterator and max operator on levels
 constant symbol z : L;
-symbol s : ℕ → L → L;
+symbol s : L → ℕ → L;
 right associative commutative symbol ⊕ : L → L → L;
 notation ⊕ infix right 10;
 
 // Translation of Agda's levels to the s-max algebra 
-rule Z       ↪ s Oₙ z
-with S $x    ↪ s (sₙ Oₙ) $x
+rule Z       ↪ s z Oₙ
+with S $x    ↪ s $x (sₙ Oₙ)
 with $x ∪ $y ↪ $x ⊕ $y
-with V $x    ↪ s Oₙ ($x ⊕ z);
+with V $x    ↪ s ($x ⊕ z) Oₙ;
 
 // rules for deciding the s-max algebra
-rule s $p (s $q $x) ↪ s ($p + $q) $x
-with s $p ($x ⊕ $y) ↪ s $p $x ⊕ s $p $y;
+rule s (s $x $p) $q ↪ s $x ($p + $q)
+with s ($x ⊕ $y) $p ↪ s $x $p ⊕ s $y $p;
 
-rule s $p $x ⊕ s $q $x ↪ s ($p ⊕ₙ $q) $x
-with s $p $x ⊕ (s $q $x ⊕ $y) ↪ s ($p ⊕ₙ $q) $x ⊕ $y;
+rule s $x $p ⊕ s $x $q ↪ s $x ($p ⊕ₙ $q)
+with s $x $p ⊕ (s $x $q ⊕ $y) ↪ s $x ($p ⊕ₙ $q) ⊕ $y;
 
 // tests
-assert x y ⊢ ((S (S (V x))) ∪ (S (V y))) ∪ Z ≡ s (sₙ Oₙ) y ⊕ (s (sₙ(sₙ Oₙ)) x ⊕ s (sₙ(sₙ Oₙ)) z);
-assert a ⊢ s (sₙ Oₙ) (a ⊕ z) ⊕ s (sₙ(sₙ Oₙ)) (a ⊕ z) ≡ s (sₙ(sₙ Oₙ)) a ⊕ s (sₙ(sₙ Oₙ)) z;
+assert x y ⊢ ((S (S (V x))) ∪ (S (V y))) ∪ Z ≡ s y (sₙ Oₙ) ⊕ (s x (sₙ(sₙ Oₙ)) ⊕ s z (sₙ(sₙ Oₙ)));
+assert a ⊢ s (a ⊕ z) (sₙ Oₙ) ⊕ s (a ⊕ z) (sₙ(sₙ Oₙ)) ≡ s a (sₙ(sₙ Oₙ)) ⊕ s z (sₙ(sₙ Oₙ));
