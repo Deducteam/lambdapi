@@ -136,6 +136,7 @@ let aliens f whnf cfg =
         else aux acc t' ts
   in aliens []
 
+(*
 (** [left_comb_aliens f t] computes the aliens of [t] assuming that [t] is a
     left comb. *)
 let left_comb_aliens f =
@@ -156,11 +157,12 @@ let right_comb_aliens f =
 
 (** [comb_aliens f t] computes the aliens of [t] assuming that [t] is a
     comb. *)
-let _comb_aliens f =
+let comb_aliens f =
   match f.sym_prop with
   | AC Left -> left_comb_aliens f
   | AC Right -> right_comb_aliens f
   | _ -> assert false
+*)
 
 (** [app2 s t1 t2] builds the application of [s] to [t1] and [t2]. *)
 let app2 s t1 t2 = Appl(Appl(Symb s, t1), t2)
@@ -216,10 +218,10 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
       log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
     (* We first check equality modulo alpha. *)
     if LibTerm.eq_alpha a b then eq cfg l else
-    (* We then test equality modulo alpha again after having unfolded local
-       variables. FIXME. This part is most of the time useless and inefficient
-       and should be removed. The unfolding of local definitions is done in
-       whnf when necessary. *)
+    (* FIXME? We then test equality modulo alpha again after having unfolded
+       local variables, except in the case of an application. This seems to be
+       useless and inefficient and should perhaps be removed. The unfolding of
+       local definitions is done in whnf when necessary. *)
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
@@ -266,7 +268,7 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
         if List.length ts <> List.length us then raise Exit
         else eq cfg (List.rev_append2 ts us l)
     *)
-    let whnf t = Logger.set_debug_in "c" false (fun () -> ac whnf cfg t) in
+    let whnf t = (*Logger.set_debug_in "c" false (fun () ->*) ac whnf cfg t in
     let a = whnf a and b = whnf b in
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
