@@ -280,8 +280,12 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
-      let x,u = unbind u in
-      whnf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk
+      (*FIXME? instead of doing a substitution now, add a local definition
+        instead to postpone the substitution when it will be necessary. But
+        the following makes tests/OK/725.lp fail: *)
+      (*let x,u = unbind u in
+      whnf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk*)
+      Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match Timed.(!(s.sym_def)) with
       (* The invariant that defined symbols are subject to no

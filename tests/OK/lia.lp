@@ -61,6 +61,5 @@ with ⇧ $x ↪ var 1 $x; // must be the last rule for ⇧
 compute λ x y z, ⇧ ((x + ((— y) + z)) + (y + x));
 compute λ x, ⇧ ((— x - — 5) + x + — 4);
 
-debug +c;
 assert (x y z:ℤ) ⊢ ⇧ ((x + ((— y) + z)) + (y + x)) ≡ ⇧ (2 * x + z);
 assert (x:ℤ) ⊢ ⇧ ((— x - — 5) + x + — 4) ≡ ⇧ 1;
