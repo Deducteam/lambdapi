@@ -136,6 +136,8 @@ let aliens f whnf cfg =
         else aux acc t' ts
   in aliens []
 
+(** [left_comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    left comb. *)
 let left_comb_aliens f =
   let rec aliens acc t =
     match get_args t with
@@ -143,6 +145,8 @@ let left_comb_aliens f =
     | _ -> t::acc
   in aliens []
 
+(** [right_comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    right comb. *)
 let right_comb_aliens f =
   let rec aliens acc t =
     match get_args t with
@@ -150,20 +154,23 @@ let right_comb_aliens f =
     | _ -> t::acc
   in aliens []
 
+(** [comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    comb. *)
 let _comb_aliens f =
   match f.sym_prop with
   | AC Left -> left_comb_aliens f
   | AC Right -> right_comb_aliens f
   | _ -> assert false
 
-let app2 whnf cfg s t1 t2 = whnf cfg (Appl(Appl(Symb s, t1), t2))
+(** [app2 s t1 t2] builds the application of [s] to [t1] and [t2]. *)
+let app2 s t1 t2 = Appl(Appl(Symb s, t1), t2)
 
 (** [left_comb whnf cfg (+) [t1;t2;t3]] computes [whnf(whnf(t1+t2)+t3)]. *)
 let left_comb s whnf cfg =
   let rec comb acc ts =
     match ts with
     | [] -> acc
-    | t::ts -> comb (app2 whnf cfg s acc t) ts
+    | t::ts -> comb (whnf cfg (app2 s acc t)) ts
   in
   function
   | [] | [_] -> assert false
@@ -174,19 +181,22 @@ let right_comb s whnf cfg =
   let rec comb ts acc =
     match ts with
     | [] -> acc
-    | t::ts -> comb ts (app2 whnf cfg s t acc)
+    | t::ts -> comb ts (whnf cfg (app2 s t acc))
   in
   fun ts ->
   match List.rev ts with
   | [] | [_] -> assert false
   | t::ts -> comb ts t
 
+(** [comb s whnf cfg ts] computes the [whnf] of the comb obtained by applying
+    [s] to [ts]. *)
 let comb s =
   match s.sym_prop with
   | AC Left -> left_comb s
   | AC Right -> right_comb s
   | _ -> assert false
 
+(** [ac whnf cfg t] computes a whnf of [t] in head-AC canonical form. *)
 let ac whnf cfg t =
   let t = whnf cfg t in
   match get_args t with
@@ -204,7 +214,12 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
     | (a,b)::l ->
     if Logger.log_enabled () then
       log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
+    (* We first check equality modulo alpha. *)
     if LibTerm.eq_alpha a b then eq cfg l else
+    (* We then test equality modulo alpha again after having unfolded local
+       variables. FIXME. This part is most of the time useless and inefficient
+       and should be removed. The unfolding of local definitions is done in
+       whnf when necessary. *)
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
@@ -236,6 +251,21 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
+    (* FIXME? Instead of computing the whnf of each side right away, we could
+       perhaps do it more incrementally (the reduction of beta-redexes, let's
+       and local definitions as done in whnf could be integrated here) and,
+       when both heads are function symbols, use an heuristic like in Matita
+       to decide which side to unfold first. Note also that, when comparing
+       two AC symbols, we could detect the non-equivalence more quickly by
+       testing the equality of the number of aliens:
+
+    | (Symb f,([_;_]as ts)), (Symb g,([_;_]as us)) when is_ac f && g == f ->
+        let ts = aliens f whnf cfg ts and us = aliens f whnf cfg us in
+        let a = comb f whnf cfg ts and b = comb f whnf cfg us in
+        let ts = comb_aliens f a and us = comb_aliens f b in
+        if List.length ts <> List.length us then raise Exit
+        else eq cfg (List.rev_append2 ts us l)
+    *)
     let whnf t = Logger.set_debug_in "c" false (fun () -> ac whnf cfg t) in
     let a = whnf a and b = whnf b in
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
@@ -255,17 +285,6 @@ let eq_modulo : whnf -> config -> term -> term -> bool = fun whnf ->
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | Bvar _, _ | _, Bvar _ -> assert false
-    (*| _ ->
-    match get_args a, get_args b with
-    | (Symb f,([_;_]as ts)), (Symb g,([_;_]as us)) when is_ac f && g == f ->
-        log_conv "compute ac whnf";
-        let ts = aliens f whnf cfg ts and us = aliens f whnf cfg us in
-        let a = comb f whnf cfg ts and b = comb f whnf cfg us in
-        let ts = comb_aliens f a and us = comb_aliens f b in
-        if List.length ts <> List.length us then raise Exit
-        else eq cfg (List.rev_append2 ts us l)
-    | _ ->
-    match a, b with*)
     | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
@@ -308,6 +327,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
+      (*FIXME: instead of doing a substitution now, add a local definition
+        instead to postpone the substitution when it will be necessary. *)
     Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match Timed.(!(s.sym_def)) with

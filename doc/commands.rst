@@ -142,7 +142,7 @@ the system with additional information on its properties and behavior.
     * ``f t (f u v) ↪ f u (f t v)`` if ``t > u``
 
   This can be used to identify terms modulo the following theories:
-  - ACI = AC + Idempotence: `max-suc algebra <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/max-suc-alg.lp>` in universe level representation
+  - ACI = AC + Idempotence: `max-suc algebra <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/max-suc-alg.lp>` in the representation of type universe levels
   - AG = AC + Inverse + Neutral: `linear arithmetic <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/lia.lp>`
 
 - **Exposition modifiers** define how a symbol can be used outside the
