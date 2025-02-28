@@ -114,6 +114,10 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   in
   Error.handle_exceptions run
 
+(** Running the depend mode. *)
+let depend_cmd : Config.t -> string list -> unit = fun _cfg files ->
+  Tool.Depend.print_deps files
+
 (** Possible outputs for the export command. *)
 type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
 
@@ -384,6 +388,11 @@ let parse_cmd =
   Cmd.v (Cmd.info "parse" ~doc ~man:man_pkg_file)
     CLT.(const parse_cmd $ Config.full $ files)
 
+let depend_cmd =
+  let doc = "Print dependencies of the given files." in
+  Cmd.v (Cmd.info "depend" ~doc ~man:man_pkg_file)
+    CLT.(const depend_cmd $ Config.full $ files)
+
 let export_cmd =
   let doc = "Translate the given files to other formats." in
   Cmd.v (Cmd.info "export" ~doc ~man:man_pkg_file)
@@ -452,7 +461,7 @@ let _ =
   Stdlib.at_exit (Debug.print_time t0);
   Printexc.record_backtrace true;
   let cmds =
-    [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
+    [ check_cmd ; parse_cmd ; depend_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
     ; index_cmd ; search_cmd ; websearch_cmd ]

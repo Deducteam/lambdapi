@@ -2,7 +2,7 @@
  (name tool)
  (public_name lambdapi.tool)
  (modules :standard)
- (libraries lambdapi.parsing lambdapi.core dream unix)
+ (libraries lambdapi.parsing lambdapi.core dream unix str)
  (preprocess (pps lwt_ppx)))
 
 (rule
