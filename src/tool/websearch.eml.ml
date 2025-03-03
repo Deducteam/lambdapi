@@ -32,6 +32,27 @@ let show_form_stream ?(message="") ?(output="") request response =
 
 let show_form ~from ?(message="") ?output request =
   <html>
+  <style>
+    .top-right-link {
+        position: fixed; /* Fixe l'élément à un endroit spécifique sur la page */
+        top: 10px; /* 10 pixels du haut de la page */
+        right: 10px; /* 10 pixels du côté droit de la page */
+        text-decoration: none; /* Enlève la décoration du texte (le soulignement) */
+        background-color: #007BFF; /* Couleur de fond pour le bouton */
+        color: white; /* Couleur du texte */
+        padding: 10px 20px; /* Espaces autour du texte */
+        border-radius: 5px; /* Bords arrondis */
+        font-size: 18px; /* Taille du texte */
+        text-align: center;
+    }
+    .top-right-link span {
+      display: block;
+      font-size: 12px; /* Taille de police spécifique pour ce texte */
+    }
+    .top-right-link:hover {
+        background-color: #0056b3; /* Change la couleur de fond au survol */
+    }
+  </style>
   <body>
     <script>
     function incr(delta) {
@@ -43,6 +64,8 @@ let show_form ~from ?(message="") ?output request =
 
     <h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
      Search Engine</h1>
+     
+    <a href="https://github.com/Deducteam/lambdapi/issues/new" class="top-right-link"><span>Something went wrong?</span>Open an issue</a>
 
     <p>
     This web page offers facilities to search objects in the <a href="https://github.com/Deducteam/lambdapi">HOL-Light</a> library translated and available in 
@@ -51,7 +74,7 @@ let show_form ~from ?(message="") ?output request =
     <a href="https://coq.inria.fr/">Coq/Rocq</a>.
     </p>
     <p>
-    The translation has been performed using the hol2dk tool and The resulting theorems are gathered in the Opam package coq-hol-light available in the Coq Opam repository released.
+    The translation has been performed using the <a href="https://github.com/Deducteam/hol2dk">hol2dk</a> tool and the resulting theorems are gathered in the Opam package coq-hol-light available in the Coq Opam repository released.
     It currently contains a translation of the Multivariate library with more than 20,000 theorems on arithmetic, wellfounded relations, lists, real numbers, integers, basic set theory, permutations, group theory, matroids, metric spaces, homology, vectors, determinants, topology, convex sets and functions, paths, polytopes, Brouwer degree, derivatives, Clifford algebra, integration, measure theory, complex numbers and analysis, transcendental numbers, real analysis, complex line integrals, etc.
     </p>
     <p>
