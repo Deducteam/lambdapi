@@ -21,7 +21,7 @@ let search_mod root_path content =
   let rec search start =
     try let _ = Str.search_forward re_mod content start in
         let s = Str.matched_group 1 content in
-        if String.starts_with ~prefix:root_path s then print_endline s;
+        if Lplib.String.starts_with ~prefix:root_path s then print_endline s;
         search (Str.match_end())
     with _ -> ()
   in search 0
