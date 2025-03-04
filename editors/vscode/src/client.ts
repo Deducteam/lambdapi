@@ -293,7 +293,7 @@ export function activateClientLSP(context: ExtensionContext,
     window.onDidChangeTextEditorSelection(e => {
 
         const cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
-        if (!cursorMode)
+        if (!cursorMode || !e.textEditor.document.fileName.endsWith(".lp"))
             return;
 
         checkProofUntilCursor(context);
