@@ -14,17 +14,18 @@ JQ = $(shell which jq)
 ifneq ($(VSCE),)
 ifneq ($(JQ),)
 VERSION = $(shell cat package.json | jq '.version')
-# else
-# ifeq ($(VERSION),)
-# 	echo "jq not found. Please install with sudo apt install jq or export version (use same as in package.json) before calling install_local :VERSION=?.?.? make install_local"
-# else
+else
+ifeq ($(VERSION),)
+install_local:
+	@echo "jq not found. Please install with sudo apt install jq or export version before calling install_local :VERSION=?.?.? make install_local"
+else
 .PHONY: install_local
 install_local: compile
 	vsce package
 	code --install-extension lambdapi-$(VERSION).vsix
 endif
-# endif
+endif
 else
 install_local:
-	echo "vsce not found. Please install with npm install -g @vscode/vsce or export in the PATH. Details can be found on INSTALL.md"
+	@echo "vsce not found. Please install with npm install -g @vscode/vsce or export in the PATH. Details can be found on INSTALL.md"
 endif
