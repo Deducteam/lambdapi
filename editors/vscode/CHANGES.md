@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 ### Changed
+
+## [0.2.2]
+
+### Added
+- a Makefile rule to install the Lambdapi extension from local code for beta-testing.
+
+### Fixed
+- use global variables to store position and panel instead of the vscode API `context` variable which is broken after release of vscode V.1.97.0 (see issue#1199)
+- navigate proofs, when cursor mode is enabled, only for Lambdapi files.
+
+### Changed
 - Changed the `go to the previous/next proof` commands shortcuts for Mac OS X operating system because previous ones are used by Mac OS.
 - When calling lambdapi to launch the lsp server from the Vscode extension, read the `lsp` argument from `package.json` instead of hard-coding it to allow using a custom command to launch the server especially in Windows as discussed in issue #1163 (Many thanks to Akihisa Yamada)
 
