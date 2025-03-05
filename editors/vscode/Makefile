@@ -19,7 +19,7 @@ endif
 .PHONY: install_local
 install_local: compile
 ifeq ($(VERSION),)
-	@echo "jq not found. Please install with sudo apt install jq or export version before calling install_local (PLEASE use same as in package.json) :VERSION=?.?.? make install_local"
+	@echo 'jq not found. Please install with sudo apt install jq or export version before calling install_local (PLEASE use same as in package.json): VERSION=?.?.? make install_local'
 else
 	vsce package
 	code --install-extension lambdapi-$(VERSION).vsix
@@ -27,5 +27,5 @@ endif
 
 else
 install_local:
-	@echo "vsce not found. Please install with npm install -g @vscode/vsce or export in the PATH. Details can be found on INSTALL.md"
+	@echo 'vsce not found. Please install with npm install -g @vscode/vsce or export in the PATH. Details can be found in INSTALL.md'
 endif
