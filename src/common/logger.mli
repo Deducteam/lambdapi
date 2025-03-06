@@ -32,5 +32,5 @@ val reset_loggers : ?default:string -> unit -> unit
 (** [log_summary ()] gives the keys and descriptions for logging options. *)
 val log_summary : unit -> (char * string) list
 
-(** [set_debug_in b c f x] sets [c] logger to [b] for evaluating [f x]. *)
-val set_debug_in : bool -> char -> ('a -> 'b) -> 'a -> 'b
+(** [set_debug_in s b f] sets the loggers in [s] to [b] to evaluate [f()]. *)
+val set_debug_in : string -> bool -> (unit -> 'a) -> 'a

@@ -451,13 +451,13 @@ module CM = struct
   let index_var : int VarMap.t -> term -> int = fun vi t ->
     VarMap.find (to_var t) vi
 
-  (** [mk_wildcard vs] creates a pattern variable that accepts anything and in
+  (** [wildcard vs] creates a pattern variable that accepts anything and in
       which variables [vs] can appear free. There is no order on [vs] because
       such created wildcard are not bound anywhere, so terms filtered by such
       wildcards are not kept. *)
-  let mk_wildcard : VarSet.t -> term = fun vs ->
+  let wildcard : VarSet.t -> term = fun vs ->
     let env = vs |> VarSet.to_seq |> Seq.map mk_Vari |> Array.of_seq in
-    mk_Patt (None, "", env)
+    Patt (None, "", env)
 
   (** [update_aux col mem clause] the condition pool and the substitution of
       clause [clause] assuming that column [col] is inspected and [mem]
@@ -541,7 +541,7 @@ module CM = struct
           else None
       | _      , Patt(_) ->
           let arity = List.length pargs in
-          let e = Array.make arity (mk_wildcard free_vars) in
+          let e = Array.make arity (wildcard free_vars) in
           Some({ r with c_lhs = insert e })
       | Symb(_), Vari(_)
       | Vari(_), Symb(_)
@@ -600,15 +600,15 @@ module CM = struct
       let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
       | Patt(_)  ->
-          let domain = mk_wildcard free_vars in
-          let body = mk_wildcard (VarSet.add v free_vars) in
+          let domain = wildcard free_vars in
+          let body = wildcard (VarSet.add v free_vars) in
           Some{r with c_lhs = insert r [|domain; body|]}
       | Symb(_)
       | Vari(_)  -> None
       | t        ->
           let (a, b) = get t in
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = subst b (mk_Vari v) in
+          let b = subst b (Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
 
     in

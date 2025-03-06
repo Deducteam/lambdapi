@@ -43,7 +43,7 @@ let _ = let open LpLexer in
     ; "inductive", INDUCTIVE
     ; "infix", INFIX
     ; "injective", INJECTIVE
-    ; "left", SIDE(Pratter.Left)
+    ; "left", SIDE(Core.Term.Left)
     ; "let", LET
     ; "off", SWITCH(false)
     ; "on", SWITCH(true)
@@ -62,7 +62,7 @@ let _ = let open LpLexer in
     ; "reflexivity", REFLEXIVITY
     ; "require", REQUIRE
     ; "rewrite", REWRITE
-    ; "right", SIDE(Pratter.Right)
+    ; "right", SIDE(Core.Term.Right)
     ; "rule", RULE
     ; "sequential", SEQUENTIAL
     ; "simplify", SIMPLIFY
@@ -279,10 +279,10 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_remove ids ->
       out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
   | P_tac_repeat t -> out ppf "repeat %a" tactic t
-  | P_tac_rewrite(b,p,t)     ->
-      let dir ppf b = if not b then out ppf " left" in
+  | P_tac_rewrite(s,p,t)     ->
+      let dir ppf s = if s = Term.Left then out ppf " left" in
       let pat ppf p = out ppf " .[%a]" rw_patt p in
-      out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
+      out ppf "rewrite%a%a %a" dir s (Option.pp pat) p term t
   | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
   | P_tac_simpl None -> out ppf "simplify"
   | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
