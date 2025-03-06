@@ -42,8 +42,14 @@ let show_form ~from ?(message="") ?output request =
       font-size: 1.3em;
       white-space: normal;
     }
+    .header {
+      position: relative; /* Conteneur pour les liens */
+      width: 100%;
+      height: 80px;
+      background-color: #f1f1f1;
+    }
     .top-right-link {
-      position: fixed;
+      position: absolute;
       top: 10px;
       right: 10px;
       text-decoration: none;
@@ -61,8 +67,33 @@ let show_form ~from ?(message="") ?output request =
     .top-right-link:hover {
         background-color: #0056b3;
     }
+    .top-left-link {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      text-decoration: none;
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 18px;
+      text-align: center;
+    }
+    .top-left-link span {
+      display: block;
+      font-size: 12px;
+    }
+    .top-left-link:hover {
+        background-color: #0056b3;
+    }
   </style>
   <body>
+
+    <div class="header">
+      <a href="https://github.com/Deducteam/lambdapi/issues/new" target="_blank" class="top-right-link"><span>Something went wrong?</span>Open an issue</a>
+      <a href="https://github.com/Deducteam/lambdapi/discussions/1214" target="_blank" class="top-left-link"><span>Like this tool?</span>Join the discussion</a>
+      </div>
+
     <script>
     function incr(delta) {
       document.getElementById("from").value =
@@ -74,7 +105,6 @@ let show_form ~from ?(message="") ?output request =
     <h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
      Search Engine</h1>
      
-    <a href="https://github.com/Deducteam/lambdapi/issues/new" class="top-right-link"><span>Something went wrong?</span>Open an issue</a>
 
     <p>
     This web page offers facilities to search objects in the <a href="https://github.com/Deducteam/lambdapi">HOL-Light</a> library translated and available in 
