@@ -33,24 +33,33 @@ let show_form_stream ?(message="") ?(output="") request response =
 let show_form ~from ?(message="") ?output request =
   <html>
   <style>
+    code {
+      font-family: "Courier New", Courier, monospace;
+      background-color:rgb(8, 8, 8);
+      padding: 2px 4px;
+      border-radius: 4px;
+      color:rgb(43, 230, 52);
+      font-size: 1.3em;
+      white-space: normal;
+    }
     .top-right-link {
-        position: fixed; /* Fixe l'élément à un endroit spécifique sur la page */
-        top: 10px; /* 10 pixels du haut de la page */
-        right: 10px; /* 10 pixels du côté droit de la page */
-        text-decoration: none; /* Enlève la décoration du texte (le soulignement) */
-        background-color: #007BFF; /* Couleur de fond pour le bouton */
-        color: white; /* Couleur du texte */
-        padding: 10px 20px; /* Espaces autour du texte */
-        border-radius: 5px; /* Bords arrondis */
-        font-size: 18px; /* Taille du texte */
-        text-align: center;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      text-decoration: none;
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 18px;
+      text-align: center;
     }
     .top-right-link span {
       display: block;
-      font-size: 12px; /* Taille de police spécifique pour ce texte */
+      font-size: 12px;
     }
     .top-right-link:hover {
-        background-color: #0056b3; /* Change la couleur de fond au survol */
+        background-color: #0056b3;
     }
   </style>
   <body>

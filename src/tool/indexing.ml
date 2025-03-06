@@ -276,11 +276,20 @@ module DB = struct
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
+    let pp = fun ppf p ->
+      let relative_position =
+        let absolute_position = popt_to_string p in
+        try
+          let last_slash_index = String.rindex absolute_position '/' in
+          String.sub absolute_position (last_slash_index + 1)
+          (String.length absolute_position - last_slash_index - 1)
+        with Not_found -> absolute_position in
+      Lplib.Base.string ppf (relative_position) in
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
-      lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
-      pos separator (generic_pp_of_position_list ~escaper ~sep) positions
+     Lplib.Base.out ppf "%s%a.<b>%s</b>@%a%s%a%s%s<code>%a</code>%s%s@."
+      lisb (escaper.run Core.Print.path) p n pp pos
+      separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb
       (Common.Pos.print_file_contents ~escape ~delimiters)
       pos pree lise)
