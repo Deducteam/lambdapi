@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Tacticals orelse and repeat.
+- Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
+- Added builtin String for string literals between double quotes.
 
 ### Changed
 
