@@ -76,6 +76,8 @@ A user-defined term can be either:
 * a term enclosed between square brackets ``[`` … ``]`` for explicitly
   giving the value of an argument declared as implicit
 
+.. String-builtin:
+
 * a string enclosed between double quotes if the following :ref:`builtin <builtin>` is defined:
 
 ::
