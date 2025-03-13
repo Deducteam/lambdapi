@@ -153,7 +153,8 @@ let show_form ~from ?(message="") ?output request =
 
 let start ss ~port () =
   (*Common.Logger.set_debug true "e" ;*)
-  Dream.run ~port
+  let interface = "0.0.0.0" in
+  Dream.run ~port ~interface
   @@ Dream.logger
   @@ Dream.memory_sessions
   @@ Dream.router [
