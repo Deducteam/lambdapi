@@ -204,12 +204,14 @@ let matches : term -> term -> bool =
       end
   in
   fun p t ->
-  let r = try
-    check_alpha := false;
-    eq [p,t];
-    if !check_alpha then LibTerm.eq_alpha p t else true
-  with Not_equal -> false
-  in if Logger.log_enabled() then log "matches result: %b" r; r
+  let r =
+    try
+      check_alpha := false;
+      eq [p,t];
+      if !check_alpha then LibTerm.eq_alpha p t else true
+    with Not_equal -> false
+  in
+  if Logger.log_enabled() then log "matches result: %b" r; r
 
 (** [matching_subs (xs,p) t] attempts to match the pattern [p] containing the
    variables [xs]) with the term [t]. If successful, it returns [Some ts]
@@ -226,7 +228,7 @@ let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
    which [xs] must substituted. *)
 let find_subst : to_subst -> term -> term array option = fun xsp t ->
   let time = Timed.Time.save () in
-  let rec find_subst : term -> term array option = fun t ->
+  let rec find : term -> term array option = fun t ->
     if Logger.log_enabled() then
       log "find_subst %a ≡ %a" term (snd xsp) term t;
     match matching_subs xsp t with
@@ -234,16 +236,21 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
         begin
           Timed.Time.restore time;
           match unfold t with
-            | Appl(t,u) ->
-                begin
-                  match find_subst t with
-                  | None -> Timed.Time.restore time; find_subst u
-                  | sub  -> sub
-                end
+            | Appl(a,b) -> find2 a b
+            | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
+            | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
             | _ -> None
         end
     | sub -> sub
-  in find_subst t
+  and find2 a b =
+    match find a with
+    | None -> Timed.Time.restore time; find b
+    | sub -> sub
+  and find3 a b c =
+    match find a with
+    | None -> Timed.Time.restore time; find2 b c
+    | sub -> sub
+  in find t
 
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
    [p] by instantiating the [TRef]'s of [p].  In case of success, the function

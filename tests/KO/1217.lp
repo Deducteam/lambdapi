@@ -8,9 +8,10 @@ begin
         {assume h a; refine h}
 end;
 
+symbol a : τ o;
 symbol b : τ ι → τ o;
 
-symbol example2 : π ((`∀ x : τ ι, b x) ⇒ a) ≔
+symbol example : π ((`∀ x : τ ι, b x) ⇒ a) ≔
 begin
   rewrite forallSimp;
   assume h; refine h
