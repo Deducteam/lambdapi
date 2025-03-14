@@ -176,8 +176,7 @@ let matches : term -> term -> bool =
         if k > n then raise Not_equal;
         let ts1, ts2 = List.cut ts (n-k) in
         let u = add_args ht ts1 in
-        if Logger.log_enabled() then
-          log (Color.red "<TRef> ≔ %a") term u;
+        if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
         Timed.(r := Some u);
         eq (add_eqs l ps ts2)
       | Meta _
