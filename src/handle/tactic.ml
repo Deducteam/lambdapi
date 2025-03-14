@@ -282,11 +282,15 @@ let p_term (pos:popt) :term -> p_term =
     | _ -> fatal pos "Unhandled term expression: %a." Print.term t
   in term
 
+let remove_quotes s = String.sub s 1 (String.length s - 2)
+
+let _ = assert (remove_quotes "\"\"" = "" && remove_quotes "\"ab\"" = "ab")
+
 let p_ident_of_sym (pos:popt) (t:term) :p_ident =
   match unfold t with
   | Symb s when s.sym_name <> "" && s.sym_name.[0] = '"'
                 && s.sym_path = Ghost.path ->
-      Pos.make pos s.sym_name
+      Pos.make pos (remove_quotes s.sym_name)
   | _ -> fatal pos "Not a string: %a." term t
 
 let p_ident_of_var (pos:popt) (t:term) :p_ident =
@@ -342,7 +346,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_remove, _ -> assert false
             | T_repeat, [t] -> P_tac_repeat(tac t)
             | T_repeat, _ -> assert false
-            | T_rewrite, [_;t] -> P_tac_rewrite(false,None,p_term pos t)
+            | T_rewrite, [_;t] -> P_tac_rewrite(true,None,p_term pos t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
