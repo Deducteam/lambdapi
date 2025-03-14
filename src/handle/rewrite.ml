@@ -1,14 +1,13 @@
 (** Implementation of the rewrite tactic. *)
 
 open Lplib
-open Timed
 open Common open Pos open Error open Debug
 open Core open Term open Print
 open Proof
 
 (** Logging function for the rewrite tactic. *)
-let log_rewr = Logger.make 'r' "rewr" "the rewrite tactic"
-let log_rewr = log_rewr.pp
+let log = Logger.make 'r' "rewr" "the rewrite tactic"
+let log = log.pp
 
 (** Equality configuration. *)
 type eq_config =
@@ -32,7 +31,7 @@ let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
 let _ =
   let check_codomain_is_Type _ss pos sym =
     let valid =
-      match Eval.whnf [] !(sym.sym_type) with
+      match Eval.whnf [] Timed.(!(sym.sym_type)) with
       | Prod(_, b) -> Eval.eq_modulo [] (snd (unbind b)) Type
       | _          -> false
     in
@@ -44,7 +43,7 @@ let _ =
   (* The type of the builtin ["P"] should be [Prop → TYPE]. *)
   Builtin.register "P" check_codomain_is_Type;
   let get_domain_of_type s =
-    match Eval.whnf [] !(s.sym_type) with
+    match Eval.whnf [] Timed.(!(s.sym_type)) with
     | Prod(a,_) -> a
     | _         -> assert false
   in
@@ -113,7 +112,7 @@ let get_eq_data :
   eq_config -> popt -> term -> (term * term * term) * var list = fun cfg ->
   let exception Not_eq of term in
   let get_eq_args u =
-    if Logger.log_enabled () then log_rewr "get_eq_args %a" term u;
+    if Logger.log_enabled () then log "get_eq_args %a" term u;
     match get_args u with
     | eq, [a;l;r] when is_symb cfg.symb_eq eq -> a, l, r
     | _ -> raise (Not_eq u)
@@ -121,7 +120,7 @@ let get_eq_data :
   let exception Not_P of term in
   let return vs r = r, List.rev vs in
   let rec get_eq vs t notin_whnf =
-    if Logger.log_enabled () then log_rewr "get_eq %a" term t;
+    if Logger.log_enabled () then log "get_eq %a" term t;
     match get_args t with
     | Prod(_,t), _ -> let v,t = unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
@@ -137,7 +136,7 @@ let get_eq_data :
       else raise (Not_P t)
   in
   fun pos t ->
-    if Logger.log_enabled () then log_rewr "get_eq_data %a" term t;
+    if Logger.log_enabled () then log "get_eq_data %a" term t;
     try get_eq [] t true with
     | Not_P u ->
       fatal pos "Expected %a _ but found %a." sym cfg.symb_P term u
@@ -154,6 +153,8 @@ type to_subst = var array * term
    [false] otherwise. *)
 let matches : term -> term -> bool =
   let exception Not_equal in
+  let add_eqs = List.fold_left2 (fun l pi ti -> (pi,ti)::l) in
+  let check_alpha = Stdlib.ref false in
   let rec eq l =
     match l with
     | [] -> ()
@@ -161,7 +162,7 @@ let matches : term -> term -> bool =
       if Term.cmp p t = 0 then eq l else begin
       let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
       if Logger.log_enabled() then
-        log_rewr "matches %a %a ≡ %a %a"
+        log "matches? %a %a ≡ %a %a"
           term hp (D.list term) ps term ht (D.list term) ts;
       match hp with
       | Wild -> assert false (* used in user syntax only *)
@@ -170,15 +171,14 @@ let matches : term -> term -> bool =
       | Appl _ -> assert false (* not possible after get_args_len *)
       | Type -> assert false (* not possible because of typing *)
       | Kind -> assert false (* not possible because of typing *)
-      | Bvar _ -> assert false
+      | Bvar _ -> assert false (* used in reduction only *)
       | TRef r ->
         if k > n then raise Not_equal;
         let ts1, ts2 = List.cut ts (n-k) in
         let u = add_args ht ts1 in
-        if Logger.log_enabled() then
-          log_rewr (Color.red "<TRef> ≔ %a") term u;
-        r := Some u;
-        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
+        if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
+        Timed.(r := Some u);
+        eq (add_eqs l ps ts2)
       | Meta _
       | Prod _
       | Abst _
@@ -186,24 +186,34 @@ let matches : term -> term -> bool =
       | Symb _
       | Vari _ ->
         if k <> n then raise Not_equal;
-        let add_args l =
-          List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
         match hp, ht with
-        | Vari x, Vari y when eq_vars x y -> eq (add_args l)
-        | Symb f, Symb g when f == g -> eq (add_args l)
+        | Vari x, Vari y when eq_vars x y -> eq (add_eqs l ps ts)
+        | Symb f, Symb g when f == g -> eq (add_eqs l ps ts)
+        | Abst(a,b), Abst(a',b')
+        | Prod(a,b), Prod(a',b') ->
+            if binder_occur b' then check_alpha := true;
+            let _,b,b' = unbind2 b b' in
+            eq ((a,a')::(b,b')::add_eqs l ps ts)
+        | LLet(a,c,b), LLet(a',c',b') ->
+            if binder_occur b' then check_alpha := true;
+            let _,b,b' = unbind2 b b' in
+            eq ((a,a')::(c,c')::(b,b')::add_eqs l ps ts)
         | _ ->
-          if Logger.log_enabled() then log_rewr "distinct heads";
+          if Logger.log_enabled() then log "distinct heads";
           raise Not_equal
       end
   in
   fun p t ->
+  let r =
     try
-      eq [(p,t)];
-      if Logger.log_enabled() then log_rewr "matches OK";
-      true
-    with Not_equal ->
-      if Logger.log_enabled() then log_rewr "matches KO";
-      false
+      check_alpha := false;
+      eq [p,t];
+      if !check_alpha then
+        (if Logger.log_enabled() then log "check_alpha"; LibTerm.eq_alpha p t)
+      else true
+    with Not_equal -> false
+  in
+  if Logger.log_enabled() then log "matches result: %b" r; r
 
 (** [matching_subs (xs,p) t] attempts to match the pattern [p] containing the
    variables [xs]) with the term [t]. If successful, it returns [Some ts]
@@ -211,53 +221,63 @@ let matches : term -> term -> bool =
    corresponding elements of [ts] in [p] yields [t]. *)
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
   (* We replace [xs] by fresh [TRef]'s. *)
-  let ts = Array.map (fun _ -> TRef(ref None)) xs in
+  let ts = Array.map (fun _ -> TRef(Timed.ref None)) xs in
   let p = msubst (bind_mvar xs p) ts in
   if matches p t then Some(Array.map unfold ts) else None
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
    matching [p]. If successful, the function returns the array of terms by
-   which [xs] must substituted. *)
+   which [xs] must be substituted. *)
 let find_subst : to_subst -> term -> term array option = fun xsp t ->
-  let time = Time.save () in
-  let rec find_subst : term -> term array option = fun t ->
+  let time = Timed.Time.save () in
+  let rec find : term -> term array option = fun t ->
     if Logger.log_enabled() then
-      log_rewr "find_subst %a ≡ %a" term (snd xsp) term t;
+      log "find_subst %a ≡ %a" term (snd xsp) term t;
     match matching_subs xsp t with
     | None ->
         begin
-          Time.restore time;
+          Timed.Time.restore time;
           match unfold t with
-            | Appl(t,u) ->
-                begin
-                  match find_subst t with
-                  | None -> Time.restore time; find_subst u
-                  | sub  -> sub
-                end
+            | Appl(a,b) -> find2 a b
+            | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
+            | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
             | _ -> None
         end
     | sub -> sub
-  in find_subst t
+  and find2 a b =
+    match find a with
+    | None -> Timed.Time.restore time; find b
+    | sub -> sub
+  and find3 a b c =
+    match find a with
+    | None -> Timed.Time.restore time; find2 b c
+    | sub -> sub
+  in find t
 
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
    [p] by instantiating the [TRef]'s of [p].  In case of success, the function
    returns [true]. *)
 let find_subterm_matching : term -> term -> bool = fun p t ->
-  let time = Time.save () in
-  let rec find_subterm : term -> bool = fun t ->
-    if matches p t then true else
+  let time = Timed.Time.save () in
+  let rec find : term -> bool = fun t ->
+    matches p t ||
       begin
-        Time.restore time;
+        Timed.Time.restore time;
         match unfold t with
-        | Appl(t,u) ->
-            begin
-              match find_subterm t with
-              | false -> Time.restore time; find_subterm u
-              | true  -> true
-            end
+        | Appl(a,b) -> find2 a b
+        | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
+        | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
         | _ -> false
       end
-  in find_subterm t
+  and find2 a b =
+    match find a with
+    | false -> Timed.Time.restore time; find b
+    | true  -> true
+  and find3 a c b =
+    match find a with
+    | false -> Timed.Time.restore time; find2 c b
+    | true -> true
+  in find t
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
    [p] by a fresh variable, and returns the binder on this variable. *)
@@ -304,7 +324,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    [TRef]. *)
 let rec replace_wild_by_tref : term -> term = fun t ->
   match unfold t with
-  | Wild -> TRef(ref None)
+  | Wild -> TRef(Timed.ref None)
   | Appl(t,u) -> Appl(replace_wild_by_tref t, replace_wild_by_tref u)
   | _ -> t
 
@@ -653,14 +673,14 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> side ->
   (* Debugging data to the log. *)
   if Logger.log_enabled () then
     begin
-      log_rewr "Rewriting with:";
-      log_rewr "  goal           = [%a]" term g_type;
-      log_rewr "  equality proof = [%a]" term t;
-      log_rewr "  equality LHS   = [%a]" term l;
-      log_rewr "  equality RHS   = [%a]" term r;
-      log_rewr "  pred           = [%a]" term pred;
-      log_rewr "  new goal       = [%a]" term goal_type;
-      log_rewr "  produced term  = [%a]" term result;
+      log "Rewriting with:";
+      log "  goal           = [%a]" term g_type;
+      log "  equality proof = [%a]" term t;
+      log "  equality LHS   = [%a]" term l;
+      log "  equality RHS   = [%a]" term r;
+      log "  pred           = [%a]" term pred;
+      log "  new goal       = [%a]" term goal_type;
+      log "  produced term  = [%a]" term result;
     end;
 
   (* Return the proof-term. *)

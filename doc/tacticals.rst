@@ -14,19 +14,26 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
    builtin "admit" ≔ …; // : T
    builtin "and" ≔ …; // : T → T → T (stands for ";")
-   builtin "apply" ≔ …; // : Π [a], P a → T  
+   builtin "apply" ≔ …; // : Π [a], Prf a → T
+   builtin "assume" ≔ …; // : String → T
    builtin "fail" ≔ …; // : T
+   builtin "generalize" ≔ …; // : Π [a], El a → T
+   builtin "have" ≔ …; // : String → Π [a], Prf a → T  
    builtin "induction" ≔ …; // : T
    builtin "orelse" ≔ …; // : T → T → T
-   builtin "refine" ≔ …; // : Π [a], P a → T  
+   builtin "refine" ≔ …; // : Π [a], Prf a → T
    builtin "reflexivity" ≔ …; // : T
+   builtin "remove" ≔ …; // : Π [a], El a → T
    builtin "repeat" ≔ …; // : T → T
-   builtin "rewrite" ≔ …; // : Π [a], P a → T  
+   builtin "rewrite" ≔ …; // : Π [a], Prf a → T
+   builtin "set" ≔ …; // : String → Π [a], El a → T
    builtin "simplify" ≔ …; // : T
    builtin "solve" ≔ …; // : T
    builtin "symmetry" ≔ …; // : T
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
+
+The tactics taking a string as argument need the :ref:`String-builtin` to be set.
 
 An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/blob/tac/tests/OK/tactic.lp>`__:
 

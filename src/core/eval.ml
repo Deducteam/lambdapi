@@ -22,11 +22,15 @@ form.
 A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
-(** Logging function for evaluation. *)
-let log_eval = Logger.make 'e' "eval" "evaluation"
-let log_eval = log_eval.pp
+(** Logging function for whnf. *)
+let log_whnf = Logger.make 'w' "whnf" "whnf"
+let log_whnf = log_whnf.pp
 
-(** Logging function for equality modulo rewriting. *)
+(** Logging function for snf. *)
+let log_snf = Logger.make 'e' "snf " "snf"
+let log_snf = log_snf.pp
+
+(** Logging function for conversion. *)
 let log_conv = Logger.make 'c' "conv" "conversion"
 let log_conv = log_conv.pp
 
@@ -49,13 +53,16 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
 (** [snf whnf t] computes a snf of [t] using [whnf]. *)
 let snf : (term -> term) -> (term -> term) = fun whnf ->
   let rec snf t =
-    if Logger.log_enabled () then log_eval "snf %a" term t;
-    let h = whnf t in
-    match h with
+    if Logger.log_enabled() then log_snf "snf %a" term t;
+    let t = whnf t in
+    if Logger.log_enabled() then log_snf "whnf = %a" term t;
+    match t with
     | Vari _
     | Type
     | Kind
-    | Symb _ -> h
+    | Symb _
+    | Plac _ (* may happen when reducing coercions *)
+      -> t
     | LLet(_,t,b) -> snf (subst b t)
     | Prod(a,b) ->
       Prod(snf a, let x,b = unbind b in bind_var x (snf b))
@@ -64,7 +71,6 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Appl(t,u)   -> Appl(snf t, snf u)
     | Meta(m,ts)  -> Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> Patt(i,n,Array.map snf ts)
-    | Plac _      -> h (* may happen when reducing coercions *)
     | Bvar _      -> assert false
     | Wild        -> assert false
     | TRef _      -> assert false
@@ -273,13 +279,15 @@ let rec whnf : config -> term -> term = fun cfg t ->
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
+  if Logger.log_enabled () then
+    log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
-  | _ ->
-  if Logger.log_enabled () then
-    log_eval "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
-  match t, stk with
+  (*| _ ->
+  if Logger.log_enabled() then
+    log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
+  match t, stk with*)
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
@@ -303,7 +311,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
       | None -> h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
-          log_eval "%aapply rewrite rule" D.depth !depth;
+          log_whnf "%aapply rewrite rule" D.depth !depth;
         Stdlib.incr steps; whnf_stk cfg t' stk'
     end
   | (Vari x, stk) as r ->
