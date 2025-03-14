@@ -208,7 +208,9 @@ let matches : term -> term -> bool =
     try
       check_alpha := false;
       eq [p,t];
-      if !check_alpha then LibTerm.eq_alpha p t else true
+      if !check_alpha then
+        (if Logger.log_enabled() then log "check_alpha"; LibTerm.eq_alpha p t)
+      else true
     with Not_equal -> false
   in
   if Logger.log_enabled() then log "matches result: %b" r; r
@@ -225,7 +227,7 @@ let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
    matching [p]. If successful, the function returns the array of terms by
-   which [xs] must substituted. *)
+   which [xs] must be substituted. *)
 let find_subst : to_subst -> term -> term array option = fun xsp t ->
   let time = Timed.Time.save () in
   let rec find : term -> term array option = fun t ->
@@ -257,20 +259,25 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
    returns [true]. *)
 let find_subterm_matching : term -> term -> bool = fun p t ->
   let time = Timed.Time.save () in
-  let rec find_subterm : term -> bool = fun t ->
+  let rec find : term -> bool = fun t ->
     matches p t ||
       begin
         Timed.Time.restore time;
         match unfold t with
-        | Appl(t,u) ->
-            begin
-              match find_subterm t with
-              | false -> Timed.Time.restore time; find_subterm u
-              | true  -> true
-            end
+        | Appl(a,b) -> find2 a b
+        | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
+        | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
         | _ -> false
       end
-  in find_subterm t
+  and find2 a b =
+    match find a with
+    | false -> Timed.Time.restore time; find b
+    | true  -> true
+  and find3 a c b =
+    match find a with
+    | false -> Timed.Time.restore time; find2 c b
+    | true -> true
+  in find t
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
    [p] by a fresh variable, and returns the binder on this variable. *)

@@ -13,6 +13,7 @@ symbol b : τ ι → τ o;
 
 symbol example : π ((`∀ x : τ ι, b x) ⇒ a) ≔
 begin
+  debug +r;
   rewrite forallSimp;
   assume h; refine h
 end;
