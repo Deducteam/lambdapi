@@ -259,7 +259,6 @@ and meta =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
-
 let binder_name : binder -> string = fun (bi,_,_) -> bi.binder_name
 let mbinder_names : mbinder -> string array = fun (bi,_,_) -> bi.mbinder_name
 
