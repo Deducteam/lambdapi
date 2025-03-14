@@ -79,7 +79,7 @@ let match_strat : match_strat pp = fun ppf s ->
 
 let do_not_qualify = ref false
 
-let without_qualifying f =
+let no_qualif f =
  let saved = !do_not_qualify in
  do_not_qualify := true ;
  let res = f () in
