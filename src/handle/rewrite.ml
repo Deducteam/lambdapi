@@ -32,7 +32,7 @@ let _ =
   let check_codomain_is_Type _ss pos sym =
     let valid =
       match Eval.whnf [] Timed.(!(sym.sym_type)) with
-      | Prod(_, b) -> Eval.eq_modulo [] (snd (unbind b)) mk_Type
+      | Prod(_, b) -> Eval.eq_modulo [] (snd (unbind b)) Type
       | _          -> false
     in
     if not valid then
@@ -57,9 +57,9 @@ let _ =
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
     let a = new_var "a" in
-    let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
+    let term_T_a = Appl (Symb symb_T, Vari a) in
     let impls = mk_Arro (term_T_a, mk_Arro (term_T_a, term_Prop)) in
-    mk_Prod (term_U, bind_var a impls)
+    Prod (term_U, bind_var a impls)
   in
   register_builtin "eq" expected_eq_type;
   let expected_refl_type pos map =
@@ -70,39 +70,39 @@ let _ =
     let term_U = get_domain_of_type symb_T in
     let a = new_var "a" in
     let x = new_var "x" in
-    let appl_eq = mk_Appl (mk_Symb symb_eq, mk_Vari a) in
-    let appl_eq = mk_Appl (mk_Appl (appl_eq, mk_Vari x), mk_Vari x) in
-    let appl = mk_Appl (mk_Symb symb_P, appl_eq) in
-    let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
-    let prod = mk_Prod (term_T_a, bind_var x appl) in
-    mk_Prod (term_U, bind_var a prod)
+    let appl_eq = Appl (Symb symb_eq, Vari a) in
+    let appl_eq = Appl (Appl (appl_eq, Vari x), Vari x) in
+    let appl = Appl (Symb symb_P, appl_eq) in
+    let term_T_a = Appl (Symb symb_T, Vari a) in
+    let prod = Prod (term_T_a, bind_var x appl) in
+    Prod (term_U, bind_var a prod)
   in
   register_builtin "refl" expected_refl_type;
   let expected_eqind_type pos map =
     (* [Π (a:U) (x y:T a), P (eq x y) → Π (p:T a→Prop), P (p y) → P (p x)] *)
     let symb_T = Builtin.get pos map "T" in
-    let term_T = mk_Symb symb_T in
+    let term_T = Symb symb_T in
     let symb_P = Builtin.get pos map "P" in
-    let term_P = mk_Symb symb_P in
+    let term_P = Symb symb_P in
     let symb_eq = Builtin.get pos map "eq" in
-    let term_eq = mk_Symb symb_eq in
+    let term_eq = Symb symb_eq in
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
     let a = new_var "a" in
     let x = new_var "x" in
     let y = new_var "y" in
     let p = new_var "p" in
-    let term_T_a = mk_Appl (term_T, mk_Vari a) in
-    let term_P_p_x = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari x)) in
-    let term_P_p_y = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari y)) in
+    let term_T_a = Appl (term_T, Vari a) in
+    let term_P_p_x = Appl (term_P, Appl (Vari p, Vari x)) in
+    let term_P_p_y = Appl (term_P, Appl (Vari p, Vari y)) in
     let impl = mk_Arro (term_P_p_y, term_P_p_x) in
     let prod =
-      mk_Prod (mk_Arro (term_T_a, term_Prop), bind_var p impl) in
-    let eq = add_args term_eq [mk_Vari a; mk_Vari x; mk_Vari y] in
-    let impl = mk_Arro (mk_Appl(term_P, eq), prod) in
-    let prod = mk_Prod (term_T_a, bind_var y impl) in
-    let prod = mk_Prod (term_T_a, bind_var x prod) in
-    mk_Prod (term_U, bind_var a prod)
+      Prod (mk_Arro (term_T_a, term_Prop), bind_var p impl) in
+    let eq = add_args term_eq [Vari a; Vari x; Vari y] in
+    let impl = mk_Arro (Appl(term_P, eq), prod) in
+    let prod = Prod (term_T_a, bind_var y impl) in
+    let prod = Prod (term_T_a, bind_var x prod) in
+    Prod (term_U, bind_var a prod)
   in
   register_builtin "eqind" expected_eqind_type
 
@@ -221,7 +221,7 @@ let matches : term -> term -> bool =
    corresponding elements of [ts] in [p] yields [t]. *)
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
   (* We replace [xs] by fresh [TRef]'s. *)
-  let ts = Array.map (fun _ -> mk_TRef(Timed.ref None)) xs in
+  let ts = Array.map (fun _ -> TRef(Timed.ref None)) xs in
   let p = msubst (bind_mvar xs p) ts in
   if matches p t then Some(Array.map unfold ts) else None
 
@@ -284,19 +284,19 @@ let find_subterm_matching : term -> term -> bool = fun p t ->
 let bind_pattern : term -> term -> binder =  fun p t ->
   let z = new_var "z" in
   let rec replace : term -> term = fun t ->
-    if matches p t then mk_Vari z else
+    if matches p t then Vari z else
     match unfold t with
-    | Appl(t,u) -> mk_Appl (replace t, replace u)
+    | Appl(t,u) -> Appl (replace t, replace u)
     | Prod(a,b) ->
         let x,b = unbind b in
-        mk_Prod (replace a, bind_var x (replace b))
+        Prod (replace a, bind_var x (replace b))
     | Abst(a,b) ->
         let x,b = unbind b in
-        mk_Abst (replace a, bind_var x (replace b))
+        Abst (replace a, bind_var x (replace b))
     | LLet(typ, def, body) ->
         let x, body = unbind body in
-        mk_LLet (replace typ, replace def, bind_var x (replace body))
-    | Meta(m,ts) -> mk_Meta (m, Array.map replace ts)
+        LLet (replace typ, replace def, bind_var x (replace body))
+    | Meta(m,ts) -> Meta (m, Array.map replace ts)
     | Bvar _ -> assert false
     | Wild -> assert false
     | TRef _ -> assert false
@@ -313,32 +313,31 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   (* We build the predicate “λx:T a, eq a l x”. *)
   let pred =
     let x = new_var "x" in
-    let pred = add_args (mk_Symb cfg.symb_eq) [a; l; mk_Vari x] in
-    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), bind_var x pred)
+    let pred = add_args (Symb cfg.symb_eq) [a; l; Vari x] in
+    Abst(Appl(Symb cfg.symb_T, a), bind_var x pred)
   in
   (* We build the proof term. *)
-  let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
-  add_args (mk_Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
+  let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
+  add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
 (** [replace_wild_by_tref t] substitutes every wildcard of [t] by a fresh
    [TRef]. *)
 let rec replace_wild_by_tref : term -> term = fun t ->
   match unfold t with
-  | Wild -> mk_TRef(Timed.ref None)
-  | Appl(t,u) ->
-    mk_Appl_not_canonical(replace_wild_by_tref t, replace_wild_by_tref u)
+  | Wild -> TRef(Timed.ref None)
+  | Appl(t,u) -> Appl(replace_wild_by_tref t, replace_wild_by_tref u)
   | _ -> t
 
-(** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic
+(** [rewrite ss p pos gt side pat t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
    [gt]. Every occurrence of the first instance of the left-hand side is
    replaced by the right-hand side of the obtained proof (or the reverse if
-   l2r is false). [pat] is an optional SSReflect pattern. [t] is the
+   side=Left). [pat] is an optional SSReflect pattern. [t] is the
    equational lemma that is appied. It handles the full set of SSReflect
    patterns. *)
-let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
+let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> side ->
               (term, binder) Parsing.Syntax.rw_patt option -> term -> term =
-  fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
+  fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} side pat t ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -352,10 +351,10 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let vars = Array.of_list vars in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
-  let t = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
+  let t = Array.fold_left (fun t x -> Appl(t, Vari x)) t vars in
 
-  (* Reverse the members of the equation if l2r is false. *)
-  let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
+  (* Reverse the members of the equation if side=Left. *)
+  let (t,l,r) = if side=Right then (t,l,r) else (swap cfg a l r t, r, l) in
 
   (* Bind the variables in this new witness. *)
   let bound = let bind = bind_mvar vars in bind t, bind l, bind r in
@@ -661,14 +660,14 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   in
 
   (* Construct the predicate (context). *)
-  let pred = mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), pred_bind) in
+  let pred = Abst(Appl(Symb cfg.symb_T, a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = mk_Appl(mk_Symb cfg.symb_P, new_term) in
+  let goal_type = Appl(Symb cfg.symb_P, new_term) in
   let goal_term = LibMeta.make p g_ctxt goal_type in
 
   (* Build the final term produced by the tactic. *)
-  let eqind = mk_Symb cfg.symb_eqind in
+  let eqind = Symb cfg.symb_eqind in
   let result = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)

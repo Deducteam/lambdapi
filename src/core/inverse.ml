@@ -81,7 +81,7 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
           match get_args a with
           | Symb s1, [_] ->
             begin
-            match get_args (subst b mk_Kind) with
+            match get_args (subst b Kind) with
             | Symb(s2), [_] -> add (s0,s1,s2,binder_occur b) l
             | _ -> l
             end
@@ -118,7 +118,7 @@ let rec inverse : sym -> term -> term = fun s v ->
   if Logger.log_enabled () then log "compute %a⁻¹(%a)" sym s term v;
   match get_args v with
   | Symb s', [t] when s' == s -> t
-  | Symb s', ts -> add_args (mk_Symb (inverse_const s s')) ts
+  | Symb s', ts -> add_args (Symb (inverse_const s s')) ts
   | Prod(a,b), _ ->
       let s0,s1,s2,occ =
         match get_args a with
@@ -129,13 +129,13 @@ let rec inverse : sym -> term -> term = fun s v ->
       let t2 =
         let x, b = unbind b in
         let b = inverse s2 b in
-        if occ then mk_Abst (a, bind_var x b) else b
+        if occ then Abst (a, bind_var x b) else b
       in
-      add_args (mk_Symb s0) [t1;t2]
+      add_args (Symb s0) [t1;t2]
   | _ -> raise Not_found
 
 let inverse : sym -> term -> term = fun s v ->
-  let t = inverse s v in let v' = mk_Appl(mk_Symb s,t) in
+  let t = inverse s v in let v' = Appl(Symb s,t) in
   if Eval.eq_modulo [] v' v then t
   else (if Logger.log_enabled() then log "%a ≢ %a@" term v' term v;
         raise Not_found)

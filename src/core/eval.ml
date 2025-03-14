@@ -1,6 +1,6 @@
 (** Evaluation and conversion. *)
 
-open Lplib open Extra
+open Lplib open Base open Extra
 open Common open Error open Debug
 open Term
 open Print
@@ -46,7 +46,7 @@ let steps : int Stdlib.ref = Stdlib.ref 0
 let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
-    | Abst(a,t) -> mk_Abst(a, let x,t = unbind t in bind_var x (hnf t))
+    | Abst(a,t) -> Abst(a, let x,t = unbind t in bind_var x (hnf t))
     | t -> t
   in hnf
 
@@ -65,15 +65,15 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
       -> t
     | LLet(_,t,b) -> snf (subst b t)
     | Prod(a,b) ->
-      mk_Prod(snf a, let x,b = unbind b in bind_var x (snf b))
+      Prod(snf a, let x,b = unbind b in bind_var x (snf b))
     | Abst(a,b) ->
-      mk_Abst(snf a, let x,b = unbind b in bind_var x (snf b))
-    | Appl(t,u) -> mk_Appl(snf t, snf u)
-    | Meta(m,ts) -> mk_Meta(m, Array.map snf ts)
-    | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
-    | Bvar _ -> assert false
-    | Wild -> assert false
-    | TRef _ -> assert false
+      Abst(snf a, let x,b = unbind b in bind_var x (snf b))
+    | Appl(t,u)   -> Appl(snf t, snf u)
+    | Meta(m,ts)  -> Meta(m, Array.map snf ts)
+    | Patt(i,n,ts) -> Patt(i,n,Array.map snf ts)
+    | Bvar _      -> assert false
+    | Wild        -> assert false
+    | TRef _      -> assert false
   in snf
 
 type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
@@ -99,63 +99,137 @@ module Config = struct
     let rewrite = not @@ List.mem `NoRw tags in
     {varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
 
-  (** [unfold cfg a] unfolds [a] if it's a variable defined in the
-      configuration [cfg]. *)
-  let rec unfold : t -> term -> term = fun cfg a ->
-    match Term.unfold a with
-    | Vari x as a ->
-      begin match VarMap.find_opt x cfg.varmap with
-        | None -> a
-        | Some v -> unfold cfg v
-      end
-    | a -> a
-
 end
 
 type config = Config.t
 
-(** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
+(** [insert t ts] inserts [t] in [ts] assuming that [ts] is in increasing
+    order wrt [Term.comp]. *)
+let insert t =
+  let rec aux ts =
+    match ts with
+    | t1::ts when cmp t t1 > 0 -> t1::aux ts
+    | _ -> t::ts
+  in aux
+
+(** [aliens f whnf cfg ts] computes the f-aliens of [ts]. f-aliens are in whnf
+    and ordered in increasing order wrt [Term.comp]. *)
+let aliens f whnf cfg =
+  let rec aliens acc ts =
+    match ts with
+    | [] -> acc
+    | t::ts -> aux acc t ts
+  and aux acc t ts =
+    match get_args t with
+    | Symb g, [u1;u2] when g == f -> aux acc u1 (u2::ts)
+    | _ ->
+        let n = !steps in
+        let t' = whnf cfg t in
+        if !steps = n then aliens (insert t acc) ts
+        else aux acc t' ts
+  in aliens []
+
+(*
+(** [left_comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    left comb. *)
+let left_comb_aliens f =
+  let rec aliens acc t =
+    match get_args t with
+    | Symb g, [t1;t2] when g == f -> aliens (t2::acc) t1
+    | _ -> t::acc
+  in aliens []
+
+(** [right_comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    right comb. *)
+let right_comb_aliens f =
+  let rec aliens acc t =
+    match get_args t with
+    | Symb g, [t1;t2] when g == f -> aliens (t1::acc) t2
+    | _ -> t::acc
+  in aliens []
+
+(** [comb_aliens f t] computes the aliens of [t] assuming that [t] is a
+    comb. *)
+let comb_aliens f =
+  match f.sym_prop with
+  | AC Left -> left_comb_aliens f
+  | AC Right -> right_comb_aliens f
+  | _ -> assert false
+*)
+
+(** [app2 s t1 t2] builds the application of [s] to [t1] and [t2]. *)
+let app2 s t1 t2 = Appl(Appl(Symb s, t1), t2)
+
+(** [left_comb whnf cfg (+) [t1;t2;t3]] computes [whnf(whnf(t1+t2)+t3)]. *)
+let left_comb s whnf cfg =
+  let rec comb acc ts =
+    match ts with
+    | [] -> acc
+    | t::ts -> comb (whnf cfg (app2 s acc t)) ts
+  in
+  function
+  | [] | [_] -> assert false
+  | t::ts -> comb t ts
+
+(** [right_comb whnf cfg (+) [t1;t2;t3]] computes [whnf(t1+whnf(t2+t3))]. *)
+let right_comb s whnf cfg =
+  let rec comb ts acc =
+    match ts with
+    | [] -> acc
+    | t::ts -> comb ts (whnf cfg (app2 s t acc))
+  in
+  fun ts ->
+  match List.rev ts with
+  | [] | [_] -> assert false
+  | t::ts -> comb ts t
+
+(** [comb s whnf cfg ts] computes the [whnf] of the comb obtained by applying
+    [s] to [ts]. *)
+let comb s =
+  match s.sym_prop with
+  | AC Left -> left_comb s
+  | AC Right -> right_comb s
+  | _ -> assert false
+
+(** [ac whnf cfg t] computes a whnf of [t] in head-AC canonical form. *)
+let ac whnf cfg t =
+  let t = whnf cfg t in
+  match get_args t with
+  | Symb f, ([t1;t2] as ts) ->
+      begin match f.sym_prop with
+      | AC _ -> comb f whnf cfg (aliens f whnf cfg ts)
+      | Commu when cmp t1 t2 > 0 -> app2 f t2 t1
+      | _ -> t
+      end
+  | _ -> t
+
+(** [eq_modulo whnf cfg a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
-let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
-  fun whnf ->
+let eq_modulo : (config -> term -> term) -> config -> term eq = fun whnf ->
   let rec eq : config -> (term * term) list -> unit = fun cfg l ->
     match l with
     | [] -> ()
     | (a,b)::l ->
-    if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
+    if Logger.log_enabled () then
+      log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
+    (* We first check equality modulo alpha. *)
     if LibTerm.eq_alpha a b then eq cfg l else
-    let a = Config.unfold cfg a and b = Config.unfold cfg b in
-    match a, b with
-    | LLet(_,t,u), _ ->
-      let x,u = unbind u in
-      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((u,b)::l)
-    | _, LLet(_,t,u) ->
-      let x,u = unbind u in
-      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
-    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
-    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Kind, Kind
-    | Type, Type -> eq cfg l
-    | Vari x, Vari y -> if eq_vars x y then eq cfg l else raise Exit
-    | Symb f, Symb g when f == g -> eq cfg l
-    | Prod(a1,b1), Prod(a2,b2)
-    | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
-    | Abst _, (Type|Kind|Prod _)
-    | (Type|Kind|Prod _), Abst _ -> raise Exit
-    | (Abst(_ ,b), t | t, Abst(_ ,b)) when Timed.(!eta_equality) ->
-      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
-    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    (* cases of failure *)
-    | Kind, _ | _, Kind
-    | Type, _ | _, Type -> raise Exit
-    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
-      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
-      raise Exit
-    | _ ->
-    let a = whnf cfg a and b = whnf cfg b in
+    (* FIXME? Instead of computing the whnf of each side right away, we could
+       perhaps do it more incrementally (the reduction of beta-redexes, let's
+       and local definitions as done in whnf could be integrated here) and,
+       when both heads are function symbols, use an heuristic like in Matita
+       to decide which side to unfold first. Note also that, when comparing
+       two AC symbols, we could detect the non-equivalence more quickly by
+       testing the equality of the number of aliens:
+
+    | (Symb f,([_;_]as ts)), (Symb g,([_;_]as us)) when is_ac f && g == f ->
+        let ts = aliens f whnf cfg ts and us = aliens f whnf cfg us in
+        let a = comb f whnf cfg ts and b = comb f whnf cfg us in
+        let ts = comb_aliens f a and us = comb_aliens f b in
+        if List.length ts <> List.length us then raise Exit
+        else eq cfg (List.rev_append2 ts us l) *)
+    let whnf t = (*Logger.set_debug_in "c" false (fun () ->*) ac whnf cfg t in
+    let a = whnf a and b = whnf b in
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
@@ -169,15 +243,14 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Abst(a1,b1), Abst(a2,b2) ->
       let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when Timed.(!eta_equality) ->
-      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = unbind b in eq cfg ((b, Appl(t, Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | Bvar _, _ | _, Bvar _ -> assert false
+    | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
   fun cfg a b ->
-  if Logger.log_enabled () then log_conv "eq_modulo: %a ≡ %a" term a term b;
   try eq cfg [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
@@ -188,19 +261,20 @@ type stack = term list
    {!constructor:TRef}. *)
 let to_tref : term -> term = fun t ->
   match t with
-  | Appl _ -> mk_TRef(Timed.ref(Some t))
-  | Symb s when s.sym_prop <> Const -> mk_TRef(Timed.ref(Some t))
+  | Appl _ -> TRef(Timed.ref(Some t))
+  | Symb s when s.sym_prop <> Const -> TRef(Timed.ref(Some t))
   | t -> t
 
 (** {1 Define the main {!whnf} function that takes a {!config} as argument} *)
 let depth = Stdlib.ref 0
 
+let incr_depth f = incr depth; let v = f() in decr depth; v
+
 (** [whnf cfg t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun cfg t ->
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk cfg t [] in
-  let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
-  r
+  if Stdlib.(!steps) <> n then add_args u stk else unfold t
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
@@ -211,13 +285,18 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
   (*| _ ->
-  if Logger.log_enabled () then
-    log_whnf "%awhnf_stk %a%a %a" D.depth !depth term t (D.list term) stk;
+  if Logger.log_enabled() then
+    log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
   match t, stk with*)
   | Abst(_,f), u::stk when cfg.Config.beta ->
     Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
-    Stdlib.incr steps; whnf_stk cfg (subst u t) stk
+      (*FIXME? instead of doing a substitution now, add a local definition
+        instead to postpone the substitution when it will be necessary. But
+        the following makes tests/OK/725.lp fail: *)
+      (*let x,u = unbind u in
+      whnf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk*)
+      Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match Timed.(!(s.sym_def)) with
       (* The invariant that defined symbols are subject to no
@@ -228,20 +307,6 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
-      (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
-         them to have a term in AC-canonical form. *)
-      let stk =
-        if is_modulo s then
-          let n = Stdlib.(!steps) in
-          (* We put the arguments in whnf. *)
-          let stk' = List.map (whnf cfg) stk in
-          if Stdlib.(!steps) = n then (* No argument has been reduced. *)
-            stk
-          else (* At least one argument has been reduced. *)
-            (* We put the term in AC-canonical form. *)
-            snd (get_args (add_args h stk'))
-        else stk
-      in
       match tree_walk cfg (cfg.dtree s) stk with
       | None -> h, stk
       | Some (t', stk') ->
@@ -285,7 +350,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
 and tree_walk : config -> dtree -> stack -> (term * stack) option =
   fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in
-  let vars = Array.make capacity mk_Kind in (* dummy terms *)
+  let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
@@ -314,14 +379,15 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = r.vars_nb to env_len - 1 do
-          env.(i) <- Some(bind_mvar [||] (mk_Plac false))
+          env.(i) <- Some(bind_mvar [||] (Plac false))
         done;
         Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
           | CondNL(i, j) ->
-            if eq_modulo whnf cfg vars.(i) vars.(j) then ok else fail
+              if incr_depth (fun () -> eq_modulo whnf cfg vars.(i) vars.(j))
+              then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -371,9 +437,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           Option.bind default fn
         else
           let s = Stdlib.(!steps) in
-          incr depth;
-          let (t, args) = whnf_stk cfg examined [] in
-          decr depth;
+          let (t, args) = incr_depth (fun () -> whnf_stk cfg examined []) in
           let args = if store then List.map to_tref args else args in
           (* If some reduction has been performed by [whnf_stk] ([steps <>
              0]), update the value of [examined] which may be stored into
@@ -470,14 +534,14 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 type reducer = ?tags:rw_tag list -> ctxt -> term -> term
 
 let time_reducer (f: reducer): reducer =
-  let open Stdlib in let r = ref mk_Kind in fun ?tags cfg t ->
+  let open Stdlib in let r = ref Kind in fun ?tags cfg t ->
     Debug.(record_time Rewriting (fun () -> r := f ?tags cfg t)); !r
 
 (** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
     the context [c]. The function [dtree] maps symbols to dtrees. *)
 let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (Config.make ?dtree ?tags c)) t in
+  let u = snf (ac whnf (Config.make ?dtree ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let snf ?dtree = time_reducer (snf ?dtree)
@@ -486,7 +550,7 @@ let snf ?dtree = time_reducer (snf ?dtree)
     context [c], and using user-defined rewrite rules. *)
 let hnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
-  let u = hnf (whnf (Config.make ?tags c)) t in
+  let u = hnf (ac whnf (Config.make ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let hnf = time_reducer hnf
@@ -504,13 +568,16 @@ let eq_modulo =
     [c] with no side effects. *)
 let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
   fun ?tags c a b ->
-  Timed.pure_test (fun (c,a,b) -> eq_modulo ?tags c a b) (c,a,b)
+  Timed.pure_test
+    (fun (c,a,b) ->
+      ((*Logger.set_debug_in "ce" false (fun () ->*) eq_modulo ?tags c a b))
+    (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
 let whnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
-  let u = whnf (Config.make ?tags c) t in
+  let u = ac whnf (Config.make ?tags c) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
 let whnf = time_reducer whnf
@@ -524,12 +591,12 @@ let simplify : ctxt -> term -> term = fun c ->
     match get_args (whnf ~tags c t) with
     | Prod(a,b), _ ->
        let x, b = unbind b in
-       mk_Prod (simp a, bind_var x (simp b))
+       Prod (simp a, bind_var x (simp b))
     | h, ts -> add_args_map h (whnf ~tags c) ts
   in simp
 
 let simplify =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
+  let open Stdlib in let r = ref Kind in fun c t ->
   Debug.(record_time Rewriting (fun () -> r := simplify c t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
@@ -545,11 +612,11 @@ let unfold_sym : sym -> term -> term =
       | _ ->
           let h =
             match h with
-            | Abst(a,b) -> mk_Abst(unfold_sym a, unfold_sym_binder b)
-            | Prod(a,b) -> mk_Prod(unfold_sym a, unfold_sym_binder b)
-            | Meta(m,ts) -> mk_Meta(m, Array.map unfold_sym ts)
+            | Abst(a,b) -> Abst(unfold_sym a, unfold_sym_binder b)
+            | Prod(a,b) -> Prod(unfold_sym a, unfold_sym_binder b)
+            | Meta(m,ts) -> Meta(m, Array.map unfold_sym ts)
             | LLet(a,t,u) ->
-                mk_LLet(unfold_sym a, unfold_sym t, unfold_sym_binder u)
+                LLet(unfold_sym a, unfold_sym t, unfold_sym_binder u)
             | _ -> h
           in add_args h args
     and unfold_sym_binder b =
@@ -568,7 +635,7 @@ let unfold_sym : sym -> term -> term =
       let unfold_sym_app args =
         match tree_walk cfg dt args with
         | Some(r,ts) -> add_args r ts
-        | None -> add_args (mk_Symb s) args
+        | None -> add_args (Symb s) args
       in unfold_sym s unfold_sym_app
 
 (** Dedukti evaluation strategies. *)

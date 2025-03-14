@@ -61,20 +61,20 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
     | Type | Vari _ | Symb _ | Meta _ -> return t
     | Appl (t, u) ->
         let* t = reduce_coercions c t in let* u = reduce_coercions c u in
-        return (mk_Appl (t, u))
+        return (Appl (t, u))
     | Abst (a, b) ->
         let* a = reduce_coercions c a in
         let* b = reduce_coercions_binder b in
-        return (mk_Abst (a, b))
+        return (Abst (a, b))
     | Prod (a, b) ->
         let* a = reduce_coercions c a in
         let* b = reduce_coercions_binder b in
-        return (mk_Prod (a, b))
+        return (Prod (a, b))
     | LLet (a, e, b) ->
         let* a = reduce_coercions c a in
         let* e = reduce_coercions c e in
         let* b = reduce_coercions_binder b in
-        return (mk_LLet (a, e, b))
+        return (LLet (a, e, b))
 
 (** [coerce pb c t a b] coerces term [t] from type [a] to type [b] in context
     [c] and problem [pb]. *)
@@ -105,9 +105,9 @@ and type_enforce : problem -> ctxt -> term -> term * term * bool =
   let a, s, cui = infer pb c a in
   let sort =
     match unfold s with
-    | Kind -> mk_Kind
-    | Type -> mk_Type
-    | _ -> mk_Type
+    | Kind -> Kind
+    | Type -> Type
+    | _ -> Type
     (* FIXME The algorithm should be able to backtrack on the choice of
        this sort, first trying [Type], and if it does not succeed, trying
        [Kind]. *)
@@ -123,8 +123,8 @@ and force : problem -> ctxt -> term -> term -> term * bool =
    log "Force [%a] of [%a]" term te term ty;
  match unfold te with
  | Plac true ->
-     unif pb c ty mk_Type;
-     (LibMeta.make pb c mk_Type, true)
+     unif pb c ty Type;
+     (LibMeta.make pb c Type, true)
  | Plac false ->
      (LibMeta.make pb c ty, true)
  | _ ->
@@ -140,16 +140,16 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
   | Kind -> assert false
   | Wild -> assert false
   | TRef _ -> assert false
-  | Type -> (mk_Type, mk_Kind, false)
+  | Type -> (Type, Kind, false)
   | Vari x ->
       let a = try Ctxt.type_of x c with Not_found -> assert false in
       (t, a, false)
   | Symb s -> (t, !(s.sym_type), false)
   | Plac true ->
-      let m = LibMeta.make pb c mk_Type in
-      (m, mk_Type, true)
+      let m = LibMeta.make pb c Type in
+      (m, Type, true)
   | Plac false ->
-      let mt = LibMeta.make pb c mk_Type in
+      let mt = LibMeta.make pb c Type in
       let m = LibMeta.make pb c mt in
       (m, mt, true)
   (* All metavariables inserted are typed. *)
@@ -192,34 +192,34 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
             raise NotTypable
         | _ -> () );
       let u_ty = bind_var x u_ty in
-      let top_ty = mk_LLet (t_ty, t, u_ty) in
+      let top_ty = LLet (t_ty, t, u_ty) in
       let cu = cu_t_ty || cu_t || cu_u in
       let top =
         if cu then
           let u = bind_var x u in
-          mk_LLet(t_ty, t, u)
+          LLet(t_ty, t, u)
         else top
       in
       (top, top_ty, cu)
   | Abst (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom, cu_dom = force pb c dom mk_Type in
+      let dom, cu_dom = force pb c dom Type in
       let (x, b) = unbind b in
       let c = (x,dom,None)::c in
       let b, range, cu_b = infer pb c b in
       let range = bind_var x range in
-      let top_ty = mk_Prod (dom, range) in
+      let top_ty = Prod (dom, range) in
       let cu = cu_b || cu_dom in
       let top =
         if cu then
           let b = bind_var x b in
-          mk_Abst (dom, b)
+          Abst (dom, b)
         else top
       in
       (top, top_ty, cu)
   | Prod (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom, cu_dom = force pb c dom mk_Type in
+      let dom, cu_dom = force pb c dom Type in
       let (x, b) = unbind b in
       let c = (x,dom,None)::c in
       let b, b_s, cu_b = type_enforce pb c b in
@@ -227,7 +227,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       let top =
         if cu then
           let b = bind_var x b in
-          mk_Prod (dom, b)
+          Prod (dom, b)
         else top
       in
       (top, b_s, cu)
@@ -235,7 +235,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       let t, t_ty, cu_t = infer pb c t in
       let return m t u range =
         let ty = subst range u and cu = cu_t || m in
-        if cu then (mk_Appl (t, u), ty, cu) else (top, ty, cu)
+        if cu then (Appl (t, u), ty, cu) else (top, ty, cu)
       in
       match Eval.whnf c t_ty with
       | Prod (dom, range) ->
@@ -246,12 +246,12 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       | Meta (_, _) ->
           let u, u_ty, cu_u = infer pb c u in
           let range = LibMeta.make_codomain pb c u_ty in
-          unif pb c t_ty (mk_Prod (u_ty, range));
+          unif pb c t_ty (Prod (u_ty, range));
           return cu_u t u range
       | t_ty ->
-          let domain = LibMeta.make pb c mk_Type in
+          let domain = LibMeta.make pb c Type in
           let range = LibMeta.make_codomain pb c domain in
-          let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
+          let t, cu_t' = coerce pb c t t_ty (Prod (domain, range)) in
           if Logger.log_enabled () then
             log "Appl-default arg [%a]" term u;
           let u, cu_u = force pb c u domain in
