@@ -64,3 +64,89 @@ compute λ x, ⇧ ((— x - — 5) + x + — 4);
 
 assert (x y z:ℤ) ⊢ ⇧ ((x + ((— y) + z)) + (y + x)) ≡ ⇧ (2 * x + z);
 assert (x:ℤ) ⊢ ⇧ ((— x - — 5) + x + — 4) ≡ ⇧ 1;
+
+// eval function
+symbol ⇓: R → ℤ;
+rule ⇓ (var $k $x) ↪ $k * $x
+with ⇓ (cst $k) ↪ $k
+with ⇓ (opp $x) ↪ — (⇓ $x)
+with ⇓ (add $x $y) ↪ ⇓ $x + ⇓ $y;
+
+require open tests.OK.Set;
+
+symbol T1: τ int;
+symbol T2: τ int;
+symbol T3: τ int;
+symbol T4: τ int;
+symbol T5: τ int;
+symbol T6: τ int;
+symbol T7: τ int;
+symbol T8: τ int;
+symbol T9: τ int;
+symbol T10: τ int;
+symbol T11: τ int;
+symbol T12: τ int;
+symbol T13: τ int;
+symbol T14: τ int;
+symbol T15: τ int;
+symbol T16: τ int;
+symbol T17: τ int;
+symbol T18: τ int;
+symbol T19: τ int;
+symbol T20: τ int;
+symbol T21: τ int;
+symbol T22: τ int;
+symbol T23: τ int;
+symbol T24: τ int;
+symbol T25: τ int;
+symbol T26: τ int;
+symbol T27: τ int;
+symbol T28: τ int;
+symbol T29: τ int;
+symbol T30: τ int;
+symbol T31: τ int;
+symbol T32: τ int;
+symbol T33: τ int;
+symbol T34: τ int;
+symbol T35: τ int;
+symbol T36: τ int;
+symbol T37: τ int;
+symbol T38: τ int;
+symbol T39: τ int;
+symbol T40: τ int;
+
+compute (⇧ 
+    (
+        (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20)
+        + (
+            (— 1) * (T20 + T19 + T18 + T17 + T16 + T15 + T14 + T13 + T12 + T11 + T10 + T9 + T8 + T7 + T6 + T5 + T4 + T3 + T2 + T1)
+        )
+    )
+);
+
+compute (⇧ 
+    (
+        (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22)
+        + (
+            (— 1) * (T22 + T21 + T20 + T19 + T18 + T17 + T16 + T15 + T14 + T13 + T12 + T11 + T10 + T9 + T8 + T7 + T6 + T5 + T4 + T3 + T2 + T1)
+        )
+    )
+);
+
+compute (⇧ 
+    (
+        (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22 + T23)
+        + (
+            (— 1) * (T23 + T22 + T21 + T20 + T19 + T18 + T17 + T16 + T15 + T14 + T13 + T12 + T11 + T10 + T9 + T8 + T7 + T6 + T5 + T4 + T3 + T2 + T1)
+        )
+    )
+);
+
+compute (⇧ 
+    (
+        (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22 + T23 + T24 + T25 + T26 + T27 + T28 + T29 + T30 + T31 + T32 + T33 + T34 + T35 + T36 + T37 + T38 + T39 + T40)
+        + (
+            (— 1) * (T40 + T39 + T38 + T37 + T36 + T35 + T34 + T33 + T32 + T31 + T30 + T29 + T28 + T27 + T26 + T25 + T24 + T23 + T22 + T21 + T20 + T19 + T18 + T17 + T16 + T15 + T14 + T13 + T12 + T11 + T10 + T9 + T8 + T7 + T6 + T5 + T4 + T3 + T2 + T1)
+        )
+    )
+);

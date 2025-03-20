@@ -3,7 +3,6 @@
    This module contains the definition of the internal representation of
    terms, together with smart constructors and low level operation. *)
 
-open Timed
 open Lplib open Base
 open Common
 
@@ -20,6 +19,15 @@ type match_strat =
   | Eager
   (** Any rule that filters a term can be applied (even if a rule defined
       earlier filters the term as well). This is the default. *)
+
+(** Reduction strategy. *)
+type red_strat =
+  | Innermost
+  (** Arguments are normalized before trying to apply a rewrite rule. Strategy
+      used for symbols with rules matching on AC symbols. *)
+  | Outermost
+  (** Arguments are reduced when trying to apply a rewrite rule. This is the
+      default. *)
 
 (** Specify the visibility and usability of symbols outside their module. *)
 type expo =
@@ -86,7 +94,8 @@ type term =
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
       [b] is true if the placeholder stands for a type. *)
-  | TRef of term option ref (** Reference cell (used in surface matching). *)
+  | TRef of term option Timed.ref
+  (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
@@ -105,15 +114,16 @@ and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
-  ; sym_type  : term ref (** Type. *)
+  ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation ref (** Notation. *)
-  ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool ref (** Opacity. *)
-  ; sym_rules : rule list ref (** Rewriting rules. *)
+  ; sym_not   : float notation Timed.ref (** Notation. *)
+  ; sym_def   : term option Timed.ref (** Definition with ≔. *)
+  ; sym_opaq  : bool Timed.ref (** Opacity. *)
+  ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_rstrat: red_strat Timed.ref (** Reduction strategy. *)
+  ; sym_dtree : dtree Timed.ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
   ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
                                 without its definition. *) }
@@ -220,9 +230,9 @@ and rule =
     the form {!constructor:Meta}[(m,env)] can be unfolded. *)
 and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_type  : term ref (** Type. *)
+  ; meta_type  : term Timed.ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
-  ; meta_value : mbinder option ref (** Definition. *) }
+  ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
 (** [binder_name b] gives the name of the bound variable of [b]. *)
 val binder_name : binder -> string
@@ -415,7 +425,7 @@ type problem_aux =
   ; metas : MetaSet.t
   (** Set of unsolved metas. *) }
 
-type problem = problem_aux ref
+type problem = problem_aux Timed.ref
 
 (** Create a new empty problem. *)
 val new_problem : unit -> problem

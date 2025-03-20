@@ -23,6 +23,15 @@ type match_strat =
   (** Any rule that filters a term can be applied (even if a rule defined
       earlier filters the term as well). This is the default. *)
 
+(** Reduction strategy. *)
+type red_strat =
+  | Innermost
+  (** Arguments are normalized before trying to apply a rewrite rule. Strategy
+      used for symbols with rules matching on AC symbols. *)
+  | Outermost
+  (** Arguments are reduced when trying to apply a rewrite rule. This is the
+      default. *)
+
 (** Specify the visibility and usability of symbols outside their module. *)
 type expo =
   | Public (** Visible and usable everywhere. *)
@@ -177,6 +186,7 @@ and sym =
   ; sym_opaq  : bool Timed.ref (** Opacity. *)
   ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
+  ; sym_rstrat: red_strat Timed.ref (** Reduction strategy. *)
   ; sym_dtree : dtree Timed.ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
   ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
@@ -290,7 +300,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   let open Timed in
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
-   sym_dtree = ref Tree_type.empty_dtree;
+   sym_dtree = ref Tree_type.empty_dtree; sym_rstrat = ref Outermost;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)

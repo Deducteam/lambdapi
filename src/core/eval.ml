@@ -307,6 +307,11 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
+      let stk =
+        if Timed.(!(s.sym_rstrat)) = Innermost then
+          List.map (snf (ac whnf cfg)) stk
+        else stk
+      in
       match tree_walk cfg (cfg.dtree s) stk with
       | None -> h, stk
       | Some (t', stk') ->
