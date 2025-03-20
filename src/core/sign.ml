@@ -295,14 +295,16 @@ let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
-(** [contains_ac_sym r] tells whether [r] contains an AC symbol. *)
-let contains_ac_sym =
+(** [contains_ac_sym rs] tells whether [rs] contains an AC symbol. *)
+let contains_ac_sym : rule list -> bool =
   let rec aux t =
     match get_args t with
     | Symb f, ts -> if is_ac f then raise Exit else List.iter aux ts
     | Abst(a,b), _ | Prod(a,b), _ -> aux a; let _,b = unbind b in aux b
     | _ -> ()
-  in fun r -> try List.iter aux r.lhs; false with Exit -> true
+  in
+  let aux_rule r = List.iter aux r.lhs in
+  fun rs -> try List.iter aux_rule rs; false with Exit -> true
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
    rule does not correspond to a symbol of signature [sign], it is stored in
@@ -318,7 +320,8 @@ let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
     in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
-    if contains_ac_sym r then sym.sym_rstrat := Innermost
+    if Timed.(!(sym.sym_rstrat)) <> Innermost && contains_ac_sym [r] then
+      Timed.(sym.sym_rstrat := Innermost)
 
 (** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
    the rules do not correspond to a symbol of signature [sign], they are
@@ -333,7 +336,9 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
       | Some(rs',n) -> Some(rs'@rs,n)
     in
     let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
+    if Timed.(!(sym.sym_rstrat)) <> Innermost && contains_ac_sym rs then
+      Timed.(sym.sym_rstrat := Innermost)
 
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
