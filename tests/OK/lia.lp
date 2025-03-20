@@ -115,7 +115,7 @@ symbol T38: τ int;
 symbol T39: τ int;
 symbol T40: τ int;
 
-compute (⇧ 
+symbol t1 ≔ (⇧
     (
         (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20)
         + (
@@ -123,8 +123,10 @@ compute (⇧
         )
     )
 );
+compute t1;
+assert ⊢ t1 ≡ ⇧ 0;
 
-compute (⇧ 
+symbol t2 ≔ (⇧
     (
         (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22)
         + (
@@ -132,8 +134,10 @@ compute (⇧
         )
     )
 );
+compute t2;
+assert ⊢ t2 ≡ ⇧ 0;
 
-compute (⇧ 
+symbol t3 ≔ (⇧
     (
         (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22 + T23)
         + (
@@ -141,8 +145,10 @@ compute (⇧
         )
     )
 );
+compute t3;
+assert ⊢ t3 ≡ ⇧ 0;
 
-compute (⇧ 
+symbol t4 ≔ (⇧
     (
         (T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8 + T9 + T10 + T11 + T12 + T13 + T14 + T15 + T16 + T17 + T18 + T19 + T20 + T21 + T22 + T23 + T24 + T25 + T26 + T27 + T28 + T29 + T30 + T31 + T32 + T33 + T34 + T35 + T36 + T37 + T38 + T39 + T40)
         + (
@@ -150,3 +156,5 @@ compute (⇧
         )
     )
 );
+compute t4;
+assert ⊢ t4 ≡ ⇧ 0;
