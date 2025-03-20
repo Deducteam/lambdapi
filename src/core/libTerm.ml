@@ -192,3 +192,15 @@ let fold (x:var) (t:term): term -> term =
       | _ -> u
   in
   aux
+
+(** [contains_ac_sym rs] tells whether the LHS's of [rs] contain an AC
+    symbol. *)
+let contains_ac_sym : rule list -> bool =
+  let rec aux t =
+    match get_args t with
+    | Symb f, ts -> if is_ac f then raise Exit else List.iter aux ts
+    | Abst(a,b), _ | Prod(a,b), _ -> aux a; let _,b = unbind b in aux b
+    | _ -> ()
+  in
+  let aux_rule r = List.iter aux r.lhs in
+  fun rs -> try List.iter aux_rule rs; false with Exit -> true
