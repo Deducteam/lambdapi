@@ -301,16 +301,18 @@ let read =
    pairs. *)
 let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function
-      | None -> Some([r],None)
-      | Some(rs,n) -> Some(rs@[r],n)
-    in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
-    if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym [r]
-    then Timed.(sym.sym_rstrat := Innermost)
+  if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym [r]
+  then Timed.(sym.sym_rstrat := Innermost);
+  if sym.sym_path <> sign.sign_path then (* update dependencies *)
+    begin
+      let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+      let f = function
+        | None -> Some([r],None)
+        | Some(rs,n) -> Some(rs@[r],n)
+      in
+      let sm = StrMap.update sym.sym_name f sm in
+      sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    end
 
 (** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
    the rules do not correspond to a symbol of signature [sign], they are
@@ -318,16 +320,18 @@ let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
    critical pairs. *)
 let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
   sym.sym_rules := !(sym.sym_rules) @ rs;
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function
-      | None -> Some(rs,None)
-      | Some(rs',n) -> Some(rs'@rs,n)
-    in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
-    if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym rs
-    then Timed.(sym.sym_rstrat := Innermost)
+  if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym rs
+  then Timed.(sym.sym_rstrat := Innermost);
+  if sym.sym_path <> sign.sign_path then (* update dependencies *)
+    begin
+      let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+      let f = function
+        | None -> Some(rs,None)
+        | Some(rs',n) -> Some(rs'@rs,n)
+      in
+      let sm = StrMap.update sym.sym_name f sm in
+      sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
+    end
 
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
