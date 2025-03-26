@@ -84,7 +84,8 @@ let eq_modulo : (term -> term) -> term eq = fun norm ->
     | [] -> ()
     | (a,b)::l ->
     if Logger.log_enabled () then
-      log_conv "eq: %a ≡ %a %a" term a term b (D.list (D.pair term term)) l;
+      log_conv "eq_modulo %a ≡ %a %a"
+        term a term b (D.list (D.pair term term)) l;
     (* We first check equality modulo alpha. *)
     if LibTerm.eq_alpha a b then eq l else
     (* FIXME? Instead of computing the norm of each side right away, we could
@@ -104,7 +105,8 @@ let eq_modulo : (term -> term) -> term eq = fun norm ->
         if List.length ts <> List.length us then raise Exit
         else eq (List.rev_append2 ts us l) *)
     let a = norm a and b = norm b in
-    if Logger.log_enabled () then log_conv "norm: %a ≡ %a" term a term b;
+    if Logger.log_enabled () then
+      log_conv "eq_modulo after norm %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
@@ -129,14 +131,13 @@ let eq_modulo : (term -> term) -> term eq = fun norm ->
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
 (** Reduction permissions. *)
-type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
+type rw_tag = [ `NoRw | `NoExpand ]
 
 (** Configuration of the reduction engine. *)
 type config =
   { varmap : term VarMap.t (** Variable definitions. *)
   ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
   ; expand_defs : bool (** Whether to expand definitions. *)
-  ; beta : bool (** Whether to beta-normalise *)
   ; dtree : sym -> dtree (** Retrieves the dtree of a symbol *) }
 
 (** [make ?dtree ?rewrite c] creates a new configuration with tags [?rewrite]
@@ -145,10 +146,9 @@ type config =
     reduction and rewriting is enabled for all symbols. *)
 let make : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> config =
   fun ?(dtree=fun sym -> Timed.(!(sym.sym_dtree))) ?(tags=[]) context ->
-  let beta = not @@ List.mem `NoBeta tags in
   let expand_defs = not @@ List.mem `NoExpand tags in
   let rewrite = not @@ List.mem `NoRw tags in
-  {varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
+  {varmap = Ctxt.to_map context; rewrite; expand_defs; dtree}
 
 (** Abstract machine stack. *)
 type stack = term list
@@ -477,6 +477,7 @@ let ac norm t =
 
 (** [whnf cfg t] computes a whnf of the term [t] wrt configuration [cfg]. *)
 let whnf : config -> term -> term = fun cfg ->
+  (* [whnf t] computes a whnf of [t]. *)
   let rec whnf t =
     let n = Stdlib.(!steps) in
     let u, stk = whnf_stk t [] in
@@ -487,52 +488,116 @@ let whnf : config -> term -> term = fun cfg ->
     if Logger.log_enabled () then
       log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
     let t = unfold t in
-    match t, stk with
-    | Appl(f,u), stk -> whnf_stk f (to_tref u::stk)
+    match t with
+    | Appl(f,u) -> whnf_stk f (to_tref u::stk)
     (*| _ ->
       if Logger.log_enabled() then
       log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
       match t, stk with*)
-    | Abst(_,f), u::stk when cfg.beta ->
-        Stdlib.incr steps; whnf_stk (subst f u) stk
-    | LLet(_,t,u), stk ->
+    | Abst(_,f) ->
+        begin
+          match stk with
+          | u::stk -> Stdlib.incr steps; whnf_stk (subst f u) stk
+          | _ -> t, stk
+        end
+    | LLet(_,t,u) ->
         (*FIXME? instead of doing a substitution now, add a local definition
           instead to postpone the substitution when it will be necessary. But
           the following makes tests/OK/725.lp fail: *)
         (*let x,u = unbind u in
           whnf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk*)
         Stdlib.incr steps; whnf_stk (subst u t) stk
-    | (Symb s as h, stk) as r ->
+    | Symb s ->
         begin match Timed.(!(s.sym_def)) with
         (* The invariant that defined symbols are subject to no
            rewriting rules is false during indexing for websearch;
            that's the reason for the when in the next line *)
-        | Some t when Tree_type.is_empty (cfg.dtree s) ->
-            if Timed.(!(s.sym_opaq)) || not cfg.expand_defs then r else
-              (Stdlib.incr steps; whnf_stk t stk)
-        | None when not cfg.rewrite -> r
+        | Some u when Tree_type.is_empty (cfg.dtree s) ->
+            if Timed.(!(s.sym_opaq)) || not cfg.expand_defs then t, stk
+            else (Stdlib.incr steps; whnf_stk u stk)
+        | None when not cfg.rewrite -> t, stk
         | _ ->
-            (*let stk =
-              if Timed.(!(s.sym_rstrat)) = Innermost then
-                (if Logger.log_enabled () then
-                   log_whnf "%asnf %a" D.depth !depth (D.list term) stk;
-                List.map (snf (ac whnf)) stk)
-              else stk
-            in*)
-            match tree_walk whnf (cfg.dtree s) stk with
-            | None -> h, stk
-            | Some (t', stk') ->
+            let norm =
+              (*if Timed.(!(s.sym_rstrat)) = Innermost then ac snf whnf
+              else*) whnf
+            in
+            match tree_walk norm (cfg.dtree s) stk with
+            | None -> t, stk
+            | Some (t, stk) ->
                 if Logger.log_enabled () then
                   log_whnf "%aapply rewrite rule" D.depth !depth;
-                Stdlib.incr steps; whnf_stk t' stk'
+                Stdlib.incr steps; whnf_stk t stk
         end
-    | (Vari x, stk) as r ->
+    | Vari x ->
         begin match VarMap.find_opt x cfg.varmap with
         | Some v -> Stdlib.incr steps; whnf_stk v stk
-        | None -> r
+        | None -> t, stk
         end
-    | r -> r
+    | _ -> t, stk
+(*
+  (* [snf t] computes snf of [t]. *)
+  and snf t =
+    let n = Stdlib.(!steps) in
+    let u, stk = snf_stk t [] in
+    if Stdlib.(!steps) <> n then add_args u stk else unfold t
 
+  (* [snf_stk t stk] computes a snf of [add_args t stk]. *)
+  and snf_stk : term -> stack -> term * stack = fun t stk ->
+    if Logger.log_enabled () then
+      log_whnf "%asnf_stk %a %a" D.depth !depth term t (D.list term) stk;
+    let t = unfold t in
+    match t with
+    | Appl(f,u) -> snf_stk f (to_tref u::stk)
+    (*| _ ->
+      if Logger.log_enabled() then
+      log_snf "%asnf_stk %a %a" D.depth !depth term t (D.list term) stk;
+      match t, stk with*)
+    | Abst(a,b) ->
+        begin
+          match stk with
+          | u::stk when cfg.beta -> Stdlib.incr steps; snf_stk (subst b u) stk
+          | _ -> Abst(snf a, binder snf b), List.map snf stk
+        end
+    | LLet(_,t,u) ->
+        (*FIXME? instead of doing a substitution now, add a local definition
+          instead to postpone the substitution when it will be necessary. But
+          the following makes tests/OK/725.lp fail: *)
+        (*let x,u = unbind u in
+          snf_stk {cfg with varmap = VarMap.add x t cfg.varmap} u stk*)
+        Stdlib.incr steps; snf_stk (subst u t) stk
+    | Symb s ->
+        begin match Timed.(!(s.sym_def)) with
+        (* The invariant that defined symbols are subject to no
+           rewriting rules is false during indexing for websearch;
+           that's the reason for the when in the next line *)
+        | Some u when Tree_type.is_empty (cfg.dtree s) ->
+            if Timed.(!(s.sym_opaq)) || not cfg.expand_defs then
+              t, List.map snf stk
+            else (Stdlib.incr steps; snf_stk u stk)
+        | None when not cfg.rewrite -> t, List.map snf stk
+        | _ ->
+            match tree_walk whnf (cfg.dtree s) stk with
+            | None -> t, List.map snf stk
+            | Some (t', stk') ->
+                if Logger.log_enabled () then
+                  log_snf "%aapply rewrite rule" D.depth !depth;
+                Stdlib.incr steps; snf_stk t' stk'
+        end
+    | Vari x ->
+        begin match VarMap.find_opt x cfg.varmap with
+        | Some v -> Stdlib.incr steps; snf_stk v stk
+        | None -> t, List.map snf stk
+        end
+    | Prod(a,b) -> Prod(snf a, binder snf b), stk
+    | Type -> t, stk
+    | Kind -> t, stk
+    | Plac _ -> t, stk (* may happen when reducing coercions *)
+    | Meta(m,ts) -> Meta(m,Array.map snf ts), List.map snf stk
+    | Patt(i,n,ts) -> Patt(i,n,Array.map snf ts), List.map snf stk
+    | Bvar _ -> assert false
+    | Wild -> assert false
+    | TRef _ -> assert false
+ *)
   in ac whnf
 
 (** {1 Define exposed functions}
