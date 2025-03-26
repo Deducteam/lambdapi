@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 01/02/2025
 
 ### Added
 - Auto scroll to the first goal in the `Goals` buffer in case of many hypothesis
@@ -11,6 +11,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Show the error at the end of file if any. That was not working because navigation stoped at the location of last command and not further (see issue #1111)
-
-
-### Changed
