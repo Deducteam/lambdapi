@@ -351,10 +351,10 @@ module MetaMap = Map.Make(Meta)
 let add_args : term -> term list -> term =
   List.fold_left (fun t u -> Appl(t,u))
 
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+(** [add_args_map f t xs] is equivalent to [add_args t (List.map f xs)] but
    more efficient. *)
-let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
-  List.fold_left (fun t u -> Appl(t, f u)) t ts
+let add_args_map : term -> ('a -> term) -> 'a list -> term = fun t f xs ->
+  List.fold_left (fun t x -> Appl(t, f x)) t xs
 
 (** Printing functions for debug. *)
 let rec term : term pp = fun ppf t ->

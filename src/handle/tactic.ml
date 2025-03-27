@@ -47,7 +47,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
      metavariable. *)
   let meta_value =
     let vars = Array.init m.meta_arity (new_var_ind "x") in
-    let ax = add_args (Symb sym) (List.map mk_Vari (Array.to_list vars)) in
+    let ax = add_args_map (Symb sym) mk_Vari (Array.to_list vars) in
     bind_mvar vars ax
   in
   LibMeta.set (new_problem()) m meta_value; sym

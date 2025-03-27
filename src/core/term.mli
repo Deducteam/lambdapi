@@ -351,9 +351,9 @@ val mk_Prod : term * binder -> term
     equal to [t]. *)
 val add_args : term -> term list -> term
 
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+(** [add_args_map f t xs] is equivalent to [add_args t (List.map f xs)] but
    more efficient. *)
-val add_args_map : term -> (term -> term) -> term list -> term
+val add_args_map : term -> ('a -> term) -> 'a list -> term
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
 val subst : binder -> term -> term

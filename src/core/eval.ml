@@ -463,6 +463,26 @@ let comb s =
   | AC Right -> right_comb s
   | _ -> assert false
 
+(** [sym_norm s t] computes the normal form of [t] wrt [s] rules. *)
+let sym_norm s =
+  let rec norm ((h,ts) as v) =
+    match h with
+    | Symb s' when s' == s ->
+        begin
+          match tree_walk (fun t -> t) Timed.(!(s.sym_dtree)) ts with
+          | None -> v
+          | Some v ->
+              if Logger.log_enabled () then
+                log_whnf "%aapply rewrite rule" D.depth !depth;
+              Stdlib.incr steps; norm v
+        end
+    | _ -> v
+  in
+  fun t ->
+  if Logger.log_enabled() then
+    log_whnf "%asym_norm %a" D.depth !depth term t;
+  let h,ts = norm (get_args t) in add_args h ts
+
 (** [ac norm t] computes a head-AC [norm] form. *)
 let ac norm t =
   let t = norm t in
@@ -474,6 +494,33 @@ let ac norm t =
       | _ -> t
       end
   | _ -> t
+
+(** If [t] is headed by an AC symbol, then [ac norm t] computes its head-AC
+    [norm] form. *)
+let _new_ac t =
+  match get_args t with
+  | Symb s, ([t1;t2] as ts) ->
+      begin match s.sym_prop with
+      | AC _ -> comb s (sym_norm s) (aliens s (fun t -> t) ts)
+      | Commu when cmp t1 t2 > 0 -> app2 s t2 t1
+      | _ -> t
+      end
+  | _ -> t
+
+(** If [t] is headed by a sequential symbol, then [seq norm t] computes a
+    [norm] form of [t] so that each immediate subterm is also in [seq norm]
+    form. Otherwise, [seq norm t = norm t]. *)
+let rec seq norm t =
+  match get_args t with
+  | Symb s, _ when s.sym_mstrat = Sequen ->
+      begin
+        let t = norm t in
+        let h, ts = get_args t in
+        match h with
+        | Symb _ -> add_args_map h (seq norm) ts
+        | _ -> t
+      end
+  | _ -> norm t
 
 (** [whnf cfg t] computes a whnf of the term [t] wrt configuration [cfg]. *)
 let whnf : config -> term -> term = fun cfg ->
@@ -518,7 +565,8 @@ let whnf : config -> term -> term = fun cfg ->
         | None when not cfg.rewrite -> t, stk
         | _ ->
             let norm =
-              (*if Timed.(!(s.sym_rstrat)) = Innermost then ac snf whnf
+              (*if Timed.(!(s.sym_rstrat)) = Innermost then
+                fun t -> new_ac (seq whnf t)
               else*) whnf
             in
             match tree_walk norm (cfg.dtree s) stk with
@@ -598,7 +646,7 @@ let whnf : config -> term -> term = fun cfg ->
     | Wild -> assert false
     | TRef _ -> assert false
  *)
-  in ac whnf
+  in fun t -> ac whnf (seq whnf t)
 
 (** {1 Define exposed functions}
     that take optional arguments rather than a config. *)
