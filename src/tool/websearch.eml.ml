@@ -33,6 +33,11 @@ let show_form_stream ?(message="") ?(output="") request response =
 let show_form ~from ?(message="") ?output request =
   <html>
   <style>
+    .snippet {
+      border: 2px solid grey;  /* Bordure grise */
+      color: red;              /* Texte en rouge */
+      /* padding: 10px;           Espace autour du texte à l'intérieur de la bordure */
+    }
     code {
       font-family: "Courier New", Courier, monospace;
       background-color:rgb(8, 8, 8);
@@ -120,7 +125,13 @@ let show_form ~from ?(message="") ?output request =
     The <b>search</b> button answers the query. Read the <a
     href="https://lambdapi.readthedocs.io/en/latest/query_language.html">query
     language specification</a> to learn about the query language.<br>
+    Examples of queries written in the query language are as follows :
     </p>
+    <ul>
+      <li><span class="snippet">hyp = (num → num) , hyp >= (Real)</span> searches for theorem that have an hypothesis <span class="snippet">num → num</span> and such that <span class="snippet">Real</span> occurs in some (other) hypothesis.
+      <li><span class="snippet">concl > real_of_num | HOLLight.theorems</span> searches for theorems having an hypothesis containing <span class="snippet">real_of_num</span> and located in a module whose path is a suffix of <span class="snippet">HOLLight.theorems</span></li>
+      <li><span class="snippet">name = num ; name = NUM</span> searches for symbols named either <span class="snippet">num</span> or <span class="snippet">NUM</span></li>
+    </ul>
 
     <form method="POST" action="/" id="form">
       <%s! Dream.csrf_tag request %>
