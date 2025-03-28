@@ -497,7 +497,7 @@ let ac norm t =
 
 (** If [t] is headed by an AC symbol, then [ac norm t] computes its head-AC
     [norm] form. *)
-let _new_ac t =
+let new_ac t =
   match get_args t with
   | Symb s, ([t1;t2] as ts) ->
       begin match s.sym_prop with
@@ -565,9 +565,9 @@ let whnf : config -> term -> term = fun cfg ->
         | None when not cfg.rewrite -> t, stk
         | _ ->
             let norm =
-              (*if Timed.(!(s.sym_rstrat)) = Innermost then
+              if Timed.(!(s.sym_rstrat)) = Innermost then
                 fun t -> new_ac (seq whnf t)
-              else*) whnf
+              else whnf
             in
             match tree_walk norm (cfg.dtree s) stk with
             | None -> t, stk
