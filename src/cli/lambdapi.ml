@@ -38,12 +38,37 @@ let search_cmd cfg rules require s =
    (Tool.Indexing.search_cmd_txt ss s) in
  Error.handle_exceptions run
 
-let websearch_cmd cfg rules port require =
+let read_description filename =
+  let ic = open_in filename in
+  let rec read_lines acc =
+    try
+      let line = input_line ic in
+      read_lines (acc ^ line ^ "\n")
+    with End_of_file ->
+      close_in ic;
+      acc
+  in
+read_lines ""
+
+let websearch_cmd cfg rules port require description_file=
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
-  Tool.Websearch.start ss ~port () in
+  let description = "
+    <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
+     Search Engine</h1>
+
+    <p>
+    The <b>search</b> button answers the query. Read the <a
+    href=\"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
+    query language specification</a> to learn about the query language.<br>
+    </p>
+  " in
+  let description = match description_file with
+    | None -> description
+    | Some file -> read_description file in
+  Tool.Websearch.start description ss ~port () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files =
@@ -428,6 +453,12 @@ let require_arg : string option CLT.t =
     "LP file to be required before starting the search engine." in
   Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
 
+let description_file_arg : string option CLT.t =
+  let doc =
+    "html file holding the header of the web page of the server." in
+  Arg.(value & opt (some string) None &
+    info ["descriptionfile"] ~docv:"PATH" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
@@ -445,7 +476,7 @@ let websearch_cmd =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
-   $ rules_arg $ port_arg $ require_arg )
+   $ rules_arg $ port_arg $ require_arg $ description_file_arg )
 
 let _ =
   let t0 = Sys.time () in

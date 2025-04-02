@@ -170,6 +170,8 @@ websearch
 
 * ``-- require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can use used for example to specify implicit arguments for symbols used in the queries.
 
+* ``-- --descriptionfil <FILE.html>`` Reads the content of ``<FILE.html>`` and uses it as the header of the web page of the search engine. Optional. If no file is provided a default header is used.
+
 lsp
 -------
 
