@@ -144,6 +144,7 @@ and sym =
     the rule applies. More explanations are given below. *)
 and rule =
   { lhs      : term list (** Left hand side (LHS). *)
+  ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array

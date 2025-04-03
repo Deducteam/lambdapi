@@ -34,10 +34,11 @@ let build_meta_type : problem -> int -> term = fun p k ->
   done;
   !res
 
-(** [symb_to_patt pos map t] replaces in [t] every symbol [f] such that
-   [SymMap.find f map = Some i] by [Patt(i,_,_)]. *)
-let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
-  fun pos map ->
+(** [symb_to_patt pos map names arities t] replaces in [t] every symbol [f]
+    such that [SymMap.find f map = Some(i)] by [Patt(i,names.(i),_)]. *)
+let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
+                   -> int array -> term -> term =
+  fun pos map names arities ->
   let rec symb_to_patt t =
     let (h, ts) = get_args t in
     let ts = List.map symb_to_patt ts in
@@ -51,9 +52,9 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
                have concrete examples of that happening yet. *)
             fatal pos "Bug. Introduced symbol [%s] cannot be removed. \
                        Please contact the developers." f.sym_name
-          | Some (Some (i, arity)) ->
-            let (ts1, ts2) = List.cut ts arity in
-            (mk_Patt (Some i, string_of_int i, Array.of_list ts1), ts2)
+          | Some(Some(i)) ->
+            let (ts1, ts2) = List.cut ts arities.(i) in
+            (mk_Patt (Some i, names.(i), Array.of_list ts1), ts2)
           | None -> (mk_Symb f, ts)
         end
       | Vari(x)     -> (mk_Vari x, ts)
@@ -87,7 +88,7 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
 
 (** [check_rule r] checks whether the rule [r] preserves typing. *)
 let check_rule : Pos.popt -> sym_rule -> sym_rule =
-  fun pos ((s, ({lhs; rhs; arities; vars_nb; xvars_nb; _} as r)) as sr) ->
+  fun pos ((s,({lhs;names;rhs;arities;vars_nb;xvars_nb;_} as r)) as sr) ->
   (* Check that the variables of the RHS are in the LHS. *)
   assert (xvars_nb = 0);
   if Logger.log_enabled () then log_subj (Color.red "%a") sym_rule sr;
@@ -128,33 +129,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       term ty_lhs constrs lhs_constrs
       term lhs_with_metas term rhs_with_metas;
   (* Instantiate all uninstantiated metavariables by fresh symbols. *)
-  (*let symbols =
-    let symbols = Stdlib.ref SymSet.empty in
-    let rec instantiate i m =
-      match !(m.meta_value) with
-      | Some _ ->
-        (* Instantiate recursively the meta-variables of the definition. *)
-        let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
-        LibMeta.iter true (instantiate None) [] t
-      | None ->
-        (* Instantiate recursively the meta-variables of the type. *)
-        LibMeta.iter true (instantiate None) [] !(m.meta_type);
-        (* Create a new symbol. *)
-        let s =
-          let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
-          Term.create_sym (Sign.current_path()) Privat Defin Eager
-            false name None !(m.meta_type) [] in
-        Stdlib.(symbols := SymSet.add s !symbols);
-        (* Build a definition for [m]. *)
-        let xs = Array.init m.meta_arity (new_var_ind "x") in
-        let app_var t x = _Appl t (mk_Vari x)) in
-        let d = Array.fold_left app_var (mk_Symb s) xs in
-        m.meta_value := Some(bind_mvar xs d)
-    in
-    Array.iter instantiate metas;
-    Stdlib.(!symbols)
-  in*)
+  (* map each symbol to its pattern index and arity *)
   let map = Stdlib.ref SymMap.empty
+  (* map each meta to its symbol *)
   and m2s = Stdlib.ref MetaMap.empty in
   let instantiate m =
     match !(m.meta_value) with
@@ -172,9 +149,11 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       m.meta_value := Some(bind_mvar xs def)
   in
   MetaSet.iter instantiate !p.metas;
+  (* For every [i], if the [i]-th meta is mapped to [s] in [m2s], then it has
+     not been instanciated and we map [s] to [i] and other data in [map]. *)
   let f i m =
     match MetaMap.find_opt m Stdlib.(!m2s) with
-    | Some s -> Stdlib.(map := SymMap.add s (Some (i, arities.(i))) !map)
+    | Some s -> Stdlib.(map := SymMap.add s (Some i) !map)
     | None -> ()
   in
   Array.iteri f metas;
@@ -226,6 +205,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       List.iter (fatal_msg "Cannot solve %a@." constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
-  (* Replace metavariable symbols by Patt's. *)
-  let rhs = symb_to_patt pos Stdlib.(!map) rhs_with_metas in
+  (* Replace metavariable symbols by Patt's. Here, in [map], a meta is mapped
+     to [Some i] if it is the [i]-th meta and is uninstantiated, and [None]
+     otherwise. *)
+  let rhs = symb_to_patt pos Stdlib.(!map) names arities rhs_with_metas in
   s, {r with rhs}
