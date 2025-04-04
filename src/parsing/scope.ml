@@ -582,7 +582,7 @@ let scope_rule :
     && ss.signature.sign_path <> sym.sym_path then
     fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
   (* Scope the LHS and get the reserved index for named pattern variables. *)
-  let (lhs, lhs_indices, lhs_arities, vars_nb) =
+  let (lhs, names, lhs_indices, lhs_arities, vars_nb) =
     let mode =
       M_LHS{ m_lhs_prv     = is_private sym
            ; m_lhs_indices = Hashtbl.create 7
@@ -595,7 +595,7 @@ let scope_rule :
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
       let lhs = snd (get_args lhs) in
-      (lhs, m_lhs_indices, m_lhs_arities, m_lhs_size)
+      (lhs, m_lhs_names, m_lhs_indices, m_lhs_arities, m_lhs_size)
     | _ -> assert false
   in
   (* Create the pattern variables that can be bound in the RHS. *)
@@ -610,17 +610,17 @@ let scope_rule :
            ; m_rhs_new_metas = new_problem() }
   in
   let rhs = scope ~find_sym 0 mode ss Env.empty p_rhs in
-  let arities =
-    let f i = try Hashtbl.find lhs_arities i with Not_found -> assert false in
-    Array.init vars_nb f
-  in
+  let f i = try Hashtbl.find lhs_arities i with Not_found -> assert false in
+  let arities = Array.init vars_nb f in
   let xvars_nb =
     match mode with
     | M_URHS{m_urhs_vars_nb; _} -> m_urhs_vars_nb - vars_nb
     | _ -> 0
   in
   let arity = List.length lhs in
-  let r = {lhs; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
+  let f i = try Hashtbl.find names i with Not_found -> string_of_int i in
+  let names = Array.init vars_nb f in
+  let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
   (sym,r)
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
