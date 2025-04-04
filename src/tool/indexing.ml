@@ -342,7 +342,7 @@ module DB = struct
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
  let locate_name name =
-  let k = Term.mk_Wild (* dummy, unused *) in
+  let k = Term.Wild (* dummy, unused *) in
   set_of_list ~generalize:false k
    (Pure.locate_name (Lazy.force !db) name)
 
@@ -368,7 +368,7 @@ let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
  with
   Common.Error.Fatal _ ->
    Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-    false (Common.Pos.make pos name) None Core.Term.mk_Type []
+    false (Common.Pos.make pos name) None Core.Term.Type []
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -423,7 +423,7 @@ let normalize typ =
 
 let search_pterm ~generalize ~mok ss env pterm =
  let env =
-  ("V#",(new_var "V#",Term.mk_Type,None))::env in
+  ("V#",(new_var "V#",Term.Type,None))::env in
  let query =
   Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
  Dream.log "QUERY before: %a" Core.Print.term query ;
@@ -474,7 +474,7 @@ let subterms_to_index ~is_spine t =
   | Prod(t,b) ->
      (match where with
        | Spine _ ->
-          let t2 = subst b (Core.Term.mk_Patt (None,"dummy",[||])) in
+          let t2 = subst b (Core.Term.Patt (None,"dummy",[||])) in
           aux ~where:(enter_pi_source where) t @
            aux ~where:(enter_pi_target ~is_prod:(Core.Term.is_prod t2) where)
             t2
@@ -523,7 +523,7 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
                               I leave the assert false to detect when it
                               happens and let the team decide what to do *)
     | Some pos -> pos in
- let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
+ let lhs = Core.Term.add_args (Core.Term.Symb sym) lhsargs in
  let rhs = rule.rhs in
  let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
  let filename = Option.get rule_pos.fname in

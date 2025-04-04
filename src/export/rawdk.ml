@@ -163,17 +163,13 @@ let partition_modifiers (ms:p_modifier list) : modifiers =
   props, expos, mstrats, opaqs
 
 (* check Stdlib.compare on modifiers. *)
-let _ =
-  assert (Stdlib.compare Commu (Assoc true) < 0)
-  ;assert (Stdlib.compare Commu (Assoc false) < 0)
-
 let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
   match partition_modifiers ms with
   | [], [], [], [] -> out ppf "def "
   | [], [], [], [P_opaq] when p_sym_typ <> None -> out ppf "thm "
   (*https://github.com/Deducteam/Dedukti/issues/319*)
-  | [Commu;Assoc _], [], [], [] -> out ppf "defac "
-  | [Commu;Assoc _], [Protec], [], [] -> out ppf "private defac "
+  | [AC _], [], [], [] -> out ppf "defac "
+  | [AC _], [Protec], [], [] -> out ppf "private defac "
   | [Injec], [Protec], [], [] -> out ppf "private injective "
   | [Injec], [], [], [] -> out ppf "injective "
   | [], [Protec], [], [] -> out ppf "private "
@@ -187,7 +183,7 @@ let get_ac_typ :
   popt -> modifiers -> p_params list -> p_term option -> p_term option
   = fun pos ms p_sym_arg p_sym_typ ->
   match ms with
-  | ([Commu;Assoc _], _, _, _) ->
+  | ([AC _], _, _, _) ->
       begin match p_sym_arg, p_sym_typ with
       | [], Some {elt=P_Arro(a,{elt=P_Arro(b,_);_});_} when eq_p_term a b ->
           Some a

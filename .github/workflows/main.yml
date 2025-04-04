@@ -4,6 +4,8 @@ on:
   push:
     paths-ignore:
       - '**/*.md'
+      - '**/*.bnf'
+      - '**/*.rst'
   workflow_dispatch:
 jobs:
   lambdapi:

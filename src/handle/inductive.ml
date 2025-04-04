@@ -37,7 +37,7 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)
 let prf_of : config -> var -> term list -> term -> term = fun c p ts t ->
-  mk_Appl (mk_Symb c.symb_prf, mk_Appl (add_args (mk_Vari p) ts, t))
+  Appl (Symb c.symb_prf, Appl (add_args (Vari p) ts, t))
 
 (** compute safe prefixes for predicate and constructor argument variables. *)
 let gen_safe_prefixes : inductive -> string * string * string =
@@ -88,7 +88,7 @@ let ind_typ_with_codom :
     | (Prod(a,b), _) ->
         let name = x_str ^ string_of_int k in
         let (x,b) = unbind ~name b in
-        mk_Prod (a, bind_var x (aux (x::xs) (k+1) b))
+        Prod (a, bind_var x (aux (x::xs) (k+1) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) 0 a
@@ -115,15 +115,15 @@ let create_ind_pred_map :
     let ind_var = new_var_ind p_str i in
     (* predicate type *)
     let codom ts =
-      mk_Arro (add_args (mk_Symb ind_sym) ts, mk_Symb c.symb_Prop) in
+      mk_Arro (add_args (Symb ind_sym) ts, Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
     let codom ts =
       let x = new_var x_str in
       let t = bind_var x
-          (prf_of c ind_var (List.remove_heads arity ts) (mk_Vari x)) in
-      mk_Prod (add_args (mk_Symb ind_sym) ts, t)
+          (prf_of c ind_var (List.remove_heads arity ts) (Vari x)) in
+      Prod (add_args (Symb ind_sym) ts, t)
     in
     let ind_conclu = ind_typ_with_codom pos ind_sym env codom x_str a in
     (ind_sym, {ind_var; ind_type; ind_conclu})
@@ -246,19 +246,19 @@ let gen_rec_types :
     let init = () in
     (* aux computes the induction hypothesis *)
     let aux env _ p ts x =
-      let v = Env.appl (mk_Vari x) env in
+      let v = Env.appl (Vari x) env in
       let v = prf_of c p (List.remove_heads n ts) v in
       Env.to_prod env v
     in
     let acc_rec_dom _ _ _ = () in
     let rec_dom t x v next =
-      mk_Prod (t, bind_var x (mk_Arro (v, next)))
+      Prod (t, bind_var x (mk_Arro (v, next)))
     in
     let acc_nonrec_dom _ _ = () in
-    let nonrec_dom t x next = mk_Prod (t, bind_var x next) in
+    let nonrec_dom t x next = Prod (t, bind_var x next) in
     let codom xs _ p ts =
       prf_of c p (List.remove_heads n ts)
-        (add_args (mk_Symb cons_sym) (List.rev_map mk_Vari xs))
+        (add_args (Symb cons_sym) (List.rev_map mk_Vari xs))
     in
     fold_cons_type pos ind_pred_map x_str ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
@@ -274,7 +274,7 @@ let gen_rec_types :
     in
     let rec_typ = List.fold_right add_clauses_ind ind_list d.ind_conclu in
     let add_quantifier t (_,d) =
-      mk_Prod (d.ind_type, bind_var d.ind_var t) in
+      Prod (d.ind_type, bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
     Env.to_prod env rec_typ
   in
