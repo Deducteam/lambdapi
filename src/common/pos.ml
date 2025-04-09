@@ -85,7 +85,8 @@ let before = shift (-1)
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)
 let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
-  fun ?(print_dirname=true) ?(print_fname=true) {fname; start_line; start_col; end_line; end_col} ->
+  fun ?(print_dirname=true) ?(print_fname=true)
+    {fname; start_line; start_col; end_line; end_col} ->
   let fname =
     if not print_fname then "" else
     match fname with
@@ -108,13 +109,15 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
-let popt_to_string : ?print_dirname:bool -> ?print_fname:bool -> popt -> string =
+let popt_to_string :
+  ?print_dirname:bool -> ?print_fname:bool -> popt -> string =
   fun ?(print_dirname=true) ?(print_fname=true) pop ->
   match pop with
     | None -> "Unknown location "
     | Some (p) -> to_string ~print_dirname ~print_fname p ^ " "
 
-(** [basename p] returns a string representing the position [p] with the filename reduced to its basename. *)
+(** [basename p] returns a string representing the position [p]
+ with the filename reduced to its basename. *)
 let basename = fun p ->
   (popt_to_string ~print_dirname:false p)
 

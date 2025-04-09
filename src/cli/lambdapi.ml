@@ -53,7 +53,7 @@ let websearch_cmd cfg rules port require header_file =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
   let header = match header_file with
-    | None -> 
+    | None ->
       "
       <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
       Search Engine</h1>
@@ -61,11 +61,11 @@ let websearch_cmd cfg rules port require header_file =
       <p>
       The <b>search</b> button answers the query.<br>Read the <a
       href=\"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
-      query language specification</a> to learn about the query language 
-      and the 
-      <a href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
-      Lambdapi terms syntax documentation</a> 
-      to learn about terms syntax inside the queries.
+      query language specification</a> to learn about the query language
+      and the
+       <a href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
+      Lambdapi terms syntax documentation</a>
+       to learn about terms syntax inside the queries.
       </p>
       "
     | Some file -> string_of_file file in
