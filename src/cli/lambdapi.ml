@@ -47,7 +47,7 @@ let string_of_file f =
   close_in ic;
   Bytes.to_string s
 
-let websearch_cmd cfg rules port require description_file=
+let websearch_cmd cfg rules port require description_file =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
@@ -59,9 +59,13 @@ let websearch_cmd cfg rules port require description_file=
       Search Engine</h1>
 
       <p>
-      The <b>search</b> button answers the query. Read the <a
+      The <b>search</b> button answers the query.<br>Read the <a
       href=\"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
-      query language specification</a> to learn about the query language.<br>
+      query language specification</a> to learn about the query language 
+      and the 
+      <a href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
+      Lambdapi terms syntax documentation</a> 
+      to learn about terms syntax inside the queries.
       </p>
       "
     | Some file -> string_of_file file in
