@@ -212,6 +212,7 @@ and sym =
     the rule applies. More explanations are given below. *)
  and rule =
   { lhs      : term list (** Left hand side (LHS). *)
+  ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
@@ -258,7 +259,6 @@ and meta =
   ; meta_type  : term Timed.ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option Timed.ref (** Definition. *) }
-
 
 let binder_name : binder -> string = fun (bi,_,_) -> bi.binder_name
 let mbinder_names : mbinder -> string array = fun (bi,_,_) -> bi.mbinder_name

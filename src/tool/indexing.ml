@@ -254,7 +254,7 @@ module DB = struct
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
    (fun ppf position ->
-     Print.without_qualifying (fun () ->
+     Print.no_qualif (fun () ->
      match position with
       | _,_,Name ->
          Lplib.Base.out ppf "Name"
