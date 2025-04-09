@@ -47,12 +47,12 @@ let string_of_file f =
   close_in ic;
   Bytes.to_string s
 
-let websearch_cmd cfg rules port require description_file =
+let websearch_cmd cfg rules port require header_file =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
-  let description = match description_file with
+  let header = match header_file with
     | None -> 
       "
       <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
@@ -69,7 +69,7 @@ let websearch_cmd cfg rules port require description_file =
       </p>
       "
     | Some file -> string_of_file file in
-  Tool.Websearch.start description ss ~port () in
+  Tool.Websearch.start header ss ~port () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files =
@@ -454,11 +454,11 @@ let require_arg : string option CLT.t =
     "LP file to be required before starting the search engine." in
   Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
 
-let description_file_arg : string option CLT.t =
+let header_file_arg : string option CLT.t =
   let doc =
     "html file holding the header of the web page of the server." in
   Arg.(value & opt (some string) None &
-    info ["descriptionfile"] ~docv:"PATH" ~doc)
+    info ["header"] ~docv:"PATH" ~doc)
 
 let index_cmd =
  let doc = "Index the given files." in
@@ -477,7 +477,7 @@ let websearch_cmd =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
-   $ rules_arg $ port_arg $ require_arg $ description_file_arg )
+   $ rules_arg $ port_arg $ require_arg $ header_file_arg )
 
 let _ =
   let t0 = Sys.time () in

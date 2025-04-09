@@ -41,7 +41,7 @@ let show_form ~from ?(message="") ?output request =
   </body>
   </html>
 
-let start description ss ~port () =
+let start header ss ~port () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
   Dream.run ~port ~interface
@@ -51,7 +51,7 @@ let start description ss ~port () =
 
     Dream.get  "/"
       (fun request ->
-        Dream.html (description ^ (show_form ~from:0 request)));
+        Dream.html (header ^ (show_form ~from:0 request)));
 
     Dream.post "/"
       (fun request ->
