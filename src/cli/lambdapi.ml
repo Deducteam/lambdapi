@@ -38,36 +38,33 @@ let search_cmd cfg rules require s =
    (Tool.Indexing.search_cmd_txt ss s) in
  Error.handle_exceptions run
 
-let read_description filename =
-  let ic = open_in filename in
-  let rec read_lines acc =
-    try
-      let line = input_line ic in
-      read_lines (acc ^ line ^ "\n")
-    with End_of_file ->
-      close_in ic;
-      acc
-  in
-read_lines ""
+(* [string_of_file f] puts the contents of file [f] in a string. *)
+let string_of_file f =
+  let ic = open_in f in
+  let n = in_channel_length ic in
+  let s = Bytes.create n in
+  really_input ic s 0 n;
+  close_in ic;
+  Bytes.to_string s
 
 let websearch_cmd cfg rules port require description_file=
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
-  let description = "
-    <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
-     Search Engine</h1>
-
-    <p>
-    The <b>search</b> button answers the query. Read the <a
-    href=\"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
-    query language specification</a> to learn about the query language.<br>
-    </p>
-  " in
   let description = match description_file with
-    | None -> description
-    | Some file -> read_description file in
+    | None -> 
+      "
+      <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
+      Search Engine</h1>
+
+      <p>
+      The <b>search</b> button answers the query. Read the <a
+      href=\"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
+      query language specification</a> to learn about the query language.<br>
+      </p>
+      "
+    | Some file -> string_of_file file in
   Tool.Websearch.start description ss ~port () in
  Error.handle_exceptions run
 
