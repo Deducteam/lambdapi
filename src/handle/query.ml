@@ -160,7 +160,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
-  | P_query_search s -> return string (Tool.Indexing.search_cmd_txt ss s)
+  | P_query_search s ->
+    return string (Tool.Indexing.search_cmd_txt ss s "~/.LPSearch.db")
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)

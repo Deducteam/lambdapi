@@ -303,14 +303,12 @@ module DB = struct
 
  (* disk persistence *)
 
- let dbpath =
-   match Sys.getenv_opt "HOME" with
-   | Some s -> s ^ "/.LPSearch.db"
-   | None -> ".LPSearch.db"
+ let dbpath : string ref = ref ""
+
  let rwpaths = ref []
 
  let restore_from_disk () =
-  try Pure.restore_from ~filename:dbpath
+  try Pure.restore_from ~filename:!dbpath
   with Sys_error msg ->
      Common.Error.wrn None "%s.\n\
       Type \"lambdapi index --help\" to learn how to create the index." msg ;
@@ -339,7 +337,9 @@ module DB = struct
   set_of_list ~generalize k
    (Pure.search ~generalize (Lazy.force !db) k)
 
- let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
+ let dump custom_db_path () =
+  dbpath := custom_db_path;
+  Pure.dump_to ~filename:!dbpath (Lazy.force !db)
 
  let locate_name name =
   let k = Term.mk_Wild (* dummy, unused *) in
@@ -674,12 +674,14 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html ss ~from ~how_many s =
+ let search_cmd_html ss ~from ~how_many s custom_db_path =
+  dbpath := custom_db_path;
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:(html_of_results_list from) s
 
- let search_cmd_txt ss s =
+ let search_cmd_txt ss s custom_db_path =
+  dbpath := custom_db_path;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
    ~pp_results:pp_results_list s
