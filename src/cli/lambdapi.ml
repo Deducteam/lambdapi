@@ -29,21 +29,24 @@ let sig_state_of_require =
     Core.Sig_state.of_sign
      (Compile.compile (Parsing.Parser.path_of_string req))
 
+(**[dbpath custom_dbpath] reads a string option [custom_dbpath] and returns
+  the path wrapped in it or a default value if None*)
+let dbpath custom_dbpath =
+  match custom_dbpath with
+  | None -> (
+    match Sys.getenv_opt "HOME" with
+    | Some s -> s ^ "/.LPSearch.db"
+    | None -> ".LPSearch.db"
+  )
+  | Some path -> path
+
 let search_cmd cfg rules require s custom_dbpath =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
-  let dbpath =
-    match custom_dbpath with
-    | None -> (
-      match Sys.getenv_opt "HOME" with
-      | Some s -> s ^ "/.LPSearch.db"
-      | None -> ".LPSearch.db"
-    )
-    | Some path -> path in
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ss s dbpath) in
+   (Tool.Indexing.search_cmd_txt ss s (dbpath custom_dbpath)) in
  Error.handle_exceptions run
 
 let websearch_cmd cfg rules port require custom_dbpath =
@@ -51,15 +54,7 @@ let websearch_cmd cfg rules port require custom_dbpath =
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
-  let dbpath =
-    match custom_dbpath with
-    | None -> (
-      match Sys.getenv_opt "HOME" with
-      | Some s -> s ^ "/.LPSearch.db"
-      | None -> ".LPSearch.db"
-    )
-    | Some path -> path in
-  Tool.Websearch.start ss ~port dbpath () in
+  Tool.Websearch.start ss ~port (dbpath custom_dbpath) () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files custom_dbpath=
@@ -75,15 +70,7 @@ let index_cmd cfg add_only rules files custom_dbpath=
    Tool.Indexing.load_rewriting_rules rules;
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
-  let dbpath =
-    match custom_dbpath with
-    | None -> (
-      match Sys.getenv_opt "HOME" with
-      | Some s -> s ^ "/.LPSearch.db"
-      | None -> ".LPSearch.db"
-    )
-    | Some path -> path in
-  Tool.Indexing.dump dbpath () in
+  Tool.Indexing.dump (dbpath custom_dbpath) () in
  Error.handle_exceptions run
 
 end
