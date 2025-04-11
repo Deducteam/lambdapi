@@ -2,6 +2,7 @@
 
 open Lplib open Base
 open Term
+open Common
 
 (** Type of an environment, used in scoping to associate names to
     corresponding variables and types. Note that it cannot be
@@ -144,3 +145,15 @@ let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
              let env = add name xi a d env in
              build_env (i+1) env (subst b (mk_Vari xi)))
   in build_env 0 [] t
+
+(** [gen_valid_idopts env ids] generates a list of pairwise distinct
+    identifiers distinct from those of [env] to replace [ids]. *)
+let gen_valid_idopts env ids =
+  let add_decl ids (s,_) = Extra.StrSet.add s ids in
+  let idset = ref (List.fold_left add_decl Extra.StrSet.empty env) in
+  let f id idopts =
+    let id = Extra.get_safe_prefix id !idset in
+    idset := Extra.StrSet.add id !idset;
+    Some(Pos.none id)::idopts
+  in
+  List.fold_right f ids []

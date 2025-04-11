@@ -200,18 +200,7 @@ let get_prod_ids env =
         else List.rev acc
   in aux []
 
-(** [gen_valid_idopts env ids] generates a list of pairwise distinct
-    identifiers distinct from those of [env] to replace [ids]. *)
-let gen_valid_idopts env ids =
-  let add_decl ids (s,_) = Extra.StrSet.add s ids in
-  let idset = ref (List.fold_left add_decl Extra.StrSet.empty env) in
-  let f id idopts =
-    let id = Extra.get_safe_prefix id !idset in
-    idset := Extra.StrSet.add id !idset;
-    Some(Pos.none id)::idopts
-  in
-  List.fold_right f ids []
-
+(** Builtin tactic names. *)
 type tactic =
   | T_admit
   | T_and
@@ -498,7 +487,7 @@ let rec handle :
       begin
         let cfg = Rewrite.get_eq_config ss pos in
         let _,vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-        let idopts = gen_valid_idopts env (List.map base_name vs) in
+        let idopts = Env.gen_valid_idopts env (List.map base_name vs) in
         let ps = assume idopts in
         match ps.proof_goals with
         | [] -> assert false
@@ -565,7 +554,7 @@ let rec handle :
   | P_tac_why3 cfg ->
       begin
         let ids = get_prod_ids env false gt.goal_type in
-        let idopts = gen_valid_idopts env ids in
+        let idopts = Env.gen_valid_idopts env ids in
         let ps = assume idopts in
         match ps.proof_goals with
         | Typ gt::_ ->
