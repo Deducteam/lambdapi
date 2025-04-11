@@ -10,23 +10,52 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** [get_safe_prefix p strings] returns a string starting with [p] and so
-   that there is no non-negative integer [k] such that [p ^ string_of_int k]
-   belongs to [strings]. *)
+(** [root_and_index s] returns the pair [root,i] such that, if [s] ends by a
+    substring that is a sequence of digits with no useless leading zeros then
+    [i] is the biggest integer such that [s = root^string_of_int i], and if
+    [i<0] then [s = root]. *)
+let root_and_index =
+  let re = Str.regexp "[^0-9][0-9]+$" in
+  fun s ->
+  (*print_endline("root_and_index "^s);*)
+  let n = String.length s in
+  try let i = 1 + Str.search_backward re s (n-1) in
+      (*print_endline("search_backward = "^string_of_int i);*)
+      (*FIXME: handle leading sequences of zeros*)
+      String.sub s 0 i, int_of_string(String.sub s i (n-i))
+  with Not_found -> s, -1
+
+(* unit tests *)
+let _ =
+  assert (root_and_index "x" = ("x",-1));
+  assert (root_and_index "x0" = ("x",0));
+  assert (root_and_index "xy0" = ("xy",0));
+  assert (root_and_index "x0y" = ("x0y",-1))
+
+(** [get_safe_prefix p idset] returns a string starting with [p] and not
+    belonging to [idset]. *)
 let get_safe_prefix : string -> StrSet.t -> string =
- fun head set ->
-  let head_len = String.length head in
-  let f s acc =
-    let s_len = String.length s in
-    if head_len < s_len && String.equal head (String.sub s 0 head_len) then
-      try
-        let i = int_of_string (String.sub s head_len (s_len - head_len)) in
-        if acc < i then i else acc
-      with Failure _ -> acc
-    else acc
+  let biggest_index r id acc =
+    let r',i' = root_and_index id in
+    if r' = r && i' > acc then i' else acc
   in
-  let res = StrSet.fold f set (-1) in
-  if res = -1 then head else head ^ string_of_int (res + 1)
+  fun s idset ->
+  (*print_endline("get_safe_prefix "^s^" in");
+  StrSet.iter print_endline idset;*)
+  if StrSet.mem s idset then
+    let r,i = root_and_index s in
+    let i = StrSet.fold (biggest_index r) idset i in
+    print_endline("biggest = "^string_of_int i);
+    r^string_of_int(i+1)
+  else s
+
+(* unit tests *)
+let _ =
+  let idset = StrSet.add "x" (StrSet.add "x1" StrSet.empty) in
+  assert (get_safe_prefix "y" idset = "y");
+  assert (get_safe_prefix "x" idset = "x2");
+  assert (get_safe_prefix "x0" idset = "x0");
+  assert (get_safe_prefix "xy" idset = "xy")
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
