@@ -168,7 +168,9 @@ websearch
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the queries using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
 
-* ``-- require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can use used for example to specify implicit arguments for symbols used in the queries.
+* ``--require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+
+* ``--header <FILE.html>`` uses <FILE.html> as header of the search engine web page.
 
 lsp
 -------

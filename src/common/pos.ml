@@ -84,13 +84,17 @@ let before = shift (-1)
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)
-let to_string : ?print_fname:bool -> pos -> string =
-  fun ?(print_fname=true) {fname; start_line; start_col; end_line; end_col} ->
+let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
+  fun ?(print_dirname=true) ?(print_fname=true)
+    {fname; start_line; start_col; end_line; end_col} ->
   let fname =
     if not print_fname then "" else
     match fname with
     | None    -> ""
-    | Some(n) -> n ^ ":"
+    | Some(n) ->
+        if print_dirname then n ^ ":"
+        else
+          Filename.basename n ^ ":"
   in
   if start_line <> end_line then
     Printf.sprintf "%s%d:%d-%d:%d" fname start_line start_col end_line end_col
@@ -99,11 +103,12 @@ let to_string : ?print_fname:bool -> pos -> string =
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
-let popt_to_string : ?print_fname:bool -> popt -> string =
-  fun ?(print_fname=true) pop ->
+let popt_to_string :
+  ?print_dirname:bool -> ?print_fname:bool -> popt -> string =
+  fun ?(print_dirname=true) ?(print_fname=true) pop ->
   match pop with
     | None -> "Unknown location "
-    | Some (p) -> to_string ~print_fname p ^ " "
+    | Some (p) -> to_string ~print_dirname ~print_fname p ^ " "
 
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->

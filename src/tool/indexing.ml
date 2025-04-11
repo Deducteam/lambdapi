@@ -278,9 +278,9 @@ module DB = struct
   else
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
-      lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
-      pos separator (generic_pp_of_position_list ~escaper ~sep) positions
+     Lplib.Base.out ppf "%s%a.<b>%s</b>@%s%s%a%s%s<code>%a</code>%s%s@."
+      lisb (escaper.run Core.Print.path) p n (popt_to_string ~print_dirname:false pos)
+      separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb
       (Common.Pos.print_file_contents ~escape ~delimiters)
       pos pree lise)
