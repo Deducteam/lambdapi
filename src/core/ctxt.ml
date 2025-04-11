@@ -99,3 +99,11 @@ let to_map : ctxt -> term VarMap.t =
   let add_def m (x,_,v) =
     match v with Some v -> VarMap.add x v m | None -> m
   in List.fold_left add_def VarMap.empty
+
+(** [fresh c id] generates a name starting with [id] and not occurring in
+    [c]. *)
+let fresh =
+  let add_decl ids (v,_,_) = Extra.StrSet.add (base_name v) ids in
+  fun (c:ctxt) (id:string) ->
+  let idset = List.fold_left add_decl Extra.StrSet.empty c in
+  Extra.get_safe_prefix id idset
