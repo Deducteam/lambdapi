@@ -35,6 +35,13 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
+(** Names that should not be used as bound variable names. *)
+let idset = Stdlib.ref StrSet.empty
+
+let punbind (b:binder) : var * term =
+  let name = get_safe_prefix (binder_name b) Stdlib.(!idset) in
+  unbind ~name b
+
 let assoc : Pratter.associativity pp = fun ppf assoc ->
   match assoc with
   | Neither -> ()
@@ -243,7 +250,7 @@ and term : term pp = fun ppf t ->
         begin
           match unfold b with
           | Abst(a,b) ->
-              let (x,p) = unbind b in
+              let (x,p) = punbind b in
               out ppf "`%a %a%a, %a" sym s var x typ a func p
           | _ -> assert false
         end
@@ -273,14 +280,14 @@ and term : term pp = fun ppf t ->
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = unbind b in
+        let (x,t) = punbind b in
         out ppf "λ %a" bvar (b,x);
         if !print_domains then out ppf ": %a, %a" func a func t
         else abstractions ppf t;
         if wrap then out ppf ")"
     | Prod(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = unbind b in
+        let (x,t) = punbind b in
         if binder_occur b then
           out ppf "Π %a: %a, %a" var x appl a func t
         else out ppf "%a → %a" appl a func t;
@@ -288,7 +295,7 @@ and term : term pp = fun ppf t ->
     | LLet(a,t,b) ->
         if wrap then out ppf "(";
         out ppf "let ";
-        let (x,u) = unbind b in
+        let (x,u) = punbind b in
         bvar ppf (b,x);
         if !print_domains then out ppf ": %a" atom a;
         out ppf " ≔ %a in %a" func t func u;
@@ -298,7 +305,7 @@ and term : term pp = fun ppf t ->
   and abstractions ppf t =
     match unfold t with
     | Abst(_,b) ->
-        let (x,t) = unbind b in
+        let (x,t) = punbind b in
         out ppf " %a%a" bvar (b,x) abstractions t
     | t -> out ppf ", %a" func t
   in
@@ -310,10 +317,10 @@ and term : term pp = fun ppf t ->
 let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
   | Prod(a,b), true::impl ->
-      let x, b = unbind b in
+      let x, b = punbind b in
       out ppf "Π [%a: %a], %a" var x term a prod (b, impl)
   | Prod(a,b), false::impl ->
-      let x, b = unbind b in
+      let x, b = punbind b in
       out ppf "Π %a: %a, %a" var x term a prod (b, impl)
   | _ -> term ppf t
 

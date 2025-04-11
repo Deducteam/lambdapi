@@ -1,6 +1,6 @@
 (** Proofs and tactics. *)
 
-open Lplib open Base
+open Lplib open Base open Extra
 open Timed
 open Core open Term open Print
 open Common open Pos
@@ -17,8 +17,13 @@ type goal =
 
 let is_typ : goal -> bool = function Typ _ -> true  | Unif _ -> false
 let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
+
 let get_constr : goal -> constr =
   function Unif c -> c | Typ _ -> invalid_arg (__FILE__ ^ "get_constr")
+
+let get_names : goal -> StrSet.t = function
+  | Unif _ -> StrSet.empty
+  | Typ gt -> Env.names gt.goal_hyps
 
 module Goal = struct
 
@@ -55,6 +60,7 @@ module Goal = struct
 
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
+    Stdlib.(Print.idset := get_names g);
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
