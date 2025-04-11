@@ -442,7 +442,7 @@ let require_arg : string option CLT.t =
 let custom_db_path : string option CLT.t =
   let doc =
     "Path to the search DB file." in
-  Arg.(value & opt (some string) None & info ["search-db"] ~docv:"PATH" ~doc)
+  Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
 
 let index_cmd =
  let doc = "Index the given files." in

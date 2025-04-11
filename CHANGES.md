@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add tactic `set`.
 - Decimal notation for integers.
-- add the `search-db` flag to the `index`, `search` and `websearch` commands
+- add the `--db` option to the `index`, `search` and `websearch` commands
 
 ### Fixed
 
