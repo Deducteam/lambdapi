@@ -279,7 +279,7 @@ module DB = struct
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
      Lplib.Base.out ppf "%s%a.<b>%s</b>@%s%s%a%s%s<code>%a</code>%s%s@."
-      lisb (escaper.run Core.Print.path) p n (basename pos)
+      lisb (escaper.run Core.Print.path) p n (popt_to_string ~print_dirname:false pos)
       separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb
       (Common.Pos.print_file_contents ~escape ~delimiters)

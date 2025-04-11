@@ -38,15 +38,6 @@ let search_cmd cfg rules require s =
    (Tool.Indexing.search_cmd_txt ss s) in
  Error.handle_exceptions run
 
-(* [string_of_file f] puts the contents of file [f] in a string. *)
-let string_of_file f =
-  let ic = open_in f in
-  let n = in_channel_length ic in
-  let s = Bytes.create n in
-  really_input ic s 0 n;
-  close_in ic;
-  Bytes.to_string s
-
 let websearch_cmd cfg rules port require header_file =
  Config.init cfg;
  let run () =
@@ -68,7 +59,7 @@ let websearch_cmd cfg rules port require header_file =
        to learn about terms syntax inside the queries.
       </p>
       "
-    | Some file -> string_of_file file in
+    | Some file -> Lplib.String.string_of_file file in
   Tool.Websearch.start header ss ~port () in
  Error.handle_exceptions run
 

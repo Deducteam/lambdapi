@@ -92,15 +92,9 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
     match fname with
     | None    -> ""
     | Some(n) ->
-      let filename =
-        if print_dirname then n
+        if print_dirname then n ^ ":"
         else
-          try
-            let last_slash_index = String.rindex n '/' in
-            (String.sub n (last_slash_index + 1)
-            (String.length n - last_slash_index - 1))
-          with Not_found -> n
-      in filename ^ ":"
+          Filename.basename n ^ ":"
   in
   if start_line <> end_line then
     Printf.sprintf "%s%d:%d-%d:%d" fname start_line start_col end_line end_col
@@ -115,11 +109,6 @@ let popt_to_string :
   match pop with
     | None -> "Unknown location "
     | Some (p) -> to_string ~print_dirname ~print_fname p ^ " "
-
-(** [basename p] returns a string representing the position [p]
- with the filename reduced to its basename. *)
-let basename = fun p ->
-  (popt_to_string ~print_dirname:false p)
 
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->
