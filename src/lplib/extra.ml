@@ -18,10 +18,10 @@ let get_safe_prefix : string -> StrSet.t -> string =
   let head_len = String.length head in
   let f s acc =
     let s_len = String.length s in
-    if head_len <= s_len && String.equal head (String.sub s 0 head_len) then
+    if head_len < s_len && String.equal head (String.sub s 0 head_len) then
       try
-        let curr_int = int_of_string (String.sub s head_len (s_len - 1)) in
-        if acc < curr_int then curr_int else acc
+        let i = int_of_string (String.sub s head_len (s_len - head_len)) in
+        if acc < i then i else acc
       with Failure _ -> acc
     else acc
   in
