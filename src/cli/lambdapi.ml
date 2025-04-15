@@ -33,12 +33,7 @@ let sig_state_of_require =
   the path wrapped in it or a default value if None*)
 let dbpath custom_dbpath =
   match custom_dbpath with
-  | None ->
-  begin
-    match Sys.getenv_opt "HOME" with
-    | Some s -> Filename.concat s "/.LPSearch.db"
-    | None -> ".LPSearch.db"
-  end
+  | None -> Common.Path.default_dbpath
   | Some path -> path
 
 let search_cmd cfg rules require s custom_dbpath =
