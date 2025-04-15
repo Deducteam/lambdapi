@@ -1,3 +1,4 @@
+biggest = 1
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="xtc2tpdb.xsl" type="text/xsl"?>
 <problem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" type="termination" xsi:noNamespaceSchemaLocation="http://dev.aspsimon.org/xtc.xsd">

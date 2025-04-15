@@ -1,3 +1,4 @@
+biggest = 1
 (FUN
 A : t -> t -> t
 L : t -> (t -> t) -> t
