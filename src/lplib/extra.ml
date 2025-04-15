@@ -45,7 +45,7 @@ let get_safe_prefix : string -> StrSet.t -> string =
   if StrSet.mem s idset then
     let r,i = root_and_index s in
     let i = StrSet.fold (biggest_index r) idset i in
-    print_endline("biggest = "^string_of_int i);
+    (*print_endline("biggest = "^string_of_int i);*)
     r^string_of_int(i+1)
   else s
 

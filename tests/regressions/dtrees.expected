@@ -1,4 +1,3 @@
-biggest = 1
 => tests.OK.boolean.bool_or
 graph {
        0 [label="0" shape="box"];
