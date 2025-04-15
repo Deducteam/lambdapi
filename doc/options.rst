@@ -154,7 +154,7 @@ index
    rule cic.Term _ $x ↪ $x;
    rule cic.lift _ _ $x ↪ $x;
 
-* ``--db-search <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
+* ``--db <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 
 search
@@ -164,7 +164,7 @@ search
 
 * ``--require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
 
-* ``--db-search <FILE.db>`` tells lambdapi to search in <FILE.db> instead of ~/.LPSearch.db.
+* ``--db <FILE.db>`` tells lambdapi to search in <FILE.db> instead of ~/.LPSearch.db.
 
 websearch
 ---------
@@ -175,7 +175,7 @@ websearch
 
 * ``--require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can use used for example to specify implicit arguments for symbols used in the queries.
 
-* ``--db-search <FILE.db>`` tells the server to use <FILE.db> instead of ~/.LPSearch.db.
+* ``--db <FILE.db>`` tells the server to use <FILE.db> instead of ~/.LPSearch.db.
 
 lsp
 -------
