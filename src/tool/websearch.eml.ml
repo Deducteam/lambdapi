@@ -1,38 +1,9 @@
-(*
-let show_form_stream ?(message="") ?(output="") request response =
-  %% response
-  <html>
-  <body>
 
-    <h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
-     Search Engine</h1>
-
-    <p>
-    The <b>search</b> button answers the query. Read the <a
-    href="https://lambdapi.readthedocs.io/en/latest/query_language.html">query
-    language specification</a> to learn about the query language.<br>
-    </p>
-
-    <form method="POST" action="/">
-      <%s! Dream.csrf_tag request %>
-      <p>
-      <input type="search" required="true" size="100"
-        name="message" value="<%s message %>"
-        onfocus="this.select();" autofocus></p>
-      <p>
-      <input type="submit" value="search" name="search">
-      </p>
-    </form>
-
-    <%s! output %>
-
-  </body>
-  </html>
-*)
 
 let show_form ~from ?(message="") ?output request =
   <html>
   <body>
+
     <script>
     function incr(delta) {
       document.getElementById("from").value =
@@ -40,15 +11,6 @@ let show_form ~from ?(message="") ?output request =
       document.getElementById("search").click();
     }
     </script>
-
-    <h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
-     Search Engine</h1>
-
-    <p>
-    The <b>search</b> button answers the query. Read the <a
-    href="https://lambdapi.readthedocs.io/en/latest/query_language.html">query
-    language specification</a> to learn about the query language.<br>
-    </p>
 
     <form method="POST" action="/" id="form">
       <%s! Dream.csrf_tag request %>
@@ -79,16 +41,17 @@ let show_form ~from ?(message="") ?output request =
   </body>
   </html>
 
-let start ss ~port () =
+let start header ss ~port () =
   (*Common.Logger.set_debug true "e" ;*)
-  Dream.run ~port
+  let interface = "0.0.0.0" in
+  Dream.run ~port ~interface
   @@ Dream.logger
   @@ Dream.memory_sessions
   @@ Dream.router [
 
     Dream.get  "/"
       (fun request ->
-        Dream.html (show_form ~from:0 request));
+        Dream.html (header ^ (show_form ~from:0 request)));
 
     Dream.post "/"
       (fun request ->
