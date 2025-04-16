@@ -22,7 +22,7 @@ let get_constr : goal -> constr =
   function Unif c -> c | Typ _ -> invalid_arg (__FILE__ ^ "get_constr")
 
 let get_names : goal -> StrSet.t = function
-  | Unif _ -> StrSet.empty
+  | Unif(c,_,_) -> Ctxt.names c
   | Typ gt -> Env.names gt.goal_hyps
 
 module Goal = struct

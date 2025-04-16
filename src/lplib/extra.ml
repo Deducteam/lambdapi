@@ -32,8 +32,9 @@ let _ =
   assert (root_and_index "xy0" = ("xy",0));
   assert (root_and_index "x0y" = ("x0y",-1))
 
-(** [get_safe_prefix p idset] returns a string starting with [p] and not
-    belonging to [idset]. *)
+(** [get_safe_prefix p idset] returns a string [s] such that [s] starts with
+    [p], [s] is not in [idset] and, for all non-negative integer [k],
+    [p^string_of_int k] is not in [idset]. *)
 let get_safe_prefix : string -> StrSet.t -> string =
   let biggest_index r id acc =
     let r',i' = root_and_index id in

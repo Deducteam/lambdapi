@@ -523,8 +523,8 @@ let simplify : ctxt -> term -> term = fun c ->
   let rec simp t =
     match get_args (whnf ~tags c t) with
     | Prod(a,b), _ ->
-        let x, b = unbind b in
-        mk_Prod (simp a, bind_var x (simp b))
+       let x, b = unbind b in
+       mk_Prod (simp a, bind_var x (simp b))
     | h, ts -> add_args_map h (whnf ~tags c) ts
   in simp
 
