@@ -52,20 +52,23 @@ let get_safe_prefix : string -> StrSet.t -> string =
   in
   fun s idset ->
   (*print_endline("get_safe_prefix "^s^" in");
-  StrSet.iter print_endline idset;*)
-  if StrSet.mem s idset then
-    let r,i = root_and_index s in
-    let i = StrSet.fold (biggest_index r) idset i in
-    (*print_endline("biggest = "^string_of_int i);*)
-    r^string_of_int(i+1)
-  else s
+    StrSet.iter print_endline idset;*)
+  let r,i = root_and_index s in
+  (* If [r] is the root of no element of [idset], then [StrSet.fold
+     (biggest_index r) idset (-2) = -2]. But if [r] is the root of an element
+     of [idset] with index [k], then [StrSet.fold (biggest_index r) idset (-2)
+     >= k] since k >= -1 > -2. *)
+  let i = StrSet.fold (biggest_index r) idset (if i < 0 then -2 else i) in
+  (*print_endline("biggest = "^string_of_int i);*)
+  if i < -1 then s else r^string_of_int(i+1)
 
 (* unit tests *)
 let _ =
-  let idset = StrSet.add "x" (StrSet.add "x1" StrSet.empty) in
+  let idset = StrSet.(add "x" (add "x1" (add "x00" empty))) in
   assert (get_safe_prefix "y" idset = "y");
   assert (get_safe_prefix "x" idset = "x2");
-  assert (get_safe_prefix "x0" idset = "x0");
+  assert (get_safe_prefix "x0" idset = "x2");
+  assert (get_safe_prefix "x00" idset = "x01");
   assert (get_safe_prefix "xy" idset = "xy")
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
