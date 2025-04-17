@@ -20,8 +20,17 @@ let root_and_index =
   (*print_endline("root_and_index "^s);*)
   let n = String.length s in
   try let i = 1 + Str.search_backward re s (n-1) in
+      (* skip leading zeros *)
+      let i =
+        if s.[i] <> '0' then i
+        else
+          begin
+            let j = ref (i+1) in
+            while !j < n && s.[!j] = '0' do incr j done;
+            !j - 1
+          end
+      in
       (*print_endline("search_backward = "^string_of_int i);*)
-      (*FIXME: handle leading sequences of zeros*)
       String.sub s 0 i, int_of_string(String.sub s i (n-i))
   with Not_found -> s, -1
 
@@ -30,7 +39,9 @@ let _ =
   assert (root_and_index "x" = ("x",-1));
   assert (root_and_index "x0" = ("x",0));
   assert (root_and_index "xy0" = ("xy",0));
-  assert (root_and_index "x0y" = ("x0y",-1))
+  assert (root_and_index "x0y" = ("x0y",-1));
+  assert (root_and_index "x00" = ("x0",0));
+  assert (root_and_index "x000" = ("x00",0))
 
 (** [get_safe_prefix p idset] returns a string [s] such that [s] starts with
     [p], [s] is not in [idset] and, for all non-negative integer [k],
