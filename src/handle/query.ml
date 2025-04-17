@@ -10,20 +10,32 @@ open Timed
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
-  | None -> fatal pos "%a is not typable." term t
+  | None ->
+      Stdlib.(Print.idset := Ctxt.names ctx);
+      fatal pos "%a is not typable." term t
   | Some (t, a) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, a)
           else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to infer the type of %a." term t)
+            begin
+              Stdlib.(Print.idset := Ctxt.names ctx);
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to infer the type of %a." term t
+            end
         end
-      else fatal pos "%a is not typable." term t
+      else
+        begin
+          Stdlib.(Print.idset := Ctxt.names ctx);
+          fatal pos "%a is not typable." term t
+        end
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
-  let die () = fatal pos "[%a] does not have type [%a]." term t term a in
+  let die () =
+    Stdlib.(Print.idset := Ctxt.names ctx);
+    fatal pos "[%a] does not have type [%a]." term t term a
+  in
   match Infer.check_noexn p ctx t a with
   | Some t ->
     if Unif.solve_noexn p then
@@ -38,23 +50,34 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
 let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
-  | None -> fatal pos "[%a] is not typable by a sort." term t
+  | None ->
+      Stdlib.(Print.idset := Ctxt.names ctx);
+      fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, s) else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to check that [%a] is typable by a sort."
-               term s)
+            begin
+              Stdlib.(Print.idset := Ctxt.names ctx);
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to check that [%a] is typable by a sort."
+                term s
+            end
         end
-      else fatal pos "[%a] is not typable by a sort." term t
+      else
+        begin
+          Stdlib.(Print.idset := Ctxt.names ctx);
+          fatal pos "[%a] is not typable by a sort." term t
+        end
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
 
 (** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
    level 1 and returns a function for printing [x] on a string using [pp]. *)
-let return : 'a pp -> 'a -> result = fun pp x ->
+let return : proof_state option -> 'a pp -> 'a -> result = fun ps pp x ->
+  let names = Env.names (Proof.focus_env ps) in
+  let pp ppf x = Stdlib.(Print.idset := names); pp ppf x in
   Console.out 1 "%a" pp x;
   Some (fun () -> Format.asprintf "%a" pp x)
 
@@ -93,7 +116,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       begin
         match ps with
         | None -> fatal pos "Not in a proof."
-        | Some ps -> return Proof.goals ps
+        | Some ps -> return None Proof.goals ps
       end
   | P_query_print(Some qid) ->
       let sym_info ppf s =
@@ -141,13 +164,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         if s == Unif_rule.equiv || s == Coercion.coerce then rules ppf s
         else (decl ppf s; ind ppf s)
       in
-      return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
+      return ps sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
       (match ps with
        | None -> fatal pos "Not in a proof"
        | Some ps ->
            match ps.proof_term with
-           | Some m -> return term (mk_Meta(m,[||]))
+           | Some m -> return None term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
@@ -160,7 +183,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
-  | P_query_search s -> return string (Tool.Indexing.search_cmd_txt ss s)
+  | P_query_search s -> return None string (Tool.Indexing.search_cmd_txt ss s)
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)
@@ -206,8 +229,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      return term (Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)))
+      return ps term (Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)))
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
       let t, _ = infer pt.pos p ctxt t in
-      return term (Eval.eval cfg ctxt t)
+      return ps term (Eval.eval cfg ctxt t)

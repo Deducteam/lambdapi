@@ -124,7 +124,8 @@ let tac_refine : ?check:bool ->
     if check then
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
-        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+          Stdlib.(Print.idset := Ctxt.names c);
+          fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
       | Some t -> t
     else t
   in
@@ -152,7 +153,9 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
           else ind
         with Not_found -> fatal pos "%a is not an inductive type." sym s
       end
-  | _ -> fatal pos "%a is not headed by an inductive type." term a
+  | _ ->
+      Stdlib.(Print.idset := Env.names env);
+      fatal pos "%a is not headed by an inductive type." term a
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
@@ -174,7 +177,9 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
-  | _ -> fatal pos "[%a] is not a product." term goal_type
+  | _ ->
+      Stdlib.(Print.idset := Ctxt.names ctx);
+      fatal pos "[%a] is not a product." term goal_type
 
 (** [count_products a] returns the number of consecutive products at
    the top of the term [a]. *)
@@ -401,7 +406,9 @@ let rec handle :
         let c = Env.to_ctxt env in
         let p = new_problem () in
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "[%a] is not typable." term t
+        | None ->
+            Stdlib.(Print.idset := Ctxt.names c);
+            fatal pos "[%a] is not typable." term t
         | Some (_, a) -> count_products c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -444,7 +451,9 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.check_noexn p c t mk_Type with
-        | None -> fatal pos "%a is not of type Type." term t
+        | None ->
+            Stdlib.(Print.idset := Env.names env);
+            fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in
@@ -466,7 +475,9 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "%a is not typable." term t
+        | None ->
+            Stdlib.(Print.idset := Ctxt.names c);
+            fatal pos "%a is not typable." term t
         | Some (t,b) ->
           let x = new_var id.elt in
           let e' = Env.add id.elt x b (Some t) env in

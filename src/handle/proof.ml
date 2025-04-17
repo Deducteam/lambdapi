@@ -148,3 +148,8 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       match ps.proof_goals with
       | [] -> Env.empty
       | g::_ -> Goal.env g
+
+(* [term_ps ps ppf t] prints on the formatter [ppf] the term [t] in proof
+   state [ps]. *)
+let term_ps ps ppf t =
+  Stdlib.(Print.idset := Env.names(focus_env ps)); term ppf t
