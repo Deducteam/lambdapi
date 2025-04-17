@@ -10,10 +10,9 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** [root_and_index s] returns the pair [root,i] such that, if [s] ends by a
-    substring that is a sequence of digits with no useless leading zeros then
-    [i] is the biggest integer such that [s = root^string_of_int i], and if
-    [i<0] then [s = root]. *)
+(** If [s] ends by a sequence of digits with no useless leading zeros then
+    [root_and_index s = (root,i)] such that [i] is the biggest integer such
+    that [s = root^string_of_int i]. Otherwise, [root_and_index s = (s,-1)].*)
 let root_and_index =
   let re = Str.regexp "[^0-9][0-9]+$" in
   fun s ->

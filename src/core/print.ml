@@ -40,6 +40,7 @@ let idset = Stdlib.ref StrSet.empty
 
 let safe_unbind (b:binder) : var * term =
   let name = get_safe_prefix (binder_name b) Stdlib.(!idset) in
+  Stdlib.(idset := StrSet.add name !idset);
   unbind ~name b
 
 let assoc : Pratter.associativity pp = fun ppf assoc ->
