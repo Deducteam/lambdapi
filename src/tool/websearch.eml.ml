@@ -41,7 +41,7 @@ let show_form ~from ?(message="") ?output request =
   </body>
   </html>
 
-let start header ss ~port () =
+let start header ss ~port custom_dbpath () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
   Dream.run ~port ~interface
@@ -61,7 +61,8 @@ let start header ss ~port () =
           let from = int_of_string from in (* XXX CSC exception XXX *)
           Dream.log "from2 = %d" from ;
           let output =
-            Indexing.search_cmd_html ss ~from ~how_many:100 message in
+            Indexing.search_cmd_html ss ~from ~how_many:100
+            message custom_dbpath in
           Dream.html (show_form ~from ~message ~output request)
           (*Dream.stream (show_form_stream ~message ~output request)*)
         | _ ->
