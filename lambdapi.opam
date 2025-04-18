@@ -48,9 +48,6 @@ build: [
     "-j"
     jobs
     "@install"
-    "@runtest" {with-test}
-    "@doc" {with-doc}
   ]
 ]
 conflicts: [ "ocaml-option-bytecode-only" ]
-

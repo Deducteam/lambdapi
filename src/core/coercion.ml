@@ -13,7 +13,8 @@ let _ =
   let rule =
     let a = mk_Patt (Some 0, "A", [||])
     and t = mk_Patt (Some 1, "t", [||]) in
-    let lhs = [a; a; t] and arities = [|0; 0|] in
-    { lhs; rhs=t; arity=3; arities; vars_nb=2; xvars_nb = 0; rule_pos = None }
+    let lhs = [a;a;t] and arities = [|0;0|] and names = [|"A";"t"|] in
+    { lhs; names; rhs=t; arity=3; arities; vars_nb=2; xvars_nb = 0;
+      rule_pos = None }
   in
   Sign.add_rule Ghost.sign (coerce, rule)

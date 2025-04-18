@@ -79,7 +79,7 @@ let match_strat : match_strat pp = fun ppf s ->
 
 let do_not_qualify = ref false
 
-let without_qualifying f =
+let no_qualif f =
  let saved = !do_not_qualify in
  do_not_qualify := true ;
  let res = f () in
@@ -123,13 +123,13 @@ let nat_of_term : term -> int = fun t ->
 let pos_of_term : term -> int = fun t ->
   let one = builtin "pos_one" and dbl = builtin "pos_double"
   and suc_dbl = builtin "pos_succ_double" in
-  let rec pos acc = fun t ->
+  let rec pos = fun t ->
     match get_args t with
-    | (Symb s, [u]) when s == dbl -> pos (2*acc) u
-    | (Symb s, [u]) when s == suc_dbl -> pos (2*acc+1) u
-    | (Symb s,  []) when s == one -> acc
+    | (Symb s, [u]) when s == dbl -> 2 * (pos u)
+    | (Symb s, [u]) when s == suc_dbl -> (2 * pos u) + 1
+    | (Symb s,  []) when s == one -> 1
     | _ -> raise Not_a_nat
-  in pos 1 t
+  in pos t
 
 (** [int_of_term t] converts a term into a positive number.
     @raise Not_a_nat if this is not possible. *)

@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Tactic `simplify rule off` to simplify the focused goal wrt β-reduction only.
 - Tacticals orelse and repeat.
+- Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
+- Added builtin String for string literals between double quotes.
+- Added the `--header` flag to the `websearch` command
 
 ### Changed
 
@@ -19,10 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   * allow to declare rewriting rules (e.g. alignments) over defined and constant symbols
   * improve error message for overloaded symbols
 - Tactic set x ≔ t: replace all subterms equal to t by x.
+- Enhance the formatting of the search results.
 
 ### Fixed
 
 - Notations on external symbols are now exported.
+- Make the websearch server listen on all the interfaces instead of localhost only.
 
 ## 2.6.0 (2025-01-25)
 

@@ -15,7 +15,7 @@ notation & infix right 10;
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : τ (list string) → Tactic;
+constant symbol #assume : String → Tactic;
 builtin "assume" ≔ #assume;
 
 constant symbol #fail : Tactic;
@@ -82,8 +82,12 @@ require open tests.OK.Eq;
 
 symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
 begin
-  assume x y z t;
+  assume x;
+  eval #generalize x;
+  //assume x y z t;
+  //compute #assume "x" & #assume "y" & #assume "z" & #assume "t";
+  eval #assume "x" & #assume "y" & #assume "z" & #assume "t";
   //rewrite addnA; rewrite addnA; reflexivity
-  compute 2 * #rewrite addnA;
+  //compute 2 * #rewrite addnA;
   eval 2 * #rewrite addnA & #reflexivity
 end;

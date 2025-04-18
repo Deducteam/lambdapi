@@ -345,7 +345,11 @@ tactic:
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
   | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
-  | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
+  | SIMPLIFY { make_pos $sloc (P_tac_simpl SimpAll) }
+  | SIMPLIFY i=qid { make_pos $sloc (P_tac_simpl (SimpSym i)) }
+  | SIMPLIFY RULE s=SWITCH
+    { if s then LpLexer.syntax_error $sloc "Invalid tactic"
+      else make_pos $sloc (P_tac_simpl SimpBetaOnly) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | TRY t=tactic { make_pos $sloc (P_tac_try t) }
