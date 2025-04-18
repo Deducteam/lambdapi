@@ -3,6 +3,7 @@
 open Lplib open Base
 open Term
 open Common open Extra
+open Print
 
 (** Type of an environment, used in scoping to associate names to
     corresponding variables and types. Note that it cannot be
@@ -18,9 +19,8 @@ type t = env
 (** [pp ppf env] prints the environment [env] on the formatter [ppf] (for
    debug). *)
 let pp : env pp =
-  let def ppf t = out ppf " ≔ %a" Print.term t in
-  let elt ppf (s, (_,a,t)) =
-    out ppf "%s: %a%a" s Print.term a (Option.pp def) t in
+  let def ppf t = out ppf " ≔ %a" term t in
+  let elt ppf (s, (_,a,t)) = out ppf "%s: %a%a" s term a (Option.pp def) t in
   Common.Debug.D.list elt
 
 (** [empty] is the empty environment. *)

@@ -310,7 +310,7 @@ exception Unsolvable
 (** [error t1 t2]
 @raise Unsolvable. *)
 let error : ctxt -> term -> term -> 'a = fun c t1 t2 ->
-  Stdlib.(Print.idset := Ctxt.names c);
+  let ids = Ctxt.names c in let term = term_in ids in
   fatal_msg "@[<hov>%a and %a are not unifiable.@]@."
     (D.bracket term) t1 (D.bracket term) t2;
   raise Unsolvable

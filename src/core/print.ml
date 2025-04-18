@@ -35,13 +35,11 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
-(** Names that should not be used as bound variable names. *)
-let idset = Stdlib.ref StrSet.empty
-
-let safe_unbind (b:binder) : var * term =
-  let name = get_safe_prefix (binder_name b) Stdlib.(!idset) in
-  Stdlib.(idset := StrSet.add name !idset);
-  unbind ~name b
+let safe_unbind (ids:StrSet.t) (b:binder) : (var * term) * StrSet.t =
+  if binder_occur b then
+    let name = get_safe_prefix (binder_name b) ids in
+    unbind ~name b, StrSet.add name ids
+  else unbind b, ids
 
 let assoc : Pratter.associativity pp = fun ppf assoc ->
   match assoc with
@@ -109,6 +107,11 @@ let sym : sym pp = fun ppf s ->
 
 let var : var pp = fun ppf x -> uid ppf (base_name x)
 
+let bvar : (binder * var) pp = fun ppf (b,x) ->
+  if binder_occur b then out ppf "%a" var x else out ppf "_"
+
+let meta : meta pp = fun ppf m -> out ppf "?%d" m.meta_key
+
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
 
@@ -161,19 +164,11 @@ let are_quant_args : term list -> bool = fun args ->
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
 type priority = [`Func | `Appl | `Atom]
 
-let rec meta : meta pp = fun ppf m ->
-  if !print_meta_types then
-    out ppf "(?%d:%a)" m.meta_key term !(m.meta_type)
-  else out ppf "?%d" m.meta_key
-
-and typ : term pp = fun ppf a ->
-  if !print_domains then out ppf ": %a" term a
-
-and term : term pp = fun ppf t ->
-  let rec atom ppf t = pp `Atom ppf t
-  and appl ppf t = pp `Appl ppf t
-  and func ppf t = pp `Func ppf t
-  and pp p ppf t =
+let rec term_in : StrSet.t -> term pp = fun ids ppf t ->
+  let rec atom ids ppf t = pp `Atom ids ppf t
+  and appl ids ppf t = pp `Appl ids ppf t
+  and func ids ppf t = pp `Func ids ppf t
+  and pp p ids ppf t =
     if Logger.log_enabled() then log "%a" Raw.term t;
     let (h, args) = get_args t in
     (* standard application *)
@@ -183,7 +178,7 @@ and term : term pp = fun ppf t ->
       | args ->
           if p = `Atom then out ppf "(";
           head true ppf h;
-          List.iter (out ppf " %a" atom) args;
+          List.iter (out ppf " %a" (atom ids)) args;
           if p = `Atom then out ppf ")"
     in
     (* postfix symbol application *)
@@ -193,9 +188,9 @@ and term : term pp = fun ppf t ->
         (* Can be improved by looking at symbol priority. *)
         if p <> `Func then out ppf "(";
         if args = []
-        then out ppf "%a %a" appl l sym s
-        else out ppf "(%a %a)" appl l sym s;
-        List.iter (out ppf " %a" appl) args;
+        then out ppf "%a %a" (appl ids) l sym s
+        else out ppf "(%a %a)" (appl ids) l sym s;
+        List.iter (out ppf " %a" (appl ids)) args;
         if p <> `Func then out ppf ")"
       | [] ->
         out ppf "("; head true ppf h; out ppf ")"
@@ -220,16 +215,16 @@ and term : term pp = fun ppf t ->
                     if p <> `Func then out ppf "(";
                     (* Can be improved by looking at symbol priority. *)
                     if args = []
-                    then out ppf "%a %a %a" appl l sym s appl r
-                    else out ppf "(%a %a %a)" appl l sym s appl r;
-                    List.iter (out ppf " %a" appl) args;
+                    then out ppf "%a %a %a" (appl ids) l sym s (appl ids) r
+                    else out ppf "(%a %a %a)" (appl ids) l sym s (appl ids) r;
+                    List.iter (out ppf " %a" (appl ids)) args;
                     if p <> `Func then out ppf ")"
                 | [] ->
                   out ppf "("; head true ppf h; out ppf ")"
                 | _ ->
                   if p = `Atom then out ppf "(";
                   out ppf "("; head true ppf h; out ppf ")";
-                  List.iter (out ppf " %a" atom) args;
+                  List.iter (out ppf " %a" (atom ids)) args;
                   if p = `Atom then out ppf ")"
               end
           | Zero | IntZero -> out ppf "0"
@@ -251,15 +246,17 @@ and term : term pp = fun ppf t ->
         begin
           match unfold b with
           | Abst(a,b) ->
-              let (x,p) = safe_unbind b in
-              out ppf "`%a %a%a, %a" sym s var x typ a func p
+              let (x,p),ids' = safe_unbind ids b in
+              out ppf "`%a %a%a, %a" sym s var x (typ_in ids) a (func ids') p
           | _ -> assert false
         end
     | _ -> assert false
 
   and head wrap ppf t =
     let env ppf ts =
-      if Array.length ts > 0 then out ppf ".[%a]" (Array.pp func ";") ts in
+      if Array.length ts > 0 then
+        out ppf ".[%a]" (Array.pp (func ids) ";") ts
+    in
     match unfold t with
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
@@ -267,63 +264,70 @@ and term : term pp = fun ppf t ->
     | TRef(r)     ->
         (match !r with
          | None -> out ppf "<TRef>"
-         | Some t -> atom ppf t)
+         | Some t -> atom ids ppf t)
     (* Atoms are printed inconditonally. *)
     | Vari(x)     -> var ppf x
     | Type        -> out ppf "TYPE"
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> sym ppf s
     | Meta(m,e)   ->
-        if !print_meta_args then out ppf "%a%a" meta m env e else meta ppf m
+        if !print_meta_types then
+          out ppf "(?%d:%a)" m.meta_key (term_in ids) !(m.meta_type)
+        else out ppf "?%d" m.meta_key;
+        if !print_meta_args then env ppf e
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
     | Bvar _      -> assert false
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = safe_unbind b in
+        let (x,t),ids' = safe_unbind ids b in
         out ppf "λ %a" bvar (b,x);
-        if !print_domains then out ppf ": %a, %a" func a func t
-        else abstractions ppf t;
+        if !print_domains then out ppf ": %a, %a" (func ids) a (func ids') t
+        else abstractions ids ppf t;
         if wrap then out ppf ")"
     | Prod(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = safe_unbind b in
+        let (x,t),ids' = safe_unbind ids b in
         if binder_occur b then
-          out ppf "Π %a: %a, %a" var x appl a func t
-        else out ppf "%a → %a" appl a func t;
+          out ppf "Π %a: %a, %a" var x (appl ids) a (func ids') t
+        else out ppf "%a → %a" (appl ids) a (func ids) t;
         if wrap then out ppf ")"
     | LLet(a,t,b) ->
         if wrap then out ppf "(";
         out ppf "let ";
-        let (x,u) = safe_unbind b in
+        let (x,u),ids' = safe_unbind ids b in
         bvar ppf (b,x);
-        if !print_domains then out ppf ": %a" atom a;
-        out ppf " ≔ %a in %a" func t func u;
+        if !print_domains then out ppf ": %a" (atom ids) a;
+        out ppf " ≔ %a in %a" (func ids) t (func ids') u;
         if wrap then out ppf ")"
-  and bvar ppf (b,x) =
-    if binder_occur b then out ppf "%a" var x else out ppf "_"
-  and abstractions ppf t =
+  and abstractions ids ppf t =
     match unfold t with
     | Abst(_,b) ->
-        let (x,t) = safe_unbind b in
-        out ppf " %a%a" bvar (b,x) abstractions t
-    | t -> out ppf ", %a" func t
+        let (x,t),ids' = safe_unbind ids b in
+        out ppf " %a%a" bvar (b,x) (abstractions ids') t
+    | t -> out ppf ", %a" (func ids) t
   in
-  func ppf t
+  func ids ppf t
 
-(*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
-(*let term = Raw.term*)
+and typ_in : StrSet.t -> term pp = fun ids ppf a ->
+  if !print_domains then out ppf ": %a" (term_in ids) a
 
-let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
+let term = term_in StrSet.empty
+
+let rec prod_in : StrSet.t -> (term * bool list) pp = fun ids ppf (t,impl) ->
   match unfold t, impl with
   | Prod(a,b), true::impl ->
-      let x, b = safe_unbind b in
-      out ppf "Π [%a: %a], %a" var x term a prod (b, impl)
+      let (x,t),ids' = safe_unbind ids b in
+      out ppf "Π [%a: %a], %a"
+        bvar (b,x) (term_in ids) a (prod_in ids') (t,impl)
   | Prod(a,b), false::impl ->
-      let x, b = safe_unbind b in
-      out ppf "Π %a: %a, %a" var x term a prod (b, impl)
-  | _ -> term ppf t
+      let (x,t),ids' = safe_unbind ids b in
+      out ppf "Π %a: %a, %a"
+        bvar (b,x) (term_in ids) a (prod_in ids') (t,impl)
+  | _ -> term_in ids ppf t
+
+let prod = prod_in StrSet.empty
 
 let sym_rule : sym_rule pp = fun ppf r ->
   out ppf "%a ↪ %a" term (lhs r) term (rhs r)
@@ -334,12 +338,20 @@ let unif_rule : rule pp = rule_of Unif_rule.equiv
 
 let rules_of : sym pp = fun ppf s -> D.list (rule_of s) ppf !(s.sym_rules)
 
+(* for debug only *)
+
+let typ = typ_in StrSet.empty
+
+(*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
+(*let term = Raw.term*)
+
 (* ends with a space if [!print_contexts = true] *)
 let ctxt : ctxt pp = fun ppf ctx ->
   if !print_contexts then
     begin
       let def ppf t = out ppf " ≔ %a" term t in
-      let decl ppf (x,a,t) = out ppf "%a%a%a" var x typ a (Option.pp def) t in
+      let decl ppf (x,a,t) =
+        out ppf "%a%a%a" var x typ a (Option.pp def) t in
       out ppf "%a%s⊢ "
         (List.pp decl ", ") (List.rev ctx)
         (if ctx <> [] then " " else "")
@@ -355,7 +367,6 @@ let constrs : constr list pp = fun ppf cs ->
   let pp_sep ppf () = out ppf "@ ;" in
   out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
 
-(* for debug only *)
 let metaset : MetaSet.t pp =
   D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta
 

@@ -124,7 +124,7 @@ let tac_refine : ?check:bool ->
     if check then
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
-          Stdlib.(Print.idset := Ctxt.names c);
+          let ids = Ctxt.names c in let term = term_in ids in
           fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
       | Some t -> t
     else t
@@ -154,7 +154,7 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
         with Not_found -> fatal pos "%a is not an inductive type." sym s
       end
   | _ ->
-      Stdlib.(Print.idset := Env.names env);
+      let ids = Env.names env in let term = term_in ids in
       fatal pos "%a is not headed by an inductive type." term a
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
@@ -178,7 +178,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
   | _ ->
-      Stdlib.(Print.idset := Ctxt.names ctx);
+      let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "[%a] is not a product." term goal_type
 
 (** [count_products a] returns the number of consecutive products at
@@ -407,7 +407,7 @@ let rec handle :
         let p = new_problem () in
         match Infer.infer_noexn p c t with
         | None ->
-            Stdlib.(Print.idset := Ctxt.names c);
+            let ids = Ctxt.names c in let term = term_in ids in
             fatal pos "[%a] is not typable." term t
         | Some (_, a) -> count_products c a
       in
@@ -452,7 +452,7 @@ let rec handle :
       begin
         match Infer.check_noexn p c t mk_Type with
         | None ->
-            Stdlib.(Print.idset := Env.names env);
+            let ids = Ctxt.names c in let term = term_in ids in
             fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
@@ -476,7 +476,7 @@ let rec handle :
       begin
         match Infer.infer_noexn p c t with
         | None ->
-            Stdlib.(Print.idset := Ctxt.names c);
+            let ids = Ctxt.names c in let term = term_in ids in
             fatal pos "%a is not typable." term t
         | Some (t,b) ->
           let x = new_var id.elt in
@@ -615,8 +615,9 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
-    if Logger.log_enabled () then
-      log ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
+    if Logger.log_enabled() then
+      log ("%a@\n" ^^ Color.red "%a")
+        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
