@@ -284,8 +284,9 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
       let pat ppf p = out ppf " .[%a]" rw_patt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
   | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
-  | P_tac_simpl None -> out ppf "simplify"
-  | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
+  | P_tac_simpl SimpAll -> out ppf "simplify"
+  | P_tac_simpl SimpBetaOnly -> out ppf "simplify rule off"
+  | P_tac_simpl (SimpSym qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_try t -> out ppf "try %a" tactic t
