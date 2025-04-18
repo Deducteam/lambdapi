@@ -92,7 +92,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   let non_instantiated g =
     match g with
     | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        Some (Goal.simpl Eval.simplify g)
+        Some (Goal.simpl Eval.beta_simplify g)
     | _ -> None
   in
   let gs_typ = List.filter_map non_instantiated gs_typ in
@@ -351,7 +351,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
             | T_set, _ -> assert false
-            | T_simplify, _ -> P_tac_simpl None
+            | T_simplify, _ -> P_tac_simpl SimpAll
             | T_solve, _ -> P_tac_solve
             | T_symmetry, _ -> P_tac_sym
             | T_try, [t] -> P_tac_try(tac t)
@@ -375,11 +375,15 @@ let rec handle :
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
-  | P_tac_simpl None ->
+  | P_tac_simpl SimpAll ->
       {ps with proof_goals = Goal.simpl Eval.snf g :: gs}
-  | P_tac_simpl (Some qid) ->
+  | P_tac_simpl SimpBetaOnly ->
+      let tags = [`NoRw; `NoExpand] in
+      {ps with proof_goals = Goal.simpl (Eval.snf ~tags) g :: gs}
+  | P_tac_simpl (SimpSym qid) ->
       let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
-      {ps with proof_goals = Goal.simpl (fun _ -> Eval.unfold_sym s) g :: gs}
+      let g = Goal.simpl (fun _ctx -> Eval.unfold_sym s) g in
+      {ps with proof_goals = g :: gs}
   | P_tac_solve -> tac_solve pos ps
   | _ ->
   (* Tactics that apply to typing goals only: *)

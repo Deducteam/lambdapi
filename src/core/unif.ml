@@ -111,7 +111,7 @@ let instantiation :
     | None -> None
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
-        else let u = Eval.simplify c (sym_to_var map u) in
+        else let u = Eval.beta_simplify c (sym_to_var map u) in
           Some ((*Logger.set_debug_in false 'm'*) (bind_mvar vs) u)
 
 (** Checking type or not during meta instanciation. *)

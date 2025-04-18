@@ -105,4 +105,5 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/UID_PATT/"$$" UID/g' \
 	-e 's/QID_EXPL/"@" QID/g' \
 	-e 's/| EOF//g' \
+        -e 's/"rule" <switch>/"rule" "off"/' \
 	>> $@
