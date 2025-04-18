@@ -36,34 +36,43 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)
-let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
-  _Appl_Symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
+let prf_of : config -> var -> term list -> term -> term = fun c p ts t ->
+  mk_Appl (mk_Symb c.symb_prf, mk_Appl (add_args (mk_Vari p) ts, t))
 
 (** compute safe prefixes for predicate and constructor argument variables. *)
 let gen_safe_prefixes : inductive -> string * string * string =
   let letter c = match c with 'a' | 'p' | 'x' -> true | _ -> false in
   fun ind_list ->
+  let open Extra in
   let clashing_names =
+    let rec add_name_from_type set t =
+      match unfold t with
+      | Prod(_,b) ->
+        let x,b = unbind b in
+        add_name_from_type (StrSet.add (base_name x) set) b
+      | _ -> set
+    in
     let add_name_from_sym set sym =
       let s = sym.sym_name in
-      if s <> "" && letter s.[0] then Extra.StrSet.add s set else set
+      let set = if s <> "" && letter s.[0] then StrSet.add s set else set in
+      add_name_from_type set !(sym.sym_type)
     in
     let add_names_from_ind set (ind_sym, cons_sym_list) =
       let set = add_name_from_sym set ind_sym in
       List.fold_left add_name_from_sym set cons_sym_list
     in
-    List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
+    List.fold_left add_names_from_ind StrSet.empty ind_list
   in
-  let a_str = Extra.get_safe_prefix "a" clashing_names in
-  let p_str = Extra.get_safe_prefix "p" clashing_names in
-  let x_str = Extra.get_safe_prefix "x" clashing_names in
+  let a_str = get_safe_prefix "a" clashing_names in
+  let p_str = get_safe_prefix "p" clashing_names in
+  let x_str = get_safe_prefix "x" clashing_names in
   a_str, p_str, x_str
 
 (** Type of maps associating to every inductive type some data useful for
    generating the induction principles. *)
-type data = { ind_var : tvar (** predicate variable *)
-            ; ind_type : tbox (** predicate variable type *)
-            ; ind_conclu : tbox (** induction principle conclusion *) }
+type data = { ind_var : var (** predicate variable *)
+            ; ind_type : term (** predicate variable type *)
+            ; ind_conclu : term (** induction principle conclusion *) }
 type ind_pred_map = (sym * data) list
 
 (** [ind_typ_with_codom pos ind_sym env codom x_str a] assumes that [a] is of
@@ -71,14 +80,15 @@ type ind_pred_map = (sym * data) list
    to this type except that [TYPE] is replaced by [codom [i1;...;in]]. The
    string [x_str] is used as prefix for the variables [ik]. *)
 let ind_typ_with_codom :
-      popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
+      popt -> sym -> Env.t -> (term list -> term) -> string -> term -> term =
   fun pos ind_sym env codom x_str a ->
-  let rec aux : tvar list -> int -> term -> tbox = fun xs k a ->
+  let rec aux : var list -> int -> term -> term = fun xs k a ->
     match get_args a with
-    | (Type, _) -> codom (List.rev_map _Vari xs)
+    | (Type, _) -> codom (List.rev_map mk_Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name (x_str ^ string_of_int k) b in
-        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) (k+1) b))
+        let name = x_str ^ string_of_int k in
+        let (x,b) = unbind ~name b in
+        mk_Prod (a, bind_var x (aux (x::xs) (k+1) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) 0 a
@@ -90,10 +100,10 @@ let ind_typ_with_codom :
    the names of the variable arguments of predicate variables. *)
 let create_ind_pred_map :
       popt -> config -> int -> inductive -> string -> string -> string
-      -> tvar array * Env.t * ind_pred_map =
+      -> var array * Env.t * ind_pred_map =
   fun pos c arity ind_list a_str p_str x_str ->
   (* create parameters *)
-  let vs = Array.init arity (new_tvar_ind a_str) in
+  let vs = Array.init arity (new_var_ind a_str) in
   let env =
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
@@ -102,17 +112,18 @@ let create_ind_pred_map :
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
     (* predicate variable *)
-    let ind_var = new_tvar_ind p_str i in
+    let ind_var = new_var_ind p_str i in
     (* predicate type *)
-    let codom ts = _Impl (_Appl_Symb ind_sym ts) (_Symb c.symb_Prop) in
+    let codom ts =
+      mk_Arro (add_args (mk_Symb ind_sym) ts, mk_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
     let codom ts =
-      let x = new_tvar x_str in
-      let t = Bindlib.bind_var x
-                (prf_of c ind_var (List.remove_heads arity ts) (_Vari x)) in
-      _Prod (_Appl_Symb ind_sym ts) t
+      let x = new_var x_str in
+      let t = bind_var x
+          (prf_of c ind_var (List.remove_heads arity ts) (mk_Vari x)) in
+      mk_Prod (add_args (mk_Symb ind_sym) ts, t)
     in
     let ind_conclu = ind_typ_with_codom pos ind_sym env codom x_str a in
     (ind_sym, {ind_var; ind_type; ind_conclu})
@@ -164,19 +175,19 @@ let fold_cons_type
       (ind_pred_map : ind_pred_map)
       (x_str : string)
       (ind_sym : sym)
-      (vs : tvar array)
+      (vs : var array)
       (cons_sym : sym)
-      (inj_var : int -> tvar -> 'var)
+      (inj_var : int -> var -> 'var)
       (init : 'a)
 
-      (aux : Env.t -> sym -> tvar -> term list -> 'var -> 'aux)
+      (aux : Env.t -> sym -> var -> term list -> 'var -> 'aux)
       (acc_rec_dom : 'a -> 'var -> 'aux -> 'a)
       (rec_dom : term -> 'var -> 'aux -> 'c -> 'c)
 
       (acc_nonrec_dom : 'a -> 'var -> 'a)
       (nonrec_dom : term -> 'var -> 'c -> 'c)
 
-      (codom : 'var list -> 'a -> tvar -> term list -> 'c)
+      (codom : 'var list -> 'a -> var -> term list -> 'c)
 
     : 'c =
   let rec fold : 'var list -> int -> 'a -> term -> 'c = fun xs n acc t ->
@@ -188,8 +199,9 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
-       let x, u = LibTerm.unbind_name (x_str ^ string_of_int n) u in
-       let x = inj_var (Array.length vs + n) x in
+       let name = x_str ^ string_of_int n in
+       let x, u = unbind ~name u in
+       let x = inj_var (List.length xs + n) x in
        begin
          let env, b = Env.of_prod [] "y" t in
          match get_args b with
@@ -221,32 +233,32 @@ let fold_cons_type
    x₁)-> π(p (c x₀ x₁)) -> Π x:T, π(p x)]. *)
 let gen_rec_types :
       config -> popt -> inductive
-      -> tvar array -> Env.t -> ind_pred_map -> string -> term list =
+      -> var array -> Env.t -> ind_pred_map -> string -> term list =
   fun c pos ind_list vs env ind_pred_map x_str ->
   let n = Array.length vs in
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
-  let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    (* 'var = tvar, 'a = unit, 'aux = unit, 'c = tbox *)
+  let case_of : sym -> sym -> term = fun ind_sym cons_sym ->
+    (* 'var = var, 'a = unit, 'aux = unit, 'c = term *)
     (* the accumulator is not used *)
     let inj_var _ x = x in
     let init = () in
     (* aux computes the induction hypothesis *)
     let aux env _ p ts x =
-      let v = Env.appl (_Vari x) env in
-      let v = prf_of c p (List.map lift (List.remove_heads n ts)) v in
-      Env.to_prod_box env v
+      let v = Env.appl (mk_Vari x) env in
+      let v = prf_of c p (List.remove_heads n ts) v in
+      Env.to_prod env v
     in
     let acc_rec_dom _ _ _ = () in
     let rec_dom t x v next =
-      _Prod (lift t) (Bindlib.bind_var x (_Impl v next))
+      mk_Prod (t, bind_var x (mk_Arro (v, next)))
     in
     let acc_nonrec_dom _ _ = () in
-    let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
+    let nonrec_dom t x next = mk_Prod (t, bind_var x next) in
     let codom xs _ p ts =
-      prf_of c p (List.map lift (List.remove_heads n ts))
-        (_Appl_Symb cons_sym (List.rev_map _Vari xs))
+      prf_of c p (List.remove_heads n ts)
+        (add_args (mk_Symb cons_sym) (List.rev_map mk_Vari xs))
     in
     fold_cons_type pos ind_pred_map x_str ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
@@ -255,16 +267,16 @@ let gen_rec_types :
   (* Generates an induction principle for each type. *)
   let gen_rec_type (_, d) =
     let add_clause_cons ind_sym cons_sym t =
-      _Impl (case_of ind_sym cons_sym) t
+      mk_Arro (case_of ind_sym cons_sym, t)
     in
     let add_clauses_ind (ind_sym, cons_sym_list) t =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list t
     in
     let rec_typ = List.fold_right add_clauses_ind ind_list d.ind_conclu in
     let add_quantifier t (_,d) =
-      _Prod d.ind_type (Bindlib.bind_var d.ind_var t) in
+      mk_Prod (d.ind_type, bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
-    Bindlib.unbox (Env.to_prod_box env rec_typ)
+    Env.to_prod env rec_typ
   in
 
   List.map gen_rec_type ind_pred_map
@@ -284,11 +296,11 @@ let rec_name ind_sym = Escape.add_prefix "ind_" ind_sym.sym_name
    --> pci x1 t1? ... xk tk?]  with m underscores, [tj? = ind_T p pc1 .. pcn _
    .. _ xj] if [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
-      popt -> inductive -> tvar array -> ind_pred_map
+      popt -> inductive -> var array -> ind_pred_map
       -> (p_rule -> unit) -> unit =
   fun pos ind_list vs ind_pred_map f ->
   (* Rules are declared after recursor declarations. *)
-  let rules_pos = shift (List.length ind_list + 1) (end_pos pos) in
+  let rules_pos = shift (List.length ind_list + 1) (pos_end pos) in
   let n = Array.length vs in
 
   (* variable name used for a recursor case argument *)
@@ -306,7 +318,7 @@ let iter_rec_rules :
     let head = P.appl_wild head n in
     (* add a predicate variable for each inductive type *)
     let head =
-      let apred (_,d) t = apatt t (Bindlib.name_of d.ind_var) in
+      let apred (_,d) t = apatt t (base_name d.ind_var) in
       List.fold_right apred ind_pred_map head
     in
     (* add a case variable for each constructor *)
@@ -331,7 +343,7 @@ let iter_rec_rules :
       let env_appl t env =
         List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
       let add_abst t (_,(x,_,_)) =
-        P.abst (Some (Pos.none (Bindlib.name_of x))) t in
+        P.abst (Some (Pos.none (base_name x))) t in
       List.fold_left add_abst (arec s ts (env_appl x env)) env
     in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in

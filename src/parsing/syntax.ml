@@ -66,7 +66,8 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of string (** Natural number literal. *)
+  | P_NLit of string (** Integer literal. *)
+  | P_SLit of string (** String literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
@@ -116,6 +117,7 @@ let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
   | P_Wild
   | P_Patt(None,_)
   | P_NLit _
+  | P_SLit _
     -> StrSet.empty
   | P_Meta _
   | P_LLet _
@@ -149,8 +151,8 @@ module P  = struct
   (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
-  let var : Term.tvar -> p_term = fun v -> iden (Bindlib.name_of v)
+  (** [var v] builds a [P_Iden] from [base_name v]. *)
+  let var : Term.var -> p_term = fun v -> iden (Term.base_name v)
 
   (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
@@ -255,27 +257,36 @@ type p_query_aux =
 
 type p_query = p_query_aux loc
 
+type simp_flag =
+  | SimpAll
+  | SimpBetaOnly
+  | SimpSym of p_qident
+
 (** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
+  | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_eval of p_term
   | P_tac_fail
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
-  | P_tac_set of p_ident * p_term
   | P_tac_induction
+  | P_tac_orelse of p_tactic * p_tactic
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
   | P_tac_remove of p_ident list
+  | P_tac_repeat of p_tactic
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
-  | P_tac_simpl of p_qident option
+  | P_tac_set of p_ident * p_term
+  | P_tac_simpl of simp_flag
   | P_tac_solve
   | P_tac_sym
-  | P_tac_why3 of string option
   | P_tac_try of p_tactic
+  | P_tac_why3 of string option
 
 and p_tactic = p_tactic_aux loc
 
@@ -376,7 +387,8 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
       && Option.eq eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
-  | P_NLit n1, P_NLit n2 -> n1 = n2
+  | P_NLit s1, P_NLit s2
+  | P_SLit s1, P_SLit s2 -> s1 = s2
   | _,_ -> false
 
 and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
@@ -426,6 +438,13 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
   | P_query_search q1, P_query_search q2 -> q1 = q2
   | _, _ -> false
 
+let eq_simp_flag : simp_flag eq = fun s1 s2 ->
+  match s1, s2 with
+  | SimpAll, SimpAll
+  | SimpBetaOnly, SimpBetaOnly -> true
+  | SimpSym q1, SimpSym q2 -> eq_p_qident q1 q2
+  | _ -> false
+
 let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
@@ -438,7 +457,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
       b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
-  | P_tac_simpl q1, P_tac_simpl q2 -> Option.eq eq_p_qident q1 q2
+  | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
@@ -547,7 +566,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_Type
     | P_Wild
     | P_Patt (_, None)
-    | P_NLit _ -> a
+    | P_NLit _
+    | P_SLit _
+      -> a
 
     | P_Meta (_, ts)
     | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
@@ -622,6 +643,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   let rec fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
     fun (vs,a) t ->
     match t.elt with
+    | P_tac_eval t
     | P_tac_refine t
     | P_tac_apply t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
@@ -633,8 +655,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs ids, a)
     | P_tac_have(id,t)
     | P_tac_set(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
-    | P_tac_simpl (Some qid) -> (vs, f a qid)
-    | P_tac_simpl None
+    | P_tac_simpl (SimpSym qid) -> (vs, f a qid)
+    | P_tac_simpl _
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym
@@ -643,7 +665,10 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_fail
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
-    | P_tac_try tactic -> fold_tactic (vs,a) tactic
+    | P_tac_try t
+    | P_tac_repeat t -> fold_tactic (vs,a) t
+    | P_tac_orelse(t1,t2)
+    | P_tac_and(t1,t2) -> fold_tactic (fold_tactic (vs,a) t1) t2
   in
 
   let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =

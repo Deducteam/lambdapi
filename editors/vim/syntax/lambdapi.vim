@@ -46,6 +46,7 @@ syntax keyword KeywordOK contained compute
 syntax keyword KeywordOK contained constant
 syntax keyword KeywordOK contained debug
 syntax keyword KeywordOK contained end
+syntax keyword KeywordOK contained eval
 syntax keyword KeywordOK contained fail
 syntax keyword KeywordOK contained flag
 syntax keyword KeywordOK contained focus
@@ -64,6 +65,7 @@ syntax keyword KeywordOK contained off
 syntax keyword KeywordOK contained on
 syntax keyword KeywordOK contained opaque
 syntax keyword KeywordOK contained open
+syntax keyword KeywordOK contained orelse
 syntax keyword KeywordOK contained prefix
 syntax keyword KeywordOK contained print
 syntax keyword KeywordOK contained private
@@ -75,6 +77,7 @@ syntax keyword KeywordOK contained quantifier
 syntax keyword KeywordOK contained refine
 syntax keyword KeywordOK contained reflexivity
 syntax keyword KeywordOK contained remove
+syntax keyword KeywordOK contained repeat
 syntax keyword KeywordOK contained require
 syntax keyword KeywordOK contained rewrite
 syntax keyword KeywordOK contained right
@@ -114,6 +117,7 @@ syntax keyword KeywordKO contained compute
 syntax keyword KeywordKO contained constant
 syntax keyword KeywordKO contained debug
 syntax keyword KeywordKO contained end
+syntax keyword KeywordKO contained eval
 syntax keyword KeywordKO contained fail
 syntax keyword KeywordKO contained flag
 syntax keyword KeywordKO contained focus
@@ -132,6 +136,7 @@ syntax keyword KeywordKO contained off
 syntax keyword KeywordKO contained on
 syntax keyword KeywordKO contained opaque
 syntax keyword KeywordKO contained open
+syntax keyword KeywordKO contained orelse
 syntax keyword KeywordKO contained prefix
 syntax keyword KeywordKO contained print
 syntax keyword KeywordKO contained private
@@ -143,6 +148,7 @@ syntax keyword KeywordKO contained quantifier
 syntax keyword KeywordKO contained refine
 syntax keyword KeywordKO contained reflexivity
 syntax keyword KeywordKO contained remove
+syntax keyword KeywordKO contained repeat
 syntax keyword KeywordKO contained require
 syntax keyword KeywordKO contained rewrite
 syntax keyword KeywordKO contained right

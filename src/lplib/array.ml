@@ -8,9 +8,18 @@ open Base
     if the arrays do not have the same size. *)
 let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
  fun f a1 a2 ->
-  let exception Done in
-  let f x y = if not (f x y) then raise Done in
-  try iter2 f a1 a2; true with Done -> false
+ (*let exception Done in
+   let f x y = if not (f x y) then raise Done in
+   try iter2 f a1 a2; true with Done -> false*)
+ (*code taken from Stdlib:*)
+ let n1 = length a1
+ and n2 = length a2 in
+ if n1 <> n2 then invalid_arg "Array.for_all2"
+ else let rec loop i =
+        if i = n1 then true
+        else if f (unsafe_get a1 i) (unsafe_get a2 i) then loop (succ i)
+        else false in
+      loop 0
 
 (** [pp elt sep ppf a] prints the array [a] on the formatter [ppf] using
     [sep] as separator and [elt] for printing the elements. *)

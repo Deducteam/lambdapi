@@ -1,72 +1,14 @@
 Proof tactics
 =============
 
-The ``symbol`` command allows the user to enter an interactive mode to
-solve typing goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ ?M : U`` (find a
-term of a given type materialized by a metavariable ``?M``) and
-unification goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ U ≡ V`` (prove that
-two terms are equivalent modulo the user-defined rewriting rules).
+The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
 
-The following tactics help users to refine typing goals and transform
-unification goals step by step. A tactic application may generate new
-goals/metavariables.
+.. _admit:
 
-Except for the ``solve`` tactic which applies to all the unification
-goals at once, all the other tactics applies to the first goal only,
-which is called the *focused* goal, and this focused goal must be a
-typing goal.
-
-The proof is complete only when all generated goals have been solved.
-
-Proof scripts must be structured. The general rule is: when a tactic
-generates several subgoals, the proof of each subgoal must be enclosed
-between curly brackets:
-
-::
-   
-   opaque symbol ≤0 [x] : π(x ≤ 0 ⇒ x = 0) ≔
-   begin
-     have l : Π x y, π(x ≤ y ⇒ y = 0 ⇒ x = 0)
-     { // subproof of l
-       refine ind_≤ _ _ _
-       { /* case 0 */ reflexivity }
-       { /* case s */ assume x y xy h a; apply ⊥ₑ; apply s≠0 _ a }
-     };
-     assume x h; apply l _ _ h _; reflexivity
-   end;
-
-Reminder: the BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
-
-.. _begin:
-
-``begin``
+``admit``
 ---------
 
-Start a proof.
-
-.. _end:
-
-``end``
--------
-
-Exit the proof mode when all goals have been solved. It then adds in
-the environment the symbol declaration or definition the proof is
-about.
-
-.. _abort:
-
-``abort``
----------
-
-Exit the proof mode without changing the environment.
-
-.. _admitted:
-
-``admitted``
-------------
-
-Add axioms in the environment to solve the remaining goals and exit of
-the proof mode.
+Adds in the environment new symbols (axioms) proving the focused goal.
 
 .. _apply:
 
@@ -85,14 +27,13 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
 ``hᵢ``.
 
-.. _remove:
+.. _fail:
 
-``remove``
-----------
+``fail``
+--------
 
-``remove h₁ … hₙ`` erases the hypotheses ``h₁ … hₙ`` from the context of the current goal.
-The remaining hypotheses and the goal must not depend directly or indirectly on the erased hypotheses.
-The order of removed hypotheses is not relevant.
+Always fails. It is useful when developing a proof to stop at some
+particular point.
 
 .. _generalize:
 
@@ -133,6 +74,15 @@ unification algorithms will then try to instantiate some of the
 metavariables. The new metavariables that cannot be solved are added
 as new goals.
 
+.. _remove:
+
+``remove``
+----------
+
+``remove h₁ … hₙ`` erases the hypotheses ``h₁ … hₙ`` from the context of the current goal.
+The remaining hypotheses and the goal must not depend directly or indirectly on the erased hypotheses.
+The order of removed hypotheses is not relevant.
+
 .. _set:
 
 ``set``
@@ -145,14 +95,17 @@ as new goals.
 ``simplify``
 ------------
 
-With no argument, ``simpl`` normalizes the focused goal with respect
+With no argument, ``simplify`` normalizes the focused goal with respect
 to β-reduction and the user-defined rewriting rules.
 
+``simplify rule off`` normalizes the focused goal with respect to
+β-reduction only.
+
 If ``f`` is a non-opaque symbol having a definition (introduced with
-``≔``), then ``simpl f`` replaces in the focused goal every occurrence
+``≔``), then ``simplify f`` replaces in the focused goal every occurrence
 of ``f`` by its definition.
 
-If ``f`` is a symbol identifier having rewriting rules, then ``simpl
+If ``f`` is a symbol identifier having rewriting rules, then ``simplify
 f`` applies these rules bottom-up on every occurrence of ``f`` in the
 focused goal.
 
@@ -162,14 +115,6 @@ focused goal.
 ---------
 
 Simplify unification goals as much as possible.
-
-.. _try:
-
-``try``
----------
-
-If ``T`` is a tactic, then ``try T`` is a tactic that applies ``T`` to the focused goal.
-If the application of ``T`` fails in the focused goal, it catches the error and leaves the goal unchanged.
 
 .. _why3:
 
@@ -196,91 +141,13 @@ The user should define those symbols using builtins as follows :
    builtin "P"   ≔ … // : Prop → TYPE
    builtin "bot" ≔ … // : Prop
    builtin "top" ≔ … // : Prop
-   builtin "imp" ≔ … // : Prop → Prop → Prop
+   builtin "not" ≔ … // : Prop → Prop
    builtin "and" ≔ … // : Prop → Prop → Prop
    builtin "or"  ≔ … // : Prop → Prop → Prop
-   builtin "not" ≔ … // : Prop → Prop
+   builtin "imp" ≔ … // : Prop → Prop → Prop
+   builtin "eqv" ≔ … // : Prop → Prop → Prop
    builtin "all" ≔ … // : Π x: U, (T x → Prop) → Prop
    builtin "ex"  ≔ … // : Π x: U, (T x → Prop) → Prop
 
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.
-
-.. _admit:
-
-``admit``
----------
-
-Adds in the environment new symbols (axioms) proving the focused goal.
-
-.. _fail:
-
-``fail``
---------
-
-Always fails. It is useful when developing a proof to stop at some
-particular point.
-
-Tactics on equality
--------------------
-
-The tactics ``reflexivity``, ``symmetry`` and ``rewrite`` assume the
-existence of terms with approriate types mapped to the builtins ``T``,
-``P``, ``eq``, ``eqind`` and ``refl`` thanks to the following builtin
-declarations:
-
-::
-
-   builtin "T"     ≔ … // : U → TYPE
-   builtin "P"     ≔ … // : Prop → TYPE
-   builtin "eq"    ≔ … // : Π [a], T a → T a → Prop
-   builtin "refl"  ≔ … // : Π [a] (x:T a), P(x = x)
-   builtin "eqind" ≔ … // : Π [a] x y, P(x = y) → Π p:T a → Prop, P(p y) → P(p x)
-
-.. _reflexivity:
-
-``reflexivity``
----------------
-
-Solves a goal of the form ``Π x₁, …, Π xₙ, P (t = u)`` when ``t ≡ u``.
-
-.. _symmetry:
-
-``symmetry``
-------------
-
-Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
-
-.. _rewrite:
-
-``rewrite``
------------
-
-The ``rewrite`` tactic takes as argument a term ``t`` of type ``Π x₁ …
-xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
-equation should be used from right to left) and an optional rewrite
-pattern in square brackets prefixed by a dot, following the syntax and
-semantics of SSReflect rewrite patterns:
-
-::
-
-   <rw_patt> ::=
-     | <term>
-     | "in" <term>
-     | "in" <ident> "in" <term>
-     | <ident> "in" <term>
-     | <term> "in" <ident> "in" <term>
-     | <term> "as" <ident> "in" <term>
-
-See examples in `rewrite1.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/rewrite1.lp>`_
-and `A Small Scale Reflection Extension for the Coq
-system <http://hal.inria.fr/inria-00258384>`_, by Georges Gonthier,
-Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-section 8, p. 48, for more details.
-
-In particular, if ``u`` is a subterm of the focused goal matching ``l``,
-that is, of the form ``l`` with ``x₁`` replaced by ``u₁``, …, ``xₙ``
-replaced by ``uₙ``, then the tactic ``rewrite t`` replaces in the
-focused goal all occurrences of ``u`` by the term ``r`` with ``x₁``
-replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
-

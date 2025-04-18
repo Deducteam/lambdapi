@@ -31,6 +31,7 @@ let string_of_token = function
   | CONSTANT -> "constant"
   | DEBUG -> "debug"
   | END -> "end"
+  | EVAL -> "eval"
   | FAIL -> "fail"
   | FLAG -> "flag"
   | GENERALIZE -> "generalize"
@@ -45,6 +46,7 @@ let string_of_token = function
   | NOTATION -> "notation"
   | OPAQUE -> "opaque"
   | OPEN -> "open"
+  | ORELSE -> "orelse"
   | POSTFIX -> "postfix"
   | PREFIX -> "prefix"
   | PRINT -> "print"
@@ -57,6 +59,7 @@ let string_of_token = function
   | REFINE -> "refine"
   | REFLEXIVITY -> "reflexivity"
   | REMOVE -> "remove"
+  | REPEAT -> "repeat"
   | REQUIRE -> "require"
   | REWRITE -> "rewrite"
   | RULE -> "rule"
@@ -78,7 +81,8 @@ let string_of_token = function
   | FLOAT _ -> "float"
   | SIDE _ -> "left or right"
   | STRINGLIT _ -> "string literal"
-  | SWITCH _ -> "on or off"
+  | SWITCH false -> "off"
+  | SWITCH true -> "on or off"
   | ASSIGN -> "≔"
   | ARROW -> "→"
   | BACKQUOTE -> "`"
@@ -608,7 +612,7 @@ and exposition (lb:lexbuf): p_modifier =
   | _ ->
       expected "" [PRIVATE;PROTECTED]
 
-and notation (lb:lexbuf): string Sign.notation =
+and notation (lb:lexbuf): string Term.notation =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
   | INFIX ->
@@ -618,22 +622,22 @@ and notation (lb:lexbuf): string Sign.notation =
         | SIDE d ->
             consume_token lb;
             let p = float_or_int lb in
-            Sign.Infix(d, p)
+            Term.Infix(d, p)
         | _ ->
             let p = float_or_int lb in
-            Sign.Infix(Pratter.Neither, p)
+            Term.Infix(Pratter.Neither, p)
       end
   | POSTFIX ->
       consume_token lb;
       let p = float_or_int lb in
-      Sign.Postfix p
+      Term.Postfix p
   | PREFIX ->
       consume_token lb;
       let p = float_or_int lb in
-      Sign.Prefix p
+      Term.Prefix p
   | QUANTIFIER ->
       consume_token lb;
-      Sign.Quant
+      Term.Quant
   | _ ->
       expected "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
 
@@ -994,11 +998,16 @@ and tactic (lb:lexbuf): p_tactic =
         match current_token() with
         | UID _
         | QID _ ->
-            let i = Some (qid lb) in
-            make_pos pos1 (P_tac_simpl i)
+            make_pos pos1 (P_tac_simpl(SimpSym(qid lb)))
+        | RULE ->
+            consume_token lb;
+            begin
+              match current_token() with
+              | SWITCH false -> make_pos pos1 (P_tac_simpl SimpBetaOnly)
+              | _ -> expected "" [SWITCH false]
+            end
         | _ ->
-            let i = None in
-            make_pos pos1 (P_tac_simpl i)
+            make_pos pos1 (P_tac_simpl SimpAll)
       end
   | SOLVE ->
       let pos1 = current_pos() in

@@ -10,9 +10,9 @@
 
   L : t -> (t -> t) -> t // for λ
 
-  B : t -> t -> (t -> t) -> t // for let
-
   P : t -> (t -> t) -> t // for Π
+
+  B : t -> t -> (t -> t) -> t // for let
 
 Function symbols and variables are translated as symbols of type t.
 
@@ -47,7 +47,7 @@ open Core open Term
 let syms = ref SymMap.empty
 
 (** [bvars] is the set of abstracted variables. *)
-let bvars = ref IntSet.empty
+let bvars = ref StrSet.empty
 
 (** [nb_rules] is the number of rewrite rules. *)
 let nb_rules = ref 0
@@ -72,11 +72,11 @@ let add_sym : sym -> unit = fun s ->
 let sym : sym pp = fun ppf s -> string ppf (SymMap.find s !syms)
 
 (** [add_bvar v] declares an abstracted Lambdapi variable. *)
-let add_bvar : tvar -> unit = fun v ->
-  bvars := IntSet.add (Bindlib.uid_of v) !bvars
+let add_bvar : var -> unit = fun v ->
+  bvars := StrSet.add (base_name v) !bvars
 
 (** [bvar v] translates the Lambdapi variable [v]. *)
-let bvar : tvar pp = fun ppf v -> int ppf (Bindlib.uid_of v)
+let bvar : var pp = fun ppf v -> string ppf (base_name v)
 
 (** [pvar i] translates the pattern variable index [i]. *)
 let pvar : int pp = fun ppf i -> out ppf "$%d_%d" !nb_rules i
@@ -91,7 +91,7 @@ let rec term : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | TEnv _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
@@ -105,13 +105,13 @@ let rec term : term pp = fun ppf t ->
     out ppf "%a(%a%a)" pvar i term ts.(0) args ts
   | Appl(t,u) -> out ppf "A(%a,%a)" term t term u
   | Abst(a,b) ->
-    let x, b = Bindlib.unbind b in add_bvar x;
+    let x, b = unbind b in add_bvar x;
     out ppf "L(%a,\\%a.%a)" term a bvar x term b
   | Prod(a,b) ->
-    let x, b = Bindlib.unbind b in add_bvar x;
+    let x, b = unbind b in add_bvar x;
     out ppf "P(%a,\\%a.%a)" term a bvar x term b
   | LLet(a,t,b) ->
-    let x, b = Bindlib.unbind b in add_bvar x;
+    let x, b = unbind b in add_bvar x;
     out ppf "B(%a,%a,\\%a.%a)" term a term t bvar x term b
 
 (** [rule ppf r] translates the pair of terms [r] as a rule. *)
@@ -154,9 +154,9 @@ let sign : Sign.t pp = fun ppf sign ->
     let pvar_decl (n,i) k = out ppf "\n$%d_%d : %a" n i typ k in
     VMap.iter pvar_decl pvars in
   (* Function for printing the types of abstracted variables. *)
-  let pp_bvars : IntSet.t pp = fun ppf bvars ->
-    let bvar_decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
-    IntSet.iter (bvar_decl ppf) bvars
+  let pp_bvars : StrSet.t pp = fun ppf bvars ->
+    let bvar_decl : string pp = fun ppf n -> out ppf "\n%s : t" n in
+    StrSet.iter (bvar_decl ppf) bvars
   in
   (* Finally, generate the whole hrs file. Note that the variables $x, $y and
      $z used in the rules for beta and let cannot clash with user-defined

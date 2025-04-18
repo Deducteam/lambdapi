@@ -1,7 +1,6 @@
 (** Evaluation and conversion. *)
 
 open Lplib open Extra
-open Timed
 open Common open Error open Debug
 open Term
 open Print
@@ -23,16 +22,20 @@ form.
 A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
-(** Logging function for evaluation. *)
-let log_eval = Logger.make 'e' "eval" "evaluation"
-let log_eval = log_eval.pp
+(** Logging function for whnf. *)
+let log_whnf = Logger.make 'w' "whnf" "whnf"
+let log_whnf = log_whnf.pp
 
-(** Logging function for equality modulo rewriting. *)
+(** Logging function for snf. *)
+let log_snf = Logger.make 'e' "snf " "snf"
+let log_snf = log_snf.pp
+
+(** Logging function for conversion. *)
 let log_conv = Logger.make 'c' "conv" "conversion"
 let log_conv = log_conv.pp
 
 (** Convert modulo eta. *)
-let eta_equality : bool ref = Console.register_flag "eta_equality" false
+let eta_equality : bool Timed.ref = Console.register_flag "eta_equality" false
 
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Stdlib.ref = Stdlib.ref 0
@@ -43,34 +46,34 @@ let steps : int Stdlib.ref = Stdlib.ref 0
 let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
-    | Abst(a,t) ->
-      let x, t = Bindlib.unbind t in mk_Abst(a, bind x lift (hnf t))
+    | Abst(a,t) -> mk_Abst(a, let x,t = unbind t in bind_var x (hnf t))
     | t -> t
   in hnf
 
 (** [snf whnf t] computes a snf of [t] using [whnf]. *)
 let snf : (term -> term) -> (term -> term) = fun whnf ->
   let rec snf t =
-    if Logger.log_enabled () then log_eval "snf %a" term t;
-    let h = whnf t in
-    if Logger.log_enabled () then log_eval "whnf %a = %a" term t term h;
-    match h with
+    if Logger.log_enabled() then log_snf "snf %a" term t;
+    let t = whnf t in
+    if Logger.log_enabled() then log_snf "whnf = %a" term t;
+    match t with
     | Vari _
     | Type
     | Kind
-    | Symb _ -> h
-    | LLet(_,t,b) -> snf (Bindlib.subst b t)
+    | Symb _
+    | Plac _ (* may happen when reducing coercions *)
+      -> t
+    | LLet(_,t,b) -> snf (subst b t)
     | Prod(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Prod(snf a, bind x lift (snf b))
+      mk_Prod(snf a, let x,b = unbind b in bind_var x (snf b))
     | Abst(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Abst(snf a, bind x lift (snf b))
-    | Appl(t,u)   -> mk_Appl(snf t, snf u)
-    | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
+      mk_Abst(snf a, let x,b = unbind b in bind_var x (snf b))
+    | Appl(t,u) -> mk_Appl(snf t, snf u)
+    | Meta(m,ts) -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
-    | Plac _      -> h (* may happen when reducing coercions *)
-    | TEnv(_,_)   -> assert false
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
+    | Bvar _ -> assert false
+    | Wild -> assert false
+    | TRef _ -> assert false
   in snf
 
 type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
@@ -79,9 +82,7 @@ type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
 module Config = struct
 
   type t =
-    { context : ctxt
-    (** Context of the reduction used for generating metas. *)
-    ; varmap : term VarMap.t (** Variable definitions. *)
+    { varmap : term VarMap.t (** Variable definitions. *)
     ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
     ; expand_defs : bool (** Whether to expand definitions. *)
     ; beta : bool (** Whether to beta-normalise *)
@@ -92,11 +93,11 @@ module Config = struct
       dtree map [?dtree] (defaulting to getting the dtree from the symbol).
       By default, beta reduction and rewriting is enabled for all symbols. *)
   let make : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> t =
-  fun ?(dtree=fun sym -> !(sym.sym_dtree)) ?(tags=[]) context ->
+  fun ?(dtree=fun sym -> Timed.(!(sym.sym_dtree))) ?(tags=[]) context ->
     let beta = not @@ List.mem `NoBeta tags in
     let expand_defs = not @@ List.mem `NoExpand tags in
     let rewrite = not @@ List.mem `NoRw tags in
-    {context; varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
+    {varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
 
   (** [unfold cfg a] unfolds [a] if it's a variable defined in the
       configuration [cfg]. *)
@@ -126,26 +127,25 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
-      let x,u = Bindlib.unbind u in
+      let x,u = unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((u,b)::l)
     | _, LLet(_,t,u) ->
-      let x,u = Bindlib.unbind u in
+      let x,u = unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
-    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq cfg l else raise Exit
+    | Vari x, Vari y -> if eq_vars x y then eq cfg l else raise Exit
     | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | Abst _, (Type|Kind|Prod _)
     | (Type|Kind|Prod _), Abst _ -> raise Exit
-    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
+    | (Abst(_ ,b), t | t, Abst(_ ,b)) when Timed.(!eta_equality) ->
+      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
@@ -161,19 +161,19 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq cfg l
+    | Vari x, Vari y when eq_vars x y -> eq cfg l
     | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
-    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
+      let _,b1,b2 = unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
+    | (Abst(_ ,b), t | t, Abst(_ ,b)) when Timed.(!eta_equality) ->
+      let x,b = unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
+    | Bvar _, _ | _, Bvar _ -> assert false
     | _ -> raise Exit
   in
   fun cfg a b ->
@@ -188,42 +188,46 @@ type stack = term list
    {!constructor:TRef}. *)
 let to_tref : term -> term = fun t ->
   match t with
-  | Appl _ -> mk_TRef(ref (Some t))
-  | Symb s when s.sym_prop <> Const -> mk_TRef(ref (Some t))
+  | Appl _ -> mk_TRef(Timed.ref(Some t))
+  | Symb s when s.sym_prop <> Const -> mk_TRef(Timed.ref(Some t))
   | t -> t
 
 (** {1 Define the main {!whnf} function that takes a {!config} as argument} *)
+let depth = Stdlib.ref 0
 
 (** [whnf cfg t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun cfg t ->
-  (*if Logger.log_enabled () then log_eval "whnf %a" term t;*)
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk cfg t [] in
   let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
-  (*if Logger.log_enabled () then
-    log_eval "whnf %a%a = %a" ctxt cfg.context term t term r;*)
   r
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
-  (*if Logger.log_enabled () then
-    log_eval "whnf_stk %a%a %a"
-      ctxt cfg.context term t (D.list term) stk;*)
+  if Logger.log_enabled () then
+    log_whnf "%awhnf_stk %a %a" D.depth !depth term t (D.list term) stk;
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
+  (*| _ ->
+  if Logger.log_enabled () then
+    log_whnf "%awhnf_stk %a%a %a" D.depth !depth term t (D.list term) stk;
+  match t, stk with*)
   | Abst(_,f), u::stk when cfg.Config.beta ->
-    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst f u) stk
+    Stdlib.incr steps; whnf_stk cfg (subst f u) stk
   | LLet(_,t,u), stk ->
-    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst u t) stk
+    Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
-    begin match !(s.sym_def) with
-    | Some t ->
-      if !(s.sym_opaq) || not cfg.Config.expand_defs then r else
+    begin match Timed.(!(s.sym_def)) with
+      (* The invariant that defined symbols are subject to no
+         rewriting rules is false during indexing for websearch;
+         that's the reason for the when in the next line *)
+    | Some t when Tree_type.is_empty (cfg.dtree s) ->
+      if Timed.(!(s.sym_opaq)) || not cfg.Config.expand_defs then r else
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
-    | None ->
+    | _ ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
       let stk =
@@ -242,8 +246,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
       | None -> h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
-          log_eval "tree_walk %a%a %a = %a %a" ctxt cfg.context
-            term t (D.list term) stk term t' (D.list term) stk';
+          log_whnf "%aapply rewrite rule" D.depth !depth;
         Stdlib.incr steps; whnf_stk cfg t' stk'
     end
   | (Vari x, stk) as r ->
@@ -283,7 +286,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
   fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
-  let bound = Array.make capacity TE_None in
+  let bound = Array.make capacity None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
      array described in {!module:Term} as the environment of the RHS during
@@ -294,35 +297,26 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     let open Tree_type in
     match tree with
     | Fail -> None
-    | Leaf(rhs_subst, (act, xvars)) -> (* Apply the RHS substitution *)
+    | Leaf(rhs_subst, r) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
-        let env_len = Bindlib.mbinder_arity act in
-        assert (List.length rhs_subst = env_len - xvars);
-        let env = Array.make env_len TE_None in
+        assert (List.length rhs_subst = r.vars_nb);
+        let env_len = r.vars_nb + r.xvars_nb in
+        let env = Array.make env_len None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let f (pos, (slot, xs)) =
           match bound.(pos) with
-          | TE_Vari(_) -> assert false
-          | TE_Some(_) -> env.(slot) <- bound.(pos)
-          | TE_None    ->
-              if Array.length xs = 0 then
-                let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
-                in env.(slot) <- TE_Some(b)
-              else
+          | Some(_) -> env.(slot) <- bound.(pos)
+          | None    ->
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- TE_Some(binds xs lift vars.(pos))
+                env.(slot) <- Some(bind_mvar xs vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
-        for i = env_len - xvars to env_len - 1 do
-          let b =
-            Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> mk_Plac false)
-          in
-          env.(i) <- TE_Some(b)
+        for i = r.vars_nb to env_len - 1 do
+          env.(i) <- Some(bind_mvar [||] (mk_Plac false))
         done;
-        Some (Bindlib.msubst act env, stk)
+        Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
@@ -342,17 +336,17 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               in
               (* Ensure there are no variables from [forbidden] in [b]. *)
               let no_forbidden b =
-                not (IntMap.exists (fun _ x -> Bindlib.occur x b) forbidden)
+                not (IntMap.exists (fun _ x -> occur_mbinder x b)
+                       forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)
-              let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
+              let b = bind_mvar allowed vars.(i) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              then (bound.(i) <- Some b; ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed
-                        (lift (snf (whnf cfg) vars.(i))) in
+              let b = bind_mvar allowed (snf (whnf cfg) vars.(i)) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+              then (bound.(i) <- Some b; ok)
               else fail
         in
         walk next stk cursor vars_id id_vars
@@ -377,7 +371,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           Option.bind default fn
         else
           let s = Stdlib.(!steps) in
+          incr depth;
           let (t, args) = whnf_stk cfg examined [] in
+          decr depth;
           let args = if store then List.map to_tref args else args in
           (* If some reduction has been performed by [whnf_stk] ([steps <>
              0]), update the value of [examined] which may be stored into
@@ -385,7 +381,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           if Stdlib.(!steps) <> s then
             begin
               match examined with
-              | TRef(v) -> v := Some(add_args t args)
+              | TRef(v) -> Timed.(v := Some(add_args t args))
               | _       -> ()
             end;
           let cursor =
@@ -405,7 +401,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
              introducing variable  [id] and branching  on tree [tr].  The type
              [a] and [b] substituted are re-inserted in the stack.*)
           let walk_binder a b id tr =
-            let (bound, body) = Bindlib.unbind b in
+            let (bound, body) = unbind b in
             let vars_id = VarMap.add bound id vars_id in
             let id_vars = IntMap.add id bound id_vars in
             let stk = List.reconstruct left (a::body::args) right in
@@ -463,7 +459,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | TEnv(_)    -> assert false (* Should not appear in terms. *)
+          | Bvar _     -> assert false
           | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty
@@ -482,9 +478,7 @@ let time_reducer (f: reducer): reducer =
 let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (Config.make ?dtree ?tags c)) t in
-  let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if Logger.log_enabled () then
-    log_eval "snf %a%a\n= %a" ctxt cfg term t term r;*) r
+  if Stdlib.(!steps = 0) then unfold t else u
 
 let snf ?dtree = time_reducer (snf ?dtree)
 
@@ -493,9 +487,7 @@ let snf ?dtree = time_reducer (snf ?dtree)
 let hnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = hnf (whnf (Config.make ?tags c)) t in
-  let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if Logger.log_enabled () then
-    log_eval "hnf %a%a\n= %a" ctxt cfg term t term r;*) r
+  if Stdlib.(!steps = 0) then unfold t else u
 
 let hnf = time_reducer hnf
 
@@ -519,28 +511,26 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
 let whnf : reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
-  let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if Logger.log_enabled () then
-    log_eval "whnf %a%a\n= %a" ctxt c term t term r;*)
-  r
+  if Stdlib.(!steps = 0) then unfold t else u
 
 let whnf = time_reducer whnf
 
-(** [simplify c t] computes a beta whnf of [t] in context [c] belonging to the
-    set S such that (1) terms of S are in beta whnf normal format, (2) if [t]
-    is a product, then both its domain and codomain are in S. *)
-let simplify : ctxt -> term -> term = fun c ->
-  let tags = [`NoRw; `NoExpand ] in
+(** [beta_simplify c t] computes a beta whnf of [t] in context [c] belonging
+    to the set S such that (1) terms of S are in beta whnf normal format, (2)
+    if [t] is a product, then both its domain and codomain are in S. *)
+let beta_simplify : ctxt -> term -> term = fun c ->
+  let tags = [`NoRw; `NoExpand] in
   let rec simp t =
     match get_args (whnf ~tags c t) with
     | Prod(a,b), _ ->
-        let x, b = Bindlib.unbind b in mk_Prod (simp a, bind x lift (simp b))
+       let x, b = unbind b in
+       mk_Prod (simp a, bind_var x (simp b))
     | h, ts -> add_args_map h (whnf ~tags c) ts
   in simp
 
-let simplify =
+let beta_simplify =
   let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := simplify c t)); !r
+  Debug.(record_time Rewriting (fun () -> r := beta_simplify c t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
@@ -563,18 +553,18 @@ let unfold_sym : sym -> term -> term =
             | _ -> h
           in add_args h args
     and unfold_sym_binder b =
-      let x, b = Bindlib.unbind b in bind x lift (unfold_sym b)
+      let x, b = unbind b in bind_var x (unfold_sym b)
     in unfold_sym
   in
   fun s ->
-  if !(s.sym_opaq) then fun t -> t else
-  match !(s.sym_def) with
+  if Timed.(!(s.sym_opaq)) then fun t -> t else
+  match Timed.(!(s.sym_def)) with
   | Some d -> unfold_sym s (add_args d)
   | None ->
-  match !(s.sym_rules) with
+  match Timed.(!(s.sym_rules)) with
   | [] -> fun t -> t
   | _ ->
-      let cfg = Config.make [] and dt = !(s.sym_dtree) in
+      let cfg = Config.make [] and dt = Timed.(!(s.sym_dtree)) in
       let unfold_sym_app args =
         match tree_walk cfg dt args with
         | Some(r,ts) -> add_args r ts

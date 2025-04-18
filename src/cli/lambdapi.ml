@@ -20,16 +20,68 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg s =
- Config.init cfg;
- let run () = out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt s) in
- Error.handle_exceptions run
+let sig_state_of_require =
+ function
+   None -> Core.Sig_state.dummy
+ | Some req ->
+    (* Search for a package from the current working directory. *)
+    Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+    Core.Sig_state.of_sign
+     (Compile.compile (Parsing.Parser.path_of_string req))
 
-let websearch_cmd cfg port =
+let search_cmd cfg rules require s =
  Config.init cfg;
  let run () =
-  Tool.Websearch.start ~port () in
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ss s) in
+ Error.handle_exceptions run
+
+let websearch_cmd cfg rules port require header_file =
+ Config.init cfg;
+ let run () =
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  let header = match header_file with
+    | None ->
+      "
+      <style>
+      .snippet {
+        border: 1px solid grey;
+        color: red;
+        padding: 0 3px 0 3px;
+        line-height: 1.6;
+      }</style>
+      <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
+      Search Engine</h1>
+
+    <p>
+        The <b>search</b> button answers the query. Read the <a href=
+        \"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
+        query language specification</a> to learn about the query language.
+        <br>The query language also uses the <a
+        href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
+        Lambdapi terms syntax</a>.<br>
+        In particular, the following constructors can come handy for
+        writing queries:<br>
+    </p>
+    <ul>
+        <li>an anonymous function<span class=\"snippet\">λ (x:A) y z,t</span>
+        smapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
+        </span> and <span class=\"snippet\">z</span> (of type <span class=\"
+        snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
+        class=\"snippet\">t</span>.</li>
+        <li>a dependent product <span class=\"snippet\">Π (x:A) y z,T</span>
+        </li>
+        <li>a non-dependent product <span class=\"snippet\">A → T</span>
+         (syntactic sugar for <span class=\"snippet\">Π x:A,T</span> when
+          <span class=\"snippet\">x</span> does not occur in <span class=
+          \"snippet\">T</span>)</li>
+    </ul>
+      "
+    | Some file -> Lplib.String.string_of_file file in
+  Tool.Websearch.start header ss ~port () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files =
@@ -42,7 +94,8 @@ let index_cmd cfg add_only rules files =
   let handle file =
    Console.reset_default ();
    Time.restore time;
-   Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
+   Tool.Indexing.load_rewriting_rules rules;
+   Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
   Tool.Indexing.dump () in
  Error.handle_exceptions run
@@ -51,7 +104,7 @@ end
 
 (** Running the main type-checking mode. *)
 let check_cmd : Config.t -> int option -> string list -> unit =
-    fun cfg timeout files ->
+    fun cfg tmout files ->
   let run _ =
     let open Timed in
     Config.init cfg;
@@ -61,10 +114,10 @@ let check_cmd : Config.t -> int option -> string list -> unit =
       Console.reset_default ();
       Time.restore time;
       let sign =
-        match timeout with
+        match tmout with
         | None    -> Compile.compile_file file
         | Some(i) ->
-            try with_timeout i Compile.compile_file file
+            try timeout i Compile.compile_file file
             with Timeout ->
               fatal_no_pos "Compilation timed out for [%s]." file
       in
@@ -408,23 +461,35 @@ let rules_arg : string list CLT.t =
      multiple times to fetch rules from multiple files." in
   Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
 
+let require_arg : string option CLT.t =
+  let doc =
+    "LP file to be required before starting the search engine." in
+  Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
+
+let header_file_arg : string option CLT.t =
+  let doc =
+    "html file holding the header of the web page of the server." in
+  Arg.(value & opt (some string) None &
+    info ["header"] ~docv:"PATH" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
-   add_only_arg $ rules_arg $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
+   $ add_only_arg $ rules_arg $ files)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
-   $ query_as_arg)
+   $ rules_arg $ require_arg $ query_as_arg)
 
 let websearch_cmd =
  let doc =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
+   $ rules_arg $ port_arg $ require_arg $ header_file_arg )
 
 let _ =
   let t0 = Sys.time () in

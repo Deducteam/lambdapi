@@ -38,6 +38,22 @@ npm install -g @types/vscode
 npm install -g @vscode/vsce # to create VSCE packages
 ```
 
+- installing:
+
+To install the lambdapi extension from the sources, please use the dedicated rule in the `Makefile` as follows:
+
+```bash
+make install_local
+```
+
+This rule uses `jq` to read the extension version from `package.json`. If `jq` is not installed, please, read version from `package.json` and export `VERSION` before calling `install_local`
+
+```bash
+VERSION=X.Y.Z make install_local
+```
+
+Alternatively, you can run the install manually step by step :
+
 - compilation:
 
 ```bash

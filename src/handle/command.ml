@@ -29,10 +29,11 @@ let _ =
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      try lift !((StrMap.find "nat_zero" ss.builtins).sym_type)
-      with Not_found -> _Meta (LibMeta.fresh (new_problem()) mk_Type 0) [||]
+      try !((StrMap.find "nat_zero" ss.builtins).sym_type)
+      with Not_found ->
+        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
-    Bindlib.unbox (_Impl typ_0 typ_0)
+    mk_Arro (typ_0, typ_0)
   in
   register "nat_succ" expected_succ_type
 
@@ -126,31 +127,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   in
   (prop, expo, strat)
 
-(** [sr_check] indicates whether subject-reduction should be checked. *)
-let sr_check = Stdlib.ref true
-
-(** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
-   lhs and the rule itself. *)
-let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
-  Console.out 3 (Color.cya "%a") Pos.pp r.pos;
-  Console.out 4 "%a" (Pretty.rule "rule") r;
-  let pr = scope_rule false ss r in
-  let s = pr.elt.pr_sym in
-  if !(s.sym_def) <> None then
-    fatal pr.pos "No rewriting rule can be given on a defined symbol.";
-  let r =
-    if Stdlib.(!sr_check) then Tool.Sr.check_rule pr
-    else Scope.rule_of_pre_rule pr
-  in
-  s, r
-
-(** [add_rule ss syms r] checks rule [r], adds it in [ss] and returns the
-   head symbol of the lhs and the rule itself. *)
-let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
-  Sign.add_rule ss.signature s r;
-  Console.out 2 (Color.red "rule %a") sym_rule x
-
-(** [handle_inductive_symbol ss e p strat x declpos xs a] handles the command
+(** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     The command is at position [pos].
     On success, an updated signature state and the new symbol are returned. *)
@@ -196,6 +173,9 @@ type proof_data =
 (** Representation of a command output. *)
 type cmd_output = sig_state * proof_data option * Query.result
 
+(** [sr_check] indicates whether subject-reduction should be checked. *)
+let sr_check = Stdlib.ref true
+
 (** [get_proof_data compile ss cmd] tries to handle the command [cmd] with
     [ss] as the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
@@ -221,10 +201,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
-       rules [srs] and also a map [map] mapping every symbol defined by a rule
+       rules [srs] and also a [map] mapping every symbol defined by a rule
        of [srs] to its defining rules. *)
       let handle_rule r (srs, map) =
-        let (s,r) as sr = check_rule ss r in
+        let sr = scope_rule false ss r in
+        let (s,r) as sr =
+          if Stdlib.(!sr_check) then Tool.Sr.check_rule r.pos sr else sr in
         let h = function Some rs -> Some(r::rs) | None -> Some[r] in
         sr::srs, SymMap.update s h map
       in
@@ -302,18 +284,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let pur = scope_rule true ss h in
-      let urule = Scope.rule_of_pre_rule pur in
-      Sign.add_rule ss.signature Unif_rule.equiv urule;
+      let r = scope_rule true ss h in
+      Sign.add_rule ss.signature r;
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 "unif_rule %a" unif_rule urule;
+      Console.out 2 "unif_rule %a" sym_rule r;
       (ss, None, None)
   | P_coercion c ->
-      let pc = scope_rule false ss c in
-      let r = Scope.rule_of_pre_rule pc in
-      Sign.add_rule ss.signature Coercion.coerce r;
+      let r = scope_rule false ss c in
+      Sign.add_rule ss.signature r;
       Tree.update_dtree Coercion.coerce [];
-      Console.out 2 "coercion %a" (rule_of Coercion.coerce) r;
+      Console.out 2 "coercion %a" sym_rule r;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -330,8 +310,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           (* All inductive types are declared at position [pos]
              so that constructors are declared afterwards. *)
           let id = {id with pos} in
-          handle_inductive_symbol ss expo Const Eager id pos
-           params pt in
+          handle_inductive_symbol ss expo Const Eager id pos params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
@@ -385,7 +364,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           Console.out 2 (Color.red "symbol %a : %a")
             uid rec_name term rec_typ;
           (* Recursors are declared after the types and constructors. *)
-          let pos = after (end_pos pos) in
+          let pos = after (pos_end pos) in
           let id = Pos.make pos rec_name in
           let r =
             Sig_state.add_symbol ss expo Defin Eager false id
@@ -399,9 +378,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           ind_sym_list_rev rec_typ_list_rev
       in
       (* Add recursor rules in the signature. *)
-      with_no_wrn
-        (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
-        (fun r -> add_rule ss (check_rule ss r));
+      let add_rule pr =
+        let r = scope_rule false ss pr in
+        let r = Tool.Sr.check_rule pos r in
+        Sign.add_rule ss.signature r;
+        Console.out 2 (Color.red "rule %a") sym_rule r
+      in
+      no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
       List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
@@ -446,7 +429,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | Some pt ->
           let pt =
             if p_sym_arg = [] then pt
-            else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) pt.pos) in
                  Pos.make pos (P_Abst(p_sym_arg, pt))
           in Some pt, Some (scope pt)
       | None -> None, None
@@ -464,7 +447,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | Some a ->
           let a =
             if p_sym_arg = [] then a
-            else let pos = Pos.(cat (end_pos p_sym_nam.pos) a.pos) in
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) a.pos) in
                  Pos.make pos (P_Prod(p_sym_arg, a))
           in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
@@ -501,7 +484,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Get tactics and proof end. *)
       let pdata_proof, pe =
         match p_sym_prf with
-        | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end
         | Some (ts, pe) -> ts, pe
       in
       (* Build finalizer. *)
