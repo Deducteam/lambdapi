@@ -260,6 +260,12 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search s -> out ppf "search \"%s\"" s
 
+let simp : simp pp = fun ppf s ->
+  match s with
+  | SimpAll -> ()
+  | SimpBetaOnly -> out ppf " rule off"
+  | SimpSym qid -> out ppf " %a" qident qid
+
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
@@ -284,8 +290,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
       let pat ppf p = out ppf " .[%a]" rw_patt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
   | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
-  | P_tac_simpl None -> out ppf "simplify"
-  | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
+  | P_tac_simpl s -> out ppf "simplify%a" simp s
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_try t -> out ppf "try %a" tactic t

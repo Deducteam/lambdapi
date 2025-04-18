@@ -113,6 +113,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("set" ident "≔" sterm)
               ("simplify")
               ("simplify" ident)
+              ("simplify" "rule" "off")
               ("solve")
               ("symmetry")
               ("try" tactic)
