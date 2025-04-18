@@ -55,12 +55,12 @@ let uid : string pp = string
 
 let path : Path.t pp = Path.pp
 
+let side : side pp = fun ppf s ->
+  out ppf (match s with Left -> "left" | Right -> "right")
+
 let prop : prop pp = fun ppf p ->
   match p with
-  | AC true -> out ppf "left associative commutative "
-  | AC false -> out ppf "associative commutative "
-  | Assoc true -> out ppf "left associative "
-  | Assoc false -> out ppf "associative "
+  | AC s -> out ppf "%a associative commutative " side s
   | Const -> out ppf "constant "
   | Commu -> out ppf "commutative "
   | Defin -> ()

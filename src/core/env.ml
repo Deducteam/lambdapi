@@ -46,8 +46,8 @@ let to_prod : env -> term -> term = fun env t ->
   let add_prod t (_,(x,a,d)) =
     let b = bind_var x t in
     match d with
-    | None -> mk_Prod (a, b)
-    | Some d -> mk_LLet (a, d, b)
+    | None -> Prod (a, b)
+    | Some d -> LLet (a, d, b)
   in
   List.fold_left add_prod t env
 
@@ -60,8 +60,8 @@ let to_abst : env -> term -> term = fun env t ->
   let add_abst t (_,(x,a,d)) =
     let b = bind_var x t in
     match d with
-    | None -> mk_Abst (a, b)
-    | Some d -> mk_LLet (a, d, b)
+    | None -> Abst (a, b)
+    | Some d -> LLet (a, d, b)
   in
   List.fold_left add_abst t env
 
@@ -72,14 +72,14 @@ let vars : env -> var array = fun env ->
 
 (** [appl t env] applies [t] to the variables of [env]. *)
 let appl : term -> env -> term = fun t env ->
-  List.fold_right (fun (_,(x,_,_)) t -> mk_Appl (t, mk_Vari x)) env t
+  List.fold_right (fun (_,(x,_,_)) t -> Appl (t, Vari x)) env t
 
 (** [to_terms env] extracts the array of the variables in [env] and injects
     them in [tbox]. This is the same as [Array.map _Vari (vars env)]. Note
     that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
 let to_terms : env -> term array = fun env ->
-  Array.of_list (List.rev_map (fun (_,(x,_,_)) -> mk_Vari x) env)
+  Array.of_list (List.rev_map (fun (_,(x,_,_)) -> Vari x) env)
 
 (** [to_ctxt e] converts an environment into a context. *)
 let to_ctxt : env -> ctxt = List.map snd
@@ -142,5 +142,5 @@ let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
              let xi = xs.(i) in
              let name = base_name xi in
              let env = add name xi a d env in
-             build_env (i+1) env (subst b (mk_Vari xi)))
+             build_env (i+1) env (subst b (Vari xi)))
   in build_env 0 [] t

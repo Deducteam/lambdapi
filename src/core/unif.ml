@@ -23,17 +23,17 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let vs = Env.vars env in
   let xs = Array.map mk_Vari vs in
   (* domain *)
-  let u1 = Env.to_prod env mk_Type in
+  let u1 = Env.to_prod env Type in
   let m1 = LibMeta.fresh p u1 n in
-  let a = mk_Meta (m1, xs) in
+  let a = Meta (m1, xs) in
   (* codomain *)
   let y = new_var "y" in
-  let env' = Env.add "y" y (mk_Meta (m1, xs)) None env in
+  let env' = Env.add "y" y (Meta (m1, xs)) None env in
   let u2 = Env.to_prod env' s in
   let m2 = LibMeta.fresh p u2 (n+1) in
-  let b = bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
+  let b = bind_var y (Meta (m2, Array.append xs [|Vari y|])) in
   (* result *)
-  let r = mk_Prod (a, b) in
+  let r = Prod (a, b) in
   if Logger.log_enabled () then log (red "%a ≔ %a") meta m term r;
   LibMeta.set p m (bind_mvar vs r)
 
@@ -65,10 +65,10 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   let open Unif_rule in
   try
     let rhs =
-      let start = add_args (mk_Symb equiv) [s;t] in
+      let start = add_args (Symb equiv) [s;t] in
       let reduced = Eval.whnf c start in
       if reduced != start then reduced else
-        let start = add_args (mk_Symb equiv) [t;s] in
+        let start = add_args (Symb equiv) [t;s] in
         let reduced = Eval.whnf c start in
         if reduced != start then reduced else raise No_match
     in
@@ -195,12 +195,12 @@ let imitate_inj :
       -> bool =
   fun p c m vs us s ts ->
   if Logger.log_enabled () then
-    log "imitate_inj %a ≡ %a" term (add_args (mk_Meta(m,vs)) us)
-                                   term (add_args (mk_Symb s) ts);
+    log "imitate_inj %a ≡ %a" term (add_args (Meta(m,vs)) us)
+                                   term (add_args (Symb s) ts);
   let exception Cannot_imitate in
   try
     if us <> [] || not (is_injective s)
-      || LibMeta.occurs m c (add_args (mk_Symb s) ts) then
+      || LibMeta.occurs m c (add_args (Symb s) ts) then
       raise Cannot_imitate;
     let vars =
       match distinct_vars c vs with
@@ -216,11 +216,11 @@ let imitate_inj :
     let k = Array.length vars in
     let t =
       let rec build i acc t =
-        if i <= 0 then add_args (mk_Symb s) (List.rev acc) else
+        if i <= 0 then add_args (Symb s) (List.rev acc) else
         match unfold t with
         | Prod(a,b) ->
             let m = LibMeta.fresh p (Env.to_prod env a) k in
-            let u = mk_Meta (m,vs) in
+            let u = Meta (m,vs) in
             build (i-1) (u::acc) (subst b u)
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
@@ -273,22 +273,22 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
             | _ -> assert false
           end
       | _ ->
-         let tm2 = Env.to_prod env mk_Type in
+         let tm2 = Env.to_prod env Type in
          let m2 = LibMeta.fresh p tm2 n in
-         let a = mk_Meta (m2, Env.to_terms env) in
+         let a = Meta (m2, Env.to_terms env) in
          let x = new_var "x" in
          let env' = Env.add "x" x a None env in
-         let tm3 = Env.to_prod env' mk_Type in
+         let tm3 = Env.to_prod env' Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
-         let b = mk_Meta (m3, Env.to_terms env') in
-         let u = mk_Prod (a, bind_var x b) in
+         let b = Meta (m3, Env.to_terms env') in
+         let u = Prod (a, bind_var x b) in
          add_constr p (Env.to_ctxt env, u, t);
          x, a, env', b
     in
     let tm1 = Env.to_prod env' b in
     let m1 = LibMeta.fresh p tm1 (n+1) in
-    let u1 = mk_Meta (m1, Env.to_terms env') in
-    let xu1 = mk_Abst (a, bind_var x u1) in
+    let u1 = Meta (m1, Env.to_terms env') in
+    let xu1 = Abst (a, bind_var x u1) in
     let v = bind_mvar (Env.vars env) xu1 in
     if Logger.log_enabled () then log (red "%a ≔ %a") meta m term xu1;
     LibMeta.set p m v
