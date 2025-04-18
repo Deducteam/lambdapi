@@ -234,6 +234,11 @@ type p_query_aux =
 
 type p_query = p_query_aux loc
 
+type simp_flag =
+  | SimpAll
+  | SimpBetaOnly
+  | SimpSym of p_qident
+
 (** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
@@ -254,7 +259,7 @@ type p_tactic_aux =
   | P_tac_rewrite of Term.side * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_set of p_ident * p_term
-  | P_tac_simpl of p_qident option
+  | P_tac_simpl of simp_flag
   | P_tac_solve
   | P_tac_sym
   | P_tac_try of p_tactic
@@ -408,6 +413,13 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
   | P_query_proofterm, P_query_proofterm -> true
   | _, _ -> false
 
+let eq_simp_flag : simp_flag eq = fun s1 s2 ->
+  match s1, s2 with
+  | SimpAll, SimpAll
+  | SimpBetaOnly, SimpBetaOnly -> true
+  | SimpSym q1, SimpSym q2 -> eq_p_qident q1 q2
+  | _ -> false
+
 let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
@@ -420,7 +432,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
       b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
-  | P_tac_simpl q1, P_tac_simpl q2 -> Option.eq eq_p_qident q1 q2
+  | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
@@ -618,8 +630,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs ids, a)
     | P_tac_have(id,t)
     | P_tac_set(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
-    | P_tac_simpl (Some qid) -> (vs, f a qid)
-    | P_tac_simpl None
+    | P_tac_simpl (SimpSym qid) -> (vs, f a qid)
+    | P_tac_simpl _
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym

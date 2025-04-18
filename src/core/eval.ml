@@ -702,10 +702,10 @@ let whnf : reducer = fun ?tags c t ->
 
 let whnf = time_reducer whnf
 
-(** [simplify c t] computes a beta whnf of [t] in context [c] belonging to the
-    set S such that (1) terms of S are in beta whnf normal format, (2) if [t]
-    is a product, then both its domain and codomain are in S. *)
-let simplify : ctxt -> term -> term = fun c ->
+(** [beta_simplify c t] computes a beta whnf of [t] in context [c] belonging
+    to the set S such that (1) terms of S are in beta whnf normal format, (2)
+    if [t] is a product, then both its domain and codomain are in S. *)
+let beta_simplify : ctxt -> term -> term = fun c ->
   let tags = [`NoRw; `NoExpand] in
   let rec simp t =
     match get_args (whnf ~tags c t) with
@@ -715,9 +715,9 @@ let simplify : ctxt -> term -> term = fun c ->
     | h, ts -> add_args_map h (whnf ~tags c) ts
   in simp
 
-let simplify =
+let beta_simplify =
   let open Stdlib in let r = ref Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := simplify c t)); !r
+  Debug.(record_time Rewriting (fun () -> r := beta_simplify c t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)

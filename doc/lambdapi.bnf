@@ -148,7 +148,9 @@ QID ::= [UID "."]+ UID
            | "repeat" <tactic>
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
            | "set" <uid> "≔" <term>
-           | "simplify" [<qid>]
+           | "simplify"
+           | "simplify" <qid>
+           | "simplify" "rule" "off"
            | "solve"
            | "symmetry"
            | "try" <tactic>
