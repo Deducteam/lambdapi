@@ -99,6 +99,8 @@ let string_of_goal : Proof.goal -> goal =
   in
   fun g ->
   let open Print in
+  let ids = Proof.get_names g in
+  let term = term_in ids in
   let env_elt (s,(_,t,d)) =
     let t = to_string term t in
     s,
