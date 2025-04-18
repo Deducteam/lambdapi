@@ -378,7 +378,8 @@ let rec handle :
   | P_tac_simpl SimpAll ->
       {ps with proof_goals = Goal.simpl Eval.snf g :: gs}
   | P_tac_simpl SimpBetaOnly ->
-      {ps with proof_goals = Goal.simpl Eval.beta_simplify g :: gs}
+      let tags = [`NoRw; `NoExpand] in
+      {ps with proof_goals = Goal.simpl (Eval.snf ~tags) g :: gs}
   | P_tac_simpl (SimpSym qid) ->
       let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
       let g = Goal.simpl (fun _ctx -> Eval.unfold_sym s) g in

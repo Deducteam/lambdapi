@@ -57,8 +57,9 @@ val eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
    [c] with no side effects. *)
 val pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
 
-(** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
-    the context [c]. The function [dtree] maps symbols to dtrees. *)
+(** [snf ~dtree ~tags c t] computes a snf of [t], unfolding the variables
+    defined in the context [c]. The function [dtree] maps symbols to decision
+    trees. *)
 val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [hnf ?tags c t] computes a head-normal form of the term [t] in
