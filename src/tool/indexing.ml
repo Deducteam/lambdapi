@@ -647,21 +647,6 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
-(*<<<<<<< HEAD
-  let query_results_gen pp_results q =
-    let mok _ = None in
-    let items = answer_query ~mok [] q in
-    Format.asprintf "%a@." pp_results items
-
-  let search_cmd_html s =
-    query_results_gen html_of_item_set
-      (Parsing.Parser.Lp.parse_search_query_string "" s)
-
-  let query_results = query_results_gen pp_item_set
-
-  let search_cmd_txt s =
-    query_results (Parsing.Parser.Lp.parse_search_query_string "" s)
-=======*)
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results pq =
   try
    let mok _ = None in
@@ -689,15 +674,20 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html ss ~from ~how_many pq =
+ let search_cmd_html ss ~from ~how_many s =
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from) s
+   ~pp_results:(html_of_results_list from)
+   (Parsing.Parser.Lp.parse_search_query_string "" s)
 
- let search_cmd_txt ss pq =
+ let search_cmd_txt_query ss =
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list s
+   ~pp_results:pp_results_list
+
+ let search_cmd_txt ss s =
+   search_cmd_txt_query ss
+     (Parsing.Parser.Lp.parse_search_query_string "" s)
 
 end
 
