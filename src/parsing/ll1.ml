@@ -776,26 +776,29 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   (*queries*)
   | ASSERT _
   | COMPUTE
-  | PRINT
-  | PROOFTERM
   | DEBUG
   | FLAG
+  | PRINT
+  | PROOFTERM
   | PROVER
   | PROVER_TIMEOUT
-  | VERBOSE
   | SEARCH
   | TYPE_QUERY
+  | VERBOSE
   (*tactics*)
   | ADMIT
   | APPLY
   | ASSUME
+  | EVAL
   | FAIL
   | GENERALIZE
   | HAVE
   | INDUCTION
+  | ORELSE
   | REFINE
   | REFLEXIVITY
   | REMOVE
+  | REPEAT
   | REWRITE
   | SET
   | SIMPLIFY
@@ -831,26 +834,29 @@ and steps (lb:lexbuf): p_proofstep list =
   (*queries*)
   | ASSERT _
   | COMPUTE
-  | PRINT
-  | PROOFTERM
   | DEBUG
   | FLAG
+  | PRINT
+  | PROOFTERM
   | PROVER
   | PROVER_TIMEOUT
-  | VERBOSE
   | SEARCH
   | TYPE_QUERY
+  | VERBOSE
   (*tactics*)
   | ADMIT
   | APPLY
   | ASSUME
+  | EVAL
   | FAIL
   | GENERALIZE
   | HAVE
   | INDUCTION
+  | ORELSE
   | REFINE
   | REFLEXIVITY
   | REMOVE
+  | REPEAT
   | REWRITE
   | SET
   | SIMPLIFY
@@ -899,15 +905,15 @@ and tactic (lb:lexbuf): p_tactic =
   (*queries*)
   | ASSERT _
   | COMPUTE
-  | PRINT
-  | PROOFTERM
   | DEBUG
   | FLAG
+  | PRINT
+  | PROOFTERM
   | PROVER
   | PROVER_TIMEOUT
-  | VERBOSE
   | SEARCH
-  | TYPE_QUERY ->
+  | TYPE_QUERY
+  | VERBOSE ->
       let pos1 = current_pos() in
       make_pos pos1 (P_tac_query (query lb))
   | ADMIT ->
@@ -924,6 +930,11 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist param lb in
       make_pos pos1 (P_tac_assume xs)
+  | EVAL ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = term lb in
+      make_pos pos1 (P_tac_eval t)
   | FAIL ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -944,6 +955,12 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_induction
+  | ORELSE ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t1 = tactic lb in
+      let t2 = tactic lb in
+      make_pos pos1 (P_tac_orelse(t1,t2))
   | REFINE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -958,6 +975,11 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist uid lb in
       make_pos pos1 (P_tac_remove xs)
+  | REPEAT ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = tactic lb in
+      make_pos pos1 (P_tac_repeat t)
   | REWRITE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -1006,7 +1028,9 @@ and tactic (lb:lexbuf): p_tactic =
             consume_token lb;
             begin
               match current_token() with
-              | SWITCH false -> make_pos pos1 (P_tac_simpl SimpBetaOnly)
+              | SWITCH false ->
+                  consume_token lb;
+                  make_pos pos1 (P_tac_simpl SimpBetaOnly)
               | _ -> expected "" [SWITCH false]
             end
         | _ ->
