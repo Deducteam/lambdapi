@@ -784,6 +784,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | PROVER_TIMEOUT
   | VERBOSE
   | SEARCH
+  | TYPE_QUERY
   (*tactics*)
   | ADMIT
   | APPLY
@@ -838,6 +839,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | PROVER_TIMEOUT
   | VERBOSE
   | SEARCH
+  | TYPE_QUERY
   (*tactics*)
   | ADMIT
   | APPLY
@@ -904,7 +906,8 @@ and tactic (lb:lexbuf): p_tactic =
   | PROVER
   | PROVER_TIMEOUT
   | VERBOSE
-  | SEARCH ->
+  | SEARCH
+  | TYPE_QUERY ->
       let pos1 = current_pos() in
       make_pos pos1 (P_tac_query (query lb))
   | ADMIT ->
@@ -1054,7 +1057,8 @@ and rw_patt (lb:lexbuf): p_rw_patt =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | INT _ ->
+  | INT _
+  | STRINGLIT _ ->
       let pos1 = current_pos() in
       let t1 = term lb in
       begin
@@ -1178,7 +1182,8 @@ and term (lb:lexbuf): p_term =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | INT _ ->
+  | INT _
+  | STRINGLIT _ ->
       let pos1 = current_pos() in
       let h = aterm lb in
       app pos1 h lb
@@ -1199,7 +1204,8 @@ and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | INT _ ->
+  | INT _
+  | STRINGLIT _ ->
       let u = aterm lb in
       app pos1 (make_pos pos1 (P_Appl(t,u))) lb
   (* bterm *)
@@ -1319,6 +1325,10 @@ and aterm (lb:lexbuf): p_term =
         let pos1 = current_pos() in
         consume_token lb;
         make_pos pos1 (P_NLit n)
+    | STRINGLIT s ->
+        let pos1 = current_pos() in
+        consume_token lb;
+        make_pos pos1 (P_SLit s)
     | _ ->
         expected "identifier, \"_\", or term between parentheses or square \
                   brackets" []

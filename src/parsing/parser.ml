@@ -17,7 +17,7 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
-  val parse_in_channel : in_channel -> ast
+  val parse_in_channel : string -> in_channel -> ast
   (** [parse ic] returns a stream of commands parsed from
       channel [ic]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
@@ -31,14 +31,14 @@ module type PARSER = sig
       which comes from file [f] ([f] can be anything). *)
 end
 
+(* defined in OCaml >= 4.11 only *)
+let set_filename (lb:lexbuf) (fname:string): unit =
+  lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
+
 (** Parsing dk syntax. *)
 module Dk : PARSER = struct
 
   open Lexing
-
-  (* defined in OCaml >= 4.11 only *)
-  let set_filename (lb:lexbuf) (fname:string): unit =
-    lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
 
   (* old code:
   let parse_lexbuf :
@@ -65,8 +65,9 @@ module Dk : PARSER = struct
     let ic = open_in fname in
     parse_lexbuf ~ic ~fname (from_channel ic)*)
 
-  let parse_lexbuf (icopt:in_channel option) (entry:lexbuf -> 'a) (lb:lexbuf)
-      : 'a Stream.t =
+  let parse_lexbuf (fname:string) (icopt:in_channel option)
+        (entry:lexbuf -> 'a) (lb:lexbuf) : 'a Stream.t =
+    set_filename lb fname;
     let generator _ =
       try Some(entry lb)
       with
@@ -77,16 +78,15 @@ module Dk : PARSER = struct
     in
     Stream.from generator
 
-  let parse_in_channel (entry:lexbuf -> 'a) (ic:in_channel): 'a Stream.t =
-    parse_lexbuf (Some ic) entry (from_channel ic)
+  let parse_in_channel (entry:lexbuf -> 'a) (fname:string) (ic:in_channel)
+      : 'a Stream.t =
+    parse_lexbuf fname (Some ic) entry (from_channel ic)
 
-  let parse_file entry fname = parse_in_channel entry (open_in fname)
+  let parse_file entry fname = parse_in_channel entry fname (open_in fname)
 
   let parse_string (entry: lexbuf -> 'a) (fname:string) (s:string)
       : 'a Stream.t =
-    let lb = from_string s in
-    set_filename lb fname;
-    parse_lexbuf None entry lb
+    parse_lexbuf "" None entry (from_string s)
 
   let command =
     let r = ref (Pos.none (P_open [])) in
@@ -161,8 +161,9 @@ sig
 
   (* new parser *)
 
-  let parse_lexbuf (icopt: in_channel option) (entry: lexbuf -> 'a)
-        (lb: lexbuf): 'a Stream.t =
+  let parse_lexbuf (fname:string) (icopt: in_channel option)
+        (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
+    set_filename lb fname;
     let generator _ =
       try Some(entry lb)
       with
@@ -175,12 +176,11 @@ sig
 
   let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
       : 'a Stream.t =
-    let lb = Utf8.from_string s in
-    set_filename lb fname;
-    parse_lexbuf None entry lb
+    parse_lexbuf fname None entry (Utf8.from_string s)
 
-  let parse_in_channel (entry: lexbuf -> 'a) (ic: in_channel): 'a Stream.t =
-    parse_lexbuf (Some ic) entry (Utf8.from_channel ic)
+  let parse_in_channel (entry: lexbuf -> 'a) (fname:string) (ic: in_channel)
+      : 'a Stream.t =
+    parse_lexbuf fname (Some ic) entry (Utf8.from_channel ic)
 
   (*let parse_file entry fname =
     let ic = open_in fname in
@@ -191,7 +191,7 @@ sig
     x*)
 
   let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
-    parse_in_channel entry (open_in fname)
+    parse_in_channel entry fname (open_in fname)
 
   (* exported functions *)
   let parse_search_query_string (fname: string) (s: string): query =
