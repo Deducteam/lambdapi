@@ -21,7 +21,7 @@ let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
 let get_constr : goal -> constr =
   function Unif c -> c | Typ _ -> invalid_arg (__FILE__ ^ "get_constr")
 
-let get_names : goal -> StrSet.t = function
+let get_names : goal -> int StrMap.t = function
   | Unif(c,_,_) -> Ctxt.names c
   | Typ gt -> Env.names gt.goal_hyps
 
@@ -59,7 +59,7 @@ module Goal = struct
     | Unif (c,t,u) -> Unif (c, f c t, f c u)
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
-  let hyps : StrSet.t -> goal pp =
+  let hyps : int StrMap.t -> goal pp =
     let hyps elt ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
@@ -68,8 +68,8 @@ module Goal = struct
         (List.pp (fun ppf -> out ppf "%a@," elt) "") (List.rev l);
 
     in
-    fun ids ppf g ->
-    let term = term_in ids in
+    fun idmap ppf g ->
+    let term = term_in idmap in
     match g with
     | Typ gt ->
       let elt ppf (s,(_,t,u)) =
@@ -87,17 +87,18 @@ module Goal = struct
       in
       hyps elt ppf c
 
-  let pp_aux : StrSet.t -> goal pp = fun ids ppf g ->
-    let term = term_in ids in
+  let pp_aux : int StrMap.t -> goal pp = fun idmap ppf g ->
+    let term = term_in idmap in
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [pp ppf g] prints on [ppf] the goal [g] with its hypotheses. *)
-  let pp ppf g = let ids = get_names g in hyps ids ppf g; pp_aux ids ppf g
+  let pp ppf g =
+    let idmap = get_names g in hyps idmap ppf g; pp_aux idmap ppf g
 
   (** [pp_aux ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
-  let pp_no_hyp ppf g = let ids = get_names g in pp_aux ids ppf g
+  let pp_no_hyp ppf g = let idmap = get_names g in pp_aux idmap ppf g
 end
 
 (** [add_goals_of_problem p gs] extends the list of goals [gs] with the

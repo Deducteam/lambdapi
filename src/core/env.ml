@@ -147,17 +147,15 @@ let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
   in build_env 0 [] t
 
 (** [names env] returns the set of names in [env]. *)
-let names : env -> StrSet.t =
-  let add_decl ids (s,_) = StrSet.add s ids in
-  List.fold_left add_decl StrSet.empty
+let names : env -> int StrMap.t =
+  let add_decl idmap (s,_) = add_name s idmap in
+  List.fold_left add_decl StrMap.empty
 
 (** [gen_valid_idopts env ids] generates a list of pairwise distinct
     identifiers distinct from those of [env] to replace [ids]. *)
-let gen_valid_idopts env ids =
-  let idset = ref (names env) in
-  let f id idopts =
-    let id = get_safe_prefix id !idset in
-    idset := StrSet.add id !idset;
-    Some(Pos.none id)::idopts
+let gen_valid_idopts (env:env) (ids: string list): Pos.strloc option list =
+  let f id (idopts, idmap) =
+    let id, idmap = get_safe_prefix id idmap in
+    Some(Pos.none id)::idopts, idmap
   in
-  List.fold_right f ids []
+  fst (List.fold_right f ids ([], names env))

@@ -42,34 +42,35 @@ let _ =
   assert (root_and_index "x00" = ("x0",0));
   assert (root_and_index "x000" = ("x00",0))
 
-(** [get_safe_prefix p idset] returns a string [s] such that [s] starts with
-    [p], [s] is not in [idset] and, for all non-negative integer [k],
-    [p^string_of_int k] is not in [idset]. *)
-let get_safe_prefix : string -> StrSet.t -> string =
-  let biggest_index r id acc =
-    let r',i' = root_and_index id in
-    if r' = r && i' > acc then i' else acc
-  in
-  fun s idset ->
+(*let strings (idmap:int StrMap.t) : StrSet.t =
+  StrMap.fold (fun p i set -> if i < 0 then p else p^string_of_int i)
+    idmap StrSet.empty*)
+
+let add_name s idmap = let r,i = root_and_index s in StrMap.add r i idmap
+
+(** Assume that [root_and_index p = (r,i)]. If [i<0] then [get_safe_prefix p
+    idmap] returns [p,StrMap.add p (-1) idmap] and, for all non-negative
+    integer [k], [StrSet.mem (p^string_of_int k) (strings
+    idmap')=false]. Otherwise, [get_safe_prefix p idmap] returns
+    [r^string_of_int k,StrMap.add r k idmap], where [k] is greater than or
+    equal to [i] and 1 + the index of [r] in [idmap]. *)
+let get_safe_prefix (s:string) (idmap: int StrMap.t): string * int StrMap.t =
   (*print_endline("get_safe_prefix "^s^" in");
-    StrSet.iter print_endline idset;*)
+    StrSet.iter print_endline idmap;*)
   let r,i = root_and_index s in
-  (* If [r] is the root of no element of [idset], then [StrSet.fold
-     (biggest_index r) idset (-2) = -2]. But if [r] is the root of an element
-     of [idset] with index [k], then [StrSet.fold (biggest_index r) idset (-2)
-     >= k] since k >= -1 > -2. *)
-  let i = StrSet.fold (biggest_index r) idset (if i < 0 then -2 else i) in
-  (*print_endline("biggest = "^string_of_int i);*)
-  if i < -1 then s else r^string_of_int(i+1)
+  match StrMap.find_opt r idmap with
+  | None -> s, StrMap.add r i idmap
+  | Some j -> let k = max i j + 1 in r^string_of_int k, StrMap.add r k idmap
 
 (* unit tests *)
 let _ =
-  let idset = StrSet.(add "x" (add "x1" (add "x00" empty))) in
-  assert (get_safe_prefix "y" idset = "y");
-  assert (get_safe_prefix "x" idset = "x2");
-  assert (get_safe_prefix "x0" idset = "x2");
-  assert (get_safe_prefix "x00" idset = "x01");
-  assert (get_safe_prefix "xy" idset = "xy")
+  let idmap = StrMap.(add "x" 1 (add "x0" 0 empty)) in
+  let test s1 s2 = assert (fst (get_safe_prefix s1 idmap) = s2) in
+  test "y" "y";
+  test "x" "x2";
+  test "x0" "x2";
+  test "x00" "x01";
+  test "xy" "xy"
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
