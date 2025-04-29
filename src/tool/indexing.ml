@@ -338,9 +338,9 @@ module DB = struct
   set_of_list ~generalize k
    (Index.search ~generalize (Lazy.force !db) k)
 
- let dump custom_dbpath () =
-  the_dbpath := custom_dbpath;
-  Index.dump_to ~filename:!the_dbpath (Lazy.force !db)
+ let dump ~dbpath () =
+  the_dbpath := dbpath;
+  Index.dump_to ~filename:dbpath (Lazy.force !db)
 
  let locate_name name =
   let k = Term.mk_Wild (* dummy, unused *) in

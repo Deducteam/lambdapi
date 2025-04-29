@@ -156,7 +156,6 @@ index
 
 * ``--db <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
-
 search
 ---------
 

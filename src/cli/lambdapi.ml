@@ -100,7 +100,7 @@ let index_cmd cfg add_only rules files dbpath_opt =
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
-  Tool.Indexing.dump dbpath () in
+  Tool.Indexing.dump ~dbpath () in
  Error.handle_exceptions run
 
 end
