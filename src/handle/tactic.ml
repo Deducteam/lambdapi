@@ -352,7 +352,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_repeat, _ -> assert false
             | T_rewrite, [_;t] -> P_tac_rewrite(Right,None,p_term pos t)
             | T_rewrite, _ -> assert false
-            | T_rewrite_left, [_;t] -> P_tac_rewrite(false,None,p_term pos t)
+            | T_rewrite_left, [_;t] -> P_tac_rewrite(Left,None,p_term pos t)
             | T_rewrite_left, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
