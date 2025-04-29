@@ -227,8 +227,10 @@ type tactic =
   | T_remove
   | T_repeat
   | T_rewrite
+  | T_rewrite_left
   | T_set
   | T_simplify
+  | T_simplify_beta
   | T_solve
   | T_symmetry
   | T_try
@@ -254,8 +256,10 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "remove" T_remove;
   add "repeat" T_repeat;
   add "rewrite" T_rewrite;
+  add "rewrite left" T_rewrite_left;
   add "set" T_set;
   add "simplify" T_simplify;
+  add "simplify rule off" T_simplify_beta;
   add "solve" T_solve;
   add "symmetry" T_symmetry;
   add "try" T_try;
@@ -348,10 +352,13 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_repeat, _ -> assert false
             | T_rewrite, [_;t] -> P_tac_rewrite(Right,None,p_term pos t)
             | T_rewrite, _ -> assert false
+            | T_rewrite_left, [_;t] -> P_tac_rewrite(false,None,p_term pos t)
+            | T_rewrite_left, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
             | T_set, _ -> assert false
             | T_simplify, _ -> P_tac_simpl SimpAll
+            | T_simplify_beta, _ -> P_tac_simpl SimpBetaOnly
             | T_solve, _ -> P_tac_solve
             | T_symmetry, _ -> P_tac_sym
             | T_try, [t] -> P_tac_try(tac t)
