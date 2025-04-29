@@ -304,7 +304,7 @@ module DB = struct
 
  (* disk persistence *)
 
- let the_dbpath : string ref = ref ""
+ let the_dbpath : string ref = ref Path.default_dbpath
 
  let rwpaths = ref []
 
