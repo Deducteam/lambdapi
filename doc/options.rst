@@ -143,10 +143,10 @@ Examples of libraries exported to Coq:
 index
 -----
 
-* ``--add`` tells lambdapi to not erase ``~/.LPSearch.db`` before adding new symbols and rules.
+* ``--add`` tells lambdapi to not erase the index before adding new symbols and rules.
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<LPSearch.lp>`` before indexing. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
-
+`
   For instance, to index the Matita library, you can use the following rules:
 
 ::
@@ -154,12 +154,16 @@ index
    rule cic.Term _ $x ↪ $x;
    rule cic.lift _ _ $x ↪ $x;
 
+* ``--db <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
+
 search
 ---------
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the query using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
 
-* ``-- require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+* ``--require <FILE.lp>`` requires and open ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+
+* ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 websearch
 ---------
@@ -169,6 +173,8 @@ websearch
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the queries using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
 
 * ``--require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+
+* ``--db <FILE.db>`` tells the server to use ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 * ``--header <FILE.html>`` uses <FILE.html> as header of the search engine web page.
 

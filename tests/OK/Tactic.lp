@@ -48,11 +48,17 @@ builtin "repeat" ≔ #repeat;
 constant symbol #rewrite [p] : π p → Tactic;
 builtin "rewrite" ≔ #rewrite;
 
+constant symbol #rewrite_left [p] : π p → Tactic;
+builtin "rewrite left" ≔ #rewrite_left;
+
 constant symbol #set : String → Π [a], τ a → Tactic;
 builtin "set" ≔ #set;
 
 constant symbol #simplify : /* Π [a], τ a → */ Tactic;
 builtin "simplify" ≔ #simplify;
+
+constant symbol #simplify_beta : Tactic;
+builtin "simplify rule off" ≔ #simplify_beta;
 
 constant symbol #solve : Tactic;
 builtin "solve" ≔ #solve;
