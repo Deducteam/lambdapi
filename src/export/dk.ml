@@ -157,7 +157,6 @@ let modifiers : sym -> string list = fun s ->
     | Injec -> add "injective"
     | AC _ -> add "defac"
     | Defin -> add "def"
-    | Assoc _ -> assert false
     | Commu -> assert false
   end;
   if s.sym_expo = Protec then add "private";

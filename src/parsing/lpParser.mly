@@ -15,6 +15,11 @@
 
   let make_prod startpos ps t endpos =
     if ps = [] then t else make_pos (startpos,endpos) (P_Prod(ps,t))
+
+  let assoc_of_side_opt = function
+    | Some Core.Term.Left -> Pratter.Left
+    | Some Core.Term.Right -> Pratter.Right
+    | None -> Pratter.Neither
 %}
 
 // end of file
@@ -90,7 +95,7 @@
 %token <bool * string> DEBUG_FLAGS
 %token <string> INT
 %token <string> FLOAT
-%token <Pratter.associativity> SIDE
+%token <Core.Term.side> SIDE
 %token <string> STRINGLIT
 %token <bool> SWITCH
 
@@ -224,9 +229,8 @@ path:
   | p=QID { make_pos $sloc (List.rev p) }
 
 modifier:
-  | d=ioption(SIDE) ASSOCIATIVE
-    { let b = match d with Some Pratter.Left -> true | _ -> false in
-      make_pos $sloc (P_prop (Term.Assoc b)) }
+  | s=SIDE ASSOCIATIVE COMMUTATIVE
+    { make_pos $sloc (P_prop (Term.AC s)) }
   | COMMUTATIVE { make_pos $sloc (P_prop Term.Commu) }
   | CONSTANT { make_pos $sloc (P_prop Term.Const) }
   | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
@@ -341,9 +345,8 @@ tactic:
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
   | REPEAT t=tactic { make_pos $sloc (P_tac_repeat t) }
-  | REWRITE d=SIDE? p=rw_patt_spec? t=term
-    { let b = match d with Some Pratter.Left -> false | _ -> true in
-      make_pos $sloc (P_tac_rewrite(b,p,t)) }
+  | REWRITE s=SIDE? p=rw_patt_spec? t=term
+    { make_pos $sloc (P_tac_rewrite(Option.get Core.Term.Right s,p,t)) }
   | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
   | SIMPLIFY { make_pos $sloc (P_tac_simpl SimpAll) }
   | SIMPLIFY i=qid { make_pos $sloc (P_tac_simpl (SimpSym i)) }
@@ -399,8 +402,8 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_int
-    { Term.Infix(Option.get Pratter.Neither a, p) }
+  | INFIX s=SIDE? p=float_or_int
+    { Term.Infix(assoc_of_side_opt s, p) }
   | POSTFIX p=float_or_int { Term.Postfix(p) }
   | PREFIX p=float_or_int { Term.Prefix(p) }
   | QUANTIFIER { Term.Quant }

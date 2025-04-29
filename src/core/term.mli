@@ -3,7 +3,6 @@
    This module contains the definition of the internal representation of
    terms, together with smart constructors and low level operation. *)
 
-open Timed
 open Lplib open Base
 open Common
 
@@ -21,11 +20,22 @@ type match_strat =
   (** Any rule that filters a term can be applied (even if a rule defined
       earlier filters the term as well). This is the default. *)
 
+(** Reduction strategy. *)
+type red_strat =
+  | Innermost
+  (** Arguments are normalized before trying to apply a rewrite rule. Strategy
+      used for symbols with rules matching on AC symbols. *)
+  | Outermost
+  (** Arguments are reduced when trying to apply a rewrite rule. This is the
+      default. *)
+
 (** Specify the visibility and usability of symbols outside their module. *)
 type expo =
   | Public (** Visible and usable everywhere. *)
   | Protec (** Visible everywhere but usable in LHS arguments only. *)
   | Privat (** Not visible and thus not usable. *)
+
+type side = Left | Right
 
 (** Symbol properties. *)
 type prop =
@@ -33,8 +43,7 @@ type prop =
   | Const (** Constant. *)
   | Injec (** Injective. *)
   | Commu (** Commutative. *)
-  | Assoc of bool (** Associative left if [true], right if [false]. *)
-  | AC of bool (** Associative and commutative. *)
+  | AC of side (** Associative and commutative. *)
 
 (** Type for free variables. *)
 type var
@@ -69,7 +78,7 @@ type 'a notation =
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
     are considered invalid in unrelated code. *)
-type term = private
+type term =
   | Vari of var (** Free variable. *)
   | Bvar of bvar (** Bound variables. Only used internally. *)
   | Type (** "TYPE" constant. *)
@@ -85,7 +94,8 @@ type term = private
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
       [b] is true if the placeholder stands for a type. *)
-  | TRef of term option ref (** Reference cell (used in surface matching). *)
+  | TRef of term option Timed.ref
+  (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
@@ -104,15 +114,16 @@ and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
-  ; sym_type  : term ref (** Type. *)
+  ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation ref (** Notation. *)
-  ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool ref (** Opacity. *)
-  ; sym_rules : rule list ref (** Rewriting rules. *)
+  ; sym_not   : float notation Timed.ref (** Notation. *)
+  ; sym_def   : term option Timed.ref (** Definition with ≔. *)
+  ; sym_opaq  : bool Timed.ref (** Opacity. *)
+  ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_rstrat: red_strat Timed.ref (** Reduction strategy. *)
+  ; sym_dtree : dtree Timed.ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
   ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
                                 without its definition. *) }
@@ -220,9 +231,9 @@ and rule =
     the form {!constructor:Meta}[(m,env)] can be unfolded. *)
 and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_type  : term ref (** Type. *)
+  ; meta_type  : term Timed.ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
-  ; meta_value : mbinder option ref (** Definition. *) }
+  ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
 (** [binder_name b] gives the name of the bound variable of [b]. *)
 val binder_name : binder -> string
@@ -256,6 +267,7 @@ val is_private : sym -> bool
 
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 val is_modulo : sym -> bool
+val is_ac : sym -> bool
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
@@ -327,44 +339,22 @@ val get_args_len : term -> term * term list * int
 (** Total orders terms. *)
 val cmp : term cmp
 
-(** Construction functions of the private type [term]. They ensure some
-   invariants:
-
-- In a commutative function symbol application, the first argument is smaller
-   than the second one wrt [cmp].
-
-- In an associative and commutative function symbol application, the
-   application is built as a left or right comb depending on the associativity
-   of the symbol, and arguments are ordered in increasing order wrt [cmp].
-
-- In [LLet(_,_,b)], [binder_occur b = true] (useless let's are erased). *)
-val mk_Vari : var -> term
-val mk_Type : term
-val mk_Kind : term
-val mk_Symb : sym -> term
-val mk_Prod : term * binder -> term
+(** Build a non-dependent product. *)
 val mk_Arro : term * term -> term
-val mk_Abst : term * binder -> term
-val mk_Appl : term * term -> term
-val mk_Meta : meta * term array -> term
-val mk_Patt : int option * string * term array -> term
-val mk_Wild : term
-val mk_Plac : bool -> term
-val mk_TRef : term option ref -> term
-val mk_LLet : term * term * binder -> term
 
-(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
-   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
-val mk_Appl_not_canonical : term * term -> term
+(** Curryfied versions of some constructors. *)
+val mk_Vari : var -> term
+val mk_Abst : term * binder -> term
+val mk_Prod : term * binder -> term
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
 val add_args : term -> term list -> term
 
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+(** [add_args_map f t xs] is equivalent to [add_args t (List.map f xs)] but
    more efficient. *)
-val add_args_map : term -> (term -> term) -> term list -> term
+val add_args_map : term -> ('a -> term) -> 'a list -> term
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
 val subst : binder -> term -> term
@@ -388,13 +378,13 @@ val unbind2 : ?name:string -> binder -> binder -> var * term * term
     create the fresh variables are based on those of the multiple binder. *)
 val unmbind : mbinder -> var array * term
 
-(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
+(** [bind_var x b] binds the variable [x] in [b], producing a binder. *)
 val bind_var  : var -> term -> binder
 
 (** [binder f b] applies f inside [b]. *)
 val binder : (term -> term) -> binder -> binder
 
-(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
+(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 val bind_mvar : var array -> term -> mbinder
 
@@ -406,7 +396,7 @@ val mbinder_occur : mbinder -> int -> bool
 val is_closed : term -> bool
 val is_closed_mbinder : mbinder -> bool
 
-(** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
+(** [occur x b] tells whether variable [x] occurs in [b]. *)
 val occur : var -> term -> bool
 val occur_mbinder : var -> mbinder -> bool
 
@@ -436,7 +426,7 @@ type problem_aux =
   ; metas : MetaSet.t
   (** Set of unsolved metas. *) }
 
-type problem = problem_aux ref
+type problem = problem_aux Timed.ref
 
 (** Create a new empty problem. *)
 val new_problem : unit -> problem

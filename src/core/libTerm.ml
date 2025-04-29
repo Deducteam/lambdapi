@@ -7,7 +7,7 @@ open Lplib open Extra
 let rec is_kind : term -> bool = fun t ->
   match unfold t with
   | Type -> true
-  | Prod(_,b) -> is_kind (subst b mk_Kind)
+  | Prod(_,b) -> is_kind (subst b Kind)
   | _ -> false
 
 (** [to_var t] returns [x] if [t] is of the form [Vari x] and fails
@@ -60,9 +60,9 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Patt(_,_,ts)
     | Meta(_,ts)  -> Array.iter iter ts
     | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (subst b mk_Kind)
+    | Abst(a,b)   -> iter a; iter (subst b Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(a,t,u) -> iter a; iter t; iter (subst u mk_Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (subst u Kind)
   in iter
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
@@ -112,7 +112,7 @@ let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
             let v = new_var f.sym_name in
             patt_vars := StrMap.add f.sym_name v !patt_vars;
             v
-        in to_var (mk_Vari v)
+        in to_var (Vari v)
     | _ -> raise Not_a_var
   in
   let replace_nl_var v =
@@ -132,12 +132,12 @@ let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
 let sym_to_var : var StrMap.t -> term -> term = fun map ->
   let rec to_var t =
     match unfold t with
-    | Symb f -> (try mk_Vari (StrMap.find f.sym_name map) with Not_found -> t)
-    | Prod(a,b) -> mk_Prod (to_var a, to_var_binder b)
-    | Abst(a,b) -> mk_Abst (to_var a, to_var_binder b)
-    | LLet(a,t,u) -> mk_LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b)  -> mk_Appl(to_var a, to_var b)
-    | Meta(m,ts) -> mk_Meta(m, Array.map to_var ts)
+    | Symb f -> (try Vari (StrMap.find f.sym_name map) with Not_found -> t)
+    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
+    | Appl(a,b)  -> Appl(to_var a, to_var b)
+    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
     | Patt _ -> assert false
     | TRef _ -> assert false
     | _ -> t
@@ -150,7 +150,7 @@ let sym_to_var : var StrMap.t -> term -> term = fun map ->
 let rec codom_binder : int -> term -> binder = fun n t ->
   match unfold t with
   | Prod(_,b) ->
-      if n <= 0 then b else codom_binder (n-1) (subst b mk_Kind)
+      if n <= 0 then b else codom_binder (n-1) (subst b Kind)
   | _ -> assert false
 
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
@@ -178,17 +178,29 @@ let rec eq_alpha a b =
     [Bindlib.subst b t ≡ a]. *)
 let fold (x:var) (t:term): term -> term =
   let rec aux u =
-    if eq_alpha t u then mk_Vari x
+    if eq_alpha t u then Vari x
     else
       match unfold u with
-      | Appl(a,b) -> mk_Appl(aux a, aux b)
+      | Appl(a,b) -> Appl(aux a, aux b)
       | Abst(a,b) ->
-          let x,b = Term.unbind b in mk_Abst(aux a, Term.bind_var x b)
+          let x,b = Term.unbind b in Abst(aux a, Term.bind_var x b)
       | Prod(a,b) ->
-          let x,b = Term.unbind b in mk_Prod(aux a, Term.bind_var x b)
+          let x,b = Term.unbind b in Prod(aux a, Term.bind_var x b)
       | LLet(a,d,b) ->
-          let x,b = Term.unbind b in mk_LLet(aux a, aux d, Term.bind_var x b)
-      | Meta(m,us) -> mk_Meta(m,Array.map aux us)
+          let x,b = Term.unbind b in LLet(aux a, aux d, Term.bind_var x b)
+      | Meta(m,us) -> Meta(m,Array.map aux us)
       | _ -> u
   in
   aux
+
+(** [contains_ac_sym rs] tells whether the LHS's of [rs] contain an AC
+    symbol. *)
+let contains_ac_sym : rule list -> bool =
+  let rec aux t =
+    match get_args t with
+    | Symb f, ts -> if is_ac f then raise Exit else List.iter aux ts
+    | Abst(a,b), _ | Prod(a,b), _ -> aux a; let _,b = unbind b in aux b
+    | _ -> ()
+  in
+  let aux_rule r = List.iter aux r.lhs in
+  fun rs -> try List.iter aux_rule rs; false with Exit -> true

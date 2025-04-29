@@ -48,7 +48,7 @@ let rec compile_with :
     if force || Extra.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
-      Console.out 1 "Checking \"%s\"%s ..." src forced;
+      Console.out 1 "Check \"%s\"%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -61,14 +61,20 @@ let rec compile_with :
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
-        Console.out 1 "Writing \"%s\" ..." obj; Sign.write sign obj
+        Console.out 1 "Write \"%s\" ..." obj; Sign.write sign obj
       end;
       loading := List.tl !loading;
+      Console.out 2 "Checked \"%s\"" src;
+      begin
+        match !loading with
+        | p::_ -> Console.out 2 "Continue checking %a ..." Path.pp p
+        | [] -> ()
+      end;
       sign
     end
     else
     begin
-      Console.out 1 "Loading \"%s\" ..." obj;
+      Console.out 1 "Load \"%s\" ..." obj;
       let sign = Sign.read obj in
       (* We recursively load every module [mp'] on which [mp] depends. *)
       let compile mp' _ = ignore (compile_with ~handle ~force:false mp') in

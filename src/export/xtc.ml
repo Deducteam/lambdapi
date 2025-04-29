@@ -99,7 +99,7 @@ and head : term pp = fun ppf t ->
     let x, b = unbind b in add_bvar x;
     out ppf "<lambda>%a%a%a</lambda>" bvar x typ a term b
   | Prod _ -> assert false
-  | LLet(a,t,b) -> term ppf (mk_Appl(mk_Abst(a,b),t))
+  | LLet(a,t,b) -> term ppf (Appl(Abst(a,b),t))
 
 and pvar_app : (int * term array) pp = fun ppf (i,ts) ->
   let arity = Array.length ts in
@@ -136,7 +136,7 @@ let add_pvars : sym -> rule -> unit = fun s r ->
   (* Generate n fresh variables and n fresh metas for their types. *)
   let var = Array.init n (new_var_ind "$") in
   let p = new_problem() in
-  type_of_pvar := Array.init n (fun _ -> LibMeta.make p [] mk_Type);
+  type_of_pvar := Array.init n (fun _ -> LibMeta.make p [] Type);
   (* Replace in lhs pattern variables by variables. *)
   let rec subst_patt t =
     match unfold t with
@@ -156,17 +156,17 @@ let add_pvars : sym -> rule -> unit = fun s r ->
         match unfold a with
         | Patt(Some i,_,[||]) ->
           let x,b = unbind b in
-          mk_Abst(!type_of_pvar.(i), bind_var x (subst_patt b))
+          Abst(!type_of_pvar.(i), bind_var x (subst_patt b))
         | Patt(Some _,_,_) -> assert false (*FIXME*)
         | _ -> assert false
       end
-    | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
+    | Appl(a,b) -> Appl(subst_patt a, subst_patt b)
     | Patt(None, _, _) -> assert false
     | Patt(Some i, _, ts) ->
-      Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari var.(i)) ts
+      Array.fold_left (fun acc t -> Appl(acc,t)) (Vari var.(i)) ts
   in
   let lhs =
-    List.fold_left (fun h t -> mk_Appl(h, subst_patt t)) (mk_Symb s) r.lhs
+    List.fold_left (fun h t -> Appl(h, subst_patt t)) (Symb s) r.lhs
   in
   (* Create a typing context mapping every variable to its type. *)
   let ctx =
@@ -203,7 +203,7 @@ let sym_rule : sym -> rule pp = fun s ppf r ->
 (** Translate the rules of symbol [s]. *)
 let rules_of_sym : sym pp = fun ppf s ->
   match Timed.(!(s.sym_def)) with
-  | Some d -> rule ppf (mk_Symb s, d)
+  | Some d -> rule ppf (Symb s, d)
   | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
 
 (** Translate the rules of a dependency except if it is a ghost signature. *)

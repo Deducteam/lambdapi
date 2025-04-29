@@ -34,7 +34,7 @@ module Goal = struct
   let env : goal -> Env.t = fun g ->
     match g with
     | Unif (c,_,_) ->
-      let t, n = Ctxt.to_prod c mk_Type in
+      let t, n = Ctxt.to_prod c Type in
       (try fst (Env.of_prod_nth c n t)
        with Invalid_argument _ -> assert false)
     | Typ gt -> gt.goal_hyps

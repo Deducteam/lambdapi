@@ -1,6 +1,6 @@
 symbol Prop:TYPE;
 symbol -:Prop → Prop; notation - prefix 10;
-associative commutative symbol +: Prop → Prop → Prop; notation + infix right 5;
+right associative commutative symbol +: Prop → Prop → Prop; notation + infix right 5;
 injective symbol π:Prop → TYPE;
 symbol resolution x a b : π (x + a) → π (- x + b) → π (a + b);
 opaque symbol test a b c d e :

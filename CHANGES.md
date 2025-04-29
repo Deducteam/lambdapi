@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Replaced Bindlib by de Bruijn (Frédéric) and closures (Bruno). The performances are slightly better than with Bindlib, especially on rewriting intensive files (the new version is 3.7 times faster on `tests/OK/perf_rw_engine.lp`). Lambdapi is now 2 times faster than dkcheck on matita, and only 2 times slower than dkcheck on holide.
+- Terms are not kept in AC-canonical form any more. This allows to handle AC symbols more efficiently.
+- When declaring a symbol as associative commutative, the side left or right is now mandatory.
+- The ordering used to compare terms now compare arguments from left to right. This may require to permute some arguments for every thing to work again.
 - Several improvements to use the search engine:
   * normalize queries in websearch/search
   * pre-load a file in websearch (e.g. to declare implicit args)

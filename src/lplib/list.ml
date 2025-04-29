@@ -170,7 +170,7 @@ let destruct : 'a list -> int -> 'a list * 'a * 'a list =
     {!val:destruct} to insert a sublist [l] in the place of the element at
     the specified position in the specified list. *)
 let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
-  L.rev_append l (m @ r)
+  rev_append l (m @ r)
 
 (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
    that [Invalid_argument] is raised if [n] is negative. *)
@@ -194,7 +194,7 @@ let mem_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
 let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
   let rec insert acc = function
     | y :: l' when cmp x y > 0 -> insert (y :: acc) l'
-    | l -> L.rev_append acc (x :: l)
+    | l -> rev_append acc (x :: l)
   in insert []
 
 (* unit tests *)
@@ -211,14 +211,14 @@ let insert_uniq : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
   let exception Found in
   let rec insert acc l =
     match l with
-    | [] -> L.rev_append acc [x]
+    | [] -> rev_append acc [x]
     | y :: l' ->
         begin
           let n = cmp x y in
           match n with
           | 0 -> raise Found
           | _ when n > 0 -> insert (y :: acc) l'
-          | _ -> L.rev_append acc (x :: l)
+          | _ -> rev_append acc (x :: l)
         end
   in
   fun l -> try insert [] l with Found -> l
@@ -309,3 +309,9 @@ let pos : ('a -> bool) -> 'a list -> int = fun f ->
     | [] -> raise Not_found
     | x::xs -> if f x then k else pos (k+1) xs
   in pos 0
+
+(** [rev_append2 [x1;..;xm] [y1;..;yn] l] raises [Invalid_arg] if [m<>n], and
+    [(xn,yn)::..::(x1,y1)::l] otherwise. *)
+let rev_append2 =
+  let combine acc xi yi = (xi,yi)::acc in
+  fun xs ys l -> fold_left2 combine l xs ys

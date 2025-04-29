@@ -11,7 +11,7 @@ open Term
 let equiv : sym =
   let id = Pos.none "≡" in
   let s =
-    Sign.add_symbol Ghost.sign Public Defin Eager false id None mk_Kind [] in
+    Sign.add_symbol Ghost.sign Public Defin Eager false id None Kind [] in
   Timed.(s.sym_not := Infix(Pratter.Neither, 2.0));
   s
 
@@ -19,7 +19,7 @@ let equiv : sym =
 let cons : sym =
   let id = Pos.none ";" in
   let s =
-    Sign.add_symbol Ghost.sign Public Const Eager true id None mk_Kind [] in
+    Sign.add_symbol Ghost.sign Public Const Eager true id None Kind [] in
   Timed.(s.sym_not := Infix(Pratter.Right, 1.0));
   s
 

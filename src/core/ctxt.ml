@@ -28,8 +28,8 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
     let b = bind_var x t in
     let u =
       match d with
-      | None -> mk_Prod (a,b)
-      | Some d -> mk_LLet (a,d,b)
+      | None -> Prod (a,b)
+      | Some d -> LLet (a,d,b)
     in
     u, k+1
   in
@@ -38,14 +38,14 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)
 let to_abst : ctxt -> term -> term = fun ctx t ->
-  let f t (x, a, _) = mk_Abst (a, bind_var x t) in
+  let f t (x, a, _) = Abst (a, bind_var x t) in
   List.fold_left f t ctx
 
 (** [to_let ctx t] adds the defined variables of [ctx] on top of [t]. *)
 let to_let : ctxt -> term -> term = fun ctx t ->
   let f t = function
     | _, _, None -> t
-    | x, a, Some u -> mk_LLet (a, u, bind_var x t)
+    | x, a, Some u -> LLet (a, u, bind_var x t)
   in
   List.fold_left f t ctx
 

@@ -256,7 +256,7 @@ type p_tactic_aux =
   | P_tac_refl
   | P_tac_remove of p_ident list
   | P_tac_repeat of p_tactic
-  | P_tac_rewrite of bool * p_rw_patt option * p_term
+  | P_tac_rewrite of Term.side * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_set of p_ident * p_term
   | P_tac_simpl of simp_flag

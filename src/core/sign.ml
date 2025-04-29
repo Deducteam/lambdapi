@@ -80,29 +80,25 @@ let link : t -> unit = fun sign ->
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let link_term mk_Appl =
-    let rec link_term t =
-      match unfold t with
-      | Type
-      | Kind
-      | Vari _ -> t
-      | Symb s -> mk_Symb(link_symb s)
-      | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
-      | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
-      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
-      | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
-      | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
-      | Bvar _ -> assert false
-      | Meta _ -> assert false
-      | Plac _ -> assert false
-      | Wild -> assert false
-      | TRef _ -> assert false
-    in link_term
+  let rec link_term t =
+    match unfold t with
+    | Type
+    | Kind
+    | Vari _ -> t
+    | Symb s -> Symb(link_symb s)
+    | Prod(a,b) -> Prod(link_term a, binder link_term b)
+    | Abst(a,b) -> Abst(link_term a, binder link_term b)
+    | LLet(a,t,b) -> LLet(link_term a, link_term t, binder link_term b)
+    | Appl(a,b)   -> Appl(link_term a, link_term b)
+    | Patt(i,n,ts)-> Patt(i, n, Array.map link_term ts)
+    | Bvar _ -> assert false
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+    | Wild -> assert false
+    | TRef _ -> assert false
   in
-  let link_lhs = link_term mk_Appl_not_canonical
-  and link_term = link_term mk_Appl in
   let link_rule r =
-    let lhs = List.map link_lhs r.lhs in
+    let lhs = List.map link_term r.lhs in
     let rhs = link_term r.rhs in
     {r with lhs ; rhs}
   in
@@ -135,7 +131,7 @@ let link : t -> unit = fun sign ->
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
   let link_cp_pos (pos,l,r,p,l_p) =
-    pos, link_lhs l, link_term r, p, link_lhs l_p in
+    pos, link_term l, link_term r, p, link_term l_p in
   let f s cps m = SymMap.add (link_symb s) (List.map link_cp_pos cps) m in
   sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
 
@@ -150,7 +146,7 @@ let unlink : t -> unit = fun sign ->
   let unlink_sym s =
     s.sym_dtree := Tree_type.empty_dtree;
     if s.sym_path <> sign.sign_path then
-      (s.sym_type := mk_Kind; s.sym_rules := [])
+      (s.sym_type := Kind; s.sym_rules := [])
   in
   let rec unlink_term t =
     match unfold t with
@@ -305,14 +301,18 @@ let read =
    pairs. *)
 let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function
-      | None -> Some([r],None)
-      | Some(rs,n) -> Some(rs@[r],n)
-    in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+  if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym [r]
+  then Timed.(sym.sym_rstrat := Innermost);
+  if sym.sym_path <> sign.sign_path then (* update dependencies *)
+    begin
+      let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+      let f = function
+        | None -> Some([r],None)
+        | Some(rs,n) -> Some(rs@[r],n)
+      in
+      let sm = StrMap.update sym.sym_name f sm in
+      sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    end
 
 (** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
    the rules do not correspond to a symbol of signature [sign], they are
@@ -320,14 +320,18 @@ let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
    critical pairs. *)
 let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
   sym.sym_rules := !(sym.sym_rules) @ rs;
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function
-      | None -> Some(rs,None)
-      | Some(rs',n) -> Some(rs'@rs,n)
-    in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+  if Timed.(!(sym.sym_rstrat)) <> Innermost && LibTerm.contains_ac_sym rs
+  then Timed.(sym.sym_rstrat := Innermost);
+  if sym.sym_path <> sign.sign_path then (* update dependencies *)
+    begin
+      let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+      let f = function
+        | None -> Some(rs,None)
+        | Some(rs',n) -> Some(rs'@rs,n)
+      in
+      let sm = StrMap.update sym.sym_name f sm in
+      sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps);
+    end
 
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)

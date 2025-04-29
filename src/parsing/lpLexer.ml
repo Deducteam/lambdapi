@@ -97,7 +97,7 @@ type token =
       (* Tuple constructor (with parens) required by Menhir. *)
   | INT of string
   | FLOAT of string
-  | SIDE of Pratter.associativity
+  | SIDE of Core.Term.side
   | STRINGLIT of string
   | SWITCH of bool
 
@@ -227,7 +227,7 @@ let rec token lb =
   | "inductive" -> INDUCTIVE
   | "infix" -> INFIX
   | "injective" -> INJECTIVE
-  | "left" -> SIDE(Pratter.Left)
+  | "left" -> SIDE(Core.Term.Left)
   | "let" -> LET
   | "notation" -> NOTATION
   | "off" -> SWITCH(false)
@@ -250,7 +250,7 @@ let rec token lb =
   | "repeat" -> REPEAT
   | "require" -> REQUIRE
   | "rewrite" -> REWRITE
-  | "right" -> SIDE(Pratter.Right)
+  | "right" -> SIDE(Core.Term.Right)
   | "rule" -> RULE
   | "search" -> SEARCH
   | "sequential" -> SEQUENTIAL

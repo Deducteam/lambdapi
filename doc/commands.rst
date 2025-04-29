@@ -116,26 +116,36 @@ the system with additional information on its properties and behavior.
 
   - ``constant``: No rule or definition can be given to the symbol
   - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
-  - ``commutative``: Adds in the conversion the equation ``f t u ≡ f u t``.
-  - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only).
 
-    For handling commutative and associative-commutative symbols,
-    terms are systemically put in some canonical form following a
-    technique described `here
-    <http://dx.doi.org/10.1007/978-3-540-71316-6_8>`__.
+  - ``commutative``: If a symbol ``f`` is ``commutative`` but not
+    ``associative`` then the reduction relation is enriched with the
+    following conditional rewriting rule:
 
-    If a symbol ``f`` is ``commutative`` and not ``associative`` then,
-    for every canonical term of the form ``f t u``, we have ``t ≤ u``,
-    where ``≤`` is a total ordering on terms left unspecified.
+    * ``f t u ↪ f u t`` if ``t > u``
 
-    If a symbol ``f`` is ``commutative`` and ``associative left`` then
-    there is no canonical term of the form ``f t (f u v)`` and thus
-    every canonical term headed by ``f`` is of the form ``f … (f (f t₁
-    t₂) t₃) …  tₙ``. If a symbol ``f`` is ``commutative`` and
-    ``associative`` or ``associative right`` then there is no
-    canonical term of the form ``f (f t u) v`` and thus every
-    canonical term headed by ``f`` is of the form ``f t₁ (f t₂ (f t₃ …
-    tₙ) … )``. Moreover, in both cases, we have ``t₁ ≤ t₂ ≤ … ≤ tₙ``.
+    where ``≤`` is a total ordering on terms such that:
+    * ``f t₁ t₂ < g u`` iff ``f <ᶠ g``, where ``≤ᶠ`` is a total ordering on function symbols and term constructors left unspecified;
+    * ``f t₁ t₂ < f u₁ u₂`` iff ``t₁ < u₁`` or else ``t₁ = u₁`` and ``t₂ < u₂`` (arguments are compare lexicographically from left to right).
+
+  - ``left associative commutative``: In this case, the reduction
+    relation is enriched with the following conditional rewriting
+    rules:
+
+    * ``f t (f u v) ↪ f (f t u) v``
+    * ``f t u ↪ f u t`` if ``t > u``
+    * ``f (f t u) v ↪ f (f u t) v`` if ``t > u``
+
+  - ``right associative commutative``: In this case, the reduction
+    relation is enriched with the following conditional rewriting
+    rules:
+
+    * ``f (f t u) v ↪ f t (f u v)``
+    * ``f t u ↪ f u t`` if ``t > u``
+    * ``f t (f u v) ↪ f u (f t v)`` if ``t > u``
+
+  This can be used to identify terms modulo the following theories:
+  - ACI = AC + Idempotence: `max-suc algebra <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/max-suc-alg.lp>` in the representation of type universe levels
+  - AG = AC + Inverse + Neutral: `linear arithmetic <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/lia.lp>`
 
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used

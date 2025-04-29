@@ -24,14 +24,14 @@ let _ =
       match !((StrMap.find "nat_succ" ss.builtins).sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
-    with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+    with Not_found -> Meta (LibMeta.fresh (new_problem()) Type 0, [||])
   in
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
       try !((StrMap.find "nat_zero" ss.builtins).sym_type)
       with Not_found ->
-        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+        Meta (LibMeta.fresh (new_problem()) Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in
@@ -99,12 +99,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   let props, expos, strats = get_modifiers ([],[],[]) ms in
   let prop =
     match props with
-    | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
-    | [{elt=P_prop Commu;_};{elt=P_prop (Assoc b);_}] -> AC b
     | _::{pos;_}::_ -> fatal pos "Incompatible or duplicated properties."
-    | [{elt=P_prop (Assoc _);pos}] ->
-        fatal pos "Associativity alone is not allowed as \
-                   you can use a rewriting rule instead."
     | [{elt=P_prop p;_}] -> p
     | [] -> Defin
     | _ -> assert false
@@ -256,8 +251,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check that the notation is compatible with the theory. *)
       begin
         match s.sym_prop, n with
-        | (Assoc true | AC true), Infix (Pratter.Right,_)
-        | (Assoc false | AC false), Infix (Pratter.Left,_)
+        | AC Left, Infix (Pratter.Right,_)
+        | AC Right, Infix (Pratter.Left,_)
           -> fatal pos
                "notation incompatible with symbol property \
                 (e.g. infix right notation on left associative symbol)"
@@ -512,7 +507,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+                Option.map (fun m -> unfold (Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
@@ -524,7 +519,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+                Option.map (fun m -> unfold (Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
