@@ -190,11 +190,11 @@ end
 module DB = struct
  (* fix codomain type *)
 
- type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+ type side = Parsing.Syntax.side = Lhs | Rhs
 
- type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+ type inside = Parsing.Syntax.inside = Exact | Inside
 
- type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
+ type 'inside where = 'inside Parsing.Syntax.where =
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
@@ -572,7 +572,7 @@ include DB
 
 module QueryLanguage = struct
 
- open Parsing.SearchQuerySyntax
+ open Parsing.Syntax
 
  let match_opt p x =
   match p,x with
@@ -647,15 +647,14 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results pq =
   try
-   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
-   let pq = Stream.next pstream in
    let mok _ = None in
    let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
+   (*FIXME: there should be no HTML here*)
    Format.asprintf "<h1>Number of results: %d</h1>%a@."
     resultsno pp_results items
   with
@@ -679,13 +678,19 @@ module UserLevelQueries = struct
   the_dbpath := dbpath;
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from) s
+   ~pp_results:(html_of_results_list from)
+   (Parsing.Parser.Lp.parse_search_query_string "" s)
 
- let search_cmd_txt ss s ~dbpath =
+ let search_cmd_txt_query ss q ~dbpath =
   the_dbpath := dbpath;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list s
+   ~pp_results:pp_results_list q
+
+ let search_cmd_txt ss s ~dbpath =
+   the_dbpath := dbpath;
+   search_cmd_txt_query ss
+     (Parsing.Parser.Lp.parse_search_query_string "" s) ~dbpath
 
 end
 
