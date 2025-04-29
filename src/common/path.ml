@@ -25,7 +25,7 @@ module Map = Map.Make(Path)
 (** [ghost s] creates a module path that cannot be entered by a user. *)
 let ghost : string -> Path.t = fun s -> [""; s]
 
-(** [default_dbpath] Returns the default path of the index. *)
+(** [default_dbpath] returns the default path of the index. *)
 let default_dbpath : string =
   match Sys.getenv_opt "HOME" with
     | Some s -> Filename.concat s ".LPSearch.db"

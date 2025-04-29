@@ -29,23 +29,17 @@ let sig_state_of_require =
     Core.Sig_state.of_sign
      (Compile.compile (Parsing.Parser.path_of_string req))
 
-(**[dbpath custom_dbpath] reads a string option [custom_dbpath] and returns
-  the path wrapped in it or a default value if None*)
-let dbpath custom_dbpath =
-  match custom_dbpath with
-  | None -> Common.Path.default_dbpath
-  | Some path -> path
-
-let search_cmd cfg rules require s custom_dbpath =
+let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ss s (dbpath custom_dbpath)) in
+   (Tool.Indexing.search_cmd_txt ss s ~dbpath) in
  Error.handle_exceptions run
 
-let websearch_cmd cfg rules port require header_file custom_dbpath =
+let websearch_cmd cfg rules port require header_file dbpath_opt =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
@@ -88,10 +82,11 @@ let websearch_cmd cfg rules port require header_file custom_dbpath =
     </ul>
       "
     | Some file -> Lplib.String.string_of_file file in
-  Tool.Websearch.start header ss ~port (dbpath custom_dbpath) () in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  Tool.Websearch.start ~header ss ~port ~dbpath () in
  Error.handle_exceptions run
 
-let index_cmd cfg add_only rules files custom_dbpath=
+let index_cmd cfg add_only rules files dbpath_opt =
  Config.init cfg;
  let run () =
   if not add_only then Tool.Indexing.empty ();
@@ -104,7 +99,8 @@ let index_cmd cfg add_only rules files custom_dbpath=
    Tool.Indexing.load_rewriting_rules rules;
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
-  Tool.Indexing.dump (dbpath custom_dbpath) () in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  Tool.Indexing.dump dbpath () in
  Error.handle_exceptions run
 
 end
@@ -473,7 +469,7 @@ let require_arg : string option CLT.t =
     "LP file to be required before starting the search engine." in
   Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
 
-let custom_db_path : string option CLT.t =
+let custom_dbpath : string option CLT.t =
   let doc =
     "Path to the search DB file." in
   Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
@@ -488,20 +484,20 @@ let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
-   $ add_only_arg $ rules_arg $ files $ custom_db_path)
+   $ add_only_arg $ rules_arg $ files $ custom_dbpath)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
-   $ rules_arg $ require_arg $ query_as_arg $ custom_db_path)
+   $ rules_arg $ require_arg $ query_as_arg $ custom_dbpath)
 
 let websearch_cmd =
  let doc =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
-   $ rules_arg $ port_arg $ require_arg $ header_file_arg $ custom_db_path)
+   $ rules_arg $ port_arg $ require_arg $ header_file_arg $ custom_dbpath)
 
 let _ =
   let t0 = Sys.time () in

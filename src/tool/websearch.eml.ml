@@ -1,5 +1,4 @@
 
-
 let show_form ~from ?(message="") ?output request =
   <html>
   <body>
@@ -41,7 +40,7 @@ let show_form ~from ?(message="") ?output request =
   </body>
   </html>
 
-let start header ss ~port custom_dbpath () =
+let start ~header ss ~port ~dbpath () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
   Dream.run ~port ~interface
@@ -51,7 +50,7 @@ let start header ss ~port custom_dbpath () =
 
     Dream.get  "/"
       (fun request ->
-        Dream.html (header ^ (show_form ~from:0 request)));
+        Dream.html (header ^ show_form ~from:0 request));
 
     Dream.post "/"
       (fun request ->
@@ -62,7 +61,7 @@ let start header ss ~port custom_dbpath () =
           Dream.log "from2 = %d" from ;
           let output =
             Indexing.search_cmd_html ss ~from ~how_many:100
-            message custom_dbpath in
+            message ~dbpath in
           Dream.html (show_form ~from ~message ~output request)
           (*Dream.stream (show_form_stream ~message ~output request)*)
         | _ ->
