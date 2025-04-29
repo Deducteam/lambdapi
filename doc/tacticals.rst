@@ -26,8 +26,10 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "remove" ≔ …; // : Π [a], El a → T
    builtin "repeat" ≔ …; // : T → T
    builtin "rewrite" ≔ …; // : Π [a], Prf a → T
+   builtin "rewrite left" ≔ …; // : Π [a], Prf a → T
    builtin "set" ≔ …; // : String → Π [a], El a → T
    builtin "simplify" ≔ …; // : T
+   builtin "simplify rule off" ≔ …; // : T
    builtin "solve" ≔ …; // : T
    builtin "symmetry" ≔ …; // : T
    builtin "try" ≔ …; // : T → T
