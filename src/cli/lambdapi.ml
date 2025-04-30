@@ -63,7 +63,11 @@ let websearch_cmd cfg rules port require header_file dbpath_opt =
         query language specification</a> to learn about the query language.
         <br>The query language also uses the <a
         href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
-        Lambdapi terms syntax</a>.<br>
+        Lambdapi terms syntax</a>.<br> with the possibility to use,
+        for commodity,
+        \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
+        (note,results are displayed with the Unicode symbols
+        \"Π\" and \"→\").
         In particular, the following constructors can come handy for
         writing queries:<br>
     </p>
@@ -73,10 +77,11 @@ let websearch_cmd cfg rules port require header_file dbpath_opt =
         </span> and <span class=\"snippet\">z</span> (of type <span class=\"
         snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
         class=\"snippet\">t</span>.</li>
-        <li>a dependent product <span class=\"snippet\">Π (x:A) y z,T</span>
+        <li>a dependent product
+          <span class=\"snippet\">forall (x:A) y z,T</span>
         </li>
-        <li>a non-dependent product <span class=\"snippet\">A → T</span>
-         (syntactic sugar for <span class=\"snippet\">Π x:A,T</span> when
+        <li>a non-dependent product <span class=\"snippet\">A -> T</span>
+         (syntactic sugar for <span class=\"snippet\">forall x:A,T</span> when
           <span class=\"snippet\">x</span> does not occur in <span class=
           \"snippet\">T</span>)</li>
     </ul>

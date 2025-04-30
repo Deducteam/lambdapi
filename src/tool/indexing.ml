@@ -648,6 +648,8 @@ include QueryLanguage
 module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
+  let s = Str.global_replace (Str.regexp_string "->") "→" s in
+  let s = Str.global_replace (Str.regexp_string "forall") "Π" s in
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
@@ -656,8 +658,9 @@ module UserLevelQueries = struct
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "<h1>Number of results: %d</h1>%a@."
-    resultsno pp_results items
+   Format.asprintf
+    "<h2>For request : %s</h2><h1>Number of results: %d</h1>%a@."
+    s resultsno pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
