@@ -178,6 +178,8 @@ websearch
 
 * ``--header <FILE.html>`` uses <FILE.html> as header of the search engine web page.
 
+* ``--url <STRING>`` tells the server to accept requests only on URLs with path ``<STRING>`` (for instance ``localhost:8080/<STRING>``). Use ``**`` to accept requests on all path.
+
 lsp
 -------
 

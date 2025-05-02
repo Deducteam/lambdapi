@@ -11,7 +11,7 @@ let show_form ~from ?(message="") ?output request =
     }
     </script>
 
-    <form method="POST" action="/" id="form">
+    <form method="POST" id="form">
       <%s! Dream.csrf_tag request %>
       <p>
       <input type="search" required="true" size="100"
@@ -40,7 +40,7 @@ let show_form ~from ?(message="") ?output request =
   </body>
   </html>
 
-let start ~header ss ~port ~dbpath () =
+let start ~header ss ~port ~dbpath ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
   Dream.run ~port ~interface
@@ -48,11 +48,11 @@ let start ~header ss ~port ~dbpath () =
   @@ Dream.memory_sessions
   @@ Dream.router [
 
-    Dream.get  "/"
+    Dream.get  ("/" ^ path_in_url)
       (fun request ->
         Dream.html (header ^ show_form ~from:0 request));
 
-    Dream.post "/"
+    Dream.post ("/" ^ path_in_url)
       (fun request ->
         match%lwt Dream.form request with
         | `Ok [ "from", from; "message", message; "search", _search ] ->
