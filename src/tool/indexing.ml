@@ -659,8 +659,8 @@ module UserLevelQueries = struct
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
    Format.asprintf
-    "<h2>For request : %s</h2><h1>Number of results: %d</h1>%a@."
-    s resultsno pp_results items
+    "<h1>Number of results: %d</h1>%a@."
+    resultsno pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")

@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Added the `--header` flag to the `websearch` command
 - Added the `url` flag to the `websearch` command
 - Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries
-- Added logs of queries and responses when using the websearch tool
+- Added websearch queries and corresponding responses to the logs
 
 ### Changed
 
