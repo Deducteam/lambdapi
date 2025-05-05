@@ -66,6 +66,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
             message ~dbpath in
           if Timed.(!Common.Console.verbose) >= 3 then
             Dream.log "sending response: %s" output;
+            let output = header ^ output in
           Dream.html (show_form ~from ~message ~output request)
           (*Dream.stream (show_form_stream ~message ~output request)*)
         | _ ->
