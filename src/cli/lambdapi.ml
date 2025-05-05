@@ -66,14 +66,14 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
         Lambdapi terms syntax</a>.<br> with the possibility to use,
         for commodity,
         \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
-        (note,results are displayed with the Unicode symbols
+        (Results are displayed with the Unicode symbols
         \"Π\" and \"→\").
         In particular, the following constructors can come handy for
         writing queries:<br>
     </p>
     <ul>
         <li>an anonymous function<span class=\"snippet\">λ (x:A) y z,t</span>
-        smapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
+        mapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
         </span> and <span class=\"snippet\">z</span> (of type <span class=\"
         snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
         class=\"snippet\">t</span>.</li>
