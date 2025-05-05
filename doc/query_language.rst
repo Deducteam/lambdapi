@@ -42,6 +42,8 @@ The semantics of the query language is the following:
   * ``=`` the pattern must match the whole position
   * ``>`` the pattern must match a strict subterm of the position
 
+Note that for commodity, ``forall`` and ``->`` can be used inside the query instead of unicode caracteres ``Π`` and ``→`` respectively.
+
 Examples:
 
   *  ``hyp = (nat → bool) , hyp >= (list nat)``

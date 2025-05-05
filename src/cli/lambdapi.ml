@@ -39,7 +39,7 @@ let search_cmd cfg rules require s dbpath_opt =
    (Tool.Indexing.search_cmd_txt ss s ~dbpath) in
  Error.handle_exceptions run
 
-let websearch_cmd cfg rules port require header_file dbpath_opt =
+let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
@@ -63,27 +63,35 @@ let websearch_cmd cfg rules port require header_file dbpath_opt =
         query language specification</a> to learn about the query language.
         <br>The query language also uses the <a
         href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
-        Lambdapi terms syntax</a>.<br>
+        Lambdapi terms syntax</a>.<br> with the possibility to use,
+        for commodity,
+        \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
+        (Results are displayed with the Unicode symbols
+        \"Π\" and \"→\").
         In particular, the following constructors can come handy for
         writing queries:<br>
     </p>
     <ul>
         <li>an anonymous function<span class=\"snippet\">λ (x:A) y z,t</span>
-        smapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
+        mapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
         </span> and <span class=\"snippet\">z</span> (of type <span class=\"
         snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
         class=\"snippet\">t</span>.</li>
-        <li>a dependent product <span class=\"snippet\">Π (x:A) y z,T</span>
+        <li>a dependent product
+          <span class=\"snippet\">forall (x:A) y z,T</span>
         </li>
-        <li>a non-dependent product <span class=\"snippet\">A → T</span>
-         (syntactic sugar for <span class=\"snippet\">Π x:A,T</span> when
+        <li>a non-dependent product <span class=\"snippet\">A -> T</span>
+         (syntactic sugar for <span class=\"snippet\">forall x:A,T</span> when
           <span class=\"snippet\">x</span> does not occur in <span class=
           \"snippet\">T</span>)</li>
     </ul>
       "
     | Some file -> Lplib.String.string_of_file file in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
-  Tool.Websearch.start ~header ss ~port ~dbpath () in
+  let path_in_url = match path_in_url with
+  | None -> ""
+  | Some s -> s in
+  Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url () in
  Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files dbpath_opt =
@@ -474,6 +482,11 @@ let custom_dbpath : string option CLT.t =
     "Path to the search DB file." in
   Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
 
+let path_in_url : string option CLT.t =
+  let doc =
+    "The path in the URL accepted by the server." in
+  Arg.(value & opt (some string) None & info ["url"] ~docv:"String" ~doc)
+
 let header_file_arg : string option CLT.t =
   let doc =
     "html file holding the header of the web page of the server." in
@@ -497,7 +510,8 @@ let websearch_cmd =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
-   $ rules_arg $ port_arg $ require_arg $ header_file_arg $ custom_dbpath)
+   $ rules_arg $ port_arg $ require_arg $ header_file_arg $
+   custom_dbpath $ path_in_url)
 
 let _ =
   let t0 = Sys.time () in

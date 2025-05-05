@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
 - Added builtin String for string literals between double quotes.
 - Added the `--header` flag to the `websearch` command
+- Added the `url` flag to the `websearch` command
+- Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries
+- Added websearch queries and corresponding responses to the logs
 
 ### Changed
 
