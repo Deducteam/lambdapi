@@ -204,53 +204,61 @@ commands :ref:`notation` and :ref:`builtin`.
 ``notation``
 ----------------
 
-The ``notation`` command allows to change the behaviour of the parser.
+The ``notation`` commands associate to a symbol identifier (declared
+in the current module or in another module) a specific notation used
+by the parser and the printer of the system. The possible notations
+are:
 
-When declared as notations, identifiers must be used at correct places
-and are not valid terms on their own anymore.  To reaccess the value
-of the identifier without the notation properties, wrap it in
-parentheses like in ``(+)`` if ``+`` is declared ``infix``.
-
-**infix** The following code defines infix symbols for addition
-and multiplication. Both are associative to the left, and they have
-priority levels ``6`` and ``7`` respectively.
+- **infix**
 
 ::
 
-   notation + infix left 6;
-   notation × infix left 7;
+   notation + infix left 6.5;
+   notation * infix left 7;
 
-The modifier ``infix``, ``infix right`` and ``infix left`` can be used
-to specify whether the defined symbol is non-associative, associative to
-the right, or associative to the left.
-Priority levels are floating point numbers, hence a
-priority can (almost) always be inserted between two different levels.
+  * With the above notation, the system now expects ``+`` to only
+    appear in expressions of the form ``x + y``. As a consequence,
+    ``+`` is not a valid term anymore. To locally deactivate a
+    notation, you can use ``(+)`` or ``@+`` instead.
 
-As explained above, at this point, ``+`` is not a valid term anymore, as it was
-declared infix.  The system now expects ``+`` to only appear in expressions of
-the form ``x + y`` To get around this, you can use ``(+)`` instead.
+  * A symbol declared as infix must have a type of the form ``A → A →
+    A``.
 
-**prefix** The following code defines a prefix symbol for
-negation with some priority level.
+  * The additional keyword ``left`` declares the symbol associative to
+    the left, that is, ``x + y + z`` is parsed as ``(x + y) +
+    z``. Symmetrically, the additional keyword ``right`` declares the
+    symbol associative to the right, that is, ``x + y + z`` is parsed
+    as ``x + (y + z)``.
+
+  * Priority levels are used to disambiguate expressions mixing
+    several operators. Hence, with the priorities declared above,
+    ``x + y * z`` is parsed as ``x + (y * z)``.
+
+  * Priorities can be natural numbers or floating point
+    numbers. Hence, a priority can (almost) always be inserted between
+    two different levels.
+
+- **prefix/postfix**
 
 ::
 
    notation ¬ prefix 5;
+   notation ! postfix 10;
 
-*Remarks:*
+  * Infix, prefix and postfix operators share the same levels of
+    priority. Hence, depending on the priorities, ``-x + z`` will be
+    parsed as ``(-x) + z`` or as ``-(x + z)``.
 
-* Prefix and infix operators share the same levels of priority, hence depending
-  on the binding power, ``-x + z`` may be parsed ``(-x) + z`` or ``-(x + z)``.
+  * Non-operator application (such as ``f x`` where ``f`` and ``x``
+    are not operators) has a higher priority than any operator
+    application. Hence, if ``-`` is declared as prefix, then ``- f x``
+    is always parsed ``- (f x)``, no matter the priority of ``-`` is.
 
-* Non-operator application (such as ``f x`` where ``f`` and ``x`` are not
-  operators) has a higher binding power than operator application:
-  let ``-`` be a prefix operator, then ``- f x`` is always parsed ``- (f x)``,
-  no matter what the binding power of ``-`` is.
+  * The functional arrow has a lower priority than any operator.
+    Hence, ``- A → A`` is always parsed ``(- A) → A``, whatever the
+    priority of ``-`` is.
 
-* The functional arrow has a lower binding power than any operator, therefore
-  for any prefix operator ``-``, ``- A → A`` is always parsed ``(- A) → A``
-
-**quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:
+- **quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:
 
 ::
 
@@ -259,31 +267,6 @@ negation with some priority level.
    compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
-
-**printing numbers in decimal notation** It is possible to print various number types in decimal notation by defining the following builtins:
-
-* Natural numbers in base 1 (Peano numbers):
-
-::
-   
-   builtin "nat_zero" ≔ ...; // : N
-   builtin "nat_succ" ≔ ...; // : N → N
-
-* Positive natural numbers in base 2:
-
-::
-   
-   builtin "pos_one" ≔ ...; // : P
-   builtin "pos_double" ≔ ...; // : P → P
-   builtin "pos_succ_double" ≔ ...; // : P → P
-
-* Integer numbers in base 2:
-
-::
-   
-   builtin "int_zero" ≔ ...; // : Z
-   builtin "int_positive" ≔ ...; // : P → Z
-   builtin "int_negative" ≔ ...; // : P → Z
 
 .. _builtin:
 

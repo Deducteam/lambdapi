@@ -146,7 +146,7 @@ index
 * ``--add`` tells lambdapi to not erase the index before adding new symbols and rules.
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<LPSearch.lp>`` before indexing. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
-`
+
   For instance, to index the Matita library, you can use the following rules:
 
 ::

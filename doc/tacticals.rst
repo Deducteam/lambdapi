@@ -35,7 +35,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
 
-The tactics taking a string as argument need the :ref:`String-builtin` to be set.
+The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set.
 
 An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/blob/tac/tests/OK/tactic.lp>`__:
 

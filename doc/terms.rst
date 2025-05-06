@@ -98,3 +98,30 @@ A user-defined term can be either:
    type 42;
 
 Subterms can be parenthesized to avoid ambiguities.
+
+Decimal notation
+----------------
+The system can also print the values of various types using a decimal notation by defining the following builtins:
+
+* Natural numbers in base 1 (Peano numbers):
+
+::
+   
+   builtin "nat_zero" ≔ ...; // : N
+   builtin "nat_succ" ≔ ...; // : N → N
+
+* Positive natural numbers in base 2:
+
+::
+   
+   builtin "pos_one" ≔ ...; // : P
+   builtin "pos_double" ≔ ...; // : P → P
+   builtin "pos_succ_double" ≔ ...; // : P → P
+
+* Integer numbers in base 2:
+
+::
+   
+   builtin "int_zero" ≔ ...; // : Z
+   builtin "int_positive" ≔ ...; // : P → Z
+   builtin "int_negative" ≔ ...; // : P → Z
