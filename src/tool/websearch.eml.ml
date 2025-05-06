@@ -1,7 +1,9 @@
 
-let show_form ~from ?(message="") ?output request =
+let show_form ~from ?(message="") ?output request ~hide_description=
   <html>
   <body>
+
+
 
     <script>
     function incr(delta) {
@@ -16,7 +18,12 @@ let show_form ~from ?(message="") ?output request =
       <p>
       <input type="search" required="true" size="100"
         name="message" value="<%s message %>"
-        onfocus="this.select();" autofocus></p>
+        onfocus="this.select();" autofocus>
+      </p>
+      <p>
+      <input type="hidden" name="hiden" id="hiden"
+        value="<%s hide_description %>">
+      </p>
       <p>
       <input type="submit" value="search" id="search" name="search">
       </p>
@@ -50,12 +57,17 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
 
     Dream.get  ("/" ^ path_in_url)
       (fun request ->
-        Dream.html (header ^ show_form ~from:0 request));
+        Dream.html
+          (header ^ show_form ~from:0 request ~hide_description:"false"));
 
     Dream.post ("/" ^ path_in_url)
       (fun request ->
         match%lwt Dream.form request with
-        | `Ok [ "from", from; "message", message; "search", _search ] ->
+        | `Ok
+          [ "from", from;
+            "hiden", hiden;
+            "message", message;
+            "search", _search ] ->
           Dream.log "from1 = %s" from ;
           let from = int_of_string from in (* XXX CSC exception XXX *)
           Dream.log "from2 = %d" from ;
@@ -66,9 +78,20 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
             message ~dbpath in
           if Timed.(!Common.Console.verbose) >= 3 then
             Dream.log "sending response: %s" output;
-            let output = header ^ output in
-          Dream.html (show_form ~from ~message ~output request)
-          (*Dream.stream (show_form_stream ~message ~output request)*)
+          let header = match hiden with
+          | "true" ->
+              Str.global_replace (Str.regexp_string "%%HIDE_DESCRIPTION%%")
+                "none"
+                header
+          | _ ->
+              Str.global_replace (Str.regexp_string "%%HIDE_DESCRIPTION%%")
+                "block"
+                header
+          in
+          Dream.html
+            (header ^
+            show_form ~from ~message ~output request ~hide_description:hiden)
+
         | _ ->
           Dream.log "no match" ;
           Dream.empty `Bad_Request);
