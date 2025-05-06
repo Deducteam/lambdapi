@@ -490,18 +490,21 @@ let rec handle :
         match Infer.infer_noexn p c t with
         | None -> fatal pos "%a is not typable." term t
         | Some (t,b) ->
-          let x = new_var id.elt in
-          let e' = Env.add id.elt x b (Some t) env in
-          let n = List.length e' in
-          let v = LibTerm.fold x t gt.goal_type in
-          let m = LibMeta.fresh p (Env.to_prod e' v) n in
-          let ts = Env.to_terms env in
-          let u = mk_Meta (m, Array.append ts [|t|]) in
-          (*tac_refine pos ps gt gs p u*)
-          LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
-          (*let g = Goal.of_meta m in*)
-          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
-          {ps with proof_goals = g :: gs}
+            if Unif.solve_noexn p then begin
+              let x = new_var id.elt in
+              let e' = Env.add id.elt x b (Some t) env in
+              let n = List.length e' in
+              let v = LibTerm.fold x t gt.goal_type in
+              let m = LibMeta.fresh (new_problem()) (Env.to_prod e' v) n in
+              let ts = Env.to_terms env in
+              let u = mk_Meta (m, Array.append ts [|t|]) in
+              (*tac_refine pos ps gt gs p u*)
+              LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
+              (*let g = Goal.of_meta m in*)
+              let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
+              {ps with proof_goals = g :: Proof.add_goals_of_problem p gs}
+            end else fatal pos "The unification constraints for %a \
+                            to be typable are not satisfiable." term t
       end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
