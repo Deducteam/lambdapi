@@ -43,8 +43,13 @@ sig
       [fname]. Terms are parsed lazily. *)
 
   val parse_term_string : string -> string -> Syntax.p_term Stream.t
-  (** [parse_string f s] returns a stream of parsed terms from string [s]
+  (** [parse_term_string f s] returns a stream of parsed terms from string [s]
       which comes from file [f] ([f] can be anything). *)
+
+  val parse_rwpatt_string : string -> string -> Syntax.p_rw_patt Stream.t
+  (** [parse_rwpatt_string f s] returns a stream of parsed rewrite pattern
+      specifications from string [s] which comes from file [f] ([f] can be
+      anything). *)
 
   val parse_search_query_string :
     string -> string -> SearchQuerySyntax.query Stream.t
@@ -94,6 +99,8 @@ sig
 
   let parse_term = parse ~grammar_entry:LpParser.term_alone
   let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
+  let parse_rwpatt_string =
+    parse_string ~grammar_entry:LpParser.rw_patt_spec_alone
   let parse_search_query_string =
     parse_string ~grammar_entry:LpParser.search_query_alone
   let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone

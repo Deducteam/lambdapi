@@ -46,6 +46,8 @@ do
         why3*);;
         # require escaped module name
         π/utf_path|escape_path|'a b/escape file'|require_nondkmident);;
+        # use builtin strings
+        Tactic);;
         # default case
         *) translate $f.lp;;
     esac

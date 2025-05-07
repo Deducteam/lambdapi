@@ -33,7 +33,7 @@ builtin "induction" ≔ #induction;
 constant symbol #orelse : Tactic → Tactic → Tactic;
 builtin "orelse" ≔ #orelse;
 
-constant symbol #refine [p] : π p → Tactic;
+constant symbol #refine : String → Tactic;
 builtin "refine" ≔ #refine;
 
 constant symbol #reflexivity : Tactic;
@@ -45,11 +45,10 @@ builtin "remove" ≔ #remove;
 constant symbol #repeat : Tactic → Tactic;
 builtin "repeat" ≔ #repeat;
 
-constant symbol #rewrite [p] : π p → Tactic;
-builtin "rewrite" ≔ #rewrite;
+constant symbol #rewrite_gen : String → String → Π [p], π p → Tactic;
+builtin "rewrite" ≔ #rewrite_gen;
 
-constant symbol #rewrite_left [p] : π p → Tactic;
-builtin "rewrite left" ≔ #rewrite_left;
+symbol #rewrite : Π [p], π p → Tactic ≔ @#rewrite_gen "" "";
 
 constant symbol #set : String → Π [a], τ a → Tactic;
 builtin "set" ≔ #set;
@@ -86,7 +85,7 @@ with $n +1 * $t ↪ $t & ($n * $t);
 
 require open tests.OK.Eq;
 
-symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
+symbol lem1 x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
 begin
   assume x;
   eval #generalize x;
@@ -96,4 +95,9 @@ begin
   //rewrite addnA; rewrite addnA; reflexivity
   //compute 2 * #rewrite addnA;
   eval 2 * #rewrite addnA & #reflexivity
+end;
+
+symbol lem2 p : π p → π p ≔
+begin
+  assume p h; eval #refine "h"
 end;
