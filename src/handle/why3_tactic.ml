@@ -428,7 +428,7 @@ let handle :
   fun ss pos prover_name
       ({goal_meta = _; goal_hyps = hyps; goal_type = t} as gt) ->
   let g = Typ gt in
-  if Logger.log_enabled() then log "%a%a" Goal.hyps g Goal.pp g;
+  if Logger.log_enabled() then log "%a" Goal.pp g;
   (* Encode the goal in Why3. *)
   let tsk = translate_goal ss pos hyps t in
   (* Get the name of the prover. *)

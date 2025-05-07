@@ -1,6 +1,6 @@
 (** Proofs and tactics. *)
 
-open Lplib open Base
+open Lplib open Base open Extra
 open Timed
 open Core open Term open Print
 open Common open Pos
@@ -17,8 +17,13 @@ type goal =
 
 let is_typ : goal -> bool = function Typ _ -> true  | Unif _ -> false
 let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
+
 let get_constr : goal -> constr =
   function Unif c -> c | Typ _ -> invalid_arg (__FILE__ ^ "get_constr")
+
+let get_names : goal -> int StrMap.t = function
+  | Unif(c,_,_) -> Ctxt.names c
+  | Typ gt -> Env.names gt.goal_hyps
 
 module Goal = struct
 
@@ -53,22 +58,18 @@ module Goal = struct
         Typ {gt with goal_type = f (Env.to_ctxt gt.goal_hyps) gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f c t, f c u)
 
-  (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
-  let pp : goal pp = fun ppf g ->
-    match g with
-    | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
-    | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
-
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
-  let hyps : goal pp = fun ppf g ->
-    let hyps hyp ppf l =
+  let hyps : int StrMap.t -> goal pp =
+    let hyps elt ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
         -----------------------------------------------\
         ---------------------------------@,@]"
-        (List.pp (fun ppf -> out ppf "%a@," hyp) "") (List.rev l);
+        (List.pp (fun ppf -> out ppf "%a@," elt) "") (List.rev l);
 
     in
+    fun idmap ppf g ->
+    let term = term_in idmap in
     match g with
     | Typ gt ->
       let elt ppf (s,(_,t,u)) =
@@ -86,6 +87,18 @@ module Goal = struct
       in
       hyps elt ppf c
 
+  let pp_aux : int StrMap.t -> goal pp = fun idmap ppf g ->
+    let term = term_in idmap in
+    match g with
+    | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
+    | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
+
+  (** [pp ppf g] prints on [ppf] the goal [g] with its hypotheses. *)
+  let pp ppf g =
+    let idmap = get_names g in hyps idmap ppf g; pp_aux idmap ppf g
+
+  (** [pp_aux ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
+  let pp_no_hyp ppf g = let idmap = get_names g in pp_aux idmap ppf g
 end
 
 (** [add_goals_of_problem p gs] extends the list of goals [gs] with the
@@ -111,10 +124,10 @@ let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 let goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
   | [] -> out ppf "No goals."
-  | g::_ ->
-      out ppf "@[<v>%a%a@]" Goal.hyps g
-        (fun ppf -> List.iteri (fun i g -> out ppf "%d. %a@," i Goal.pp g))
-        ps.proof_goals
+  | g::gs ->
+      let goal ppf i g = out ppf "%d. %a@," (i+1) Goal.pp_no_hyp g in
+      let goals ppf = List.iteri (goal ppf) in
+      out ppf "@[<v>%a%a@]" Goal.pp g goals gs
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)

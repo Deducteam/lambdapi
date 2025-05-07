@@ -41,32 +41,27 @@ let prf_of : config -> var -> term list -> term -> term = fun c p ts t ->
 
 (** compute safe prefixes for predicate and constructor argument variables. *)
 let gen_safe_prefixes : inductive -> string * string * string =
-  let letter c = match c with 'a' | 'p' | 'x' -> true | _ -> false in
+  let is_apx c = match c with 'a' | 'p' | 'x' -> true | _ -> false in
   fun ind_list ->
   let open Extra in
   let clashing_names =
-    let rec add_name_from_type set t =
-      match unfold t with
-      | Prod(_,b) ->
-        let x,b = unbind b in
-        add_name_from_type (StrSet.add (base_name x) set) b
-      | _ -> set
-    in
-    let add_name_from_sym set sym =
+    let add_name_from_sym idmap sym =
       let s = sym.sym_name in
-      let set = if s <> "" && letter s.[0] then StrSet.add s set else set in
-      add_name_from_type set !(sym.sym_type)
+      if s <> "" && is_apx s.[0] then
+        match root_and_index sym.sym_name with
+        | ("a"|"p"|"x"), _ -> add_name s idmap
+        | _ -> idmap
+      else idmap
     in
-    let add_names_from_ind set (ind_sym, cons_sym_list) =
-      let set = add_name_from_sym set ind_sym in
-      List.fold_left add_name_from_sym set cons_sym_list
+    let add_names_from_ind idmap (ind_sym, cons_sym_list) =
+      let idmap = add_name_from_sym idmap ind_sym in
+      List.fold_left add_name_from_sym idmap cons_sym_list
     in
-    List.fold_left add_names_from_ind StrSet.empty ind_list
+    List.fold_left add_names_from_ind StrMap.empty ind_list
   in
-  let a_str = get_safe_prefix "a" clashing_names in
-  let p_str = get_safe_prefix "p" clashing_names in
-  let x_str = get_safe_prefix "x" clashing_names in
-  a_str, p_str, x_str
+  fst (get_safe_prefix "a" clashing_names),
+  fst (get_safe_prefix "p" clashing_names),
+  fst (get_safe_prefix "x" clashing_names)
 
 (** Type of maps associating to every inductive type some data useful for
    generating the induction principles. *)
