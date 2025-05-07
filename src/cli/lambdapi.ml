@@ -56,7 +56,7 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
       }</style>
       <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
       Search Engine</h1>
-
+    <div id=\"descriptionSection\" style=\"display: %%HIDE_DESCRIPTION%%\">
     <p>
         The <b>search</b> button answers the query. Read the <a href=
         \"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
@@ -85,6 +85,7 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
           <span class=\"snippet\">x</span> does not occur in <span class=
           \"snippet\">T</span>)</li>
     </ul>
+    </div>
       "
     | Some file -> Lplib.String.string_of_file file in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
