@@ -2,11 +2,12 @@
 let show_form ~from ?(message="") ?output request ~hide_description=
 
   <input type="button"
-  name="showHideButton" value="showin/hidin" onclick="toggleDescription()">
+  name="showHideButton" value="show/hide description"
+    onclick="toggleDescription()">
   <script>
   function toggleDescription() {
     let descriptionSection = document.getElementById("descriptionSection");
-    let hideDescrition = document.getElementById("hiden");
+    let hideDescrition = document.getElementById("hideDescritionSection");
     // let toggleButton = document.getElementByName("showHideButton");
   if(descriptionSection.style.display === "none"){
     descriptionSection.style.display = "block";
@@ -39,8 +40,8 @@ let show_form ~from ?(message="") ?output request ~hide_description=
         onfocus="this.select();" autofocus>
       </p>
       <p>
-      <input type="hidden" name="hiden" id="hiden"
-        value="<%s hide_description %>">
+      <input type="hidden" name="isDescritionSectionHidden"
+        id="hideDescritionSection" value="<%s hide_description %>">
       </p>
       <p>
       <input type="submit" value="search" id="search" name="search">
@@ -83,7 +84,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
         match%lwt Dream.form request with
         | `Ok
           [ "from", from;
-            "hiden", hiden;
+            "hideDescritionSection", hideDescritionSection;
             "message", message;
             "search", _search ] ->
           Dream.log "from1 = %s" from ;
@@ -96,7 +97,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
             message ~dbpath in
           if Timed.(!Common.Console.verbose) >= 3 then
             Dream.log "sending response: %s" output;
-          let header = match hiden with
+          let header = match hideDescritionSection with
           | "true" ->
               Str.global_replace (Str.regexp_string "%%HIDE_DESCRIPTION%%")
                 "none"
@@ -108,7 +109,8 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
           in
           Dream.html
             (header ^
-            show_form ~from ~message ~output request ~hide_description:hiden)
+            show_form ~from ~message ~output request
+              ~hide_description:hideDescritionSection)
 
         | _ ->
           Dream.log "no match" ;
