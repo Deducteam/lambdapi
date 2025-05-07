@@ -1,5 +1,23 @@
 
 let show_form ~from ?(message="") ?output request ~hide_description=
+
+  <input type="button"
+  name="showHideButton" value="showin/hidin" onclick="toggleDescription()">
+  <script>
+  function toggleDescription() {
+    let descriptionSection = document.getElementById("descriptionSection");
+    let hideDescrition = document.getElementById("hiden");
+    // let toggleButton = document.getElementByName("showHideButton");
+  if(descriptionSection.style.display === "none"){
+    descriptionSection.style.display = "block";
+    hideDescrition.value = "false";
+  } else {
+    descriptionSection.style.display = "none";
+    hideDescrition.value = "true";
+  }
+
+  }
+  </script>
   <html>
   <body>
 
