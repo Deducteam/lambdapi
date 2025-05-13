@@ -648,8 +648,8 @@ include QueryLanguage
 module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
-  let s = Str.global_replace (Str.regexp_string "->") "→" s in
-  let s = Str.global_replace (Str.regexp_string "forall") "Π" s in
+  let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
+  let s = Str.global_replace (Str.regexp "\\([ ,(]\\)forall ") "\\1Π " s in
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
