@@ -66,8 +66,8 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
         Lambdapi terms syntax</a>.<br> with the possibility to use,
         for commodity,
         \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
-        (Results are displayed with the Unicode symbols
-        \"Π\" and \"→\").
+        (results are displayed with the Unicode symbols
+        \"Π\" and \"→\" though).
         In particular, the following constructors can come handy for
         writing queries:<br>
     </p>
