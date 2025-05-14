@@ -1,20 +1,28 @@
 
 let show_form ~from ?(message="") ?output request ~hide_description=
 
-  <input type="button"
-  name="showHideButton" value="show/hide"
-    onclick="toggleDescription()">
+  <link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/\
+  font-awesome/6.5.0/css/all.min.css">
+
+  <button id="b_showdescription" name="showHideButton"
+  onclick="toggleDescription()" style="width: 100%;">
+  <i class="fas fa-angles-up"></i>
+  </button>
+
   <script>
   function toggleDescription() {
-    let descriptionSection = document.getElementById("descriptionSection");
-    let hideDescrition = document.getElementById("hideDescritionSection");
-    // let toggleButton = document.getElementByName("showHideButton");
+    const descriptionSection = document.getElementById("descriptionSection");
+    const hideDescrition = document.getElementById("hideDescritionSection");
+    const icon = document.querySelector("button i");
   if(descriptionSection.style.display === "none"){
     descriptionSection.style.display = "block";
     hideDescrition.value = "false";
+    icon.className = "fas fa-angles-up";
   } else {
     descriptionSection.style.display = "none";
     hideDescrition.value = "true";
+    icon.className = "fas fa-angles-down";
   }
 
   }
