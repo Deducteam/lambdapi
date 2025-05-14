@@ -50,3 +50,8 @@ let string_of_file f =
   really_input ic s 0 n;
   close_in ic;
   Bytes.to_string s
+
+let is_string_literal (s:string): bool =
+  let n = S.length s in n >= 2 && S.get s 0 = '"' && S.get s (n-1) = '"'
+
+let remove_quotes (n:string): string = S.sub n 1 (S.length n - 2)
