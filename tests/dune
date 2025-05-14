@@ -1,5 +1,5 @@
 (tests
- (names ok_ko rewriting purity kernel)
+ (names ok_ko rewriting purity kernel test_utils)
  (deps
   (glob_files OK/*.lp)
   (glob_files OK/*.dk)
@@ -8,7 +8,7 @@
   (glob_files KO/*.dk)
   lambdapi.pkg)
  (libraries lambdapi.core lambdapi.parsing lambdapi.handle lambdapi.tool
-            alcotest)
+            alcotest lambdapi.common)
  (flags -w +3))
 
 ;(rule
