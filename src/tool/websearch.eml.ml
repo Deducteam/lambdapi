@@ -2,7 +2,7 @@
 let show_form ~from ?(message="") ?output request ~hide_description=
 
   <input type="button"
-  name="showHideButton" value="show/hide description"
+  name="showHideButton" value="show/hide"
     onclick="toggleDescription()">
   <script>
   function toggleDescription() {
@@ -40,7 +40,7 @@ let show_form ~from ?(message="") ?output request ~hide_description=
         onfocus="this.select();" autofocus>
       </p>
       <p>
-      <input type="hidden" name="isDescritionSectionHidden"
+      <input type="hidden" name="hideDescritionSection"
         id="hideDescritionSection" value="<%s hide_description %>">
       </p>
       <p>
