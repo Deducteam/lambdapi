@@ -227,7 +227,6 @@ type tactic =
   | T_remove
   | T_repeat
   | T_rewrite
-  | T_rewrite_left
   | T_set
   | T_simplify
   | T_simplify_beta
@@ -256,7 +255,6 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "remove" T_remove;
   add "repeat" T_repeat;
   add "rewrite" T_rewrite;
-  add "rewrite left" T_rewrite_left;
   add "set" T_set;
   add "simplify" T_simplify;
   add "simplify rule off" T_simplify_beta;
@@ -317,6 +315,38 @@ let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
     | Symb s, ts -> p_query c pos s ts
     | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
+let p_term_of_string (pos:popt) (t:term): p_term =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      begin
+        let string = remove_quotes s.sym_name in
+        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
+        Parsing.Parser.Lp.parse_term_string fname string
+      end
+  | _ -> fatal pos "refine tactic not applied to a term string literal"
+
+let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      let string = remove_quotes s.sym_name in
+      if string = "" then None
+      else
+        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
+        Some (Parsing.Parser.Lp.parse_rwpatt_string fname string)
+  | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
+
+let is_right (pos:popt) (t:term): bool =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      begin
+        match remove_quotes s.sym_name with
+        | "left" -> false
+        | "" | "right" -> true
+        | _ ->
+            fatal pos "rewrite tactic not applied to side string literal"
+      end
+  | _ -> fatal pos "rewrite tactic not applied to a side string literal"
+
 (** [p_tactic t] interprets the term [t] as a tactic. *)
 let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
   let c = get_config ss pos in
@@ -343,17 +373,17 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac t1,tac t2)
             | T_orelse, _ -> assert false
-            | T_refine, [_;t] -> P_tac_refine(p_term pos t)
+            | T_refine, [t] -> P_tac_refine(p_term_of_string pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
             | T_remove, [_;t] -> P_tac_remove [p_ident_of_var pos t]
             | T_remove, _ -> assert false
             | T_repeat, [t] -> P_tac_repeat(tac t)
             | T_repeat, _ -> assert false
-            | T_rewrite, [_;t] -> P_tac_rewrite(true,None,p_term pos t)
+            | T_rewrite, [side;pat;_;t] ->
+                P_tac_rewrite(is_right pos side,
+                              p_rw_patt_of_string pos pat, p_term pos t)
             | T_rewrite, _ -> assert false
-            | T_rewrite_left, [_;t] -> P_tac_rewrite(false,None,p_term pos t)
-            | T_rewrite_left, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
             | T_set, _ -> assert false
@@ -490,18 +520,21 @@ let rec handle :
         match Infer.infer_noexn p c t with
         | None -> fatal pos "%a is not typable." term t
         | Some (t,b) ->
-          let x = new_var id.elt in
-          let e' = Env.add id.elt x b (Some t) env in
-          let n = List.length e' in
-          let v = LibTerm.fold x t gt.goal_type in
-          let m = LibMeta.fresh p (Env.to_prod e' v) n in
-          let ts = Env.to_terms env in
-          let u = mk_Meta (m, Array.append ts [|t|]) in
-          (*tac_refine pos ps gt gs p u*)
-          LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
-          (*let g = Goal.of_meta m in*)
-          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
-          {ps with proof_goals = g :: gs}
+            if Unif.solve_noexn p then begin
+              let x = new_var id.elt in
+              let e' = Env.add id.elt x b (Some t) env in
+              let n = List.length e' in
+              let v = LibTerm.fold x t gt.goal_type in
+              let m = LibMeta.fresh (new_problem()) (Env.to_prod e' v) n in
+              let ts = Env.to_terms env in
+              let u = mk_Meta (m, Array.append ts [|t|]) in
+              (*tac_refine pos ps gt gs p u*)
+              LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
+              (*let g = Goal.of_meta m in*)
+              let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
+              {ps with proof_goals = g :: Proof.add_goals_of_problem p gs}
+            end else fatal pos "The unification constraints for %a \
+                            to be typable are not satisfiable." term t
       end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)

@@ -21,12 +21,11 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "have" ≔ …; // : String → Π [a], Prf a → T  
    builtin "induction" ≔ …; // : T
    builtin "orelse" ≔ …; // : T → T → T
-   builtin "refine" ≔ …; // : Π [a], Prf a → T
+   builtin "refine" ≔ …; // : String → T
    builtin "reflexivity" ≔ …; // : T
    builtin "remove" ≔ …; // : Π [a], El a → T
    builtin "repeat" ≔ …; // : T → T
-   builtin "rewrite" ≔ …; // : Π [a], Prf a → T
-   builtin "rewrite left" ≔ …; // : Π [a], Prf a → T
+   builtin "rewrite" ≔ …; // : String → String → Π [a], Prf a → T
    builtin "set" ≔ …; // : String → Π [a], El a → T
    builtin "simplify" ≔ …; // : T
    builtin "simplify rule off" ≔ …; // : T
@@ -35,7 +34,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
 
-The tactics taking a string as argument need the :ref:`String-builtin` to be set.
+The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores.
 
 An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/blob/tac/tests/OK/tactic.lp>`__:
 
@@ -56,7 +55,7 @@ An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/
    symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
    begin
      assume x y z t;
-     eval 2 * #rewrite addnA & #reflexivity
+     eval 2 * #rewrite "" "" addnA & #reflexivity
    end;
 
 .. _orelse:

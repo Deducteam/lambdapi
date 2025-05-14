@@ -132,6 +132,7 @@
 %start <Syntax.p_qident> qid
 %start <Syntax.p_qident> qid_alone
 %start <Syntax.p_term> term_alone
+%start <Syntax.p_rw_patt> rw_patt_spec_alone
 %start <SearchQuerySyntax.query> search_query_alone
 
 // patch (see https://github.com/Deducteam/lambdapi/pull/798)
@@ -142,6 +143,10 @@
 term_alone:
   | t=term EOF
     { t }
+
+rw_patt_spec_alone:
+  | p=rw_patt_spec EOF
+    { p }
 
 qid_alone:
   | q=qid EOF

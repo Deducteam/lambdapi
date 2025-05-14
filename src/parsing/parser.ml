@@ -40,31 +40,6 @@ module Dk : PARSER = struct
 
   open Lexing
 
-  (* old code:
-  let parse_lexbuf :
-        ?ic:in_channel -> ?fname:string -> lexbuf -> p_command Stream.t =
-    fun ?ic ?fname lb ->
-    Option.iter (set_filename lb) fname;
-    let generator _ =
-      try Some (command lb)
-      with
-      | End_of_file -> Option.iter close_in ic; None
-      | DkParser.Error ->
-          let pos = Pos.locate (lb.lex_start_p, lb.lex_curr_p) in
-          parser_fatal pos "Unexpected token \"%s\"." (lexeme lb)
-    in
-    Stream.from generator
-
-  let parse_string fname s = parse_lexbuf ~fname (from_string s)
-
-  let parse_in_channel ic =
-    try parse_lexbuf ~ic (from_channel ic)
-    with e -> close_in ic; raise e
-
-  let parse_file fname =
-    let ic = open_in fname in
-    parse_lexbuf ~ic ~fname (from_channel ic)*)
-
   let parse_lexbuf (fname:string) (icopt:in_channel option)
         (entry:lexbuf -> 'a) (lb:lexbuf) : 'a Stream.t =
     set_filename lb fname;
@@ -109,57 +84,23 @@ module Lp :
 sig
   include PARSER
 
-  val parse_search_query_string : (*fname*)string -> (*query*)string -> query
+  val parse_term_string :
+    (*fname*)string -> (*term*)string -> Syntax.p_term
+  (** [parse_rwpatt_string f s] returns a term from string [s] which comes
+      from file [f] ([f] can be anything). *)
+
+  val parse_rwpatt_string :
+    (*fname*)string -> (*rwpatt*)string -> Syntax.p_rw_patt
+  (** [parse_rwpatt_string f s] returns a rewrite pattern specification from
+      string [s] which comes from file [f] ([f] can be anything). *)
+
+  val parse_search_query_string :
+    (*fname*)string -> (*query*)string -> Syntax.query
+  (** [parse_search_query_string f s] returns a query from string [s] which
+      comes from file [f] ([f] can be anything). *)
 
   end
 = struct
-
-  (* old Menhir parser *)
-
-  type tokenizer = unit -> token * position * position
-  type 'a parser = tokenizer -> 'a
-
-  let parse_lexbuf :
-    grammar_entry:(token,'b) MenhirLib.Convert.traditional ->
-    ?ic:in_channel -> ?fname:string -> lexbuf ->
-    (* Input channel passed as parameter to be closed at the end of stream. *)
-    'a Stream.t =
-    fun ~grammar_entry ?ic ?fname lb ->
-      Option.iter (set_filename lb) fname;
-      let parse: 'a parser =
-        MenhirLib.Convert.Simplified.traditional2revised grammar_entry in
-      let token = LpLexer.token lb in
-      let generator _ =
-        try Some (parse token)
-        with
-        | End_of_file -> Option.iter close_in ic; None
-        | SyntaxError {pos=None; _} -> assert false
-        | SyntaxError {pos=Some pos; elt} ->
-            parser_fatal pos "Syntax error. %s" elt
-        | LpParser.Error ->
-            let pos = Pos.locate (lexing_positions lb) in
-            parser_fatal pos "Unexpected token: \"%s\"." (Utf8.lexeme lb)
-      in
-      Stream.from generator
-
-  let parse_string ~grammar_entry fname s =
-    parse_lexbuf ~grammar_entry ~fname (Utf8.from_string s)
-
-  (*let parse_search_query_string =
-    parse_string ~grammar_entry:LpParser.search_query_alone*)
-
-  (*let parse_in_channel ~grammar_entry ic =
-    parse_lexbuf ~grammar_entry ~ic (Utf8.from_channel ic)
-
-  let parse_file ~grammar_entry fname =
-    let ic = open_in fname in
-    parse_lexbuf ~grammar_entry ~ic ~fname (Utf8.from_channel ic)
-
-  let parse_in_channel = parse_in_channel ~grammar_entry:LpParser.command
-  let parse_file fname = parse_file ~grammar_entry:LpParser.command fname
-  let parse_string = parse_string ~grammar_entry:LpParser.command*)
-
-  (* new parser *)
 
   let parse_lexbuf (fname:string) (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
@@ -182,25 +123,21 @@ sig
       : 'a Stream.t =
     parse_lexbuf fname (Some ic) entry (Utf8.from_channel ic)
 
-  (*let parse_file entry fname =
-    let ic = open_in fname in
-    let lb = Utf8.from_channel ic in
-    set_filename lb fname; (* useful? *)
-    let x = parse_lexbuf entry lb in
-    close_in ic;
-    x*)
-
   let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
     parse_in_channel entry fname (open_in fname)
 
-  (* exported functions *)
-  let parse_search_query_string (fname: string) (s: string): query =
-    Stream.next (parse_string (Ll1.alone Ll1.search) fname s)
+  let first parse entry fname s =
+    try Stream.next (Ll1.new_parsing parse entry fname s)
+    with Stream.Failure -> assert false
 
-  let parse_string = parse_string Ll1.command
+  (* exported functions *)
+  let parse_term_string = first parse_string (Ll1.alone Ll1.term)
+  let parse_rwpatt_string = first parse_string (Ll1.alone Ll1.rw_patt_spec)
+  let parse_search_query_string = first parse_string (Ll1.alone Ll1.search)
+
   let parse_in_channel = parse_in_channel Ll1.command
   let parse_file = parse_file Ll1.command
-
+  let parse_string = parse_string Ll1.command
 end
 
 include Lp

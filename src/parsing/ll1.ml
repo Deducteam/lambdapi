@@ -112,8 +112,16 @@ let string_of_token = function
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
+let dummy_token = (EOF, dummy_pos, dummy_pos)
+
 let the_current_token : (token * position * position) Stdlib.ref =
-  Stdlib.ref (EOF, dummy_pos, dummy_pos)
+  Stdlib.ref dummy_token
+
+let new_parsing f x1 x2 =
+  let token = !the_current_token in
+  let reset() = the_current_token := token in
+  the_current_token := dummy_token;
+  try let y = f x1 x2 in reset(); y with e -> reset(); raise e
 
 let current_token() : token =
   let (t,_,_) = !the_current_token in
