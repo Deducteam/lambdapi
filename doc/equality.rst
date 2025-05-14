@@ -23,13 +23,6 @@ declarations:
 
 Solves a goal of the form ``Π x₁, …, Π xₙ, P (t = u)`` when ``t ≡ u``.
 
-.. _symmetry:
-
-``symmetry``
-------------
-
-Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
-
 .. _rewrite:
 
 ``rewrite``
@@ -62,3 +55,10 @@ that is, of the form ``l`` with ``x₁`` replaced by ``u₁``, …, ``xₙ``
 replaced by ``uₙ``, then the tactic ``rewrite t`` replaces in the
 focused goal all occurrences of ``u`` by the term ``r`` with ``x₁``
 replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
+
+.. _symmetry:
+
+``symmetry``
+------------
+
+Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
