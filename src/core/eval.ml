@@ -112,6 +112,32 @@ module Config = struct
 
 end
 
+(** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
+let rec eq_alpha a b =
+  if Logger.log_enabled() then log_conv "eq_alpha [%a] [%a]@." term a term b;
+  match unfold a, unfold b with
+  | Vari x, Vari y -> Term.eq_vars x y
+  | Type, Type
+  | Kind, Kind -> true
+  | Symb s1, Symb s2 -> s1==s2
+  | Prod(a1,b1), Prod(a2,b2)
+  | Abst(a1,b1), Abst(a2,b2) ->
+      eq_alpha a1 a2 && let _,b1,b2 = Term.unbind2 b1 b2 in eq_alpha b1 b2
+  | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
+  | Meta(m1,a1), Meta(m2,a2) ->
+      if m1 == m2 then
+        if Array.for_all2 eq_alpha a1 a2 then true
+        else (Base.sout "<> %a args@." meta m1; false)
+      else (if Logger.log_enabled() then log_conv "different metas@."; false)
+  | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
+      eq_alpha a1 a2 && eq_alpha t1 t2
+      && let _,u1,u2 = Term.unbind2 u1 u2 in eq_alpha u1 u2
+  | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      i=j && Array.for_all2 eq_alpha ts us
+  | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+  | TRef _, _| _, TRef _ -> assert false
+  | _ -> false
+
 type config = Config.t
 
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
@@ -122,8 +148,8 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
-    if LibTerm.eq_alpha a b then eq cfg l else
+    if Logger.log_enabled() then log_conv "eq: %a ≡ %a" term a term b;
+    if (*LibTerm.*)eq_alpha a b then eq cfg l else
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
@@ -156,6 +182,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
+    if (*LibTerm.*)eq_alpha a b then eq cfg l else
     if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false

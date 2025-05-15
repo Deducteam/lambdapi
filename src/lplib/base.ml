@@ -10,6 +10,7 @@ type 'a outfmt = ('a, Format.formatter, unit) format
 type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 
 let out = Format.fprintf
+let sout fmt = out Format.std_formatter fmt
 
 let (++) (p1: 'a pp) (p2: 'b pp) : ('a * 'b) pp = fun ppf (arg1, arg2) ->
   out ppf "%a%a" p1 arg1 p2 arg2

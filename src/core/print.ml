@@ -304,6 +304,9 @@ and term : term pp = fun ppf t ->
   in
   func ppf t
 
+let env ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
+
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
 (*let term = Raw.term*)
 

@@ -11,6 +11,9 @@ open Print
 let log = Logger.make 'u' "unif" "unification"
 let log = log.pp
 
+let test m s =
+  if Logger.log_enabled() && m.meta_key = 325 then log "### %s@." s
+
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
    to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
    and [m2] fresh metavariables, and adds these metavariables to [p]. *)
@@ -25,12 +28,14 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   (* domain *)
   let u1 = Env.to_prod env mk_Type in
   let m1 = LibMeta.fresh p u1 n in
+  test m1 "set_to_prod_1";
   let a = mk_Meta (m1, xs) in
   (* codomain *)
   let y = new_var "y" in
   let env' = Env.add "y" y (mk_Meta (m1, xs)) None env in
   let u2 = Env.to_prod env' s in
   let m2 = LibMeta.fresh p u2 (n+1) in
+  test m2 "set_to_prod_2";
   let b = bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
   (* result *)
   let r = mk_Prod (a, b) in
@@ -43,10 +48,15 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
 let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
   match a, ts with
   | _, [] -> Some a
-  | Prod(_,b), t::ts -> type_app c (subst b t) ts
+  | Prod(_,b), t::ts ->
+      if Logger.log_enabled () then log "type_app Prod";
+      type_app c (subst b t) ts
   | LLet(_,d,b), t::ts ->
+      if Logger.log_enabled () then
+        log "type_app LLet %a ⊢ %a ≡ %a" ctxt c term d term t;
       assert (Eval.pure_eq_modulo c d t); type_app c (subst b d) ts
   | _ ->
+      if Logger.log_enabled () then log "type_app Other";
       match Eval.whnf c a, ts with
       | Prod(_,b), t::ts -> type_app c (subst b t) ts
       | _ -> None
@@ -220,6 +230,7 @@ let imitate_inj :
         match unfold t with
         | Prod(a,b) ->
             let m = LibMeta.fresh p (Env.to_prod env a) k in
+            test m "imitate_inj";
             let u = mk_Meta (m,vs) in
             build (i-1) (u::acc) (subst b u)
         | _ -> raise Cannot_imitate
@@ -275,11 +286,13 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
       | _ ->
          let tm2 = Env.to_prod env mk_Type in
          let m2 = LibMeta.fresh p tm2 n in
+         test m2 "imitate_lam_1";
          let a = mk_Meta (m2, Env.to_terms env) in
          let x = new_var "x" in
          let env' = Env.add "x" x a None env in
          let tm3 = Env.to_prod env' mk_Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
+         test m3 "imitate_lam_2";
          let b = mk_Meta (m3, Env.to_terms env') in
          let u = mk_Prod (a, bind_var x b) in
          add_constr p (Env.to_ctxt env, u, t);
@@ -287,6 +300,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     in
     let tm1 = Env.to_prod env' b in
     let m1 = LibMeta.fresh p tm1 (n+1) in
+    test m1 "imitate_lam_3";
     let u1 = mk_Meta (m1, Env.to_terms env') in
     let xu1 = mk_Abst (a, bind_var x u1) in
     let v = bind_mvar (Env.vars env) xu1 in
@@ -352,7 +366,7 @@ Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
 constraints that could not be simplified. *)
 let solve : problem -> unit = fun p ->
   while !p.to_solve <> [] || (!p.recompute && !p.unsolved <> []) do begin
-  log "solve %a" problem p;
+  (*log "solve %a" problem p;*)
   match !p.to_solve with
   | [] ->
       if Logger.log_enabled () then log "recompute";

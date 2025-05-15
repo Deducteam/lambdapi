@@ -75,7 +75,7 @@ let appl : term -> env -> term = fun t env ->
   List.fold_right (fun (_,(x,_,_)) t -> mk_Appl (t, mk_Vari x)) env t
 
 (** [to_terms env] extracts the array of the variables in [env] and injects
-    them in [tbox]. This is the same as [Array.map _Vari (vars env)]. Note
+    them in [tbox]. This is the same as [Array.map mk_Vari (vars env)]. Note
     that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
 let to_terms : env -> term array = fun env ->
