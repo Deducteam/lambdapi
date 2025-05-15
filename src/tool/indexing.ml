@@ -647,7 +647,14 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
+  (**transform_ascii_to_unicode [s] replaces all the occurences of '->'
+    and 'forall' with '→' and 'Π' in the search query [s] *)
+  let transform_ascii_to_unicode : string -> string = fun s ->
+    let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
+    Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
+
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
+  let s = transform_ascii_to_unicode s in
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
@@ -691,3 +698,10 @@ end
 
 (* let's flatten the interface *)
 include UserLevelQueries
+
+let _ =
+  assert (transform_ascii_to_unicode "a -> b" = "a → b");
+  assert (transform_ascii_to_unicode " forall x, y" = " Π x, y");
+  assert (transform_ascii_to_unicode "forall x, y" = "Π x, y");
+  assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
+  assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")

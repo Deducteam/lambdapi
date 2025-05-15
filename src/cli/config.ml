@@ -130,7 +130,11 @@ let verbose : int option CLT.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
-     and more informations being written to standard output."
+     and more informations being written to standard output.\
+     In the case of the websearch command, a value larger or equal to 2 will\
+     print the requests received by the server. A value larger than 3 will \
+     also print the responses sent by the server.
+     "
   in
   Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
