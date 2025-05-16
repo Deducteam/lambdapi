@@ -10,20 +10,30 @@ open Timed
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
-  | None -> fatal pos "%a is not typable." term t
+  | None ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "%a is not typable." term t
   | Some (t, a) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, a)
           else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to infer the type of %a." term t)
+            begin
+              let ids = Ctxt.names ctx in let term = term_in ids in
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to infer the type of %a." term t
+            end
         end
-      else fatal pos "%a is not typable." term t
+      else
+        let ids = Ctxt.names ctx in let term = term_in ids in
+        fatal pos "%a is not typable." term t
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
-  let die () = fatal pos "[%a] does not have type [%a]." term t term a in
+  let die () =
+    let ids = Ctxt.names ctx in let term = term_in ids in
+    fatal pos "[%a] does not have type [%a]." term t term a
+  in
   match Infer.check_noexn p ctx t a with
   | Some t ->
     if Unif.solve_noexn p then
@@ -38,16 +48,23 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
 let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
-  | None -> fatal pos "[%a] is not typable by a sort." term t
+  | None ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, s) else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to check that [%a] is typable by a sort."
-               term s)
+            begin
+              let ids = Ctxt.names ctx in let term = term_in ids in
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to check that [%a] is typable by a sort."
+                term s
+            end
         end
-      else fatal pos "[%a] is not typable by a sort." term t
+      else
+        let ids = Ctxt.names ctx in let term = term_in ids in
+        fatal pos "[%a] is not typable by a sort." term t
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
@@ -145,9 +162,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_proofterm ->
       (match ps with
        | None -> fatal pos "Not in a proof"
-       | Some ps ->
-           match ps.proof_term with
-           | Some m -> return term (mk_Meta(m,[||]))
+       | Some pst ->
+           match pst.proof_term with
+           | Some m ->
+               let ids = Env.names (Proof.focus_env ps) in
+               return (term_in ids) (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
@@ -208,8 +227,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      return term (Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)))
+      let t = Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)) in
+      let ids = Env.names (Proof.focus_env ps) in
+      return (term_in ids) t
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      let t, _ = infer pt.pos p ctxt t in
-      return term (Eval.eval cfg ctxt t)
+      let t = Eval.eval cfg ctxt (fst (infer pt.pos p ctxt t)) in
+      let ids = Env.names (Proof.focus_env ps) in
+      return (term_in ids) t

@@ -647,10 +647,10 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results pq =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results q =
   try
    let mok _ = None in
-   let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
+   let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
@@ -674,21 +674,38 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html ss ~from ~how_many s ~dbpath =
-  the_dbpath := dbpath;
-  search_cmd_gen ss ~from ~how_many
-   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from)
-   (Parsing.Parser.Lp.parse_search_query_string "" s)
-
- let search_cmd_txt_query ss q ~dbpath =
+  let search_cmd_txt_query ss q ~dbpath =
   the_dbpath := dbpath;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
    ~pp_results:pp_results_list q
 
+ (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
+     ["forall"] with ["→"] and ["Π"] in the search query [s] *)
+  let transform_ascii_to_unicode : string -> string =
+    let arrow = Str.regexp_string " -> "
+    and forall = Str.regexp "\\bforall\\b" in
+    fun s -> Str.global_replace forall "Π" (Str.global_replace arrow " → " s)
+
+  (* unit tests *)
+  let _ =
+    assert (transform_ascii_to_unicode "a -> b" = "a → b");
+    assert (transform_ascii_to_unicode " forall x, y" = " Π x, y");
+    assert (transform_ascii_to_unicode "forall x, y" = "Π x, y");
+    assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
+    assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
+
+ let search_cmd_html ss ~from ~how_many s ~dbpath =
+  the_dbpath := dbpath;
+  let s = transform_ascii_to_unicode s in
+  search_cmd_gen ss ~from ~how_many
+   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:(html_of_results_list from)
+   (Parsing.Parser.Lp.parse_search_query_string "" s)
+
  let search_cmd_txt ss s ~dbpath =
    the_dbpath := dbpath;
+   let s = transform_ascii_to_unicode s in
    search_cmd_txt_query ss
      (Parsing.Parser.Lp.parse_search_query_string "" s) ~dbpath
 
