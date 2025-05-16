@@ -124,7 +124,8 @@ let tac_refine : ?check:bool ->
     if check then
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
-        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+          let ids = Ctxt.names c in let term = term_in ids in
+          fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
       | Some t -> t
     else t
   in
@@ -152,7 +153,9 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
           else ind
         with Not_found -> fatal pos "%a is not an inductive type." sym s
       end
-  | _ -> fatal pos "%a is not headed by an inductive type." term a
+  | _ ->
+      let ids = Env.names env in let term = term_in ids in
+      fatal pos "%a is not headed by an inductive type." term a
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
@@ -174,7 +177,9 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
-  | _ -> fatal pos "[%a] is not a product." term goal_type
+  | _ ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "[%a] is not a product." term goal_type
 
 (** [count_products a] returns the number of consecutive products at
    the top of the term [a]. *)
@@ -200,18 +205,7 @@ let get_prod_ids env =
         else List.rev acc
   in aux []
 
-(** [gen_valid_idopts env ids] generates a list of pairwise distinct
-    identifiers distinct from those of [env] to replace [ids]. *)
-let gen_valid_idopts env ids =
-  let add_decl ids (s,_) = Extra.StrSet.add s ids in
-  let idset = ref (List.fold_left add_decl Extra.StrSet.empty env) in
-  let f id idopts =
-    let id = Extra.get_safe_prefix id !idset in
-    idset := Extra.StrSet.add id !idset;
-    Some(Pos.none id)::idopts
-  in
-  List.fold_right f ids []
-
+(** Builtin tactic names. *)
 type tactic =
   | T_admit
   | T_and
@@ -457,7 +451,9 @@ let rec handle :
         let c = Env.to_ctxt env in
         let p = new_problem () in
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "[%a] is not typable." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "[%a] is not typable." term t
         | Some (_, a) -> count_products c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -500,7 +496,9 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.check_noexn p c t mk_Type with
-        | None -> fatal pos "%a is not of type Type." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in
@@ -522,7 +520,9 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "%a is not typable." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "%a is not typable." term t
         | Some (t,b) ->
             if Unif.solve_noexn p then begin
               let x = new_var id.elt in
@@ -546,7 +546,7 @@ let rec handle :
       begin
         let cfg = Rewrite.get_eq_config ss pos in
         let _,vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-        let idopts = gen_valid_idopts env (List.map base_name vs) in
+        let idopts = Env.gen_valid_idopts env (List.map base_name vs) in
         let ps = assume idopts in
         match ps.proof_goals with
         | [] -> assert false
@@ -613,7 +613,7 @@ let rec handle :
   | P_tac_why3 cfg ->
       begin
         let ids = get_prod_ids env false gt.goal_type in
-        let idopts = gen_valid_idopts env ids in
+        let idopts = Env.gen_valid_idopts env ids in
         let ps = assume idopts in
         match ps.proof_goals with
         | Typ gt::_ ->
@@ -663,8 +663,9 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
-    if Logger.log_enabled () then
-      log ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
+    if Logger.log_enabled() then
+      log ("%a@\n" ^^ Color.red "%a")
+        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
