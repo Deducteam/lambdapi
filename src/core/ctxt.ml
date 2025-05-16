@@ -1,7 +1,7 @@
 (** Typing context. *)
 
 open Term
-open Lplib
+open Lplib open Extra
 open Timed
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
@@ -61,3 +61,11 @@ let to_map : ctxt -> term VarMap.t =
   let add_def m (x,_,v) =
     match v with Some v -> VarMap.add x v m | None -> m
   in List.fold_left add_def VarMap.empty
+
+(** [names c] returns the set of names in [c]. *)
+let names : ctxt -> int StrMap.t =
+  let add_decl idmap (v,_,_) = add_name (base_name v) idmap in
+  List.fold_left add_decl StrMap.empty
+
+(** [fresh c id] returns a string starting with [id] and not in [c]. *)
+let fresh (c:ctxt) (id:string) : string = fst (get_safe_prefix id (names c))

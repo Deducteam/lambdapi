@@ -35,6 +35,14 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
+let safe_unbind_no_check (idmap:int StrMap.t) (b:binder)
+    : (var * term) * int StrMap.t =
+  let name, idmap = get_safe_prefix (binder_name b) idmap in
+  unbind ~name b, idmap
+
+let safe_unbind (idmap:int StrMap.t) (b:binder): (var * term) * int StrMap.t =
+  if binder_occur b then safe_unbind_no_check idmap b else unbind b, idmap
+
 let assoc : Pratter.associativity pp = fun ppf assoc ->
   match assoc with
   | Neither -> ()
@@ -101,6 +109,8 @@ let sym : sym pp = fun ppf s ->
 
 let var : var pp = fun ppf x -> uid ppf (base_name x)
 
+let meta : meta pp = fun ppf m -> out ppf "?%d" m.meta_key
+
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
 
@@ -153,19 +163,11 @@ let are_quant_args : term list -> bool = fun args ->
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
 type priority = [`Func | `Appl | `Atom]
 
-let rec meta : meta pp = fun ppf m ->
-  if !print_meta_types then
-    out ppf "(?%d:%a)" m.meta_key term !(m.meta_type)
-  else out ppf "?%d" m.meta_key
-
-and typ : term pp = fun ppf a ->
-  if !print_domains then out ppf ": %a" term a
-
-and term : term pp = fun ppf t ->
-  let rec atom ppf t = pp `Atom ppf t
-  and appl ppf t = pp `Appl ppf t
-  and func ppf t = pp `Func ppf t
-  and pp p ppf t =
+let rec term_in : int StrMap.t -> term pp = fun idmap ppf t ->
+  let rec atom idmap ppf t = pp `Atom idmap ppf t
+  and appl idmap ppf t = pp `Appl idmap ppf t
+  and func idmap ppf t = pp `Func idmap ppf t
+  and pp p idmap ppf t =
     if Logger.log_enabled() then log "%a" Raw.term t;
     let (h, args) = get_args t in
     (* standard application *)
@@ -175,7 +177,7 @@ and term : term pp = fun ppf t ->
       | args ->
           if p = `Atom then out ppf "(";
           head true ppf h;
-          List.iter (out ppf " %a" atom) args;
+          List.iter (out ppf " %a" (atom idmap)) args;
           if p = `Atom then out ppf ")"
     in
     (* postfix symbol application *)
@@ -185,9 +187,9 @@ and term : term pp = fun ppf t ->
         (* Can be improved by looking at symbol priority. *)
         if p <> `Func then out ppf "(";
         if args = []
-        then out ppf "%a %a" appl l sym s
-        else out ppf "(%a %a)" appl l sym s;
-        List.iter (out ppf " %a" appl) args;
+        then out ppf "%a %a" (appl idmap) l sym s
+        else out ppf "(%a %a)" (appl idmap) l sym s;
+        List.iter (out ppf " %a" (appl idmap)) args;
         if p <> `Func then out ppf ")"
       | [] ->
         out ppf "("; head true ppf h; out ppf ")"
@@ -212,16 +214,18 @@ and term : term pp = fun ppf t ->
                     if p <> `Func then out ppf "(";
                     (* Can be improved by looking at symbol priority. *)
                     if args = []
-                    then out ppf "%a %a %a" appl l sym s appl r
-                    else out ppf "(%a %a %a)" appl l sym s appl r;
-                    List.iter (out ppf " %a" appl) args;
+                    then out ppf "%a %a %a"
+                           (appl idmap) l sym s (appl idmap) r
+                    else out ppf "(%a %a %a)"
+                           (appl idmap) l sym s (appl idmap) r;
+                    List.iter (out ppf " %a" (appl idmap)) args;
                     if p <> `Func then out ppf ")"
                 | [] ->
                   out ppf "("; head true ppf h; out ppf ")"
                 | _ ->
                   if p = `Atom then out ppf "(";
                   out ppf "("; head true ppf h; out ppf ")";
-                  List.iter (out ppf " %a" atom) args;
+                  List.iter (out ppf " %a" (atom idmap)) args;
                   if p = `Atom then out ppf ")"
               end
           | Zero | IntZero -> out ppf "0"
@@ -243,15 +247,18 @@ and term : term pp = fun ppf t ->
         begin
           match unfold b with
           | Abst(a,b) ->
-              let (x,p) = unbind b in
-              out ppf "`%a %a%a, %a" sym s var x typ a func p
+              let (x,p),idmap' = safe_unbind idmap b in
+              out ppf "`%a %a%a, %a"
+                sym s var x (typ_in idmap) a (func idmap') p
           | _ -> assert false
         end
     | _ -> assert false
 
   and head wrap ppf t =
     let env ppf ts =
-      if Array.length ts > 0 then out ppf ".[%a]" (Array.pp func ";") ts in
+      if Array.length ts > 0 then
+        out ppf ".[%a]" (Array.pp (func idmap) ";") ts
+    in
     match unfold t with
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
@@ -259,66 +266,106 @@ and term : term pp = fun ppf t ->
     | TRef(r)     ->
         (match !r with
          | None -> out ppf "<TRef>"
-         | Some t -> atom ppf t)
+         | Some t -> atom idmap ppf t)
     (* Atoms are printed inconditonally. *)
     | Vari(x)     -> var ppf x
     | Type        -> out ppf "TYPE"
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> sym ppf s
     | Meta(m,e)   ->
-        if !print_meta_args then out ppf "%a%a" meta m env e else meta ppf m
+        if !print_meta_types then
+          out ppf "(?%d:%a)" m.meta_key (term_in idmap) !(m.meta_type)
+        else out ppf "?%d" m.meta_key;
+        if !print_meta_args then env ppf e
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
     | Bvar _      -> assert false
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = unbind b in
-        out ppf "λ %a" bvar (b,x);
-        if !print_domains then out ppf ": %a, %a" func a func t
-        else abstractions ppf t;
+        if binder_occur b then
+          begin
+            let (x,t),idmap' = safe_unbind_no_check idmap b in
+            out ppf "λ %a" var x;
+            if !print_domains then
+              out ppf ": %a, %a" (func idmap) a (func idmap') t
+            else abstractions idmap' ppf t
+          end
+        else
+          begin
+            let _,t = unbind b in
+            out ppf "λ _";
+            if !print_domains then
+              out ppf ": %a, %a" (func idmap) a (func idmap) t
+            else abstractions idmap ppf t
+          end;
         if wrap then out ppf ")"
     | Prod(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = unbind b in
         if binder_occur b then
-          out ppf "Π %a: %a, %a" var x appl a func t
-        else out ppf "%a → %a" appl a func t;
+          let (x,t),idmap' = safe_unbind_no_check idmap b in
+          out ppf "Π %a: %a, %a" var x (appl idmap) a (func idmap') t
+        else
+          let _,t = unbind b in
+          out ppf "%a → %a" (appl idmap) a (func idmap) t;
         if wrap then out ppf ")"
     | LLet(a,t,b) ->
         if wrap then out ppf "(";
         out ppf "let ";
-        let (x,u) = unbind b in
-        bvar ppf (b,x);
-        if !print_domains then out ppf ": %a" atom a;
-        out ppf " ≔ %a in %a" func t func u;
+        if binder_occur b then
+          begin
+            let (x,u),idmap' = safe_unbind_no_check idmap b in
+            var ppf x;
+            if !print_domains then out ppf ": %a" (atom idmap) a;
+            out ppf " ≔ %a in %a" (func idmap) t (func idmap') u
+          end
+        else
+          begin
+            let _,u = unbind b in
+            out ppf "_";
+            if !print_domains then out ppf ": %a" (atom idmap) a;
+            out ppf " ≔ %a in %a" (func idmap) t (func idmap) u
+          end;
         if wrap then out ppf ")"
-  and bvar ppf (b,x) =
-    if binder_occur b then out ppf "%a" var x else out ppf "_"
-  and abstractions ppf t =
+  and abstractions idmap ppf t =
     match unfold t with
     | Abst(_,b) ->
-        let (x,t) = unbind b in
-        out ppf " %a%a" bvar (b,x) abstractions t
-    | t -> out ppf ", %a" func t
+        if binder_occur b then
+          let (x,t),idmap' = safe_unbind_no_check idmap b in
+          out ppf " %a%a" var x (abstractions idmap') t
+        else
+          let _,t = unbind b in out ppf " _%a" (abstractions idmap) t
+    | t -> out ppf ", %a" (func idmap) t
   in
-  func ppf t
+  func idmap ppf t
 
-let env ppf ts =
-  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
+and typ_in : int StrMap.t -> term pp = fun idmap ppf a ->
+  if !print_domains then out ppf ": %a" (term_in idmap) a
 
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
 (*let term = Raw.term*)
 
-let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
+let term = term_in StrMap.empty
+
+let env ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
+
+let rec prod_in : int StrMap.t -> (term * bool list) pp =
+  let decl idmap ppf (x,t) = out ppf "%a : %a" var x (term_in idmap) t in
+  let decl i idmap ppf d =
+    if i then out ppf "[%a]" (decl idmap) d else decl idmap ppf d in
+  fun idmap ppf (t,impl) ->
   match unfold t, impl with
-  | Prod(a,b), true::impl ->
-      let x, b = unbind b in
-      out ppf "Π [%a: %a], %a" var x term a prod (b, impl)
-  | Prod(a,b), false::impl ->
-      let x, b = unbind b in
-      out ppf "Π %a: %a, %a" var x term a prod (b, impl)
-  | _ -> term ppf t
+  | Prod(a,b), i::impl ->
+      if binder_occur b then
+        let (x,t),idmap' = safe_unbind_no_check idmap b in
+        out ppf "Π %a, %a" (decl i idmap) (x,a) (prod_in idmap') (t,impl)
+      else
+        let x,t = unbind ~name:"_" b in
+        out ppf "Π %a, %a" (decl i idmap) (x,a) (prod_in idmap) (t,impl)
+  | _ -> term_in idmap ppf t
+
+let prod = prod_in StrMap.empty
 
 let sym_rule : sym_rule pp = fun ppf r ->
   out ppf "%a ↪ %a" term (lhs r) term (rhs r)
@@ -329,12 +376,20 @@ let unif_rule : rule pp = rule_of Unif_rule.equiv
 
 let rules_of : sym pp = fun ppf s -> D.list (rule_of s) ppf !(s.sym_rules)
 
+(* for debug only *)
+
+let typ = typ_in StrMap.empty
+
+(*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
+(*let term = Raw.term*)
+
 (* ends with a space if [!print_contexts = true] *)
 let ctxt : ctxt pp = fun ppf ctx ->
   if !print_contexts then
     begin
       let def ppf t = out ppf " ≔ %a" term t in
-      let decl ppf (x,a,t) = out ppf "%a%a%a" var x typ a (Option.pp def) t in
+      let decl ppf (x,a,t) =
+        out ppf "%a%a%a" var x typ a (Option.pp def) t in
       out ppf "%a%s⊢ "
         (List.pp decl ", ") (List.rev ctx)
         (if ctx <> [] then " " else "")
@@ -350,7 +405,6 @@ let constrs : constr list pp = fun ppf cs ->
   let pp_sep ppf () = out ppf "@ ;" in
   out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
 
-(* for debug only *)
 let metaset : MetaSet.t pp =
   D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta
 

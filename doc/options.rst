@@ -220,3 +220,5 @@ websearch
 * ``--db <FILE.db>`` tells the server to use ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 * ``--header <FILE.html>`` uses <FILE.html> as header of the search engine web page.
+
+* ``--url <STRING>`` tells the server to only accept requests on URLs which path is ``<STRING>``. By default, the server only accepts requests on URLs which path is empty. Use ``**`` to accept requests with any path. It is possible to express more complex constraints using the `Dream framework <https://aantron.github.io/dream/#routing>`__.
