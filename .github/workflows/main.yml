@@ -39,6 +39,10 @@ jobs:
   vscode:
     strategy:
       fail-fast: false
+      matrix:
+        node-version: [latest, v23.11.0]
+        types_vscode-version: [\@1.99.0, \@1.99.1, '' ]
+        vscode_vsce-version: [\@3.3.3-2,  \@3.3.3-3, '' ]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo ...
@@ -46,16 +50,25 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'v23.11.0'
-      - name: generate-vscode-extension
+          node-version: ${{ matrix.node-version }}
+      - name: install-dependencies
         run: |
-          npm install -g @types/vscode
-          npm install -g @vscode/vsce 
+          npm install -g @types/vscode${{ matrix.types_vscode-version }}
+          npm install -g @vscode/vsce${{ matrix.vscode_vsce-version }}
+
+      - name: generate-vscode-extension
+        run:
           make build-vscode-extension
+
+      - name: publish-vscode-extension
+        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'v23.11.0' }} 
+        run:
           make publish-vscode-extension
         env:
           PAT: ${{ secrets.VSCODE_PAT }}
+          
       - name: upload vscode extension
+        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'v23.11.0' }} 
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
