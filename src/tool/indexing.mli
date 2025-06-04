@@ -8,6 +8,8 @@ val dump : dbpath:string -> unit -> unit
 
 (* search command used by cli *)
 val search_cmd_txt: Sig_state.sig_state -> string -> dbpath:string -> string
+val search_cmd_txt_query:
+  Sig_state.sig_state -> Parsing.Syntax.query -> dbpath:string -> string
 
 (* search command used by websearch *)
 val search_cmd_html:
