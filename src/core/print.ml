@@ -342,7 +342,13 @@ let rec term_in : int StrMap.t -> term pp = fun idmap ppf t ->
 and typ_in : int StrMap.t -> term pp = fun idmap ppf a ->
   if !print_domains then out ppf ": %a" (term_in idmap) a
 
+(*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
+(*let term = Raw.term*)
+
 let term = term_in StrMap.empty
+
+let env ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
 
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
   let decl idmap ppf (x,t) = out ppf "%a : %a" var x (term_in idmap) t in

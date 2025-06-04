@@ -984,7 +984,6 @@ let new_problem : unit -> problem = fun () ->
 
 (** Printing functions for debug. *)
 module Raw = struct
-  let sym = sym let _ = sym
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
