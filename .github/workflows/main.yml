@@ -62,14 +62,14 @@ jobs:
           make build-vscode-extension
 
       - name: publish-vscode-extension
-        if: ${{ keepExtension }}
+        if: keepExtension
         run:
           make publish-vscode-extension
         env:
           PAT: ${{ secrets.VSCODE_PAT }}
           
       - name: upload vscode extension
-        if: ${{ keepExtension }}
+        if: keepExtension
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
