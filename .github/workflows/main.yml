@@ -43,6 +43,7 @@ jobs:
         node-version: [latest, v23.11.0]
         types_vscode-version: [\@1.99.0, \@1.99.1, '' ]
         vscode_vsce-version: [\@3.3.3-2,  \@3.3.3-3, '' ]
+      keepExtension: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo ...
@@ -61,14 +62,14 @@ jobs:
           make build-vscode-extension
 
       - name: publish-vscode-extension
-        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
+        if: ${{ keepExtension }}
         run:
           make publish-vscode-extension
         env:
           PAT: ${{ secrets.VSCODE_PAT }}
           
       - name: upload vscode extension
-        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
+        if: ${{ keepExtension }}
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
