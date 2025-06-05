@@ -68,7 +68,7 @@ jobs:
           PAT: ${{ secrets.VSCODE_PAT }}
           
       - name: upload vscode extension
-        if: ${{ matrix.types_vscode-version == '\@1.99.0' && matrix.vscode_vsce-version == '\@3.3.3-2' &&  matrix.node-version == 'latest' }}
+        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
