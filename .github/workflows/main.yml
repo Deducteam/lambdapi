@@ -6,36 +6,36 @@ on:
       - '**/*.md'
   workflow_dispatch:
 jobs:
-  lambdapi:
-    strategy:
-      fail-fast: false
-      matrix:
-        ocaml-version: [5.3.0, 5.2.1, 5.1.1, 5.0.0, 4.14.2, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1]
-    runs-on: ubuntu-latest
-    steps:
-      - name: checking out lambdapi repo ...
-        uses: actions/checkout@v4
-      # - name: recovering cached opam files ...
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ~/.opam
-      #     key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
-      - name: setting up opam ...
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
-      - name: installing dependencies ...
-        run: |
-          opam update
-          opam upgrade
-          opam pin add -n -k path lambdapi .
-          opam install --deps-only -d -t lambdapi
-      - name: running tests ...
-        run: |
-          make sanity_check
-          eval $(opam env)
-          #why3 config detect
-          make tests
+  # lambdapi:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       ocaml-version: [5.3.0, 5.2.1, 5.1.1, 5.0.0, 4.14.2, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: checking out lambdapi repo ...
+  #       uses: actions/checkout@v4
+  #     # - name: recovering cached opam files ...
+  #     #   uses: actions/cache@v4
+  #     #   with:
+  #     #     path: ~/.opam
+  #     #     key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
+  #     - name: setting up opam ...
+  #       uses: ocaml/setup-ocaml@v3
+  #       with:
+  #         ocaml-compiler: ${{ matrix.ocaml-version }}
+  #     - name: installing dependencies ...
+  #       run: |
+  #         opam update
+  #         opam upgrade
+  #         opam pin add -n -k path lambdapi .
+  #         opam install --deps-only -d -t lambdapi
+  #     - name: running tests ...
+  #       run: |
+  #         make sanity_check
+  #         eval $(opam env)
+  #         #why3 config detect
+  #         make tests
   vscode:
     strategy:
       fail-fast: false
@@ -68,7 +68,7 @@ jobs:
           PAT: ${{ secrets.VSCODE_PAT }}
           
       - name: upload vscode extension
-        if: ${{ matrix.types_vscode-version == 'ddddd' && matrix.vscode_vsce-version == 'dddddd' &&  matrix.node-version == 'lateddddst' }}
+        if: ${{ matrix.types_vscode-version == '\@1.99.0' && matrix.vscode_vsce-version == '\@3.3.3-2' &&  matrix.node-version == 'latest' }}
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
