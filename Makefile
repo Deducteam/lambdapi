@@ -32,11 +32,11 @@ test_libs: lambdapi
 .PHONY: tests
 tests: lambdapi
 	@dune runtest
-	@dune exec --only-packages lambdapi -- tests/runtests.sh
-	@dune exec --only-packages lambdapi -- tests/dtrees.sh
-	@dune exec --only-packages lambdapi -- tests/export_dk.sh
-	@dune exec --only-packages lambdapi -- tests/export_lp.sh
-	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
+	@tests/runtests.sh
+	@tests/dtrees.sh
+	@tests/export_dk.sh
+	@tests/export_lp.sh
+	@tests/export_raw_dk.sh
 	$(MAKE) test_libs
 
 .PHONY: tests_alt_ergo
