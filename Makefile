@@ -24,19 +24,19 @@ bnf:
 
 .PHONY: test_libs
 test_libs: lambdapi
-	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
-	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
 
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
 tests: lambdapi
 	@dune runtest
-	@dune exec --only-packages lambdapi -- tests/runtests.sh
-	@dune exec --only-packages lambdapi -- tests/dtrees.sh
-	@dune exec --only-packages lambdapi -- tests/export_dk.sh
-	@dune exec --only-packages lambdapi -- tests/export_lp.sh
-	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
+	@tests/runtests.sh
+	@tests/dtrees.sh
+	@tests/export_dk.sh
+	@tests/export_lp.sh
+	@tests/export_raw_dk.sh
 	$(MAKE) test_libs
 
 .PHONY: tests_alt_ergo
@@ -52,37 +52,37 @@ sanity_check: misc/sanity_check.sh
 .PHONY: matita
 matita: lambdapi
 	@printf "## Compiling the Matita's arithmetic library ##\n"
-	@cd libraries && dune exec -- ./matita.sh
+	@cd libraries && ./matita.sh
 
 .PHONY: focalide
 focalide: lambdapi
 	@printf "## Compiling focalide library ##\n"
-	@cd libraries && dune exec -- ./focalide.sh
+	@cd libraries && ./focalide.sh
 
 .PHONY: holide
 holide: lambdapi
 	@printf "## Compiling holide library ##\n"
-	@cd libraries && dune exec -- ./holide.sh
+	@cd libraries && ./holide.sh
 
 .PHONY: verine
 verine: lambdapi
 	@printf "## Compiling verine library ##\n"
-	@cd libraries && dune exec -- ./verine.sh
+	@cd libraries && ./verine.sh
 
 .PHONY: iprover
 iprover: lambdapi
 	@printf "## Compiling iProverModulo library ##\n"
-	@cd libraries && dune exec -- ./iprover.sh
+	@cd libraries && ./iprover.sh
 
 .PHONY: dklib
 dklib: lambdapi
 	@printf "## Compiling the dklib library ##\n"
-	@cd libraries && dune exec -- ./dklib.sh
+	@cd libraries && ./dklib.sh
 
 .PHONY: zenon_modulo
 zenon_modulo: lambdapi
 	@printf "## Compiling the zenon library ##\n"
-	@cd libraries && dune exec -- ./zenon_modulo.sh
+	@cd libraries && ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
 
