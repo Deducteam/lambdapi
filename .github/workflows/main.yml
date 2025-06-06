@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [4.12.1, 4.11.2, 4.10.2, 4.09.1] #5.3.0, 5.2.1, 5.1.1, 5.0.0, 4.14.2, 4.13.1
+        ocaml-version: [5.3.0] #5.2.1, 5.1.1, 5.0.0, 4.14.2, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1
         dream-pure-version: [1.0.0~alpha1, 1.0.0~alpha2]
         dream-httpaf-version: [1.0.0~alpha1, 1.0.0~alpha2, 1.0.0~alpha3, 1.0.0~alpha4]
         dream-version: [1.0.0~alpha1, 1.0.0~alpha2, 1.0.0~alpha3, 1.0.0~alpha4, 1.0.0~alpha5, 1.0.0~alpha6, 1.0.0~alpha7, 1.0.0~alpha8]
