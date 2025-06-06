@@ -20,6 +20,244 @@ Multi-line comments are opened with ``/*`` and closed with ``*/``. They can be n
       words are
       ignored /* these ones too */ */
 
+.. _builtin:
+
+``builtin``
+---------------
+
+The command ``builtin`` allows to map an internally defined string
+literal ``"…"`` to a user symbol identifier. Those mappings are
+necessary for other commands, tactics or notations to work.
+
+.. _coerce_rule:
+
+``coerce_rule``
+---------------
+
+Lambdapi can be instructed to insert function applications into terms whenever
+needed for typability. These functions are called *coercions*. For instance,
+assuming we have a type ``Float``, a type ``Int`` and a function
+``FloatOfInt : Int → Float``, the latter function can be declared
+as a coercion from integers to floats with the declaration
+
+::
+
+    coerce_rule coerce Int Float $x ↪ FloatOfInt $x;
+
+Symbol ``coerce`` is a built-in function symbol that computes the coercion.
+Whenever a term ``t`` of type ``Int`` is found when Lambadpi expected a
+``Float``, ``t`` will be replaced by ``coerce Int Float t`` and reduced.
+The declared coercion will allow the latter term to be reduced to
+``FloatOfInt t``.
+
+Coercions can call the function ``coerce`` recursively,
+which allows to write, e.g.
+
+::
+
+    coerce_rule coerce (List $a) (List $b) $l ↪ map (λ e: El $a, coerce $a $b e) $l;
+
+where ``Set: TYPE;``, ``List : Set → TYPE``, ``El : Set → TYPE`` and ``map`` is
+the usual map operator on lists such that ``map f (cons x l) ≡ cons (f x) (map l)``.
+
+*WARNING* Coercions are still experimental and may not mix well with
+metavariables. Indeed, the term ``coerce ?1 Float t`` will not reduce to
+``FloatOfInt t`` even if the equation ``?1 ≡ Int`` has been registered during
+typing. Furthermore, for the moment, it is unsafe to have symbols that can be
+reduced to protected symbols in the right-hand side of coercions:
+reduction may occur during coercion elaboration,
+which may generate unsound protected symbols.
+
+.. _inductive:
+
+``inductive``
+-------------
+
+The commands ``symbol`` and ``rules`` above are enough to define
+inductive types, their constructors, their induction
+principles/recursors and their defining rules.
+
+We however provide a command ``inductive`` for automatically
+generating the induction principles and their rules from an inductive
+type definition, assuming that the following builtins are defined:
+
+::
+
+   ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
+   ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
+
+An inductive type can have 0 or more constructors.
+
+The name of the induction principle is ``ind_`` followed by the name
+of the type.
+
+The command currently supports parametrized mutually defined dependent
+strictly-positive data types only. As usual, polymorphic types can be
+encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
+
+Example:
+
+::
+
+   ￼inductive ℕ : TYPE ≔
+   ￼| zero: ℕ
+   ￼| succ: ℕ → ℕ;
+
+is equivalent to:
+
+::
+
+   ￼constant symbol ℕ : TYPE;
+   ￼constant symbol zero : ℕ;
+   ￼constant symbol succ : ℕ → ℕ;
+   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼rule ind_ℕ _ $pz _ zero ↪ $pz
+   ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
+
+For mutually defined inductive types, one needs to use the ``with``
+keyword to link all inductive types together.
+
+Inductive definitions can also be parametrized as follows:
+
+::
+
+   (a:Set) inductive T: TYPE ≔
+   | node: τ a → F a → T a
+   with F: TYPE ≔
+   | nilF: F a
+   | consF: T a → F a → F a;
+
+Note that parameters are set as implicit in the types of
+constructors. So, one has to write ``consF t l`` or ``@consF a t l``.
+
+For mutually defined inductive types, an induction principle is
+generated for each inductive type:
+
+::
+
+   assert ⊢ ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π l, π(q l);
+   assert ⊢ ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x, Π l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π t, π(p t);
+
+Finaly, here is an example of strictly-positive inductive type:
+
+::
+
+   inductive 𝕆:TYPE ≔ z:𝕆 | s:𝕆 → 𝕆 | l:(ℕ → 𝕆) → 𝕆;
+
+   assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
+     → (Π x, (Π y, π (p (x y))) → π (p (l x))) → Π x, π (p x);
+
+   assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
+   assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
+   assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
+
+.. _notation:
+
+``notation``
+----------------
+
+The ``notation`` commands associate to a symbol identifier (declared
+in the current module or in another module) a specific notation used
+by the parser and the printer of the system. The possible notations
+are:
+
+- **infix**
+
+  ::
+
+    notation + infix left 6.5;
+    notation * infix left 7;
+
+
+  * With the above notation, the system now expects ``+`` to only
+    appear in expressions of the form ``x + y``. As a consequence,
+    ``+`` is not a valid term anymore. To locally deactivate a
+    notation, you can use ``(+)`` or ``@+`` instead.
+
+  * A symbol declared as infix must have a type of the form ``A → A →
+    A``.
+
+  * The additional keyword ``left`` declares the symbol associative to
+    the left, that is, ``x + y + z`` is parsed as ``(x + y) +
+    z``. Symmetrically, the additional keyword ``right`` declares the
+    symbol associative to the right, that is, ``x + y + z`` is parsed
+    as ``x + (y + z)``.
+
+  * Priority levels are used to disambiguate expressions mixing
+    several operators. Hence, with the priorities declared above,
+    ``x + y * z`` is parsed as ``x + (y * z)``.
+
+  * Priorities can be natural numbers or floating point
+    numbers. Hence, a priority can (almost) always be inserted between
+    two different levels.
+
+- **prefix/postfix**
+
+  ::
+
+   notation ¬ prefix 5;
+   notation ! postfix 10;
+
+  * Infix, prefix and postfix operators share the same levels of
+    priority. Hence, depending on the priorities, ``-x + z`` is
+    parsed as ``(-x) + z`` or as ``-(x + z)``.
+
+  * Non-operator application (such as ``f x`` where ``f`` and ``x``
+    are not operators) has a higher priority than any operator
+    application. Hence, if ``-`` is declared as prefix, then ``- f x``
+    is always parsed ``- (f x)``, no matter the priority of ``-`` is.
+
+  * The functional arrow has a lower priority than any operator.
+    Hence, ``- A → A`` is always parsed ``(- A) → A``, whatever the
+    priority of ``-`` is.
+
+- **quantifier** allows to write ```f x, t`` instead of ``f (λ x, t)``:
+
+  ::
+
+   symbol ∀ {a} : (T a → Prop) → Prop;
+   notation ∀ quantifier;
+   compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
+   type λ p, `∀ x, p; // quantifiers can be written as such
+   type λ p, `f x, p; // works as well if f is any symbol
+
+.. _opaque:
+
+``opaque``
+---------------
+
+The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previously defined symbol.
+
+::
+
+   symbol πᶜ p ≔ π (¬ ¬ p); // interpretation of classical propositions as types
+   opaque πᶜ;
+
+.. _open:
+
+``open``
+--------
+
+Puts into scope the symbols of the previously required module given
+in argument. It can also be combined with the ``require`` command.
+
+::
+
+   require std.bool;
+   open std.bool;
+   require open church.sums;
+
+Note that ``open`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
+
 .. _require:
 
 ``require``
@@ -39,22 +277,112 @@ can be referred to with the provided name.
 Note that ``require`` always take as argument a qualified
 identifier. See :doc:`module` for more details.
 
-.. _open:
+.. _rule:
 
-``open``
+``rule``
 --------
 
-Puts into scope the symbols of the previously required module given
-in argument. It can also be combined with the ``require`` command.
+Rewriting rules for definable symbols are declared using the ``rule``
+command.
 
 ::
 
-   require std.bool;
-   open std.bool;
-   require open church.sums;
+   rule add zero      $n ↪ $n;
+   rule add (succ $n) $m ↪ succ (add $n $m);
+   rule mul zero      _  ↪ zero;
 
-Note that ``open`` always take as argument a qualified
-identifier. See :doc:`module` for more details.
+Identifiers prefixed by ``$`` are pattern variables.
+
+User-defined rules are assumed to form a confluent (the order of rule
+applications is not important) and terminating (there is no infinite
+rewrite sequences) rewriting system when combined with β-reduction.
+
+The verification is left to the user, who can call external provers
+for trying to check those properties automatically using the
+:doc:`command line options <options>` ``--confluence`` and
+``--termination``.
+
+Lambdapi will however try to check at each ``rule`` command that the
+added rules preserve local confluence, by checking the joinability of
+critical pairs between the added rules and the rules already added in
+the signature (critical pairs involving AC symbols or non-nullary
+pattern variables are currently not checked). A warning is output if
+Lambdapi finds a non-joinable critical pair. To avoid such a warning,
+it may be useful to declare several rules in the same ``rule`` command
+by using the keyword ``with``:
+
+::
+
+   rule add zero      $n ↪ $n
+   with add (succ $n) $m ↪ succ (add $n $m);
+
+Rules must also preserve typing (subject-reduction property), that is,
+if an instance of a left-hand side has some type, then the
+corresponding instance of the right-hand side should have the same
+type. Lambdapi implements an algorithm trying to check this property
+automatically, and will not accept a rule if it does not pass this
+test.
+
+**Higher-order pattern-matching**. Lambdapi allows higher-order
+pattern-matching on patterns à la Miller but modulo β-equivalence only
+(and not βη).
+
+::
+
+   rule diff (λx, sin $F.[x]) ↪ λx, diff (λx, $F.[x]) x × cos $F.[x];
+
+Patterns can contain abstractions ``λx, _`` and the user may attach an
+environment made of *distinct* bound variables to a pattern variable
+to indicate which bound variable can occur in the matched term. The
+environment is a semicolon-separated list of variables enclosed in
+square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
+term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
+if ``y`` does not freely occur in ``t``.
+
+::
+
+   rule lam (λx, app $F.[] x) ↪ $F; // η-reduction
+
+Hence, the rule ``lam (λx, app $F.[] x) ↪ $F`` implements η-reduction
+since no valid instance of ``$F`` can contain ``x``.
+
+Pattern variables cannot appear at the head of an application:
+``$F.[] x`` is not allowed. The converse ``x $F.[]`` is allowed.
+
+A pattern variable ``$P.[]`` can be shortened to ``$P`` when there is no
+ambiguity, i.e. when the variable is not under a binder (unlike in the
+rule η above).
+
+It is possible to define an unnamed pattern variable with the syntax
+``$_.[x;y]``.
+
+The unnamed pattern variable ``_`` is always the most general: if ``x``
+and ``y`` are the only variables in scope, then ``_`` is equivalent to
+``$_.[x;y]``.
+
+In rule left-hand sides, λ-expressions cannot have type annotations.
+
+**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
+left-hand sides can contain defined symbols:
+
+::
+
+   rule add (add x y) z ↪ add x (add y z);
+
+They can overlap:
+
+::
+
+   rule add zero x ↪ x
+   with add x zero ↪ x;
+
+And they can be non-linear:
+
+::
+
+   rule minus x x ↪ zero;
+
+Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
 
 .. _symbol:
 
@@ -199,220 +527,6 @@ arguments must be explicitly given.
 **Notations**: Some notation can be declared for a symbol using the
 commands :ref:`notation` and :ref:`builtin`.
 
- .. _notation:
-
-``notation``
-----------------
-
-The ``notation`` command allows to change the behaviour of the parser.
-
-When declared as notations, identifiers must be used at correct places
-and are not valid terms on their own anymore.  To reaccess the value
-of the identifier without the notation properties, wrap it in
-parentheses like in ``(+)`` if ``+`` is declared ``infix``.
-
-**infix** The following code defines infix symbols for addition
-and multiplication. Both are associative to the left, and they have
-priority levels ``6`` and ``7`` respectively.
-
-::
-
-   notation + infix left 6;
-   notation × infix left 7;
-
-The modifier ``infix``, ``infix right`` and ``infix left`` can be used
-to specify whether the defined symbol is non-associative, associative to
-the right, or associative to the left.
-Priority levels are floating point numbers, hence a
-priority can (almost) always be inserted between two different levels.
-
-As explained above, at this point, ``+`` is not a valid term anymore, as it was
-declared infix.  The system now expects ``+`` to only appear in expressions of
-the form ``x + y`` To get around this, you can use ``(+)`` instead.
-
-**prefix** The following code defines a prefix symbol for
-negation with some priority level.
-
-::
-
-   notation ¬ prefix 5;
-
-*Remarks:*
-
-* Prefix and infix operators share the same levels of priority, hence depending
-  on the binding power, ``-x + z`` may be parsed ``(-x) + z`` or ``-(x + z)``.
-
-* Non-operator application (such as ``f x`` where ``f`` and ``x`` are not
-  operators) has a higher binding power than operator application:
-  let ``-`` be a prefix operator, then ``- f x`` is always parsed ``- (f x)``,
-  no matter what the binding power of ``-`` is.
-
-* The functional arrow has a lower binding power than any operator, therefore
-  for any prefix operator ``-``, ``- A → A`` is always parsed ``(- A) → A``
-
-**quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:
-
-::
-
-   symbol ∀ {a} : (T a → Prop) → Prop;
-   notation ∀ quantifier;
-   compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
-   type λ p, `∀ x, p; // quantifiers can be written as such
-   type λ p, `f x, p; // works as well if f is any symbol
-
-**printing numbers in decimal notation** It is possible to print various number types in decimal notation by defining the following builtins:
-
-* Natural numbers in base 1 (Peano numbers):
-
-::
-   
-   builtin "nat_zero" ≔ ...; // : N
-   builtin "nat_succ" ≔ ...; // : N → N
-
-* Positive natural numbers in base 2:
-
-::
-   
-   builtin "pos_one" ≔ ...; // : P
-   builtin "pos_double" ≔ ...; // : P → P
-   builtin "pos_succ_double" ≔ ...; // : P → P
-
-* Integer numbers in base 2:
-
-::
-   
-   builtin "int_zero" ≔ ...; // : Z
-   builtin "int_positive" ≔ ...; // : P → Z
-   builtin "int_negative" ≔ ...; // : P → Z
-
-.. _builtin:
-
-``builtin``
----------------
-
-The command ``builtin`` allows to map a “builtin“
-string to a user-defined symbol identifier. Those mappings are
-necessary for other commands, tactics or notations to work.
-
-.. _opaque:
-
-``opaque``
----------------
-
-The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previously defined symbol.
-
-::
-
-   symbol πᶜ p ≔ π (¬ ¬ p); // interpretation of classical propositions as types
-   opaque πᶜ;
-
-.. _rule:
-
-``rule``
---------
-
-Rewriting rules for definable symbols are declared using the ``rule``
-command.
-
-::
-
-   rule add zero      $n ↪ $n;
-   rule add (succ $n) $m ↪ succ (add $n $m);
-   rule mul zero      _  ↪ zero;
-
-Identifiers prefixed by ``$`` are pattern variables.
-
-User-defined rules are assumed to form a confluent (the order of rule
-applications is not important) and terminating (there is no infinite
-rewrite sequences) rewriting system when combined with β-reduction.
-
-The verification is left to the user, who can call external provers
-for trying to check those properties automatically using the
-:doc:`command line options <options>` ``--confluence`` and
-``--termination``.
-
-Lambdapi will however try to check at each ``rule`` command that the
-added rules preserve local confluence, by checking the joinability of
-critical pairs between the added rules and the rules already added in
-the signature (critical pairs involving AC symbols or non-nullary
-pattern variables are currently not checked). A warning is output if
-Lambdapi finds a non-joinable critical pair. To avoid such a warning,
-it may be useful to declare several rules in the same ``rule`` command
-by using the keyword ``with``:
-
-::
-
-   rule add zero      $n ↪ $n
-   with add (succ $n) $m ↪ succ (add $n $m);
-
-Rules must also preserve typing (subject-reduction property), that is,
-if an instance of a left-hand side has some type, then the
-corresponding instance of the right-hand side should have the same
-type. Lambdapi implements an algorithm trying to check this property
-automatically, and will not accept a rule if it does not pass this
-test.
-
-**Higher-order pattern-matching**. Lambdapi allows higher-order
-pattern-matching on patterns à la Miller but modulo β-equivalence only
-(and not βη).
-
-::
-
-   rule diff (λx, sin $F.[x]) ↪ λx, diff (λx, $F.[x]) x × cos $F.[x];
-
-Patterns can contain abstractions ``λx, _`` and the user may attach an
-environment made of *distinct* bound variables to a pattern variable
-to indicate which bound variable can occur in the matched term. The
-environment is a semicolon-separated list of variables enclosed in
-square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
-term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
-if ``y`` does not freely occur in ``t``.
-
-::
-
-   rule lam (λx, app $F.[] x) ↪ $F; // η-reduction
-
-Hence, the rule ``lam (λx, app $F.[] x) ↪ $F`` implements η-reduction
-since no valid instance of ``$F`` can contain ``x``.
-
-Pattern variables cannot appear at the head of an application:
-``$F.[] x`` is not allowed. The converse ``x $F.[]`` is allowed.
-
-A pattern variable ``$P.[]`` can be shortened to ``$P`` when there is no
-ambiguity, i.e. when the variable is not under a binder (unlike in the
-rule η above).
-
-It is possible to define an unnamed pattern variable with the syntax
-``$_.[x;y]``.
-
-The unnamed pattern variable ``_`` is always the most general: if ``x``
-and ``y`` are the only variables in scope, then ``_`` is equivalent to
-``$_.[x;y]``.
-
-In rule left-hand sides, λ-expressions cannot have type annotations.
-
-**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
-left-hand sides can contain defined symbols:
-
-::
-
-   rule add (add x y) z ↪ add x (add y z);
-
-They can overlap:
-
-::
-
-   rule add zero x ↪ x
-   with add x zero ↪ x;
-
-And they can be non-linear:
-
-::
-
-   rule minus x x ↪ zero;
-
-Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
-
 .. _unif_rule:
 
 ``unif_rule``
@@ -439,135 +553,3 @@ transformed into ``?x ≡ bool``.
 
 *WARNING* This feature is experimental and there is no sanity check
 performed on the rules.
-
-.. _coerce_rule:
-
-``coerce_rule``
----------------
-
-Lambdapi can be instructed to insert function applications into terms whenever
-needed for typability. These functions are called *coercions*. For instance,
-assuming we have a type ``Float``, a type ``Int`` and a function
-``FloatOfInt : Int → Float``, the latter function can be declared
-as a coercion from integers to floats with the declaration
-
-::
-
-    coerce_rule coerce Int Float $x ↪ FloatOfInt $x;
-
-Symbol ``coerce`` is a built-in function symbol that computes the coercion.
-Whenever a term ``t`` of type ``Int`` is found when Lambadpi expected a
-``Float``, ``t`` will be replaced by ``coerce Int Float t`` and reduced.
-The declared coercion will allow the latter term to be reduced to
-``FloatOfInt t``.
-
-Coercions can call the function ``coerce`` recursively,
-which allows to write, e.g.
-
-::
-
-    coerce_rule coerce (List $a) (List $b) $l ↪ map (λ e: El $a, coerce $a $b e) $l;
-
-where ``Set: TYPE;``, ``List : Set → TYPE``, ``El : Set → TYPE`` and ``map`` is
-the usual map operator on lists such that ``map f (cons x l) ≡ cons (f x) (map l)``.
-
-*WARNING* Coercions are still experimental and may not mix well with
-metavariables. Indeed, the term ``coerce ?1 Float t`` will not reduce to
-``FloatOfInt t`` even if the equation ``?1 ≡ Int`` has been registered during
-typing. Furthermore, for the moment, it is unsafe to have symbols that can be
-reduced to protected symbols in the right-hand side of coercions:
-reduction may occur during coercion elaboration,
-which may generate unsound protected symbols.
-
-.. _inductive:
-
-``inductive``
--------------
-
-The commands ``symbol`` and ``rules`` above are enough to define
-inductive types, their constructors, their induction
-principles/recursors and their defining rules.
-
-We however provide a command ``inductive`` for automatically
-generating the induction principles and their rules from an inductive
-type definition, assuming that the following builtins are defined:
-
-::
-
-   ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
-   ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
-
-An inductive type can have 0 or more constructors.
-
-The name of the induction principle is ``ind_`` followed by the name
-of the type.
-
-The command currently supports parametrized mutually defined dependent
-strictly-positive data types only. As usual, polymorphic types can be
-encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
-
-Example:
-
-::
-
-   ￼inductive ℕ : TYPE ≔
-   ￼| zero: ℕ
-   ￼| succ: ℕ → ℕ;
-
-is equivalent to:
-
-::
-
-   ￼constant symbol ℕ : TYPE;
-   ￼constant symbol zero : ℕ;
-   ￼constant symbol succ : ℕ → ℕ;
-   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
-   ￼rule ind_ℕ _ $pz _ zero ↪ $pz
-   ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
-
-For mutually defined inductive types, one needs to use the ``with``
-keyword to link all inductive types together.
-
-Inductive definitions can also be parametrized as follows:
-
-::
-
-   (a:Set) inductive T: TYPE ≔
-   | node: τ a → F a → T a
-   with F: TYPE ≔
-   | nilF: F a
-   | consF: T a → F a → F a;
-
-Note that parameters are set as implicit in the types of
-constructors. So, one has to write ``consF t l`` or ``@consF a t l``.
-
-For mutually defined inductive types, an induction principle is
-generated for each inductive type:
-
-::
-
-   assert ⊢ ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
-     (Π x l, π(q l) → π(p (node x l))) →
-     π(q nilF) →
-     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
-     Π l, π(q l);
-   assert ⊢ ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
-     (Π x, Π l, π(q l) → π(p (node x l))) →
-     π(q nilF) →
-     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
-     Π t, π(p t);
-
-Finaly, here is an example of strictly-positive inductive type:
-
-::
-
-   inductive 𝕆:TYPE ≔ z:𝕆 | s:𝕆 → 𝕆 | l:(ℕ → 𝕆) → 𝕆;
-
-   assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
-     → (Π x, (Π y, π (p (x y))) → π (p (l x))) → Π x, π (p x);
-
-   assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
-   assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
-   assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
-
-.. _pratter: https://forge.tedomum.net/koizel/pratter.git

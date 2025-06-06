@@ -20,7 +20,8 @@ bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "3.7"}
-  "ocaml" {>= "4.09.0"}
+  (("ocaml" {>= "4.13.0"} & "dream" {>= "1.0.0~alpha3"})
+  |("ocaml" {>= "4.09.0" & < "4.13.0"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
   "menhir" {>= "20200624"}
   "sedlex" {>= "3.2"}
   "alcotest" {with-test}

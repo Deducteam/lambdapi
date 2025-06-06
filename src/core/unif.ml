@@ -309,7 +309,8 @@ exception Unsolvable
 
 (** [error t1 t2]
 @raise Unsolvable. *)
-let error : term -> term -> 'a = fun t1 t2 ->
+let error : ctxt -> term -> term -> 'a = fun c t1 t2 ->
+  let ids = Ctxt.names c in let term = term_in ids in
   fatal_msg "@[<hov>%a and %a are not unifiable.@]@."
     (D.bracket term) t1 (D.bracket term) t2;
   raise Unsolvable
@@ -324,7 +325,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
   | _ ->
       if not (try_unif_rules p c t1 t2) then
         match unfold t2 with
-        | Prod _ when is_constant s -> error t1 t2
+        | Prod _ when is_constant s -> error c t1 t2
         | _ ->
             if Logger.log_enabled () then log "move to unsolved";
             p := {!p with unsolved = (c, t1, t2)::!p.unsolved}
@@ -338,10 +339,10 @@ let sym_sym_whnf :
   if s1 == s2 then
     if is_injective s1 then
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
     else add_to_unsolved p c t1 t2
   else
-    if is_constant s1 && is_constant s2 then error t1 t2
+    if is_constant s1 && is_constant s2 then error c t1 t2
     else match inverse_opt s1 ts1 t2 with
       | Some (t, u) -> add_constr p (c,t,u)
       | None -> inverse p c t2 s2 ts2 t1
@@ -388,23 +389,23 @@ let solve : problem -> unit = fun p ->
 
   | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
   | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
   | Prod _, (Type|Kind|Vari _)
   | Vari _, (Type|Kind|Vari _|Prod _)
-    -> error t1 t2
+    -> error c t1 t2
 
   | ((Vari _|Abst _|Prod _), Symb s
     | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
-    error t1 t2
+    error c t1 t2
 
   | Symb s1, Symb s2
        when s1 == s2 && is_injective s1 && List.same_length ts1 ts2 ->
       decompose p c ts1 ts2
   | Symb s1, Symb s2
-       when s1 != s2 && is_constant s1 && is_constant s2 -> error t1 t2
+       when s1 != s2 && is_constant s1 && is_constant s2 -> error c t1 t2
 
   (*TODO try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
@@ -445,18 +446,18 @@ let solve : problem -> unit = fun p ->
 
   | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
   | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
   | Prod _, (Type|Kind|Vari _|Abst _)
   | Vari _, (Type|Kind|Vari _|Prod _)
   | Abst _, (Type|Kind|Prod _)
-    -> error t1 t2
+    -> error c t1 t2
 
   | ((Vari _|Abst _|Prod _), Symb s
   | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
-    error t1 t2
+    error c t1 t2
 
   | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2
 

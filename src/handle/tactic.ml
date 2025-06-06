@@ -124,7 +124,8 @@ let tac_refine : ?check:bool ->
     if check then
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
-        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+          let ids = Ctxt.names c in let term = term_in ids in
+          fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
       | Some t -> t
     else t
   in
@@ -152,7 +153,9 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
           else ind
         with Not_found -> fatal pos "%a is not an inductive type." sym s
       end
-  | _ -> fatal pos "%a is not headed by an inductive type." term a
+  | _ ->
+      let ids = Env.names env in let term = term_in ids in
+      fatal pos "%a is not headed by an inductive type." term a
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
@@ -174,7 +177,9 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
-  | _ -> fatal pos "[%a] is not a product." term goal_type
+  | _ ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "[%a] is not a product." term goal_type
 
 (** [count_products a] returns the number of consecutive products at
    the top of the term [a]. *)
@@ -200,18 +205,7 @@ let get_prod_ids env =
         else List.rev acc
   in aux []
 
-(** [gen_valid_idopts env ids] generates a list of pairwise distinct
-    identifiers distinct from those of [env] to replace [ids]. *)
-let gen_valid_idopts env ids =
-  let add_decl ids (s,_) = Extra.StrSet.add s ids in
-  let idset = ref (List.fold_left add_decl Extra.StrSet.empty env) in
-  let f id idopts =
-    let id = Extra.get_safe_prefix id !idset in
-    idset := Extra.StrSet.add id !idset;
-    Some(Pos.none id)::idopts
-  in
-  List.fold_right f ids []
-
+(** Builtin tactic names. *)
 type tactic =
   | T_admit
   | T_and
@@ -227,7 +221,6 @@ type tactic =
   | T_remove
   | T_repeat
   | T_rewrite
-  | T_rewrite_left
   | T_set
   | T_simplify
   | T_simplify_beta
@@ -256,7 +249,6 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "remove" T_remove;
   add "repeat" T_repeat;
   add "rewrite" T_rewrite;
-  add "rewrite left" T_rewrite_left;
   add "set" T_set;
   add "simplify" T_simplify;
   add "simplify rule off" T_simplify_beta;
@@ -317,6 +309,42 @@ let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
     | Symb s, ts -> p_query c pos s ts
     | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
+let p_term_of_string (pos:popt) (t:term): p_term =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      begin
+        let string = remove_quotes s.sym_name in
+        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
+        let stream = Parsing.Parser.Lp.parse_term_string fname string in
+        try Stream.next stream with Stream.Failure -> assert false
+      end
+  | _ -> fatal pos "refine tactic not applied to a term string literal"
+
+let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      let string = remove_quotes s.sym_name in
+      if string = "" then None
+      else
+        begin
+          let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
+          let stream = Parsing.Parser.Lp.parse_rwpatt_string fname string in
+          try Some (Stream.next stream) with Stream.Failure -> assert false
+        end
+  | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
+
+let is_right (pos:popt) (t:term): bool =
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      begin
+        match remove_quotes s.sym_name with
+        | "left" -> false
+        | "" | "right" -> true
+        | _ ->
+            fatal pos "rewrite tactic not applied to side string literal"
+      end
+  | _ -> fatal pos "rewrite tactic not applied to a side string literal"
+
 (** [p_tactic t] interprets the term [t] as a tactic. *)
 let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
   let c = get_config ss pos in
@@ -343,17 +371,17 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac t1,tac t2)
             | T_orelse, _ -> assert false
-            | T_refine, [_;t] -> P_tac_refine(p_term pos t)
+            | T_refine, [t] -> P_tac_refine(p_term_of_string pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
             | T_remove, [_;t] -> P_tac_remove [p_ident_of_var pos t]
             | T_remove, _ -> assert false
             | T_repeat, [t] -> P_tac_repeat(tac t)
             | T_repeat, _ -> assert false
-            | T_rewrite, [_;t] -> P_tac_rewrite(true,None,p_term pos t)
+            | T_rewrite, [side;pat;_;t] ->
+                P_tac_rewrite(is_right pos side,
+                              p_rw_patt_of_string pos pat, p_term pos t)
             | T_rewrite, _ -> assert false
-            | T_rewrite_left, [_;t] -> P_tac_rewrite(false,None,p_term pos t)
-            | T_rewrite_left, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1,p_term pos t2)
             | T_set, _ -> assert false
@@ -423,7 +451,9 @@ let rec handle :
         let c = Env.to_ctxt env in
         let p = new_problem () in
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "[%a] is not typable." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "[%a] is not typable." term t
         | Some (_, a) -> count_products c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -466,7 +496,9 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.check_noexn p c t mk_Type with
-        | None -> fatal pos "%a is not of type Type." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in
@@ -488,20 +520,25 @@ let rec handle :
       let c = Env.to_ctxt env in
       begin
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "%a is not typable." term t
+        | None ->
+            let ids = Ctxt.names c in let term = term_in ids in
+            fatal pos "%a is not typable." term t
         | Some (t,b) ->
-          let x = new_var id.elt in
-          let e' = Env.add id.elt x b (Some t) env in
-          let n = List.length e' in
-          let v = LibTerm.fold x t gt.goal_type in
-          let m = LibMeta.fresh p (Env.to_prod e' v) n in
-          let ts = Env.to_terms env in
-          let u = mk_Meta (m, Array.append ts [|t|]) in
-          (*tac_refine pos ps gt gs p u*)
-          LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
-          (*let g = Goal.of_meta m in*)
-          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
-          {ps with proof_goals = g :: gs}
+            if Unif.solve_noexn p then begin
+              let x = new_var id.elt in
+              let e' = Env.add id.elt x b (Some t) env in
+              let n = List.length e' in
+              let v = LibTerm.fold x t gt.goal_type in
+              let m = LibMeta.fresh (new_problem()) (Env.to_prod e' v) n in
+              let ts = Env.to_terms env in
+              let u = mk_Meta (m, Array.append ts [|t|]) in
+              (*tac_refine pos ps gt gs p u*)
+              LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
+              (*let g = Goal.of_meta m in*)
+              let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
+              {ps with proof_goals = g :: Proof.add_goals_of_problem p gs}
+            end else fatal pos "The unification constraints for %a \
+                            to be typable are not satisfiable." term t
       end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
@@ -509,7 +546,7 @@ let rec handle :
       begin
         let cfg = Rewrite.get_eq_config ss pos in
         let _,vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-        let idopts = gen_valid_idopts env (List.map base_name vs) in
+        let idopts = Env.gen_valid_idopts env (List.map base_name vs) in
         let ps = assume idopts in
         match ps.proof_goals with
         | [] -> assert false
@@ -576,7 +613,7 @@ let rec handle :
   | P_tac_why3 cfg ->
       begin
         let ids = get_prod_ids env false gt.goal_type in
-        let idopts = gen_valid_idopts env ids in
+        let idopts = Env.gen_valid_idopts env ids in
         let ps = assume idopts in
         match ps.proof_goals with
         | Typ gt::_ ->
@@ -626,8 +663,9 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
-    if Logger.log_enabled () then
-      log ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
+    if Logger.log_enabled() then
+      log ("%a@\n" ^^ Color.red "%a")
+        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
