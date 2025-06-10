@@ -36,7 +36,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
 The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores.
 
-An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/blob/tac/tests/OK/tactic.lp>`__:
+An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/Tactic.lp>`__:
 
 ::
 
