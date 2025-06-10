@@ -61,20 +61,20 @@ jobs:
         run:
           make build-vscode-extension
 
-      - name: publish-vscode-extension
-        if: keepExtension
-        run:
-          make publish-vscode-extension
-        env:
-          PAT: ${{ secrets.VSCODE_PAT }}
+      # - name: publish-vscode-extension
+      #   if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
+
           
       - name: upload vscode extension
-        if: keepExtension
+        if: ${{ matrix.types_vscode-version == '' && matrix.vscode_vsce-version == '' &&  matrix.node-version == 'latest' }}
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
           path: editors/vscode/extensionFolder
-
+        run:
+          make publish-vscode-extension
+        env:
+          PAT: ${{ secrets.VSCODE_PAT }}
   # lint-fmt:
   #   runs-on: ubuntu-latest
   #   steps:
