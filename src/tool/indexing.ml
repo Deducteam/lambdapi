@@ -271,31 +271,33 @@ module DB = struct
    sep
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
-  ~lis:(lisb,lise) ~pres:(preb,pree) fmt l
+  ~lis:(lisb,lise) ~pres:(preb,pree)
+  ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
  =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.<b>%s</b>@%s%s%a%s%s<code>%a</code>%s%s@."
-       lisb (escaper.run Core.Print.path) p n
+     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%s%s@."
+       lisb (escaper.run Core.Print.path) p boldb n bolde
        (popt_to_string ~print_dirname:false pos)
        separator (generic_pp_of_position_list ~escaper ~sep) positions
-       separator preb
+       separator preb codeb
        (Common.Pos.print_file_contents ~escape ~delimiters)
-       pos pree lise)
+       pos codee pree lise)
     "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
-   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
+   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
+   ~code:("<code>","</code>")
 
  let pp_item_list =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
-   ~lis:("* ","") ~pres:("","")
+   ~lis:("* ","") ~pres:("","") ~bold:("","") ~code:("","")
 
  let pp_results_list fmt l = pp_item_list fmt l
 
@@ -653,7 +655,8 @@ module UserLevelQueries = struct
     let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
     Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results
+  ~title_tag:(hb,he) s =
   let s = transform_ascii_to_unicode s in
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
@@ -663,8 +666,8 @@ module UserLevelQueries = struct
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "<h1>Number of results: %d</h1>%a@."
-    resultsno pp_results items
+   Format.asprintf "%sNumber of results: %d%s%a@."
+    hb resultsno he pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
@@ -686,13 +689,13 @@ module UserLevelQueries = struct
   the_dbpath := dbpath;
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from) s
+   ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>") s
 
  let search_cmd_txt ss s ~dbpath =
   the_dbpath := dbpath;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list s
+   ~pp_results:pp_results_list ~title_tag:("","") s
 
 end
 
