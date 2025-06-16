@@ -189,3 +189,96 @@ let end_proof : proof_state -> command_result =
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
+
+(* Equality on *)
+let test_file = "./tests/foo.lp"
+
+(* Equality is reflexive *)
+let%test _ =
+  let _st = initial_state test_file in
+  let (c,_) = parse_text (* st *) ~fname:test_file "constant symbol B : TYPE;" in
+  List.equal Command.equal c c
+
+(* Equality not *)
+let%test _ =
+  let _st = initial_state test_file in
+  let (c,_) = parse_text (* st *) ~fname:test_file "constant symbol B : TYPE;" in
+  let (d,_) = parse_text (* st *) ~fname:test_file "constant symbol C : TYPE;" in
+  not (List.equal Command.equal c d)
+
+(* Equality is not sensitive to whitespace *)
+let%test _ =
+  let _st = initial_state test_file in
+  let (c,_) = parse_text (* st *) ~fname:test_file "constant   symbol  B : TYPE;" in
+  let (d,_) = parse_text (* st *) ~fname:test_file "  constant symbol B :   TYPE; " in
+  List.equal Command.equal c d
+
+(* More complex tests stressing most commands *)
+
+(* Equality is reflexive *)
+let%test _ =
+  let _st = initial_state test_file in
+  let (c,_) = parse_text (* st *) ~fname:test_file
+      (* copied from tests/OK/foo.lp. keep in sync. *)
+"constant symbol B : TYPE;
+
+constant symbol true  : B;
+constant symbol false : B;
+
+symbol neg : B → B;
+
+rule neg true  ↪ false;
+rule neg false ↪ true;
+
+constant symbol Prop : TYPE;
+
+injective symbol P : Prop → TYPE;
+
+constant symbol eq : B → B → Prop;
+constant symbol refl b : P (eq b b);
+
+constant symbol case (p : B → Prop) : P (p true) → P (p false) → Π b, P b;
+
+opaque symbol notK : Π b, P (eq (neg (neg b)) b)
+≔ begin
+  assume b;
+  apply case (λ b, eq (neg (neg b)) b)
+  {apply refl}
+  {apply refl}
+end;
+" in
+  List.equal Command.equal c c
+
+(* TODO *)
+
+(* test: Check that parsing from the file is the same that parsing from string *)
+
+(* test: Check that parsing commutes *)
+
+let pp_pos fmt (c : Command.t) =
+  Format.fprintf fmt "%a" Pos.pp (Command.get_pos c)
+
+(* auxiliary function *)
+let parse_split input =
+  let input_split = String.split_on_char ';' input in
+  let input_split = List.map (fun s -> s ^ ";") input_split in
+  let input_split = List.(take (length input_split - 1)) input_split in
+  Format.eprintf "input_split: @[%a@]@\n" Format.(pp_print_list pp_print_string) input_split;
+  let cmds_1, _ = parse_text ~fname:test_file input in
+  let cmds_2, _ = List.map (parse_text ~fname:test_file) input_split |> List.unzip in
+  let cmds_2 = List.flatten cmds_2 in
+  Format.eprintf "pos for 1: @[%a@]@\n" Format.(pp_print_list pp_pos) cmds_1;
+  Format.eprintf "pos for 2: @[%a@]@\n" Format.(pp_print_list pp_pos) cmds_2;
+  List.equal Command.equal cmds_1 cmds_2
+
+let%test _ =
+  let input = "
+constant symbol B : TYPE;
+constant symbol C : TYPE;
+" in
+  parse_split input
+
+(* Test for notation: check that parsing with notation is correct and that fails when not present *)
+
+(* Test for positions: check that the positions are correct, including when we
+   resume parsing from the middle of the file *)
