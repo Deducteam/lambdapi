@@ -2,7 +2,7 @@
 
 open Lplib open Base
 open Term
-open Common open Extra
+open Common open Extra open Name
 open Print
 
 (** Type of an environment, used in scoping to associate names to
