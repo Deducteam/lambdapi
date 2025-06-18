@@ -3,17 +3,18 @@ on:
     types: [opened, synchronize, reopened]
   push:
     paths-ignore:
-      - '**/*.md'
-      - 'doc/*'
-      - 'editors/emacs/*'
-      - 'editors/vim/*'
+      - '**.md'
+      - 'doc/**'
+      - 'editors/emacs/**'
+      - 'editors/vim/**'
       - '.github/workflows/main.yml'
-      - 'libraries/*'
-      - 'misc/*'
-      - 'src/*'
-      - 'tests/*'
+      - 'libraries/**'
+      - 'misc/**'
+      - 'src/**'
+      - 'tests/**'
       - '.dir-locals.el'
-      - 'dune*'
+      - '**/dune'
+      - 'dune-project'
       - '*.opam'
       - 'LICENCE.txt'
   workflow_dispatch:
@@ -22,9 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [latest, v23.11.0]
-        types_vscode-version: [\@1.99.0, \@1.99.1, '' ]
-        vscode_vsce-version: [\@3.3.3-2,  \@3.3.3-3, '' ]
+        node-version:         [v24.2.0]   # v23.11.1, v22.16.0
+        types_vscode-version: [\@1.101.0] # \@1.99.1
+        vscode_vsce-version:  [\@3.5.0]   # \@3.3.3-3
     runs-on: ubuntu-latest
     steps:
       - name: set_triggerPublishAndUpload
