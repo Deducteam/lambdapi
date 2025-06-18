@@ -57,10 +57,10 @@ module D = struct
     out ppf "["; iter f m; out ppf "]"
 
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
-    map StrMap.iter string ", " elt "; "
+    map StrMap.iter string "," elt ";"
 
   let intmap : 'a pp -> 'a IntMap.t pp = fun elt ->
-    map IntMap.iter int ", " elt "; "
+    map IntMap.iter int "," elt ";"
 
   let iter ?sep:(sep = Format.pp_print_cut) iter elt ppf v =
     let is_first = ref true in

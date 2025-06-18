@@ -2,5 +2,5 @@
  (name common)
  (public_name lambdapi.common)
  (modules :standard)
- (libraries camlp-streams timed lambdapi.lplib)
+ (libraries camlp-streams str timed lambdapi.lplib)
  (flags -w +3))

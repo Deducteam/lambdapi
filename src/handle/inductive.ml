@@ -11,7 +11,7 @@
 
 open Lplib
 open Timed
-open Common open Pos open Error
+open Common open Pos open Error open Name
 open Core open Term open Print
 open Parsing open Syntax
 
