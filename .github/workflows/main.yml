@@ -3,9 +3,9 @@ on:
     types: [opened, synchronize, reopened]
   push:
     paths-ignore:
-      - '**/*.md'
-      - 'doc/*'
-      - 'editors/*'
+      - '**.md'
+      - 'doc/**'
+      - 'editors/**'
       - '.github/workflows/vscode.yml'
   workflow_dispatch:
 jobs:

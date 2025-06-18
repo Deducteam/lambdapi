@@ -3,17 +3,18 @@ on:
     types: [opened, synchronize, reopened]
   push:
     paths-ignore:
-      - '**/*.md'
-      - 'doc/*'
-      - 'editors/emacs/*'
-      - 'editors/vim/*'
+      - '**.md'
+      - 'doc/**'
+      - 'editors/emacs/**'
+      - 'editors/vim/**'
       - '.github/workflows/main.yml'
-      - 'libraries/*'
-      - 'misc/*'
-      - 'src/*'
-      - 'tests/*'
+      - 'libraries/**'
+      - 'misc/**'
+      - 'src/**'
+      - 'tests/**'
       - '.dir-locals.el'
-      - 'dune*'
+      - '**/dune'
+      - 'dune-project'
       - '*.opam'
       - 'LICENCE.txt'
   workflow_dispatch:
