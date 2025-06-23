@@ -610,7 +610,7 @@ let check_cps :
   (* Verification of CP*(R,S). *)
   check_cps_sign_with pos sign sym_map;
   let f path str_map =
-    if path != Ghost.sign.sign_path && str_map <> StrMap.empty then
+    if path != Sign.Ghost.path && str_map <> StrMap.empty then
       let sign =
         try Path.Map.find path !Sign.loaded with Not_found -> assert false
       in

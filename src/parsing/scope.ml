@@ -283,12 +283,11 @@ and scope_head : ?find_sym:find_sym ->
       begin
         let s = "\""^s^"\"" in
         let sym =
-          match StrMap.find_opt s Timed.(!(Ghost.sign.sign_symbols)) with
-          | Some sym -> sym
-          | None ->
-              let str = mk_Symb (Builtin.get ss pos "String") in
-              Sign.add_symbol Ghost.sign Public Const Eager true
-                {elt=s;pos} pos str []
+          try Sign.Ghost.find s
+          with Not_found ->
+            let s_typ = mk_Symb (Builtin.get ss pos "String") in
+            Sign.add_symbol Sign.Ghost.sign Public Const Eager true
+              {elt=s;pos} pos s_typ []
         in
         mk_Symb sym
       end

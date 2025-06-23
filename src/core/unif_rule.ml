@@ -5,7 +5,7 @@
     qualified to be a "ghost" signature. *)
 
 open Common
-open Term
+open Term open Sign
 
 (** Symbol "≡". *)
 let equiv : sym =

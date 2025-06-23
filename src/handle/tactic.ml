@@ -284,8 +284,8 @@ let _ = assert (remove_quotes "\"\"" = "" && remove_quotes "\"ab\"" = "ab")
 
 let p_ident_of_sym (pos:popt) (t:term) :p_ident =
   match unfold t with
-  | Symb s when s.sym_name <> "" && s.sym_name.[0] = '"'
-                && s.sym_path = Ghost.path ->
+  | Symb s when s.sym_path = Sign.Ghost.path
+                && String.is_string_literal s.sym_name ->
       Pos.make pos (remove_quotes s.sym_name)
   | _ -> fatal pos "Not a string: %a." term t
 
