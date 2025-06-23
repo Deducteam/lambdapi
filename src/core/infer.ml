@@ -237,9 +237,10 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
         let ty = subst range u and cu = cu_t || m in
         if cu then (mk_Appl (t, u), ty, cu) else (top, ty, cu)
       in
-      match unfold t_ty with
+      match Eval.whnf c t_ty with
       | Prod (dom, range) ->
-          if Logger.log_enabled () then log "Appl-prod arg [%a]" term u;
+          if Logger.log_enabled () then
+            log "Appl-prod arg [%a]" term u;
           let u, cu_u = force pb c u dom in
           return cu_u t u range
       | Meta (_, _) ->
@@ -247,24 +248,14 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
           let range = LibMeta.make_codomain pb c u_ty in
           unif pb c t_ty (mk_Prod (u_ty, range));
           return cu_u t u range
-      | _ ->
-          match Eval.whnf c t_ty with
-          | Prod (dom, range) ->
-              if Logger.log_enabled() then log "Appl-prod arg [%a]" term u;
-              let u, cu_u = force pb c u dom in
-              return cu_u t u range
-          | Meta (_, _) ->
-              let u, u_ty, cu_u = infer pb c u in
-              let range = LibMeta.make_codomain pb c u_ty in
-              unif pb c t_ty (mk_Prod (u_ty, range));
-              return cu_u t u range
-          | t_ty ->
-              let domain = LibMeta.make pb c mk_Type in
-              let range = LibMeta.make_codomain pb c domain in
-              let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
-              if Logger.log_enabled() then log "Appl-default arg [%a]" term u;
-              let u, cu_u = force pb c u domain in
-              return (cu_t' || cu_u) t u range )
+      | t_ty ->
+          let domain = LibMeta.make pb c mk_Type in
+          let range = LibMeta.make_codomain pb c domain in
+          let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
+          if Logger.log_enabled () then
+            log "Appl-default arg [%a]" term u;
+          let u, cu_u = force pb c u domain in
+          return (cu_t' || cu_u) t u range )
 
 and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" term t;
