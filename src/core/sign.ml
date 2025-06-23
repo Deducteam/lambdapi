@@ -84,7 +84,7 @@ module Ghost = struct
     loaded := Path.Map.add path sign !loaded;
     sign
 
-  let find s = StrMap.find s Timed.(!(sign.sign_symbols))
+  let find s = StrMap.find s !(sign.sign_symbols)
 
   (** [iter f] iters function [f] on ghost symbols. *)
   let iter : (sym -> unit) -> unit = fun f ->
@@ -395,7 +395,7 @@ let iterate : (t -> unit) -> t -> unit = fun f sign ->
       if not (Path.Set.mem path Stdlib.(!visited)) then
         handle (Path.Map.find path !loaded)
     in
-    Path.Map.iter dep Timed.(!(sign.sign_deps))
+    Path.Map.iter dep !(sign.sign_deps)
   in handle sign
 
 (** [dependencies sign] returns an association list containing (the transitive
