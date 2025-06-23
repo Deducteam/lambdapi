@@ -200,7 +200,7 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = Ghost.sign.sign_path && s = id.Term.sym_name in
+  let is (p,s) id = p = Sign.Ghost.path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
       if is elt Unif_rule.cons then

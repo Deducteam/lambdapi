@@ -220,9 +220,9 @@ query:
 qid_or_rule:
   | i=qid { i }
   | UNIF_RULE
-    { make_pos $sloc (Ghost.sign.sign_path, Unif_rule.equiv.sym_name) }
+    { make_pos $sloc (Sign.Ghost.path, Unif_rule.equiv.sym_name) }
   | COERCE_RULE
-    { make_pos $sloc (Ghost.sign.sign_path, Coercion.coerce.sym_name) }
+    { make_pos $sloc (Sign.Ghost.path, Coercion.coerce.sym_name) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
@@ -391,8 +391,8 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Ghost.sign.sign_path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Ghost.sign.sign_path Unif_rule.cons.sym_name in
+      let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Sign.Ghost.path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in
