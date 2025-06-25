@@ -82,6 +82,10 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
   @@ Dream.memory_sessions
   @@ Dream.router [
 
+    Dream.get  ("/" ^ path_in_url ^ "favicon.ico")
+      (fun request -> 
+        Dream.from_filesystem "assets" "pi.ico" request);
+
     Dream.get  ("/" ^ path_in_url)
       (fun request ->
         let csrf_tag = Dream.csrf_tag request in
