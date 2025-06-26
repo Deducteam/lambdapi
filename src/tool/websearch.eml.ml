@@ -81,8 +81,16 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
   @@ Dream.logger
   @@ Dream.memory_sessions
   @@ Dream.router [
+    Dream.head ("/" ^ path_in_url)
+      (fun _ ->
+        Dream.html "HTTP/1.1 301 Moved Permanently
+        Date: Wed, 25 Jun 2025 13:26:55 GMT
+        Server: Apache
+        Location: https://www.inria.fr/
+        Connection: close
+        Content-Type: text/html; charset=iso-8859-1");
 
-    Dream.get  ("/" ^ path_in_url ^ "favicon.ico")
+    Dream.get  ("/" ^ path_in_url ^ "/favicon.ico")
       (fun request -> 
         Dream.from_filesystem "assets" "pi.ico" request);
 
