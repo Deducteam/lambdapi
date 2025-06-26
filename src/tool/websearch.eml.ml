@@ -77,6 +77,11 @@ let show_form ~from ?(message="") ?output csrf_tag ~hide_description=
 let start ~header ss ~port ~dbpath ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
+  let favicon_path = 
+    if path_in_url == "" then
+      "/favicon.ico"
+    else
+      "/" ^ path_in_url ^ "/favicon.ico" in
   Dream.run ~port ~interface
   @@ Dream.logger
   @@ Dream.memory_sessions
@@ -90,7 +95,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
         Connection: close
         Content-Type: text/html; charset=iso-8859-1");
 
-    Dream.get  ("/" ^ path_in_url ^ "/favicon.ico")
+    Dream.get  (favicon_path)
       (fun request -> 
         Dream.from_filesystem "assets" "pi.ico" request);
 
