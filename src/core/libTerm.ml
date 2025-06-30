@@ -151,6 +151,8 @@ let rec codom_binder : int -> term -> binder = fun n t ->
   match unfold t with
   | Prod(_,b) ->
       if n <= 0 then b else codom_binder (n-1) (subst b mk_Kind)
+  | LLet(_,t,b) ->
+      if n <= 0 then b else codom_binder (n-1) (subst b t)
   | _ -> assert false
 
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
