@@ -192,3 +192,21 @@ let fold (x:var) (t:term): term -> term =
       | _ -> u
   in
   aux
+
+(** Free variables of a term. *)
+let rec free_vars (t:term): VarSet.t =
+  match unfold t with
+  | Vari x -> VarSet.add x VarSet.empty
+  | Appl(u,v) -> VarSet.union (free_vars u) (free_vars v)
+  | Abst(a,b)
+  | Prod(a,b) ->
+      VarSet.union (free_vars a)
+        (let x,b = unbind b in VarSet.remove x (free_vars b))
+  | LLet(a,t,b) ->
+      VarSet.union (free_vars a)
+        (VarSet.union (free_vars t)
+           (let x,b = unbind b in VarSet.remove x (free_vars b)))
+  | Meta(_,ts) ->
+      Array.fold_right
+        (fun t acc -> VarSet.union acc (free_vars t)) ts VarSet.empty
+  | _ -> VarSet.empty
