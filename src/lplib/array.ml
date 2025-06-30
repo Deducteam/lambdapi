@@ -80,3 +80,19 @@ let unzip : ('a * 'b) array -> 'a list * 'b list = fun a ->
     returned if [n > length a]. *)
 let drop : int -> 'a array -> 'a array = fun n a ->
   let l = length a in if n >= l then [||] else A.sub a n (l - n)
+
+(** Array.fold_left_map is a combination of Array.fold_left and Array.map that
+    threads an accumulator through calls to f, since OCaml 4.13. *)
+let fold_left_map f acc input_array =
+  let len = length input_array in
+  if len = 0 then (acc, [||]) else begin
+    let acc, elt = f acc (unsafe_get input_array 0) in
+    let output_array = A.make len elt in
+    let acc = ref acc in
+    for i = 1 to len - 1 do
+      let acc', elt = f !acc (unsafe_get input_array i) in
+      acc := acc';
+      unsafe_set output_array i elt;
+    done;
+    !acc, output_array
+  end
