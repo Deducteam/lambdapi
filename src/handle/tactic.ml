@@ -262,14 +262,14 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
 let p_term (pos:popt) :term -> p_term =
   let mk = Pos.make pos in
   let rec term t = Pos.make pos (term_aux t)
-  and params x a = [Some(Pos.make pos (base_name x))],Some(term a),false
+  and params x a = [Some(Pos.make pos (uniq_name x))],Some(term a),false
   and term_aux (t:term) :p_term_aux =
     match unfold t with
     | Type -> P_Type
     | Symb s ->
         let t = P_Iden(mk(s.sym_path,s.sym_name),true) in
         if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
-    | Vari v -> P_Iden(mk([],base_name v),false)
+    | Vari v -> P_Iden(mk([],uniq_name v),false)
     | Appl(u,v) -> P_Appl(term u,term v)
     | Prod(a,b) -> let x,b = unbind b in P_Prod([params x a],term b)
     | Abst(a,b) -> let x,b = unbind b in P_Abst([params x a],term b)
