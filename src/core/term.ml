@@ -171,7 +171,7 @@ and sym =
   ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation Timed.ref (** Notation. *)
+  ; sym_nota  : float notation Timed.ref (** Notation. *)
   ; sym_def   : term option Timed.ref (** Definition with ≔. *)
   ; sym_opaq  : bool Timed.ref (** Opacity. *)
   ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
@@ -289,7 +289,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   let open Timed in
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
+   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_nota = ref NoNotation;
    sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 

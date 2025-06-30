@@ -123,11 +123,12 @@ let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 (** [goals ppf gl] prints the goal list [gl] to channel [ppf]. *)
 let goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
-  | [] -> out ppf "No goals."
+  | [] -> out ppf "No goal."
   | g::gs ->
+      let idmap = get_names g in
+      out ppf "%a0. %a@." (Goal.hyps idmap) g (Goal.pp_aux idmap) g;
       let goal ppf i g = out ppf "%d. %a@," (i+1) Goal.pp_no_hyp g in
-      let goals ppf = List.iteri (goal ppf) in
-      out ppf "@[<v>%a@.%a@]" Goal.pp g goals gs
+      List.iteri (goal ppf) gs
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)

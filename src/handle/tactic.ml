@@ -266,7 +266,9 @@ let p_term (pos:popt) :term -> p_term =
   and term_aux (t:term) :p_term_aux =
     match unfold t with
     | Type -> P_Type
-    | Symb s -> P_Iden(mk(s.sym_path,s.sym_name),false)
+    | Symb s ->
+        let t = P_Iden(mk(s.sym_path,s.sym_name),true) in
+        if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
     | Vari v -> P_Iden(mk([],base_name v),false)
     | Appl(u,v) -> P_Appl(term u,term v)
     | Prod(a,b) -> let x,b = unbind b in P_Prod([params x a],term b)
@@ -365,8 +367,10 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_fail, _ -> P_tac_fail
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
-            | T_have, [t1;_;t2] ->
-                P_tac_have(p_ident_of_sym pos t1,p_term pos t2)
+            | T_have, [t1;t2] ->
+                let prf = p_term pos (mk_Symb(Builtin.get ss pos "P")) in
+                let t2 = Pos.make pos (P_Appl(prf, p_term pos t2)) in
+                P_tac_have(p_ident_of_sym pos t1, t2)
             | T_have, _ -> assert false
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac t1,tac t2)
@@ -403,6 +407,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
 let rec handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> proof_state =
   fun ss sym_pos prv ps ({elt;pos} as tac) ->
+  if Logger.log_enabled () then log "%a" Pretty.tactic tac;
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
