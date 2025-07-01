@@ -154,13 +154,12 @@ type to_subst = var array * term
 let matches : term -> term -> bool =
   let exception Not_equal in
   let add_eqs = List.fold_left2 (fun l pi ti -> (pi,ti)::l) in
-  let check_alpha = Stdlib.ref false in
   let rec eq l =
     match l with
     | [] -> ()
     | (p,t)::l ->
       if Term.cmp p t = 0 then eq l else begin
-      let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
+      let hp, ps, kp = get_args_len p and ht, ts, kt = get_args_len t in
       if Logger.log_enabled() then
         log "matches? %a %a ≡ %a %a"
           term hp (D.list term) ps term ht (D.list term) ts;
@@ -173,8 +172,8 @@ let matches : term -> term -> bool =
       | Kind -> assert false (* not possible because of typing *)
       | Bvar _ -> assert false (* used in reduction only *)
       | TRef r ->
-        if k > n then raise Not_equal;
-        let ts1, ts2 = List.cut ts (n-k) in
+        if kp > kt then raise Not_equal;
+        let ts1, ts2 = List.cut ts (kt-kp) in
         let u = add_args ht ts1 in
         if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
         Timed.(r := Some u);
@@ -185,17 +184,15 @@ let matches : term -> term -> bool =
       | LLet _
       | Symb _
       | Vari _ ->
-        if k <> n then raise Not_equal;
+        if kp <> kt then raise Not_equal;
         match hp, ht with
         | Vari x, Vari y when eq_vars x y -> eq (add_eqs l ps ts)
         | Symb f, Symb g when f == g -> eq (add_eqs l ps ts)
         | Abst(a,b), Abst(a',b')
         | Prod(a,b), Prod(a',b') ->
-            if binder_occur b' then check_alpha := true;
             let _,b,b' = unbind2 b b' in
             eq ((a,a')::(b,b')::add_eqs l ps ts)
         | LLet(a,c,b), LLet(a',c',b') ->
-            if binder_occur b' then check_alpha := true;
             let _,b,b' = unbind2 b b' in
             eq ((a,a')::(c,c')::(b,b')::add_eqs l ps ts)
         | _ ->
@@ -204,24 +201,17 @@ let matches : term -> term -> bool =
       end
   in
   fun p t ->
-  let r =
-    try
-      check_alpha := false;
-      eq [p,t];
-      if !check_alpha then
-        (if Logger.log_enabled() then log "check_alpha"; LibTerm.eq_alpha p t)
-      else true
-    with Not_equal -> false
-  in
+  let r = try eq [p,t]; true with Not_equal -> false in
   if Logger.log_enabled() then log "matches result: %b" r; r
 
-let no_match ?(subterm=false) pos g_env (vars,p) t =
+let no_match ?(subterm=false) pos _g_env (vars,p) t =
   (* Rename [vars] with names distinct from those of [g_env] and [t]. *)
-  let f idmap x =
+  (*let f idmap x =
     let name, idmap = Name.get_safe_prefix (base_name x) idmap in
     idmap, mk_Vari (new_var name)
   in
-  let ts = snd (Array.fold_left_map f (Env.names g_env) vars) in
+  let ts = snd (Array.fold_left_map f (Env.names g_env) vars) in*)
+  let ts = Array.map (fun v -> mk_Vari (new_var ("$"^base_name v))) vars in
   let p = msubst (bind_mvar vars p) ts in
   if subterm then fatal pos "No subterm of [%a] matches [%a]." term t term p
   else fatal pos "[%a] doesn't match [%a]." term t term p
