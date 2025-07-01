@@ -107,7 +107,7 @@ and sym =
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation ref (** Notation. *)
+  ; sym_nota  : float notation ref (** Notation. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
   ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)

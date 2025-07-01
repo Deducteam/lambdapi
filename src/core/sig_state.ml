@@ -67,7 +67,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   let n =
     match b with
     | "nat_zero"  -> Zero
-    | "nat_succ" -> Succ !(s.sym_not)
+    | "nat_succ" -> Succ !(s.sym_nota)
     | "pos_one"  -> PosOne
     | "pos_double"  -> PosDouble
     | "pos_succ_double"  -> PosSuccDouble
@@ -79,7 +79,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   begin
     match n with
     | NoNotation -> ()
-    | _ -> s.sym_not := n
+    | _ -> s.sym_nota := n
   end;
   (* Update the builtins of the current signature. *)
   Sign.add_builtin ss.signature b s;

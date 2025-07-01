@@ -34,7 +34,7 @@ end = struct
            with Not_found -> (* ... or look into the signature *)
              Some(find_sym ~prt:true ~prv:true ss id)
          in
-         (match Timed.(!(sym.sym_not)) with
+         (match Timed.(!(sym.sym_nota)) with
          | Term.Infix(assoc, prio) -> Some(Pratter.Infix assoc, prio)
          | Term.Prefix(prio) | Succ(Prefix(prio)) ->
              Some(Pratter.Prefix, prio)

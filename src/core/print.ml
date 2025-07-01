@@ -211,7 +211,7 @@ let rec pp p idmap ppf t =
         let number f t =
           try out ppf "%i" (f t) with Not_a_nat -> pp_appl h args in
         let args = LibTerm.remove_impl_args s args in
-        begin match !(s.sym_not) with
+        begin match !(s.sym_nota) with
         | Quant when are_quant_args args ->
             if p <> `Func then out ppf "(";
             quantifier idmap ppf s args;

@@ -148,7 +148,7 @@ let link : t -> unit = fun sign ->
       let g n (rs,nota) =
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-        Option.iter (fun nota -> s.sym_not := nota) nota;
+        Option.iter (fun nota -> s.sym_nota := nota) nota;
         Tree.update_dtree s []
       in
       StrMap.iter g sm
@@ -360,7 +360,7 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
 let add_notation : t -> sym -> float notation -> unit = fun sign sym nota ->
-  sym.sym_not := nota;
+  sym.sym_nota := nota;
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
     let f = function

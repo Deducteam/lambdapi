@@ -87,24 +87,21 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let i = try int_of_string i with Failure _ ->
                 fatal pos "Too big number (max is %d)" max_int in
       if i < 0 then fatal pos "Negative number";
-      if Timed.(!Console.verbose) = 0 then
-        (Timed.(Console.verbose := i);
-         Console.out 1 "verbose %i" i)
-      else
-        (Console.out 1 "verbose %i" i;
-         Timed.(Console.verbose := i));
+      if !Console.verbose = 0 then
+        (Console.verbose := i; Console.out 1 "verbose %i" i)
+      else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
-      Console.out 1 "flag %s %s" id (if b then "on" else "off");
+      Console.out 1 "flag \"%s\" %s" id (if b then "on" else "off");
       None
-  | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
+  | P_query_prover(s) -> Why3_tactic.default_prover := s; None
   | P_query_prover_timeout(n) ->
       let n = try int_of_string n with Failure _ ->
                 fatal pos "Too big number (max is %d)" max_int in
       if n < 0 then fatal pos "Negative number";
-      Timed.(Why3_tactic.timeout := n);
+      Why3_tactic.timeout := n;
       None
   | P_query_print(None) ->
       begin
@@ -114,12 +111,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       end
   | P_query_print(Some qid) ->
       let sym_info ppf s =
-        let open Timed in
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
         (* Function to print a notation *)
         let notation ppf s =
-          match !(s.sym_not) with
+          match !(s.sym_nota) with
           | NoNotation -> ()
           | n -> out ppf "notation %a %a;@." sym s (notation float) n
         in
@@ -146,11 +142,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           let open Sign in
           (* get the signature of [s] *)
           let sign =
-            try Path.Map.find s.sym_path Timed.(!loaded)
+            try Path.Map.find s.sym_path !loaded
             with Not_found -> assert false
           in
           try
-            let ind = SymMap.find s Timed.(!(sign.sign_ind)) in
+            let ind = SymMap.find s !(sign.sign_ind) in
             List.pp decl "" ppf ind.ind_cons;
             decl ppf ind.ind_prop
           with Not_found -> ()
