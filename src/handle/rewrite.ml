@@ -216,46 +216,48 @@ let matches : term -> term -> bool =
   if Logger.log_enabled() then log "matches result: %b" r; r
 
 let no_match ?(subterm=false) pos g_env (vars,p) t =
+  (* Rename [vars] with names distinct from those of [g_env] and [t]. *)
   let f idmap x =
     let name, idmap = Name.get_safe_prefix (base_name x) idmap in
     idmap, mk_Vari (new_var name)
   in
   let ts = snd (Array.fold_left_map f (Env.names g_env) vars) in
-  if subterm then fatal pos "No subterm of [%a] matches [%a]."
-                    term t term (msubst (bind_mvar vars p) ts)
-  else fatal pos "[%a] doesn't match [%a]."
-         term t term (msubst (bind_mvar vars p) ts)
+  let p = msubst (bind_mvar vars p) ts in
+  if subterm then fatal pos "No subterm of [%a] matches [%a]." term t term p
+  else fatal pos "[%a] doesn't match [%a]." term t term p
 
 (** [matching_subs (xs,p) t] attempts to match the pattern [p] containing the
    variables [xs]) with the term [t]. If successful, it returns [Some ts]
    where [ts] is an array of terms such that substituting [xs] by the
    corresponding elements of [ts] in [p] yields [t].
 
-WARNING: Some [ti] may be uninstantiated TRef's. It will happen if not all
-[vars] are in [LibTerm.free_vars p], for instance when some [vars] are type
-variables not occurring in [p], for instance when trying to apply an equation
-of the form [x = ...] with [x] of polymorphic type. This could be improved by
-generating p_terms instead of terms. Indeed, in this case, we could replace
-uninstantiated TRef's by underscores. *)
+WARNING: Some elements of [ts] may be uninstantiated TRef's. It will happen if
+not all [vars] are in [LibTerm.free_vars p], for instance when some [vars] are
+type variables not occurring in [p], for instance when trying to apply an
+equation of the form [x = ...] with [x] of polymorphic type. This could be
+improved by generating p_terms instead of terms. Indeed, in this case, we
+could replace uninstantiated TRef's by underscores. *)
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
   (* We replace [xs] by fresh [TRef]'s. *)
   let ts = Array.map (fun _ -> mk_TRef(Timed.ref None)) xs in
   let p = msubst (bind_mvar xs p) ts in
-  if matches p t then Some(Array.map unfold ts) else None
+  if matches p t then Some ts else None
+
+(** [check_subs vars ts] check that no element of [ts] is an uninstantiated
+    TRef. *)
+let check_subs pos vars ts =
+  let f i ti =
+    match unfold ti with
+    | TRef _ ->
+        fatal pos "Don't know how to instantiate the argument \"%a\" \
+                   of the equation." var vars.(i)
+    | _ -> ()
+  in
+  Array.iteri f ts
 
 let matching_subs_check_TRef pos g_env ((vars,_) as xsp) t =
   match matching_subs xsp t with
-  | Some ts ->
-      (* Check that all TRef's are instantiated. *)
-      let f i ti =
-        match unfold ti with
-        | TRef _ ->
-            fatal pos "Don't know how to instantiate the argument \"%a\" \
-                       of the equation." var vars.(i)
-        | _ -> ()
-      in
-      Array.iteri f ts;
-      ts
+  | Some ts -> check_subs pos vars ts; ts
   | None -> no_match pos g_env xsp t
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
@@ -290,17 +292,7 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
 let find_subst pos g_env (vars,p) t =
   match find_subst (vars,p) t with
   | None -> no_match ~subterm:true pos g_env (vars,p) t
-  | Some ts ->
-      (* Check that all TRef's are instantiated. *)
-      let f i ti =
-        match unfold ti with
-        | TRef _ ->
-            fatal pos "Don't know how to instantiate the variable \"%a\"."
-              var vars.(i)
-        | _ -> ()
-      in
-      Array.iteri f ts;
-      ts
+  | Some ts -> check_subs pos vars ts; ts
 
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
    [p] by instantiating the [TRef]'s of [p].  In case of success, the function
