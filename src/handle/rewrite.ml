@@ -204,7 +204,7 @@ let matches : term -> term -> bool =
   let r = try eq [p,t]; true with Not_equal -> false in
   if Logger.log_enabled() then log "matches result: %b" r; r
 
-let no_match ?(subterm=false) pos _g_env (vars,p) t =
+let no_match ?(subterm=false) pos (*g_env*) (vars,p) t =
   (* Rename [vars] with names distinct from those of [g_env] and [t]. *)
   (*let f idmap x =
     let name, idmap = Name.get_safe_prefix (base_name x) idmap in
@@ -245,10 +245,10 @@ let check_subs pos vars ts =
   in
   Array.iteri f ts
 
-let matching_subs_check_TRef pos g_env ((vars,_) as xsp) t =
+let matching_subs_check_TRef pos ((vars,_) as xsp) t =
   match matching_subs xsp t with
   | Some ts -> check_subs pos vars ts; ts
-  | None -> no_match pos g_env xsp t
+  | None -> no_match pos xsp t
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
    matching [p]. If successful, the function returns the array of terms by
@@ -279,9 +279,9 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
     | sub -> sub
   in find t
 
-let find_subst pos g_env (vars,p) t =
+let find_subst pos (vars,p) t =
   match find_subst (vars,p) t with
-  | None -> no_match ~subterm:true pos g_env (vars,p) t
+  | None -> no_match ~subterm:true pos (vars,p) t
   | Some ts -> check_subs pos vars ts; ts
 
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
@@ -318,10 +318,10 @@ let rec replace_wild_by_tref : term -> term = fun t ->
     mk_Appl_not_canonical(replace_wild_by_tref t, replace_wild_by_tref u)
   | _ -> t
 
-let find_subterm_matching pos g_env p t =
+let find_subterm_matching pos p t =
   let p_refs = replace_wild_by_tref p in
   if not (find_subterm_matching p_refs t) then
-    no_match ~subterm:true pos g_env ([||],p) t;
+    no_match ~subterm:true pos ([||],p) t;
   p_refs
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
@@ -410,7 +410,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Simple rewrite, no pattern. *)
     | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
-        let sigma = find_subst pos g_env (vars, l) g_term in
+        let sigma = find_subst pos (vars, l) g_term in
         (* Build the required data from that substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
@@ -419,9 +419,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Basic patterns. *)
     | Some(Rw_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
-        let match_p = find_subterm_matching pos g_env p g_term in
+        let match_p = find_subterm_matching pos p g_term in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
-        let sigma = matching_subs_check_TRef pos g_env (vars,l) match_p in
+        let sigma = matching_subs_check_TRef pos (vars,l) match_p in
         (* Build the data from the substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
@@ -430,9 +430,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Nested patterns. *)
     | Some(Rw_InTerm(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
-        let match_p = find_subterm_matching pos g_env p g_term in
+        let match_p = find_subterm_matching pos p g_term in
         (* Build a substitution from a subterm of [match_p] matching [l]. *)
-        let sigma = find_subst pos g_env (vars,l) match_p in
+        let sigma = find_subst pos (vars,l) match_p in
         (* Build the data from the substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let p_x = bind_pattern l match_p in
@@ -461,7 +461,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                in [pred_bind_l]. *)
         let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
-        let sigma = find_subst pos g_env ([|id|],p_refs) g_term in
+        let sigma = find_subst pos ([|id|],p_refs) g_term in
         let id_val = sigma.(0) in
         let pat = bind_var id p_refs in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
@@ -469,7 +469,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let pat_l = subst pat id_val in
 
         (* This must match with the LHS of the equality proof we use. *)
-        let sigma = matching_subs_check_TRef pos g_env (vars,l) id_val in
+        let sigma = matching_subs_check_TRef pos (vars,l) id_val in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
         (* id val. *)
@@ -504,7 +504,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            was matched with the identifier. *)
         let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
-        let sigma = find_subst pos g_env ([|id|],p_refs) g_term in
+        let sigma = find_subst pos ([|id|],p_refs) g_term in
         (* Once we get the value of id, we work with that as our main term
            since this is where s will appear and will be substituted in. *)
         let id_val = sigma.(0) in
@@ -515,11 +515,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
         (* We then try to match the wildcards in [s] with subterms of
            [id_val]. *)
-        let s = find_subterm_matching pos g_env s id_val in
+        let s = find_subterm_matching pos s id_val in
 
         (* Now we must match s, which no longer contains any TRef's
            with the LHS of the lemma. *)
-        let sigma = matching_subs_check_TRef pos g_env (vars,l) s in
+        let sigma = matching_subs_check_TRef pos (vars,l) s in
         let (t,l,r) = msubst3 bound sigma in
 
         (* First we work in [id_val], that is, we substitute all
@@ -561,17 +561,17 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let s = replace_wild_by_tref s in
         let p_s = subst p s in
         (* Try to match p[s/id] with a subterm of the goal. *)
-        let p = find_subterm_matching pos g_env p_s g_term in
+        let p = find_subterm_matching pos p_s g_term in
         let pat_refs = replace_wild_by_tref pat in
         (* Here we have already asserted tat an instance of p[s/id] exists
            so we know that this will match something. The step is repeated
            in order to get the value of [id]. *)
-        let sub = matching_subs_check_TRef pos g_env ([|id|],pat_refs) p in
+        let sub = matching_subs_check_TRef pos ([|id|],pat_refs) p in
         let id_val = sub.(0) in
         (* This part of the term-building is similar to the previous
            case, as we are essentially rebuilding a term, with some
            subterms that are replaced by new ones. *)
-        let sigma = matching_subs_check_TRef pos g_env (vars,l) id_val in
+        let sigma = matching_subs_check_TRef pos (vars,l) id_val in
         let (t,l,r) = msubst3 bound sigma in
 
         (* Now to do some term building. *)
@@ -590,11 +590,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            the way we construct a [pat_r]. *)
         let (id,q) = unbind q in
         let q_refs = replace_wild_by_tref q in
-        let sigma = find_subst pos g_env ([|id|],q_refs) g_term in
+        let sigma = find_subst pos ([|id|],q_refs) g_term in
         let id_val = sigma.(0) in
         let pat = bind_var id q_refs in
         let pat_l = subst pat id_val in
-        let sigma = find_subst pos g_env (vars,l) id_val in
+        let sigma = find_subst pos (vars,l) id_val in
         let (t,l,r) = msubst3 bound sigma in
 
         (* Rewrite in id. *)
