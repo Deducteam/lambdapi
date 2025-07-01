@@ -181,15 +181,6 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "[%a] is not a product." term goal_type
 
-(** [count_products a] returns the number of consecutive products at
-   the top of the term [a]. *)
-let count_products : ctxt -> term -> int = fun c ->
-  let rec count acc t =
-    match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (subst b mk_Kind)
-    | _ -> acc
-  in count 0
-
 (** [get_prod_ids env do_whnf t] returns the list [v1;..;vn] if [do_whnf] is
     true and [whnf t] is of the form [Π v1:A1, .., Π vn:An, u] with [u] not a
     product, or if [do_whnf] is false and [t] is of the form [Π v1:A1, .., Π
@@ -455,21 +446,60 @@ let rec handle :
   | P_tac_solve -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
+      let c = Env.to_ctxt env in
       let t = scope pt in
-      (* Compute the product arity of the type of [t]. *)
-      (* FIXME: this does not take into account implicit arguments. *)
-      let n =
-        let c = Env.to_ctxt env in
-        let p = new_problem () in
+      let a =
+        let p = new_problem() in
         match Infer.infer_noexn p c t with
         | None ->
             let ids = Ctxt.names c in let term = term_in ids in
             fatal pos "[%a] is not typable." term t
-        | Some (_, a) -> count_products c a
+        | Some (_, a) -> a
       in
-      let t = scope (P.appl_wild pt n) in
-      let p = new_problem () in
-      tac_refine pos ps gt gs p t
+      (* We now try to find [k >= 0] such that [a] reduces to [Π x1:A1, .., Π
+         xk:Ak, B] and [B] matches [u]. *)
+      let time = Time.save () in
+      let rec find u is_whnf k xs a =
+        if Logger.log_enabled() then log "apply %b %d %a" is_whnf k term a;
+        Time.restore time;
+        match Rewrite.matching_subs (xs,a) u with
+        | Some _ -> Some k
+        | None ->
+            match unfold a with
+            | Prod(_,b) ->
+                let x,b = unbind b in
+                find u false (k+1) (Array.append xs [|x|]) b
+            | _ ->
+                if is_whnf then None
+                else
+                  match a with
+                  | Appl(a1,a2) ->
+                      let a2 = unfold a2 and a2' = Eval.whnf [] a2 in
+                      if a2 == a2' then None
+                      else find u true k xs (mk_Appl(a1,a2'))
+                  | _ -> None
+      in
+      let r =
+        match find gt.goal_type false 0 [||] a with
+        | Some _ as r -> r
+        | None ->
+            match gt.goal_type with
+            | Appl(u1,u2) ->
+                let u2 = unfold u2 and u2' = Eval.whnf c u2 in
+                if u2 == u2' then None
+                else find (mk_Appl(u1,u2')) false 0 [||] a
+            | _ -> None
+      in
+      begin
+        match r with
+        | Some k ->
+            let t = scope (P.appl_wild pt k) in
+            let p = new_problem () in
+            tac_refine pos ps gt gs p t
+        | None ->
+            fatal pos "Could not find a subterm of [%a] or of its whnf \
+                       matching the current goal or its whnf." term a
+      end
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
