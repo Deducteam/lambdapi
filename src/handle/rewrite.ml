@@ -178,7 +178,8 @@ let matches : term -> term -> bool =
         if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
         Timed.(r := Some u);
         eq (add_eqs l ps ts2)
-      | Meta _
+      | Meta _ -> eq l (* In case of a meta, we assume that it can be
+                          instantiated. This may later fail in refine. *)
       | Prod _
       | Abst _
       | LLet _
