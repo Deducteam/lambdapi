@@ -1,0 +1,66 @@
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'editors/emacs/**'
+      - 'editors/vim/**'
+      - '.github/workflows/main.yml'
+      - 'libraries/**'
+      - 'misc/**'
+      - 'src/**'
+      - 'tests/**'
+      - '.dir-locals.el'
+      - '**/dune'
+      - 'dune-project'
+      - '*.opam'
+      - 'LICENCE.txt'
+  workflow_dispatch:
+jobs:
+  vscode:
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:         [v24.2.0]   # v23.11.1, v22.16.0
+        types_vscode-version: [\@1.101.0] # \@1.99.1
+        vscode_vsce-version:  [\@3.5.0]   # \@3.3.3-3
+    runs-on: ubuntu-latest
+    steps:
+      - name: set_triggerPublishAndUpload
+        id: set_triggerPublishAndUpload
+        run: |
+          if [ "${{ matrix.types_vscode-version }}" == '' -a "${{ matrix.vscode_vsce-version }}" == '' -a "${{ matrix.node-version }}" == 'latest' ]; then
+            echo "triggerPublishAndUpload=True" >> $GITHUB_OUTPUT
+          else
+            echo "triggerPublishAndUpload=False" >> $GITHUB_OUTPUT
+          fi
+      - name: checking out lambdapi repo ...
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: install-dependencies
+        run: |
+          npm install -g @types/vscode${{ matrix.types_vscode-version }}
+          npm install -g @vscode/vsce${{ matrix.vscode_vsce-version }}
+
+      - name: generate-vscode-extension
+        run:
+          make build-vscode-extension
+
+      - name: publish-vscode-extension
+        if: ${{ steps.set_triggerPublishAndUpload.outputs.triggerPublishAndUpload == 'True' }}
+        run:
+          make publish-vscode-extension
+        env:
+          PAT: ${{ secrets.VSCODE_PAT }}
+          
+      - name: upload vscode extension
+        if: ${{ steps.set_triggerPublishAndUpload.outputs.triggerPublishAndUpload == 'True' }}
+        uses: actions/upload-artifact@v4
+        with: 
+          name: assets-for-download
+          path: editors/vscode/extensionFolder

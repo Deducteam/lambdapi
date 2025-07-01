@@ -3,7 +3,10 @@ on:
     types: [opened, synchronize, reopened]
   push:
     paths-ignore:
-      - '**/*.md'
+      - '**.md'
+      - 'doc/**'
+      - 'editors/**'
+      - '.github/workflows/vscode.yml'
   workflow_dispatch:
 jobs:
   lambdapi:
@@ -36,47 +39,3 @@ jobs:
           eval $(opam env)
           #why3 config detect
           make tests
-  vscode:
-    strategy:
-      fail-fast: false
-    runs-on: ubuntu-latest
-    steps:
-      - name: checking out lambdapi repo ...
-        uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'v23.11.0'
-      - name: generate-vscode-extension
-        run: |
-          npm install -g @types/vscode
-          npm install -g @vscode/vsce 
-          make build-vscode-extension
-          make publish-vscode-extension
-        env:
-          PAT: ${{ secrets.VSCODE_PAT }}
-      - name: upload vscode extension
-        uses: actions/upload-artifact@v4
-        with: 
-          name: assets-for-download
-          path: editors/vscode/extensionFolder
-  # lint-fmt:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout tree
-  #       uses: actions/checkout@v4
-  #     - name: Set-up OCaml
-  #       uses: ocaml/setup-ocaml@v3
-  #       with:
-  #         ocaml-compiler: 5
-  #     - uses: ocaml/setup-ocaml/lint-fmt@v3
-  # lint-opam:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout tree
-  #       uses: actions/checkout@v4
-  #     - name: Set-up OCaml
-  #       uses: ocaml/setup-ocaml@v3
-  #       with:
-  #         ocaml-compiler: 5
-  #     - uses: ocaml/setup-ocaml/lint-opam@v3

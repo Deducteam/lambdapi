@@ -5,14 +5,14 @@
     qualified to be a "ghost" signature. *)
 
 open Common
-open Term
+open Term open Sign
 
 (** Symbol "≡". *)
 let equiv : sym =
   let id = Pos.none "≡" in
   let s =
     Sign.add_symbol Ghost.sign Public Defin Eager false id None mk_Kind [] in
-  Timed.(s.sym_not := Infix(Pratter.Neither, 2.0));
+  Timed.(s.sym_nota := Infix(Pratter.Neither, 2.0));
   s
 
 (** Symbol ";". *)
@@ -20,7 +20,7 @@ let cons : sym =
   let id = Pos.none ";" in
   let s =
     Sign.add_symbol Ghost.sign Public Const Eager true id None mk_Kind [] in
-  Timed.(s.sym_not := Infix(Pratter.Right, 1.0));
+  Timed.(s.sym_nota := Infix(Pratter.Right, 1.0));
   s
 
 (** [unpack eqs] transforms a term of the form

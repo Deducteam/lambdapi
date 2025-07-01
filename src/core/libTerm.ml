@@ -145,14 +145,6 @@ let sym_to_var : var StrMap.t -> term -> term = fun map ->
     let (x,b) = unbind b in bind_var x (to_var b)
   in fun t -> if StrMap.is_empty map then t else to_var t
 
-(** [codom_binder n t] returns the [n]-th binder of [t] if [t] is a product of
-    arith >= [n]. *)
-let rec codom_binder : int -> term -> binder = fun n t ->
-  match unfold t with
-  | Prod(_,b) ->
-      if n <= 0 then b else codom_binder (n-1) (subst b mk_Kind)
-  | _ -> assert false
-
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
 let rec eq_alpha a b =
   match unfold a, unfold b with
@@ -192,3 +184,21 @@ let fold (x:var) (t:term): term -> term =
       | _ -> u
   in
   aux
+
+(** Free variables of a term. *)
+let rec free_vars (t:term): VarSet.t =
+  match unfold t with
+  | Vari x -> VarSet.add x VarSet.empty
+  | Appl(u,v) -> VarSet.union (free_vars u) (free_vars v)
+  | Abst(a,b)
+  | Prod(a,b) ->
+      VarSet.union (free_vars a)
+        (let x,b = unbind b in VarSet.remove x (free_vars b))
+  | LLet(a,t,b) ->
+      VarSet.union (free_vars a)
+        (VarSet.union (free_vars t)
+           (let x,b = unbind b in VarSet.remove x (free_vars b)))
+  | Meta(_,ts) ->
+      Array.fold_right
+        (fun t acc -> VarSet.union acc (free_vars t)) ts VarSet.empty
+  | _ -> VarSet.empty

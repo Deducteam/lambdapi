@@ -73,12 +73,40 @@ let loading : Path.t list ref = ref []
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
 
+(** Signature for symbols introduced by Lambdapi and not the user
+    (e.g. unification/coercion rules, strings) and always loaded. *)
+module Ghost = struct
+
+  let path = Path.ghost "ghost"
+
+  let sign =
+    let sign = { (dummy()) with sign_path = path } in
+    loaded := Path.Map.add path sign !loaded;
+    sign
+
+  let find s = StrMap.find s !(sign.sign_symbols)
+
+  (** [iter f] iters function [f] on ghost symbols. *)
+  let iter : (sym -> unit) -> unit = fun f ->
+    StrMap.iter (fun _ s -> f s) !(sign.sign_symbols)
+
+end
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let link_symb s =
-    if s.sym_path = sign.sign_path then s else
-    try find (Path.Map.find s.sym_path !loaded) s.sym_name
-    with Not_found -> assert false
+    if s.sym_path = sign.sign_path then s
+    else
+      try find (Path.Map.find s.sym_path !loaded) s.sym_name
+      with Not_found ->
+        if s.sym_path = Ghost.path
+           && String.is_string_literal s.sym_name then
+          begin
+            Ghost.sign.sign_symbols :=
+              StrMap.add s.sym_name s !(Ghost.sign.sign_symbols);
+            s
+          end
+        else assert false
   in
   let link_term mk_Appl =
     let rec link_term t =
@@ -120,7 +148,7 @@ let link : t -> unit = fun sign ->
       let g n (rs,nota) =
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-        Option.iter (fun nota -> s.sym_not := nota) nota;
+        Option.iter (fun nota -> s.sym_nota := nota) nota;
         Tree.update_dtree s []
       in
       StrMap.iter g sm
@@ -332,7 +360,7 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
 let add_notation : t -> sym -> float notation -> unit = fun sign sym nota ->
-  sym.sym_not := nota;
+  sym.sym_nota := nota;
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
     let f = function
@@ -367,7 +395,7 @@ let iterate : (t -> unit) -> t -> unit = fun f sign ->
       if not (Path.Set.mem path Stdlib.(!visited)) then
         handle (Path.Map.find path !loaded)
     in
-    Path.Map.iter dep Timed.(!(sign.sign_deps))
+    Path.Map.iter dep !(sign.sign_deps)
   in handle sign
 
 (** [dependencies sign] returns an association list containing (the transitive

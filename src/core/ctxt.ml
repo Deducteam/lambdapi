@@ -3,6 +3,7 @@
 open Term
 open Lplib open Extra
 open Timed
+open Common open Name
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and @raise [Not_found] otherwise. *)
