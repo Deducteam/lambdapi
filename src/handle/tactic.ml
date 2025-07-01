@@ -570,8 +570,24 @@ let rec handle :
             let m = gt.goal_meta in
             let n = m.meta_arity - 1 in
             let a = cleanup !(m.meta_type) in (* cleanup necessary *)
-            let b = LibTerm.codom_binder (n - k) a in
-            if binder_occur b then
+            (* a = Π x0:A0, .., Π xn-1:An-1, B *)
+            (* [codom_binder i a] returns the binder [xi:Ai --> Π xi+1:Ai+1,
+               .., Π xn-1:An-1, B] with [x0,..,xi-1] replaced by
+               [mk_Kind]. This replacement does not matter here because we are
+               only interested in knowing whether [xi] occurs in [Π xi+1:Ai+1,
+               .., Π xn-1:An-1, B]. *)
+            let rec codom_binder i a =
+              match unfold a with
+              | Prod(_,b) ->
+                  if i <= 0 then b else codom_binder (i-1) (subst b mk_Kind)
+              | LLet(_,t,b) ->
+                  if i <= 0 then b else codom_binder (i-1) (subst b t)
+              | _ -> assert false
+            in
+            (* Because [env] is in reverse order compared to [a], we have [env
+               = [xn-1; ..; x0]] and the position [k] corresponds to
+               [xn-k]. *)
+            if binder_occur (codom_binder (n - k) a) then
               fatal id.pos "%s cannot be removed because of dependencies."
                 id.elt;
             let env' = List.filter (fun (s,_) -> s <> id.elt) env in
