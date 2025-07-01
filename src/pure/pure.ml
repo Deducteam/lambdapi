@@ -269,7 +269,7 @@ let%test _ =
 (* Equality is reflexive *)
 let%test _ =
   let (c,_) = parse_text ~fname:test_file
-      (* copied from tests/OK/foo.lp. keep in sync. *)
+      (* copied from src/pure/tests/foo.lp. keep in sync. *)
 "constant symbol B : TYPE;
 
 constant symbol true  : B;
