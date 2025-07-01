@@ -360,6 +360,9 @@ let term_in = func
 
 let term = term_in StrMap.empty
 
+let env ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
+
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
   let decl idmap ppf (x,t) = out ppf "%a : %a" var x (func idmap) t in
   let decl i idmap ppf d =
