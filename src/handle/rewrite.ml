@@ -178,8 +178,10 @@ let matches : term -> term -> bool =
         if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
         Timed.(r := Some u);
         eq (add_eqs l ps ts2)
-      | Meta _ -> eq l (* In case of a meta, we assume that it can be
-                          instantiated. This may later fail in refine. *)
+      | Meta _ -> eq l (* We assume that metas can always be instantiated by
+                          the corresponding RHS although this might not be the
+                          case, in which case tac_refine or solve will later
+                          fail. This way, we may chose the wrong subterm. *)
       | Prod _
       | Abst _
       | LLet _
