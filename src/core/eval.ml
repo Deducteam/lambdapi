@@ -127,7 +127,8 @@ let rec eq_alpha a b =
   | Meta(m1,a1), Meta(m2,a2) ->
       if m1 == m2 then
         if Array.for_all2 eq_alpha a1 a2 then true
-        else (Base.sout "<> %a args@." meta m1; false)
+        else (if Logger.log_enabled() then log_conv "<> %a args@." meta m1;
+              false)
       else (if Logger.log_enabled() then log_conv "different metas@."; false)
   | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
       eq_alpha a1 a2 && eq_alpha t1 t2
