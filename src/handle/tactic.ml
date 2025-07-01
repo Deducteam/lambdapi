@@ -571,9 +571,11 @@ let rec handle :
             let n = m.meta_arity - 1 in
             let a = cleanup !(m.meta_type) in (* cleanup necessary *)
             (* a = Π x0:A0, .., Π xn-1:An-1, B *)
-            (* [codom_binder i a] returns the binder
-               [xi:Ai --> Π xi+1:Ai+1, .., Π xn-1:An-1, B] with
-               [x0,..,xi-1] replaced by [mk_Kind]. *)
+            (* [codom_binder i a] returns the binder [xi:Ai --> Π xi+1:Ai+1,
+               .., Π xn-1:An-1, B] with [x0,..,xi-1] replaced by
+               [mk_Kind]. This replacement does not matter here because we are
+               only interested in knowing whether [xi] occurs in [Π xi+1:Ai+1,
+               .., Π xn-1:An-1, B]. *)
             let rec codom_binder i a =
               match unfold a with
               | Prod(_,b) ->
