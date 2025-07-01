@@ -312,6 +312,9 @@ val is_abst : term -> bool
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 val is_prod : term -> bool
 
+(** [is_tref t] returns [true] iff [t] is of the form [TRef _]. *)
+val is_TRef : term -> bool
+
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 val is_symb : sym -> term -> bool
 

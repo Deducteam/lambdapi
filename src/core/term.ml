@@ -572,13 +572,14 @@ let _ =
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match unfold t with Abst(_) -> true | _ -> false
+(** [is_abst t] returns [true] iff [t] is of the form [Abst _]. *)
+let is_abst t = match unfold t with Abst _ -> true | _ -> false
 
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  (match unfold t with Prod(_) -> true | _ -> false)
+(** [is_prod t] returns [true] iff [t] is of the form [Prod _]. *)
+let is_prod t = match unfold t with Prod _ -> true | _ -> false
+
+(** [is_tref t] returns [true] iff [t] is of the form [TRef _]. *)
+let is_TRef t = match unfold t with TRef _ -> true | _ -> false
 
 (** [iter_atoms db f g t] applies f to every occurrence of a variable in t,
     g to every occurrence of a symbol, and db to every occurrence of a
