@@ -1,5 +1,5 @@
 
-let show_form ~from ?(message="") ?output request ~hide_description=
+let show_form ~from ?(message="") ?output csrf_tag ~hide_description=
 
   <link rel="stylesheet"
   href="https://cdnjs.cloudflare.com/ajax/libs/\
@@ -41,7 +41,7 @@ let show_form ~from ?(message="") ?output request ~hide_description=
     </script>
 
     <form method="POST" id="form">
-      <%s! Dream.csrf_tag request %>
+      <%s! csrf_tag %>
       <p>
       <input type="search" required="true" size="100"
         name="message" value="<%s message %>"
@@ -77,18 +77,37 @@ let show_form ~from ?(message="") ?output request ~hide_description=
 let start ~header ss ~port ~dbpath ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
+  let favicon_path = 
+    if path_in_url == "" then
+      "/favicon.ico"
+    else
+      "/" ^ path_in_url ^ "/favicon.ico" in
   Dream.run ~port ~interface
   @@ Dream.logger
   @@ Dream.memory_sessions
   @@ Dream.router [
+    Dream.head ("/" ^ path_in_url)
+      (fun _ ->
+        Dream.html "HTTP/1.1 301 Moved Permanently
+        Date: Wed, 25 Jun 2025 13:26:55 GMT
+        Server: Apache
+        Location: https://www.inria.fr/
+        Connection: close
+        Content-Type: text/html; charset=iso-8859-1");
+
+    Dream.get  (favicon_path)
+      (fun request -> 
+        Dream.from_filesystem "assets" "pi.ico" request);
 
     Dream.get  ("/" ^ path_in_url)
       (fun request ->
+        let csrf_tag = Dream.csrf_tag request in
         Dream.html
-          (header ^ show_form ~from:0 request ~hide_description:"false"));
+          (header ^ show_form ~from:0 csrf_tag ~hide_description:"false"));
 
     Dream.post ("/" ^ path_in_url)
       (fun request ->
+        let csrf_tag = Dream.csrf_tag request in
         match%lwt Dream.form request with
         | `Ok
           [ "from", from;
@@ -117,7 +136,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
           in
           Dream.html
             (header ^
-            show_form ~from ~message ~output request
+            show_form ~from ~message ~output csrf_tag
               ~hide_description:hideDescritionSection)
 
         | _ ->
