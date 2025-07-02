@@ -34,10 +34,11 @@ tests: lambdapi
 	@dune runtest
 	@tests/runtests.sh
 	@tests/dtrees.sh
+
+tests_export: lambdapi
 	@tests/export_dk.sh
 	@tests/export_lp.sh
 	@tests/export_raw_dk.sh
-	$(MAKE) test_libs
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi
