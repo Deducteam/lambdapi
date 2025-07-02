@@ -547,7 +547,8 @@ let rec handle :
               tac_refine pos ps gt gs p t
           | None ->
               fatal pos "Could not find a subterm of [%a] or of its whnf \
-                         matching the current goal or its whnf." term a
+                         matching the current goal or its whnf. \
+                         Try refine instead." term a
       end
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
