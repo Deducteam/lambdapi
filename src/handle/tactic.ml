@@ -446,8 +446,8 @@ let rec handle :
   | P_tac_solve -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
-      let c = Env.to_ctxt env in
       let t = scope pt in
+      let c = Env.to_ctxt env in
       let a =
         let p = new_problem() in
         match Infer.infer_noexn p c t with
@@ -458,37 +458,72 @@ let rec handle :
       in
       (* We now try to find [k >= 0] such that [a] reduces to [Π x1:A1, .., Π
          xk:Ak, B] and [B] matches [u]. *)
-      let time = Time.save () in
-      let rec find u is_whnf k xs a =
-        if Logger.log_enabled() then log "apply %b %d %a" is_whnf k term a;
-        Time.restore time;
-        match Rewrite.matching_subs (xs,a) u with
+      let is_reduced = Stdlib.ref false in
+      let rec ext_whnf c t =
+        if Logger.log_enabled() then log "ext_whnf %a" term t;
+        match Eval.whnf_opt c t with
+        | Some t' -> Stdlib.(is_reduced := true); t'
+        | None ->
+            match get_args t with
+            | (Symb s) as h, ts when is_constant s ->
+                add_args_map h (ext_whnf c) ts
+            | _ -> t
+      in
+      (*let print_result s f arg x result =
+        let r = f x in
+        if Logger.log_enabled() then log "%s %a ≡ %a" s arg x result r;
+        r
+      in*)
+      (*let ext_whnf c t =
+        print_result "ext_whnf" (ext_whnf c) term t term in*)
+      let top_ext_whnf c t =
+        if Logger.log_enabled() then log "top_ext_whnf %a" term t;
+        match Eval.whnf_opt c t with
+        | Some t' -> Stdlib.(is_reduced := true); t'
+        | None ->
+            match unfold t with
+            | Appl(pi,u) -> mk_Appl(pi,ext_whnf c u)
+            | _ -> t
+      in
+      (*let top_ext_whnf c t =
+        print_result "top_ext_whnf" (top_ext_whnf c) term t term in*)
+      let top_ext_whnf_opt c t =
+        if Logger.log_enabled() then log "top_ext_whnf_opt %a" term t;
+        Stdlib.(is_reduced := false);
+        let t' = top_ext_whnf c t in
+        if Stdlib.(!is_reduced) then Some t' else None
+      in
+      (*let top_ext_whnf_opt c t =
+        print_result "top_ext_whnf_opt"
+          (top_ext_whnf_opt c) term t (D.option term) in*)
+      let rec find goal k xs lem is_whnf_lem =
+        if Logger.log_enabled() then
+          log "find %d %a %b\nmatching %a" k term lem is_whnf_lem term goal;
+        let t0 = Time.save() in
+        match Rewrite.matching_subs (xs,lem) goal with
         | Some _ -> Some k
         | None ->
-            match unfold a with
+            Time.restore t0;
+            match unfold lem with
             | Prod(_,b) ->
-                let x,b = unbind b in
-                find u false (k+1) (Array.append xs [|x|]) b
+                let x,lem' = unbind ~name:("$"^binder_name b) b in
+                find goal (k+1) (Array.append xs [|x|]) lem' false
             | _ ->
-                if is_whnf then None
+                if is_whnf_lem then None
                 else
-                  match a with
-                  | Appl(a1,a2) ->
-                      let a2 = unfold a2 and a2' = Eval.whnf [] a2 in
-                      if a2 == a2' then None
-                      else find u true k xs (mk_Appl(a1,a2'))
-                  | _ -> None
+                  match top_ext_whnf_opt [] lem with
+                  | None -> None
+                  | Some lem' -> find goal k xs lem' true
       in
       let r =
-        match find gt.goal_type false 0 [||] a with
+        let t0 = Time.save () in
+        match find gt.goal_type 0 [||] a false with
         | Some _ as r -> r
         | None ->
-            match gt.goal_type with
-            | Appl(u1,u2) ->
-                let u2 = unfold u2 and u2' = Eval.whnf c u2 in
-                if u2 == u2' then None
-                else find (mk_Appl(u1,u2')) false 0 [||] a
-            | _ -> None
+            Time.restore t0;
+            match top_ext_whnf_opt c gt.goal_type with
+            | None -> None
+            | Some u -> find u 0 [||] a false
       in
       begin
         match r with

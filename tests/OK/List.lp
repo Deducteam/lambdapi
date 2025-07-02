@@ -225,7 +225,7 @@ end;
 
 opaque symbol □≠⸬ [a] [x:τ a] [l] : π (□ ≠ x ⸬ l) ≔
 begin
-  assume a x l h; refine @⸬≠□ a x l _; symmetry; apply h
+  assume a x l h; apply @⸬≠□ a x l; symmetry; apply h
 end;
 
 // head
@@ -246,7 +246,7 @@ with behead (_ ⸬ $l) ↪ $l;
 
 opaque symbol ⸬_inj [a] [x:τ a] [l y m] : π(x ⸬ l = y ⸬ m) → π(x = y ∧ l = m) ≔
 begin
-  assume a x l y m e; apply ∧ᵢ { apply feq (head x) e } { apply feq behead e }
+  assume a x l y m e; apply ∧ᵢ { refine feq (head x) e } { refine feq behead e }
 end;
 
 // boolean equality on lists
@@ -270,7 +270,7 @@ begin
     { simplify; assume c; refine ⊥ₑ c; }
     { simplify; assume y m i c;
       apply feq2 (⸬) _ _
-      { apply beq_correct; apply @andₑ₁ _ (eql beq l m) c}
+      { apply beq_correct; apply @andₑ₁ _ (eql beq l m) c }
       { apply h; refine @andₑ₂ (beq x y) _ c
       } 
     }
@@ -702,7 +702,7 @@ begin
     { assume i j; apply ⊥ₑ (s≠0 j); }
     { assume eb lb k; induction
       { assume m; reflexivity; }
-      { assume i m n; apply h lb i _; apply +1_inj n; }
+      { assume i m n; refine h lb i _; apply +1_inj n; }
     }
   }
 end;
@@ -748,7 +748,7 @@ begin
   {
     assume n h; induction
     { reflexivity; }
-    { assume e l i; simplify; refine h l; }
+    { assume e l i; refine h l; }
   }
 end;
 
@@ -926,7 +926,7 @@ begin
     { reflexivity; }
     { assume m i; induction
       { reflexivity; }
-      { assume e l j; simplify; apply i l; }
+      { assume e l j; refine i l; }
     }
   }
 end;
@@ -1088,7 +1088,7 @@ opaque symbol mem_take [a] beq n l (x:τ a) :
 begin
   assume a beq n l x h; rewrite left cat_take_drop n l;
   rewrite mem_cat beq x (take n l) (drop n l);
-  refine @orᵢ₁ (∈ beq x (take n l)) (∈ beq x (drop n l)) h;
+  refine @orᵢ₁ _ (∈ beq x (drop n l)) h;
 end;
 
 opaque symbol mem_drop [a] beq n l (x:τ a) :
@@ -1096,7 +1096,7 @@ opaque symbol mem_drop [a] beq n l (x:τ a) :
 begin
   assume a beq n l x h; rewrite left cat_take_drop n l;
   rewrite mem_cat beq x (take n l) (drop n l);
-  refine @orᵢ₂ (∈ beq x (take n l)) (∈ beq x (drop n l)) h;
+  refine @orᵢ₂ (∈ beq x (take n l)) _ h;
 end;
 
 opaque symbol mem_rcons_left [a] beq (n m : τ a) (l : 𝕃 a) :
@@ -1104,15 +1104,15 @@ opaque symbol mem_rcons_left [a] beq (n m : τ a) (l : 𝕃 a) :
 begin
   assume a beq n m;
   induction
-    { assume h; refine ⊥ₑ h }
+    { assume h; apply ⊥ₑ h }
     { assume n0 l h1 h2;
       have H0: π (beq n n0) → π (beq n n0 or ∈ beq n (rcons l m))
         { assume h3;
-          refine (orᵢ₁ [beq n n0] (∈ beq n (rcons l m)) h3) };
+          refine (orᵢ₁ (∈ beq n (rcons l m)) h3) };
           have H1: π (∈ beq n l) →  π (beq n n0 or ∈ beq n (rcons l m))
             { assume h3;
-              refine (orᵢ₂ (beq n n0) [∈ beq n (rcons l m)] (h1 h3)) };
-          refine orₑ [beq n n0] [∈ beq n l] (beq n n0 or ∈ beq n (rcons l m)) h2 H0 H1 }
+              refine (orᵢ₂ (beq n n0) (h1 h3)) };
+          refine orₑ (beq n n0 or ∈ beq n (rcons l m)) h2 H0 H1 }
 end;
 
 opaque symbol 0∈indexes⸬ [a] (x : τ a) (l: 𝕃 a) :
@@ -1135,7 +1135,7 @@ begin
       { assume k h1 m; simplify; assume h2;
         refine orₑ [eqn n m] [∈ eqn n (iota (m +1) k)] (eqn n m or ∈ eqn (n +1) (iota ((m +1) +1) k)) h2 _ _
           { assume h3;
-            refine orᵢ₁ [eqn n m] (∈ eqn (n +1) (iota ((m +1) +1) k)) h3 }
+            refine orᵢ₁ (∈ eqn (n +1) (iota ((m +1) +1) k)) h3 }
           { assume h3;
             refine orᵢ₂ (eqn n m) [∈ eqn (n +1) (iota ((m +1) +1) k)] _;
             refine h1 (m +1) _; refine h3
@@ -1152,8 +1152,8 @@ begin
   { simplify; assume x h; refine h }
   { assume x l h y; simplify; assume i;
     refine orₑ [eqn n 0] [∈ eqn n (iota 1 (size l))] _ i _ _
-      { assume j; apply orᵢ₁ [eqn n 0] (∈ eqn (n +1) (iota 2 (size l))) j }
-      { assume j; apply orᵢ₂ (eqn n 0) [∈ eqn (n +1) (iota 2 (size l))] _;
+      { assume j; refine orᵢ₁ (∈ eqn (n +1) (iota 2 (size l))) j }
+      { assume j; refine orᵢ₂ (eqn n 0) [∈ eqn (n +1) (iota 2 (size l))] _;
         refine +1∈iota+1 n 1 (size l) j;
       }
   }
@@ -1584,7 +1584,7 @@ begin
   { assume e1 l1 i; induction
     { assume j; apply ⊥ₑ (⸬≠□ j) }
     {
-      simplify; assume e2 l2 j k; refine feq2 (⸬) _ _
+      simplify; assume e2 l2 j k; apply feq2 (⸬) _ _
       { apply h; apply ∧ₑ₁ (⸬_inj k) }
       { apply i; apply ∧ₑ₂ (⸬_inj k) }
     }

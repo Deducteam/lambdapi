@@ -45,9 +45,12 @@ type rw_tag =
 (** {b NOTE} that all reduction functions, and {!eq_modulo}, may reduce
     in-place some subterms of the reduced term. *)
 
-(** [whnf ?tags c t] computes a whnf of the term [t] in context
-    [c]. *)
+(** [whnf ?tags c t] computes a whnf of the term [t] in context [c]. *)
 val whnf : ?tags:rw_tag list -> ctxt -> term -> term
+
+(** [whnf ?tags c t] returns some whnf of the term [t] in context [c] if it is
+    different from [t]. *)
+val whnf_opt : ?tags:rw_tag list -> ctxt -> term -> term option
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. *)

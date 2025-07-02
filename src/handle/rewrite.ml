@@ -122,7 +122,8 @@ let get_eq_data :
   let rec get_eq vs t notin_whnf =
     if Logger.log_enabled () then log "get_eq %a" term t;
     match get_args t with
-    | Prod(_,t), _ -> let v,t = unbind t in get_eq (v::vs) t true
+    | Prod(_,t), _ ->
+        let v,t = unbind ~name:("$"^binder_name t) t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
         let u = Eval.whnf ~tags:[`NoRw;`NoExpand] [] u in
@@ -161,7 +162,7 @@ let matches : term -> term -> bool =
       if Term.cmp p t = 0 then eq l else begin
       let hp, ps, kp = get_args_len p and ht, ts, kt = get_args_len t in
       if Logger.log_enabled() then
-        log "matches? %a %a ≡ %a %a"
+        log "%a %a \nmatches? %a %a"
           term hp (D.list term) ps term ht (D.list term) ts;
       match hp with
       | Wild -> assert false (* used in user syntax only *)
@@ -207,15 +208,15 @@ let matches : term -> term -> bool =
   let r = try eq [p,t]; true with Not_equal -> false in
   if Logger.log_enabled() then log "matches result: %b" r; r
 
-let no_match ?(subterm=false) pos (*g_env*) (vars,p) t =
+let no_match ?(subterm=false) pos (*g_env*) (_vars,p) t =
   (* Rename [vars] with names distinct from those of [g_env] and [t]. *)
   (*let f idmap x =
     let name, idmap = Name.get_safe_prefix (base_name x) idmap in
     idmap, mk_Vari (new_var name)
   in
   let ts = snd (Array.fold_left_map f (Env.names g_env) vars) in*)
-  let ts = Array.map (fun v -> mk_Vari (new_var ("$"^base_name v))) vars in
-  let p = msubst (bind_mvar vars p) ts in
+  (*let ts = Array.map (fun v -> mk_Vari (new_var ("$"^base_name v))) vars in
+  let p = msubst (bind_mvar vars p) ts in*)
   if subterm then fatal pos "No subterm of [%a] matches [%a]." term t term p
   else fatal pos "[%a] doesn't match [%a]." term t term p
 
