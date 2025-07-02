@@ -62,10 +62,9 @@ module Goal = struct
   let hyps : int StrMap.t -> goal pp =
     let hyps elt ppf l =
       if l <> [] then
-        out ppf "@[<v>%a@,\
-        -----------------------------------------------\
-        ---------------------------------@,@]"
-        (List.pp (fun ppf -> out ppf "%a@," elt) "") (List.rev l);
+        out ppf "%a---------------------------------------------\
+        ---------------------------------\n"
+        (List.pp (fun ppf -> out ppf "%a\n" elt) "") (List.rev l);
 
     in
     fun idmap ppf g ->
