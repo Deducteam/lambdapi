@@ -126,7 +126,7 @@ let goals : proof_state pp = fun ppf ps ->
   | g::gs ->
       let idmap = get_names g in
       out ppf "%a0. %a@." (Goal.hyps idmap) g (Goal.pp_aux idmap) g;
-      let goal ppf i g = out ppf "%d. %a@," (i+1) Goal.pp_no_hyp g in
+      let goal ppf i g = out ppf "%d. %a@." (i+1) Goal.pp_no_hyp g in
       List.iteri (goal ppf) gs
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
