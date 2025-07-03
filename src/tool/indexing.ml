@@ -3,6 +3,10 @@ open Common open Pos
 
 type sym_name = Common.Path.t * string
 
+let is_path_prefix patt p =
+ let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
+  Lplib.String.is_prefix patt (string_of_path p)
+
 let name_of_sym s = (s.sym_path, s.sym_name)
 
 (* discrimination tree *)
@@ -144,6 +148,38 @@ let insert_name (namemap,index) name v =
      None -> []
    | Some l -> l in
  Lplib.Extra.StrMap.add name (v::vs) namemap, index
+
+let rec remove_index ~what =
+ function
+  | Leaf l ->
+     let l' = List.filter what l in
+     (match l' with
+       | [] -> Choice []
+       | _::_ -> Leaf l')
+  | Choice l ->
+     Choice (List.filter_map (remove_node ~what) l)
+
+and remove_node ~what =
+ function
+  | IHOLE i ->
+     (match remove_index ~what i with
+       | Choice [] -> None
+       | i' -> Some (IHOLE i'))
+  | IRigid (r,i) ->
+     (match remove_index ~what i with
+       | Choice [] -> None
+       | i' -> Some (IRigid (r,i')))
+
+let remove_from_name_index ~what i =
+ Lplib.Extra.StrMap.filter_map
+  (fun _ l ->
+    let f x = if what x then Some x else None in
+    match List.filter_map f l with
+     | [] -> None
+     | l' -> Some l') i
+
+let remove ~what (dbname, index) =
+ remove_from_name_index ~what dbname, remove_index ~what index
 
 let rec search_index ~generalize index stack =
  match index,stack with
@@ -328,6 +364,10 @@ module DB = struct
 
  let insert_name k v =
    let db' = Index.insert_name (Lazy.force !db) k v in
+   db := lazy db'
+
+ let remove ~what =
+   let db' = Index.remove ~what (Lazy.force !db) in
    db := lazy db'
 
  let set_of_list ~generalize k l =
@@ -569,6 +609,10 @@ let index_sign sign =
      rules)
   rules
 
+let deindex_path path =
+ DB.remove
+  ~what:(fun (((sym_path,_),_),_) -> not (is_path_prefix path sym_path))
+
 (* let's flatten the interface *)
 include DB
 
@@ -626,12 +670,8 @@ module QueryLanguage = struct
         (fun _ positions1 positions2 -> Some (positions1 @ positions2))
 
  let filter set f =
-  let f ((p',_),_) _ =
-   match f with
-   | Path p ->
-      let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
-       Lplib.String.is_prefix p (string_of_path p') in
-  ItemSet.filter f set
+  let g ((p',_),_) _ = let Path p = f in is_path_prefix p p' in
+  ItemSet.filter g set
 
  let answer_query ~mok ss env =
   let rec aux =

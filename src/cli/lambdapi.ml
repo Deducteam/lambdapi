@@ -112,6 +112,14 @@ let index_cmd cfg add_only rules files dbpath_opt =
   Tool.Indexing.dump ~dbpath () in
  Error.handle_exceptions run
 
+let deindex_cmd cfg path dbpath_opt =
+ Config.init cfg;
+ let run () =
+  Tool.Indexing.deindex_path path ;
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  Tool.Indexing.dump ~dbpath () in
+ Error.handle_exceptions run
+
 end
 
 (** Running the main type-checking mode. *)
@@ -488,6 +496,11 @@ let path_in_url : string option CLT.t =
     "The path in the URL accepted by the server." in
   Arg.(value & opt (some string) None & info ["url"] ~docv:"String" ~doc)
 
+let path_prefix : string CLT.t =
+  let doc =
+    "The prefix path of the constants to de-index." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
+
 let header_file_arg : string option CLT.t =
   let doc =
     "html file holding the header of the web page of the server." in
@@ -499,6 +512,13 @@ let index_cmd =
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
    $ add_only_arg $ rules_arg $ files $ custom_dbpath)
+
+let deindex_cmd =
+ let doc =
+  "De-index all constants whose path is a suffix of the given path." in
+ Cmd.v (Cmd.info "deindex" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.deindex_cmd $ Config.full
+   $ path_prefix $ custom_dbpath)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
@@ -522,7 +542,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; websearch_cmd ]
+    ; index_cmd ; deindex_cmd ; search_cmd ; websearch_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
