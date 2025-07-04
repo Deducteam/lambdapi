@@ -516,7 +516,7 @@ let rec handle :
         let c = Env.to_ctxt env in
         if let p = new_problem() in
            Infer.check_noexn p c t gt.goal_type <> None
-           && Unif.solve_noexn p && Timed.(!p).unsolved = []
+           && Unif.solve_noexn ~print:false p && Timed.(!p).unsolved = []
         then
           let p = new_problem() in
           tac_refine pos ps gt gs p t

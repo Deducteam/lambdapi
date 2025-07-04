@@ -442,13 +442,11 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "symbol map" map_pp;
 
     let sym_found =
-      let open Timed in
-      let open Term in
       match StrMap.find_opt sym_target sym with
       | None -> msg_fail "hover_SymInfo" "Sym not found"
-      | Some sym -> !(sym.sym_type)
+      | Some sym -> sym
     in
-    let sym_type = Format.asprintf "%a" Core.Print.term sym_found in
+    let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
     let result : J.t =
       `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in
