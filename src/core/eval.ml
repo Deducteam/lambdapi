@@ -467,29 +467,29 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 (** {1 Define exposed functions}
     that take optional arguments rather than a config. *)
 
-type reducer = ?tags:rw_tag list -> ctxt -> term -> term
+type 'a reducer = ?tags:rw_tag list -> ctxt -> term -> 'a
 
-let time_reducer (f: reducer): reducer =
-  let open Stdlib in let r = ref mk_Kind in fun ?tags cfg t ->
+let time_reducer (x:'a) (f: 'a reducer): 'a reducer =
+  let open Stdlib in let r = ref x in fun ?tags cfg t ->
     Debug.(record_time Rewriting (fun () -> r := f ?tags cfg t)); !r
 
 (** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
     the context [c]. The function [dtree] maps symbols to dtrees. *)
-let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
+let snf : ?dtree:(sym -> dtree) -> term reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (Config.make ?dtree ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let snf ?dtree = time_reducer (snf ?dtree)
+let snf ?dtree = time_reducer mk_Kind (snf ?dtree)
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
-let hnf : reducer = fun ?tags c t ->
+let hnf : term reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = hnf (whnf (Config.make ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let hnf = time_reducer hnf
+let hnf = time_reducer mk_Kind hnf
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
@@ -508,12 +508,18 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
-let whnf : reducer = fun ?tags c t ->
+let whnf_opt : term option reducer = fun ?tags c t ->
+  Stdlib.(steps := 0);
+  let u = whnf (Config.make ?tags c) t in
+  if Stdlib.(!steps = 0) then None else Some u
+
+let whnf : term reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let whnf = time_reducer whnf
+let whnf = time_reducer mk_Kind whnf
+let whnf_opt = time_reducer None whnf_opt
 
 (** [beta_simplify c t] computes a beta whnf of [t] in context [c] belonging
     to the set S such that (1) terms of S are in beta whnf normal format, (2)
