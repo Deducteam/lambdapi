@@ -2,21 +2,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    paths-ignore:
-      - '**.md'
-      - 'doc/**'
-      - 'editors/emacs/**'
-      - 'editors/vim/**'
-      - '.github/workflows/main.yml'
-      - 'libraries/**'
-      - 'misc/**'
-      - 'src/**'
-      - 'tests/**'
-      - '.dir-locals.el'
-      - '**/dune'
-      - 'dune-project'
-      - '*.opam'
-      - 'LICENCE.txt'
+    paths:
+      - '.github/workflows/vscode.yml'
+      - 'editors/vscode/Makefile'
+      - 'editors/vscode/src/*.ts'
+      - 'editors/vscode/**.json'
   workflow_dispatch:
 jobs:
   vscode:
