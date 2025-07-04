@@ -47,7 +47,9 @@ jobs:
       - name: make sanity_check
         run: make sanity_check
       - name: build
-        run: dune build
+        run: |
+          eval $(opam env)
+          dune build
       - name: make tests
         run: |
           eval $(opam env)
