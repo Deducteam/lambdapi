@@ -66,8 +66,8 @@ let to_abst : env -> term -> term = fun env t ->
   in
   List.fold_left add_abst t env
 
-(** [vars env] extracts the array of the Bindlib variables in [env]. Note that
-    the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
+(** [vars env] extracts the array of variables in [env]. Note that the order
+    is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let vars : env -> var array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_,_)) -> x) env)
 
