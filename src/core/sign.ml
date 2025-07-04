@@ -33,7 +33,7 @@ type t =
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
 
-(* NOTE the [deps] field contains a hashtable binding the external modules on
+(* NOTE the [deps] field contains a map binding the external modules on
    which the current signature depends to an association list mapping symbols
    to additional rules defined in the current signature. *)
 
