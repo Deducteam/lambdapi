@@ -13,19 +13,20 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
+(** Data associated to a symbol defined in another file. *)
+type sym_data =
+  { rules : rule list
+  ; nota : float notation option }
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
-  ; sign_deps     : (rule list*float notation option) StrMap.t Path.Map.t ref
-  (** Maps a path to a list of pairs (symbol name, rule). *)
+  ; sign_deps     : sym_data StrMap.t Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
-  (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref
-  ; sign_cp_pos   : cp_pos list SymMap.t ref
-  (** Maps a symbol to the critical pair positions it is heading in the
-     rules. *) }
+  ; sign_cp_pos   : cp_pos list SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -145,10 +146,10 @@ let link : t -> unit = fun sign ->
     if sm <> Extra.StrMap.empty then
       let sign =
         try Path.Map.find mp !loaded with Not_found -> assert false in
-      let g n (rs,nota) =
+      let g n sd =
         let s = try find sign n with Not_found -> assert false in
-        s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-        Option.iter (fun nota -> s.sym_nota := nota) nota;
+        s.sym_rules := !(s.sym_rules) @ List.map link_rule sd.rules;
+        Option.iter (fun n -> s.sym_nota := n) sd.nota;
         Tree.update_dtree s []
       in
       StrMap.iter g sm
@@ -207,7 +208,7 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_rule !(s.sym_rules)
   in
   StrMap.iter f !(sign.sign_symbols);
-  let f _ sm = StrMap.iter (fun _ (rs,_) -> List.iter unlink_rule rs) sm in
+  let f _ sm = StrMap.iter (fun _ sd -> List.iter unlink_rule sd.rules) sm in
   Path.Map.iter f !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   let unlink_ind_data i =
@@ -311,7 +312,7 @@ let read : string -> t = fun fname ->
   in
   StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
-  let f _ sm = StrMap.iter (fun _ (rs,_) -> List.iter reset_rule rs) sm in
+  let f _ sm = StrMap.iter (fun _ sd -> List.iter reset_rule sd.rules) sm in
   Path.Map.iter f !(sign.sign_deps);
   let reset_ind i =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
@@ -327,48 +328,48 @@ let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
-(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-   rule does not correspond to a symbol of signature [sign], it is stored in
-   its dependencies. /!\ does not update the decision tree or the critical
-   pairs. *)
-let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
-  sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+(** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
+    does not correspond to a symbol of signature [sign], it is stored in its
+    dependencies. /!\ does not update the decision tree or the critical
+    pairs. *)
+let add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
+  s.sym_rules := !(s.sym_rules) @ [r];
+  if s.sym_path <> sign.sign_path then
+    let sm = Path.Map.find s.sym_path !(sign.sign_deps) in
     let f = function
-      | None -> Some([r],None)
-      | Some(rs,n) -> Some(rs@[r],n)
+      | None -> Some{rules=[r]; nota=None}
+      | Some es -> Some{es with rules=es.rules@[r]}
     in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    let sm = StrMap.update s.sym_name f sm in
+    sign.sign_deps := Path.Map.add s.sym_path sm !(sign.sign_deps)
 
-(** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
-   the rules do not correspond to a symbol of signature [sign], they are
-   stored in its dependencies. /!\ does not update the decision tree or the
-   critical pairs. *)
-let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
-  sym.sym_rules := !(sym.sym_rules) @ rs;
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+(** [add_rules sign s rs] adds the new rules [rs] to the symbol [s]. When the
+    rules do not correspond to a symbol of signature [sign], they are stored
+    in its dependencies. /!\ does not update the decision tree or the critical
+    pairs. *)
+let add_rules : t -> sym -> rule list -> unit = fun sign s rs ->
+  s.sym_rules := !(s.sym_rules) @ rs;
+  if s.sym_path <> sign.sign_path then
+    let sm = Path.Map.find s.sym_path !(sign.sign_deps) in
     let f = function
-      | None -> Some(rs,None)
-      | Some(rs',n) -> Some(rs'@rs,n)
+      | None -> Some{rules=rs; nota=None}
+      | Some sd -> Some{sd with rules=sd.rules@rs}
     in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    let sm = StrMap.update s.sym_name f sm in
+    sign.sign_deps := Path.Map.add s.sym_path sm !(sign.sign_deps)
 
-(** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
+(** [add_notation sign sym nota] changes the notation of [s] to [n] in
     the signature [sign]. *)
-let add_notation : t -> sym -> float notation -> unit = fun sign sym nota ->
-  sym.sym_nota := nota;
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
+  s.sym_nota := n;
+  if s.sym_path <> sign.sign_path then
+    let sm = Path.Map.find s.sym_path !(sign.sign_deps) in
     let f = function
-      | None -> Some([],Some nota)
-      | Some(rs,_) -> Some(rs,Some nota)
+      | None -> Some{rules=[]; nota=Some n}
+      | Some es -> Some{es with nota=Some n}
     in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    let sm = StrMap.update s.sym_name f sm in
+    sign.sign_deps := Path.Map.add s.sym_path sm !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin [name] to [sym] in the
     signature [sign]. The previous binding, if any, is discarded. *)

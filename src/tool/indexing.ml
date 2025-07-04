@@ -563,9 +563,9 @@ let index_sign sign =
  Common.Path.Map.iter
   (fun path rules ->
     Lplib.Extra.StrMap.iter
-     (fun name (rules,_) ->
+     (fun name es ->
        let sym = Core.Sign.find_sym path name in
-       List.iter (index_rule sym) rules)
+       List.iter (index_rule sym) es.Sign.rules)
      rules)
   rules
 
