@@ -2,11 +2,19 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    paths-ignore:
-      - '**.md'
-      - 'doc/**'
-      - 'editors/**'
-      - '.github/workflows/vscode.yml'
+    paths:
+      - '.github/workflows/main.yml'
+      - 'lambdapi.opam'
+      - 'Makefile'
+      - 'dune-project'
+      - '**/dune'
+      - '**.ml'
+      - '**.mll'
+      - '**.mly'
+      - '**.dk'
+      - '**.lp'
+      - 'tests/lambdapi.pkg'
+      - '**/*.sh'
   workflow_dispatch:
 
 jobs:
