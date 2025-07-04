@@ -214,7 +214,7 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sign_symbol n s l =
     List.fold_left (add_rule [] n) (add_sym l s) !(s.sym_rules) in
   let add_rules p n es l = List.fold_left (add_rule p n) l es.Sign.rules in
-  let add_sign_dep p map l = StrMap.fold (add_rules p) map l in
+  let add_sign_dep p d l = StrMap.fold (add_rules p) d.Sign.dep_symbols l in
   StrMap.fold add_sign_symbol !(sign.sign_symbols)
     (Path.Map.fold add_sign_dep !(sign.sign_deps) [])
 

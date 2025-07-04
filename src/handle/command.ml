@@ -64,8 +64,8 @@ let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
   let new_sign = compile p in
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps :=
-    Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
+  let d = {dep_symbols=StrMap.empty; dep_open=false} in
+  ss.signature.sign_deps := Path.Map.add p d !(ss.signature.sign_deps);
   (* Add builtins. *)
   let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
   let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in

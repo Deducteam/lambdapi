@@ -15,12 +15,13 @@ open Timed
 open Term
 open Sign
 
-(** [create_sign path] creates a signature with path [path] with ghost modules
-    as dependencies. *)
+(** [create_sign path] creates a signature with path [path] and the ghost
+    module as dependency. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
-  let d = Sign.dummy () in
-  let deps = Path.Map.singleton Ghost.sign.sign_path StrMap.empty in
-  {d with sign_path; sign_deps = ref deps}
+  let sign = Sign.dummy() in
+  let dep = {dep_symbols = StrMap.empty; dep_open=true} in
+  let deps = Path.Map.singleton Sign.Ghost.path dep in
+  {sign with sign_path; sign_deps = ref deps}
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
