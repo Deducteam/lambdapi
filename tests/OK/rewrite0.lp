@@ -117,3 +117,8 @@ opaque symbol test1 a (x y : T a) : P(x = y) → P(y = x)
   rewrite left xy;
   reflexivity
 end;
+
+opaque symbol test2 x y : P (x + s(s y) = s(s(x + y))) ≔
+begin
+  assume x y; repeat rewrite add_succ_r; reflexivity
+end;

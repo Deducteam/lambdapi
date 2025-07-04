@@ -31,7 +31,7 @@ The semantics of the query language is the following:
   * ``anywhere`` matches without restrictions
   * ``rule``  matches only in rewriting rules
   * ``lhs``/``rhs``  matches only in the left-hand-side/right-hand-side of rewriting rules
-  * ``typ``  matches only in the type of symbols
+  * ``type``  matches only in the type of symbols
   * ``spine`` matches only in the spine of the type of symbols, i.e. what is left of the type skipping zero or more (but not all) universal quantifications/implications
   * ``concl`` matches only in the conclusion of the type of symbols, i.e. what is left skipping all universal quantifications/implications
   * ``hyp`` matches only in the hypotheses of the type of symbols, i.e. in the type of an universal quantification/in the right left of an implication that occur in the spine
@@ -41,6 +41,8 @@ The semantics of the query language is the following:
   * ``>=`` and ``≥`` matches without restrictions
   * ``=`` the pattern must match the whole position
   * ``>`` the pattern must match a strict subterm of the position
+
+Note that for commodity, ``forall`` and ``->`` can be used inside the query instead of the Unicode characters ``Π`` and ``→`` respectively.
 
 Examples:
 

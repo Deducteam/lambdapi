@@ -8,9 +8,18 @@ open Base
     if the arrays do not have the same size. *)
 let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
  fun f a1 a2 ->
-  let exception Done in
-  let f x y = if not (f x y) then raise Done in
-  try iter2 f a1 a2; true with Done -> false
+ (*let exception Done in
+   let f x y = if not (f x y) then raise Done in
+   try iter2 f a1 a2; true with Done -> false*)
+ (*code taken from Stdlib:*)
+ let n1 = length a1
+ and n2 = length a2 in
+ if n1 <> n2 then invalid_arg "Array.for_all2"
+ else let rec loop i =
+        if i = n1 then true
+        else if f (unsafe_get a1 i) (unsafe_get a2 i) then loop (succ i)
+        else false in
+      loop 0
 
 (** [pp elt sep ppf a] prints the array [a] on the formatter [ppf] using
     [sep] as separator and [elt] for printing the elements. *)
@@ -71,3 +80,19 @@ let unzip : ('a * 'b) array -> 'a list * 'b list = fun a ->
     returned if [n > length a]. *)
 let drop : int -> 'a array -> 'a array = fun n a ->
   let l = length a in if n >= l then [||] else A.sub a n (l - n)
+
+(** Array.fold_left_map is a combination of Array.fold_left and Array.map that
+    threads an accumulator through calls to f, since OCaml 4.13. *)
+let fold_left_map f acc input_array =
+  let len = length input_array in
+  if len = 0 then (acc, [||]) else begin
+    let acc, elt = f acc (unsafe_get input_array 0) in
+    let output_array = A.make len elt in
+    let acc = ref acc in
+    for i = 1 to len - 1 do
+      let acc', elt = f !acc (unsafe_get input_array i) in
+      acc := acc';
+      unsafe_set output_array i elt;
+    done;
+    !acc, output_array
+  end

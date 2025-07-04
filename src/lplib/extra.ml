@@ -10,24 +10,6 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** [get_safe_prefix p strings] returns a string starting with [p] and so
-   that there is no non-negative integer [k] such that [p ^ string_of_int k]
-   belongs to [strings]. *)
-let get_safe_prefix : string -> StrSet.t -> string =
- fun head set ->
-  let head_len = String.length head in
-  let f s acc =
-    let s_len = String.length s in
-    if head_len <= s_len && String.equal head (String.sub s 0 head_len) then
-      try
-        let curr_int = int_of_string (String.sub s head_len (s_len - 1)) in
-        if acc < curr_int then curr_int else acc
-      with Failure _ -> acc
-    else acc
-  in
-  let res = StrSet.fold f set (-1) in
-  if res = -1 then head else head ^ string_of_int (res + 1)
-
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b =
@@ -36,13 +18,13 @@ let time : ('a -> 'b) -> 'a -> float * 'b =
   let r = f x in
   (Sys.time () -. t, r)
 
-(** Exception raised by the [with_timeout] function on a timeout. *)
+(** Exception raised by the [timeout] function on a timeout. *)
 exception Timeout
 
-(** [with_timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
+(** [timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
     exception [Timeout] is raised if the computation takes too long, otherwise
     everything goes the usual way. *)
-let with_timeout : int -> ('a -> 'b) -> 'a -> 'b =
+let timeout : int -> ('a -> 'b) -> 'a -> 'b =
  fun nbs f x ->
   let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) in
   let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in

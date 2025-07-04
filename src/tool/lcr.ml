@@ -53,9 +53,8 @@ let is_definable : sym -> bool = fun s ->
   && not !(s.sym_opaq)
 
 (** [rule_of_def s d] creates the rule [s --> d]. *)
-let rule_of_def : sym -> term -> rule = fun s d ->
-  let rhs = Bindlib.unbox (Bindlib.bind_mvar [||] (Bindlib.box d)) in
-  {lhs=[]; rhs; arity=0; arities=[||]; vars=[||]; xvars_nb=0;
+let rule_of_def : sym -> term -> rule = fun s rhs ->
+  {lhs=[]; names=[||]; rhs; arity=0; arities=[||]; vars_nb=0; xvars_nb=0;
    rule_pos=s.sym_pos}
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
@@ -89,11 +88,11 @@ let occurs : int -> term -> bool = fun i ->
     | Patt(Some j,_,_) -> i=j
     | Vari _ | Symb _ -> false
     | Appl(u,v) -> occ u || occ v
-    | Abst(a,b) | Prod(a,b) -> occ a || let _,b = Bindlib.unbind b in occ b
+    | Abst(a,b) | Prod(a,b) -> occ a || let _,b = unbind b in occ b
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | TEnv _ -> assert false
+    | Bvar _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -101,31 +100,25 @@ let occurs : int -> term -> bool = fun i ->
   in occ
 
 (** [shift t] replaces in [t] every pattern index i by -i-1. *)
-let shift : term -> term =
-  let rec shift : term -> tbox = fun t ->
-    match unfold t with
-    | Vari x -> _Vari x
-    | Type -> _Type
-    | Kind -> _Kind
-    | Symb _ -> Bindlib.box t
-    | Prod(a,b) -> _Prod (shift a) (shift_binder b)
-    | Abst(a,b) -> _Abst (shift a) (shift_binder b)
-    | Appl(a,b) -> _Appl (shift a) (shift b)
-    | Meta(m,ts) -> _Meta m (Array.map shift ts)
-    | Patt(None,_,_) -> assert false
-    | Patt(Some i,n,ts) -> _Patt (Some(-i-1)) (n ^ "'") (Array.map shift ts)
-    | TEnv(te,ts) -> _TEnv (shift_tenv te) (Array.map shift ts)
-    | Wild -> _Wild
-    | Plac b -> _Plac b
-    | TRef r -> _TRef r
-    | LLet(a,t,b) -> _LLet (shift a) (shift t) (shift_binder b)
-  and shift_binder b =
-    let x, t = Bindlib.unbind b in Bindlib.bind_var x (shift t)
-  and shift_tenv : term_env -> tebox = function
-    | TE_Vari x -> _TE_Vari x
-    | TE_None -> _TE_None
-    | TE_Some _ -> assert false
-  in fun t -> Bindlib.unbox (shift t)
+let rec shift : term -> term = fun t ->
+  match unfold t with
+  | Vari _
+  | Type
+  | Kind
+  | Symb _
+  | Wild
+  | Plac _
+  | TRef _ -> t
+  | Prod(a,b) -> mk_Prod (shift a, shift_binder b)
+  | Abst(a,b) -> mk_Abst (shift a, shift_binder b)
+  | Appl(a,b) -> mk_Appl (shift a, shift b)
+  | Meta(m,ts) -> mk_Meta (m, Array.map shift ts)
+  | Patt(None,_,_) -> assert false
+  | Patt(Some i,n,ts) -> mk_Patt (Some(-i-1), n ^ "'", Array.map shift ts)
+  | Bvar _ -> assert false
+  | LLet(a,t,b) -> mk_LLet (shift a, shift t, shift_binder b)
+and shift_binder b =
+  let x, t = unbind b in bind_var x (shift t)
 
 (** Type for pattern variable substitutions. *)
 type subs = term IntMap.t
@@ -147,16 +140,16 @@ let apply_subs : subs -> term -> term = fun s t ->
     | Vari _ | Symb _ | Type | Kind -> t
     | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Abst (apply_subs a, bind x lift (apply_subs b))
+      let x,b = unbind b in
+      mk_Abst (apply_subs a, bind_var x (apply_subs b))
     | Prod(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Prod (apply_subs a, bind x lift (apply_subs b))
+      let x,b = unbind b in
+      mk_Prod (apply_subs a, bind_var x (apply_subs b))
     | LLet(a,t,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_LLet (apply_subs a, apply_subs t, bind x lift (apply_subs b))
+      let x,b = unbind b in
+      mk_LLet (apply_subs a, apply_subs t, bind_var x (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
-    | TEnv(te,ts) -> mk_TEnv (te, Array.map apply_subs ts)
+    | Bvar _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
@@ -178,12 +171,12 @@ let iter_subterms_from_pos : subterm_pos -> iter =
     | Patt _
     | Vari _ -> iter_args p t
     | Abst(a,b)
-    | Prod(a,b) -> iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b
+    | Prod(a,b) -> iter (0::p) a; let _,b = unbind b in iter (1::p) b
     | Appl _ -> assert false
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | TEnv _ -> assert false
+    | Bvar _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -214,13 +207,13 @@ let iter_subterms : iter = fun pos f t ->
   | Abst(a,b)
   | Prod(a,b) ->
     iter_subterms_from_pos [0] pos f a;
-    let _,b = Bindlib.unbind b in iter_subterms_from_pos [1] pos f b;
+    let _,b = unbind b in iter_subterms_from_pos [1] pos f b;
   | Appl(a,b) ->
     iter_subterms_from_pos [0] pos f a; iter_subterms_from_pos [1] pos f b;
   | Type -> assert false
   | Kind -> assert false
   | Meta _ -> assert false
-  | TEnv _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
@@ -243,11 +236,11 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Appl(a,b), Appl(c,d) -> unif s ((a,c)::(b,d)::l)
       | Abst(a,b), Abst(c,d)
       | Prod(a,b), Prod(c,d) ->
-        let x,b = Bindlib.unbind b in
-        let d = Bindlib.subst d (mk_Vari x) in
+        let x,b = unbind b in
+        let d = subst d (mk_Vari x) in
         unif s ((a,c)::(b,d)::l)
       | Vari x, Vari y ->
-        if Bindlib.eq_vars x y then unif s l else raise NotUnifiable
+        if eq_vars x y then unif s l else raise NotUnifiable
       | Patt(None,_,_), _
       | _, Patt(None,_,_) -> assert false
       | Patt(Some i,_,ts), u
@@ -255,7 +248,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Type, Type
       | Kind, Kind -> unif s l
       | Meta _, _ | _, Meta _ -> assert false
-      | TEnv _, _ | _, TEnv _ -> assert false
+      | Bvar _, _ | _, Bvar _ -> assert false
       | Wild, _ | _, Wild -> assert false
       | Plac _, _ | _, Plac _ -> assert false
       | TRef _, _ | _, TRef _ -> assert false
@@ -416,8 +409,8 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     | Appl(a,b) -> mk_Appl_not_canonical(patt_to_meta a, patt_to_meta b)
     | Symb _ | Vari _ -> t
     | Abst(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Abst(patt_to_meta a, bind x lift_not_canonical (patt_to_meta b))
+      let x,b = unbind b in
+      mk_Abst(patt_to_meta a, bind_var x (patt_to_meta b))
     | _ -> assert false
   in
   let t = patt_to_meta t in
@@ -431,7 +424,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
       let i,n = MetaMap.find m !m2p in
       let s = create_sym (Sign.current_path())
           Public Defin Eager false (Pos.none n) None mk_Kind [] in
-      let t = Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb s)) in
+      let t = bind_mvar [||] (mk_Symb s) in
       Timed.(m.meta_value := Some t);
       s2p := SymMap.add s i !s2p
     with Not_found -> ()
@@ -456,12 +449,11 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     | _ -> t
   in
   (* Function converting a pair of terms into a rule, if possible. *)
-  let rule_of_terms : term -> term -> sym_rule option = fun l r ->
+  let rule_of_terms : term -> term -> sym_rule option = fun l rhs ->
     match get_args_len l with
     | Symb s, lhs, arity ->
-      let vars = [||] and rule_pos = Some (new_rule_id()) in
-      let rhs = Bindlib.unbox (Bindlib.bind_mvar vars (Bindlib.box r)) in
-      let r = {lhs; rhs; arity; arities=[||]; vars; xvars_nb=0; rule_pos} in
+      let r = {lhs; names=[||]; rhs; arity; arities=[||]; vars_nb=0;
+               xvars_nb=0; rule_pos=Some(new_rule_id())} in
       Some (s,r)
     | _ -> None
   in
@@ -618,7 +610,7 @@ let check_cps :
   (* Verification of CP*(R,S). *)
   check_cps_sign_with pos sign sym_map;
   let f path str_map =
-    if path != Ghost.sign.sign_path && str_map <> StrMap.empty then
+    if path != Sign.Ghost.path && str_map <> StrMap.empty then
       let sign =
         try Path.Map.find path !Sign.loaded with Not_found -> assert false
       in

@@ -52,9 +52,9 @@ constant symbol vec (n: Nat): El (Vec n);
 // Dependent arrow
 constant symbol darr : Π a: Set, (El a → Set) → Set;
 rule El (darr $d (λ x: El _, $c.[x])) ↪ Π z : El $d, El ($c.[z]);
-unif_rule El $e ≡ Π x : $a, $b.[x] ↪
+/*unif_rule El $e ≡ Π x : $a, $b.[x] ↪
   [ $a ≡ El $sa // $a must be an encoded type
   ; (λ x: El $sa, $b.[x]) ≡ (λ x: El $sa, El $sb.[x])
     // $b as well, but with a bound variable
   ; $e ≡ darr $sa (λ z: El $sa, $sb.[z]) ];
-type eq _ vec vec;
+type eq _ vec vec;*/

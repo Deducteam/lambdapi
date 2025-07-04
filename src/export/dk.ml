@@ -109,45 +109,37 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 
 (** Translation of terms. *)
 
-let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
+let var : var pp = fun ppf v -> string ppf (uniq_name v)
 
-(*FIXME: possible clash with symbol names*)
-let tevar : tevar pp = fun ppf v -> out ppf "_%a" ident (Bindlib.name_of v)
-let patt : string pp = fun ppf v -> out ppf "_%s" v
+let patt : int pp = fun ppf i -> out ppf "x%d" i
 
-let tenv : term_env pp = fun ppf te ->
-  match te with
-  | TE_Vari v -> tevar ppf v
-  | TE_Some _ -> assert false
-  | TE_None -> assert false
-
+(** [term b ppf t] prints term [t]. Print abstraction domains if [b]. *)
 let rec term : bool -> term pp = fun b ppf t ->
   match unfold t with
-  | Vari v -> tvar ppf v
+  | Vari v -> var ppf v
   | Type -> out ppf "Type"
   | Kind -> assert false
   | Symb s -> qid ppf (s.sym_path, s.sym_name)
   | Prod(t,u) ->
-    let x,u' = Bindlib.unbind u in
-    if Bindlib.binder_constant u
-    then out ppf "(%a -> %a)" (term b) t (term b) u'
-    else out ppf "(%a : %a -> %a)" tvar x (term b) t (term b) u'
+    let x,u' = unbind u in
+    if binder_occur u
+    then out ppf "(%a : %a -> %a)" var x (term b) t (term b) u'
+    else out ppf "(%a -> %a)" (term b) t (term b) u'
   | Abst(t,u) ->
-    let x,u = Bindlib.unbind u in
-    if b then out ppf "(%a : %a => %a)" tvar x (term b) t (term b) u
-    else out ppf "(%a => %a)" tvar x (term b) u
+    let x,u = unbind u in
+    if b then out ppf "(%a : %a => %a)" var x (term b) t (term b) u
+    else out ppf "(%a => %a)" var x (term b) u
   | Appl _ ->
     let h, ts = get_args t in
     out ppf "(%a%a)" (term b) h (List.pp (prefix " " (term b)) "") ts
   | LLet(a,t,u) ->
-    let x,u = Bindlib.unbind u in
-    out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
-  | Patt(_,s,[||]) -> patt ppf s
-  | Patt(_,s,ts) ->
-    out ppf "(%a%a)" patt s (Array.pp (prefix " " (term b)) "") ts
-  | TEnv(te, [||]) -> tenv ppf te
-  | TEnv(te, ts) ->
-    out ppf "(%a%a)" tenv te (Array.pp (prefix " " (term b)) "") ts
+    let x,u = unbind u in
+    out ppf "((%a : %a := %a) => %a)" var x (term b) a (term b) t (term b) u
+  | Patt(None,_,_) -> assert false
+  | Patt(Some i,_,[||]) -> patt ppf i
+  | Patt(Some i,_,ts) ->
+    out ppf "(%a%a)" patt i (Array.pp (prefix " " (term b)) "") ts
+  | Bvar _ -> assert false
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false
@@ -198,10 +190,13 @@ let sym_decl : sym pp = fun ppf s ->
         ident s.sym_name (term true) !(s.sym_type) (term true) d
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
-  let xs, rhs = Bindlib.unmbind r.rhs in
-  out ppf "[%a] %a%a --> %a.@."
-    (Array.pp tevar ", ") xs qid (p, n)
-    (List.pp (prefix " " (term false)) "") r.lhs (term true) rhs
+  let rec var ppf i =
+    if i < 0 then ()
+    else if i = 0 then patt ppf 0
+    else out ppf "%a,%a" var (i-1) patt i
+  in
+  out ppf "[%a] %a%a --> %a.@." var (r.vars_nb - 1) qid (p, n)
+    (List.pp (prefix " " (term false)) "") r.lhs (term true) r.rhs
 
 let decl : decl pp = fun ppf decl ->
   match decl with
@@ -213,8 +208,7 @@ let decl : decl pp = fun ppf decl ->
 let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sym l s = List.insert cmp (Sym s) l
   and add_rule p n l r =
-    if p = Ghost.sign.sign_path
-    then l
+    if p = Sign.Ghost.path then l
     else List.insert cmp (Rule (p, n, r)) l
   in
   let add_sign_symbol n s l =
@@ -227,7 +221,7 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
 (** Translation of a signature. *)
 
 let require : Path.t -> _ -> unit = fun p _ ->
-  if p <> Ghost.sign.sign_path then Format.printf "#REQUIRE %a@." path p
+  if p <> Sign.Ghost.path then Format.printf "#REQUIRE %a@." path p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);

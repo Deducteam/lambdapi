@@ -33,7 +33,7 @@ end = struct
              [find_sym ~prt:true ~prv:true ss id]
          in
          List.concat_map (fun (sym: Term.sym) ->
-           match Timed.(!(sym.sym_not)) with
+           match Timed.(!(sym.sym_nota)) with
            | Term.Infix(assoc, prio) -> [Pratter.Infix assoc, prio, t]
            | Term.Prefix(prio) | Succ(Prefix(prio)) ->
                [Pratter.Prefix, prio, t]

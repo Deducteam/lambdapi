@@ -46,6 +46,10 @@ module D = struct
       out ppf "]"
     end
 
+  let hashtbl : 'a pp -> 'b pp -> ('a, 'b) Hashtbl.t pp = fun key elt ->
+    let tbl ppf = Hashtbl.iter (fun k v -> out ppf "%a,%a; " key k elt v) in
+    fun ppf -> out ppf "[%a]" tbl
+
   let map : (('key -> 'elt -> unit) -> 'map -> unit)
     -> 'key pp -> string -> 'elt pp -> string -> 'map pp =
     fun iter key sep1 elt sep2 ppf m ->
@@ -53,10 +57,10 @@ module D = struct
     out ppf "["; iter f m; out ppf "]"
 
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
-    map StrMap.iter string ", " elt "; "
+    map StrMap.iter string "," elt ";"
 
   let intmap : 'a pp -> 'a IntMap.t pp = fun elt ->
-    map IntMap.iter int ", " elt "; "
+    map IntMap.iter int "," elt ";"
 
   let iter ?sep:(sep = Format.pp_print_cut) iter elt ppf v =
     let is_first = ref true in

@@ -4,6 +4,8 @@ Active Contributors (in alphabetical order)
 - Frédéric Blanqui (coordinator)
 - Alessio Coltellacci (2023-)
 - Claudio Sacerdoti Coen (2023-)
+- Abdelghani Alidra (2024-)
+- Bruno Barras (2025-)
 
 Past Contributors (in alphabetical order)
 =========================================

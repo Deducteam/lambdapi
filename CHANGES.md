@@ -5,9 +5,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Tactic `simplify rule off` to simplify the focused goal wrt β-reduction only.
+- Tacticals orelse and repeat.
+- Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
+- Added builtin String for string literals between double quotes.
+- Added the `--header` option to the `websearch` command
+- Added the `url` opyion to the `websearch` command
+- Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries
+- Added websearch queries and corresponding responses to the logs
+
+### Changed
+
+- Replaced Bindlib by de Bruijn (Frédéric) and closures (Bruno). The performances are slightly better than with Bindlib, especially on rewriting intensive files (the new version is 3.7 times faster on `tests/OK/perf_rw_engine.lp`). Lambdapi is now 2 times faster than dkcheck on matita, and only 2 times slower than dkcheck on holide.
+- Several improvements to use the search engine:
+  * normalize queries in websearch/search
+  * pre-load a file in websearch (e.g. to declare implicit args)
+  * paginate the output in the generated webpage
+  * allow to declare rewriting rules (e.g. alignments) over defined and constant symbols
+  * improve error message for overloaded symbols
+- Tactic set x ≔ t: replace all subterms equal to t by x.
+- Enhance the formatting of the search results.
+
 ### Fixed
 
-- Notations on external symbols are now exported
+- Notations on external symbols are now exported.
+- Make the websearch server listen on all the interfaces instead of localhost only.
 
 ## 2.6.0 (2025-01-25)
 
@@ -15,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add tactic `set`.
 - Decimal notation for integers.
+- add the `--db` option to the `index`, `search` and `websearch` commands
 
 ### Fixed
 
@@ -23,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Improved Core.Term.eq_modulo (Claudio Sacerdoti) -> speed up factor between 2 and 9
+- Improved Core.Term.eq_modulo (Claudio Sacerdoti) -> speed up factor between 2 and 9.
 - The export option `--requiring` does not require as argument a file with extension `.v` anymore: the argument must be a module name.
 - Option '--erasing' renamed into '--mapping'.
 - Builtins necessary for the decimal notation.

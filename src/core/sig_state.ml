@@ -49,8 +49,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     sig_state * sym =
   fun ss expo prop mstrat opaq id pos typ impl def ->
   let sym =
-    Sign.add_symbol ss.signature expo prop mstrat opaq id pos
-      (cleanup typ) impl in
+    Sign.add_symbol ss.signature expo prop mstrat opaq id pos typ impl in
   begin
     match def with
     | Some t when not opaq -> sym.sym_def := Some (cleanup t)
@@ -68,7 +67,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   let n =
     match b with
     | "nat_zero"  -> Zero
-    | "nat_succ" -> Succ !(s.sym_not)
+    | "nat_succ" -> Succ !(s.sym_nota)
     | "pos_one"  -> PosOne
     | "pos_double"  -> PosDouble
     | "pos_succ_double"  -> PosSuccDouble
@@ -80,7 +79,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   begin
     match n with
     | NoNotation -> ()
-    | _ -> s.sym_not := n
+    | _ -> s.sym_nota := n
   end;
   (* Update the builtins of the current signature. *)
   Sign.add_builtin ss.signature b s;

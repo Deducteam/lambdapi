@@ -22,7 +22,7 @@ open Common open Error
 let syms = ref SymMap.empty
 
 (** [bvars] is the set of abstracted variables. *)
-let bvars = ref IntSet.empty
+let bvars = ref StrSet.empty
 
 (** [nb_rules] is the number of rewrite rules. *)
 let nb_rules = ref 0
@@ -51,11 +51,11 @@ let sym : sym pp = fun ppf s ->
     (try SymMap.find s !syms with Not_found -> assert false)
 
 (** [add_bvar v] declares an abstracted Lambdapi variable. *)
-let add_bvar : tvar -> unit = fun v ->
-  bvars := IntSet.add (Bindlib.uid_of v) !bvars
+let add_bvar : var -> unit = fun v ->
+  bvars := StrSet.add (base_name v) !bvars
 
 (** [bvar v] translates the Lambdapi bound variable [v]. *)
-let bvar : tvar pp = fun ppf v -> out ppf "<var>%d</var>" (Bindlib.uid_of v)
+let bvar : var pp = fun ppf v -> out ppf "<var>%s</var>" (base_name v)
 
 (** [pvar i] translates the Lambdapi pattern variable [i]. *)
 let pvar : int pp = fun ppf i -> out ppf "<var>%d_%d</var>" !nb_rules i
@@ -86,7 +86,7 @@ and head : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | TEnv _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
@@ -96,7 +96,7 @@ and head : term pp = fun ppf t ->
   | Patt(Some i,_,ts) -> pvar_app ppf (i,ts)
   | Appl(t,u) -> out ppf "<application>%a%a</application>" term t term u
   | Abst(a,b) ->
-    let x, b = Bindlib.unbind b in add_bvar x;
+    let x, b = unbind b in add_bvar x;
     out ppf "<lambda>%a%a%a</lambda>" bvar x typ a term b
   | Prod _ -> assert false
   | LLet(a,t,b) -> term ppf (mk_Appl(mk_Abst(a,b),t))
@@ -113,7 +113,7 @@ and typ : term pp = fun ppf t ->
   | Meta _ -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | TEnv _ -> assert false
+  | Bvar _ -> assert false
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
@@ -124,17 +124,17 @@ and typ : term pp = fun ppf t ->
   | Patt(Some _,_,_) -> assert false
   | Appl _ -> fatal_no_pos "Dependent type."
   | Abst _ -> fatal_no_pos "Dependent type."
-  | Prod(a,b) when Bindlib.binder_constant b ->
-    let x, b = Bindlib.unbind b in add_bvar x;
+  | Prod(a,b) ->
+    if binder_occur b then fatal_no_pos "Dependent type." else
+    let x, b = unbind b in add_bvar x;
     out ppf "<type><arrow>%a%a</arrow></type>" typ a typ b
-  | Prod _ -> fatal_no_pos "Dependent type."
-  | LLet(_,t,b) -> typ ppf (Bindlib.subst b t)
+  | LLet(_,t,b) -> typ ppf (subst b t)
 
 (** [add_pvars s r] adds the types of the pvars of [r] in [pvars]. *)
 let add_pvars : sym -> rule -> unit = fun s r ->
-  let n = Array.length r.vars in
+  let n = r.vars_nb in
   (* Generate n fresh variables and n fresh metas for their types. *)
-  let var = Array.init n (new_tvar_ind "$") in
+  let var = Array.init n (new_var_ind "$") in
   let p = new_problem() in
   type_of_pvar := Array.init n (fun _ -> LibMeta.make p [] mk_Type);
   (* Replace in lhs pattern variables by variables. *)
@@ -142,7 +142,7 @@ let add_pvars : sym -> rule -> unit = fun s r ->
     match unfold t with
     | Type -> assert false
     | Kind -> assert false
-    | TEnv _ -> assert false
+    | Bvar _ -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -155,8 +155,8 @@ let add_pvars : sym -> rule -> unit = fun s r ->
       begin
         match unfold a with
         | Patt(Some i,_,[||]) ->
-          let x,b = Bindlib.unbind b in
-          mk_Abst(!type_of_pvar.(i), bind x lift (subst_patt b))
+          let x,b = unbind b in
+          mk_Abst(!type_of_pvar.(i), bind_var x (subst_patt b))
         | Patt(Some _,_,_) -> assert false (*FIXME*)
         | _ -> assert false
       end
@@ -208,7 +208,7 @@ let rules_of_sym : sym pp = fun ppf s ->
 
 (** Translate the rules of a dependency except if it is a ghost signature. *)
 let rules_of_sign : Sign.t pp = fun ppf sign ->
-  if sign != Ghost.sign then
+  if sign != Sign.Ghost.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
 
 (** [sign ppf s] translates the Lambdapi signature [s]. *)

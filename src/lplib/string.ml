@@ -41,3 +41,17 @@ module B = Bytes
 let bos = B.unsafe_of_string
 let get_utf_8_uchar s i = B.get_utf_8_uchar (bos s) i
 let is_valid_utf_8 s = B.is_valid_utf_8 (bos s)
+
+(* [string_of_file f] puts the contents of file [f] in a string. *)
+let string_of_file f =
+  let ic = open_in f in
+  let n = in_channel_length ic in
+  let s = Bytes.create n in
+  really_input ic s 0 n;
+  close_in ic;
+  Bytes.to_string s
+
+let is_string_literal (s:string): bool =
+  let n = S.length s in n >= 2 && S.get s 0 = '"' && S.get s (n-1) = '"'
+
+let remove_quotes (n:string): string = S.sub n 1 (S.length n - 2)

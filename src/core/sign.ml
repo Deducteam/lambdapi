@@ -73,41 +73,65 @@ let loading : Path.t list ref = ref []
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
 
+(** Signature for symbols introduced by Lambdapi and not the user
+    (e.g. unification/coercion rules, strings) and always loaded. *)
+module Ghost = struct
+
+  let path = Path.ghost "ghost"
+
+  let sign =
+    let sign = { (dummy()) with sign_path = path } in
+    loaded := Path.Map.add path sign !loaded;
+    sign
+
+  let find s = StrMap.find s !(sign.sign_symbols)
+
+  (** [iter f] iters function [f] on ghost symbols. *)
+  let iter : (sym -> unit) -> unit = fun f ->
+    StrMap.iter (fun _ s -> f s) !(sign.sign_symbols)
+
+end
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let link_symb s =
-    if s.sym_path = sign.sign_path then s else
-    try find (Path.Map.find s.sym_path !loaded) s.sym_name
-    with Not_found -> assert false
+    if s.sym_path = sign.sign_path then s
+    else
+      try find (Path.Map.find s.sym_path !loaded) s.sym_name
+      with Not_found ->
+        if s.sym_path = Ghost.path
+           && String.is_string_literal s.sym_name then
+          begin
+            Ghost.sign.sign_symbols :=
+              StrMap.add s.sym_name s !(Ghost.sign.sign_symbols);
+            s
+          end
+        else assert false
   in
   let link_term mk_Appl =
     let rec link_term t =
       match unfold t with
-      | Vari _
       | Type
-      | Kind -> t
+      | Kind
+      | Vari _ -> t
       | Symb s -> mk_Symb(link_symb s)
-      | Prod(a,b) -> mk_Prod(link_term a, link_binder b)
-      | Abst(a,b) -> mk_Abst(link_term a, link_binder b)
-      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, link_binder b)
+      | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
+      | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
+      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, binder link_term b)
       | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
       | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
-      | TEnv(te,ts) -> mk_TEnv(te, Array.map link_term ts)
+      | Bvar _ -> assert false
       | Meta _ -> assert false
       | Plac _ -> assert false
       | Wild -> assert false
       | TRef _ -> assert false
-    and link_binder b =
-      let (x,t) = Bindlib.unbind b in bind x lift (link_term t)
     in link_term
   in
   let link_lhs = link_term mk_Appl_not_canonical
   and link_term = link_term mk_Appl in
   let link_rule r =
     let lhs = List.map link_lhs r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    let rhs = link_term r.rhs in
     {r with lhs ; rhs}
   in
   let f _ s =
@@ -124,7 +148,7 @@ let link : t -> unit = fun sign ->
       let g n (rs,nota) =
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-        Option.iter (fun nota -> s.sym_not := nota) nota;
+        Option.iter (fun nota -> s.sym_nota := nota) nota;
         Tree.update_dtree s []
       in
       StrMap.iter g sm
@@ -160,23 +184,22 @@ let unlink : t -> unit = fun sign ->
     match unfold t with
     | Symb s -> unlink_sym s
     | Prod(a,b)
-    | Abst(a,b) -> unlink_term a; unlink_binder b
-    | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_binder b
+    | Abst(a,b) -> unlink_term a; unlink_term (snd(unbind b))
+    | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_term (snd(unbind b))
     | Appl(a,b) -> unlink_term a; unlink_term b
     | Meta _ -> assert false
     | Plac _ -> assert false
     | Wild   -> assert false
     | TRef _ -> assert false
-    | TEnv(_,ts) -> Array.iter unlink_term ts
-    | Patt _
+    | Bvar _ -> assert false
     | Vari _
+    | Patt _
     | Type
     | Kind -> ()
-  and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
+  in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = Bindlib.unmbind r.rhs in
-    unlink_term rhs
+    unlink_term r.rhs
   in
   let f _ s =
     unlink_term !(s.sym_type);
@@ -261,24 +284,24 @@ let read : string -> t = fun fname ->
   in
   let rec reset_term t =
     match unfold t with
-    | Vari _
     | Type
-    | Kind -> ()
+    | Kind
+    | Vari _ -> ()
     | Symb s -> shallow_reset_sym s
     | Prod(a,b)
-    | Abst(a,b) -> reset_term a; reset_binder b
-    | LLet(a,t,b) -> reset_term a; reset_term t; reset_binder b
+    | Abst(a,b) -> reset_term a; reset_term (snd (unbind b))
+    | LLet(a,t,b) -> reset_term a; reset_term t; reset_term (snd(unbind b))
     | Appl(a,b) -> reset_term a; reset_term b
-    | Patt(_,_,ts)
-    | TEnv(_,ts) -> Array.iter reset_term ts
-    | TRef r -> unsafe_reset r; Option.iter reset_term !r
+    | Patt(_,_,ts) -> Array.iter reset_term ts
+    | Bvar _ -> assert false
+    | TRef _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
-  and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+  in
   let reset_rule r =
     List.iter reset_term r.lhs;
-    reset_term (snd (Bindlib.unmbind r.rhs))
+    reset_term r.rhs
   in
   let reset_sym s =
     shallow_reset_sym s;
@@ -308,7 +331,7 @@ let read =
    rule does not correspond to a symbol of signature [sign], it is stored in
    its dependencies. /!\ does not update the decision tree or the critical
    pairs. *)
-let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
+let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
@@ -337,7 +360,7 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
 let add_notation : t -> sym -> float notation -> unit = fun sign sym nota ->
-  sym.sym_not := nota;
+  sym.sym_nota := nota;
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
     let f = function
@@ -372,7 +395,7 @@ let iterate : (t -> unit) -> t -> unit = fun f sign ->
       if not (Path.Set.mem path Stdlib.(!visited)) then
         handle (Path.Map.find path !loaded)
     in
-    Path.Map.iter dep Timed.(!(sign.sign_deps))
+    Path.Map.iter dep !(sign.sign_deps)
   in handle sign
 
 (** [dependencies sign] returns an association list containing (the transitive

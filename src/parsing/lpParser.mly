@@ -39,6 +39,7 @@
 %token CONSTANT
 %token DEBUG
 %token END
+%token EVAL
 %token FAIL
 %token FLAG
 %token GENERALIZE
@@ -52,6 +53,7 @@
 %token NOTATION
 %token OPAQUE
 %token OPEN
+%token ORELSE
 %token POSTFIX
 %token PREFIX
 %token PRINT
@@ -64,6 +66,7 @@
 %token REFINE
 %token REFLEXIVITY
 %token REMOVE
+%token REPEAT
 %token REQUIRE
 %token REWRITE
 %token RULE
@@ -129,6 +132,7 @@
 %start <Syntax.p_qident> qid
 %start <Syntax.p_qident> qid_alone
 %start <Syntax.p_term> term_alone
+%start <Syntax.p_rw_patt> rw_patt_spec_alone
 %start <SearchQuerySyntax.query> search_query_alone
 
 // patch (see https://github.com/Deducteam/lambdapi/pull/798)
@@ -139,6 +143,10 @@
 term_alone:
   | t=term EOF
     { t }
+
+rw_patt_spec_alone:
+  | p=rw_patt_spec EOF
+    { p }
 
 qid_alone:
   | q=qid EOF
@@ -212,9 +220,9 @@ query:
 qid_or_rule:
   | i=qid { i }
   | UNIF_RULE
-    { make_pos $sloc (Ghost.sign.sign_path, Unif_rule.equiv.sym_name) }
+    { make_pos $sloc (Sign.Ghost.path, Unif_rule.equiv.sym_name) }
   | COERCE_RULE
-    { make_pos $sloc (Ghost.sign.sign_path, Coercion.coerce.sym_name) }
+    { make_pos $sloc (Sign.Ghost.path, Coercion.coerce.sym_name) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
@@ -280,6 +288,7 @@ aterm:
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit n) }
+  | s=STRINGLIT { make_pos $sloc (P_SLit s) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
@@ -327,18 +336,25 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | EVAL t=term { make_pos $sloc (P_tac_eval t) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
-  | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
+  | ORELSE t1=tactic t2=tactic { make_pos $sloc (P_tac_orelse(t1,t2)) }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
+  | REPEAT t=tactic { make_pos $sloc (P_tac_repeat t) }
   | REWRITE d=SIDE? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
+  | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
+  | SIMPLIFY { make_pos $sloc (P_tac_simpl SimpAll) }
+  | SIMPLIFY i=qid { make_pos $sloc (P_tac_simpl (SimpSym i)) }
+  | SIMPLIFY RULE s=SWITCH
+    { if s then LpLexer.syntax_error $sloc "Invalid tactic"
+      else make_pos $sloc (P_tac_simpl SimpBetaOnly) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | TRY t=tactic { make_pos $sloc (P_tac_try t) }
@@ -375,8 +391,8 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Ghost.sign.sign_path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Ghost.sign.sign_path Unif_rule.cons.sym_name in
+      let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Sign.Ghost.path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in
