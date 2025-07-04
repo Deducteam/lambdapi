@@ -28,7 +28,6 @@ depends: [
   "alcotest" {with-test}
   "alt-ergo" {with-test}
   "dedukti" {with-test & >= "2.7"}
-  "bindlib" {>= "6.0.0"}
   "timed" {>= "1.0"}
   "pratter" {>= "3.0.0" & < "4"}
   "camlp-streams" {>= "5.0"}
@@ -38,6 +37,7 @@ depends: [
   "stdlib-shims" {>= "0.1.0"}
   "odoc" {with-doc}
   "lwt_ppx" {>= "1.0.0"}
+  "uri" {>= "1.1"}
 ]
 build: [
   ["dune" "subst"] {dev}
