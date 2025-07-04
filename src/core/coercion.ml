@@ -1,5 +1,5 @@
 open Common
-open Term
+open Term open Sign
 
 let coerce : sym =
   let id = Pos.none "coerce" in

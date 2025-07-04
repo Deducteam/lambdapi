@@ -36,15 +36,17 @@ module Monad = struct
   let ( let* ) = Stdlib.Option.bind
 
   (** Monadic [let*] allows to replace
+      {[ Option.bind e (fun x => ...) ]}
+      or
       {[
-        match e1 with
-        | Some e2 -> Some (f e2)
+        match e with
         | None -> None
+        | Some x -> ...
       ]}
       with
       {[
-        let* x = e1 in
-        f x
+        let* x = e in
+        ...
       ]} *)
 
   let return x = Some x

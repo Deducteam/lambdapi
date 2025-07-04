@@ -208,8 +208,7 @@ let decl : decl pp = fun ppf decl ->
 let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sym l s = List.insert cmp (Sym s) l
   and add_rule p n l r =
-    if p = Ghost.sign.sign_path
-    then l
+    if p = Sign.Ghost.path then l
     else List.insert cmp (Rule (p, n, r)) l
   in
   let add_sign_symbol n s l =
@@ -222,7 +221,7 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
 (** Translation of a signature. *)
 
 let require : Path.t -> _ -> unit = fun p _ ->
-  if p <> Ghost.sign.sign_path then Format.printf "#REQUIRE %a@." path p
+  if p <> Sign.Ghost.path then Format.printf "#REQUIRE %a@." path p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);

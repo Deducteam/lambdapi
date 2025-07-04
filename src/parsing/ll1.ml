@@ -315,11 +315,11 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
   | UNIF_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Ghost.sign.sign_path, Unif_rule.equiv.sym_name)
+      make_pos pos1 (Sign.Ghost.path, Unif_rule.equiv.sym_name)
   | COERCE_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Ghost.sign.sign_path, Coercion.coerce.sym_name)
+      make_pos pos1 (Sign.Ghost.path, Coercion.coerce.sym_name)
   | _ ->
       expected "" [UID"";QID[];UNIF_RULE;COERCE_RULE]
 
@@ -487,8 +487,8 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
       let es = eq1::eqs in
       consume R_SQ_BRACKET lb;
       (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Ghost.sign.sign_path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Ghost.sign.sign_path Unif_rule.cons.sym_name in
+      let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Sign.Ghost.path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in

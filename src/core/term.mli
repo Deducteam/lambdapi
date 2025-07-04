@@ -107,7 +107,7 @@ and sym =
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation ref (** Notation. *)
+  ; sym_nota  : float notation ref (** Notation. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
   ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
@@ -312,6 +312,9 @@ val is_abst : term -> bool
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 val is_prod : term -> bool
 
+(** [is_tref t] returns [true] iff [t] is of the form [TRef _]. *)
+val is_TRef : term -> bool
+
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 val is_symb : sym -> term -> bool
 
@@ -458,6 +461,7 @@ val rhs : sym_rule -> term
 
 (** Basic printing function (for debug). *)
 module Raw : sig
+  val sym : sym pp
   val term : term pp
   val ctxt : ctxt pp
 end

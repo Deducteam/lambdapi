@@ -271,31 +271,33 @@ module DB = struct
    sep
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
-  ~lis:(lisb,lise) ~pres:(preb,pree) fmt l
+  ~lis:(lisb,lise) ~pres:(preb,pree)
+  ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
  =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.<b>%s</b>@%s%s%a%s%s<code>%a</code>%s%s@."
-       lisb (escaper.run Core.Print.path) p n
+     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%s%s@."
+       lisb (escaper.run Core.Print.path) p boldb n bolde
        (popt_to_string ~print_dirname:false pos)
        separator (generic_pp_of_position_list ~escaper ~sep) positions
-       separator preb
+       separator preb codeb
        (Common.Pos.print_file_contents ~escape ~delimiters)
-       pos pree lise)
+       pos codee pree lise)
     "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
-   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
+   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
+   ~code:("<code>","</code>")
 
  let pp_item_list =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
-   ~lis:("* ","") ~pres:("","")
+   ~lis:("* ","") ~pres:("","") ~bold:("","") ~code:("","")
 
  let pp_results_list fmt l = pp_item_list fmt l
 
@@ -647,16 +649,15 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results q =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag:(hb,he) q =
   try
    let mok _ = None in
    let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   (*FIXME: there should be no HTML here*)
-   Format.asprintf "<h1>Number of results: %d</h1>%a@."
-    resultsno pp_results items
+   Format.asprintf "%sNumber of results: %d%s%a@."
+    hb resultsno he pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
@@ -674,11 +675,11 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
-  let search_cmd_txt_query ss q ~dbpath =
+  let search_cmd_txt_query ss ~dbpath q =
   the_dbpath := dbpath;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list q
+   ~pp_results:pp_results_list ~tag:("","") q
 
  (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
      ["forall"] with ["→"] and ["Π"] in the search query [s] *)
@@ -695,19 +696,20 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
- let search_cmd_html ss ~from ~how_many s ~dbpath =
+ let search_cmd_html ss ~from ~how_many ~dbpath s =
   the_dbpath := dbpath;
-  let s = transform_ascii_to_unicode s in
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:(html_of_results_list from)
-   (Parsing.Parser.Lp.parse_search_query_string "" s)
+   ~tag:("<h1>","</h1")
+   (Parsing.Parser.Lp.parse_search_query_string ""
+      (transform_ascii_to_unicode s))
 
- let search_cmd_txt ss s ~dbpath =
+ let search_cmd_txt ss ~dbpath s =
    the_dbpath := dbpath;
-   let s = transform_ascii_to_unicode s in
-   search_cmd_txt_query ss
-     (Parsing.Parser.Lp.parse_search_query_string "" s) ~dbpath
+   search_cmd_txt_query ss ~dbpath
+     (Parsing.Parser.Lp.parse_search_query_string ""
+        (transform_ascii_to_unicode s))
 
 end
 

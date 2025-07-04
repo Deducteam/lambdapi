@@ -171,7 +171,7 @@ and sym =
   ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation Timed.ref (** Notation. *)
+  ; sym_nota  : float notation Timed.ref (** Notation. *)
   ; sym_def   : term option Timed.ref (** Definition with ≔. *)
   ; sym_opaq  : bool Timed.ref (** Opacity. *)
   ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
@@ -289,7 +289,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   let open Timed in
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
+   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_nota = ref NoNotation;
    sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
@@ -572,13 +572,14 @@ let _ =
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match unfold t with Abst(_) -> true | _ -> false
+(** [is_abst t] returns [true] iff [t] is of the form [Abst _]. *)
+let is_abst t = match unfold t with Abst _ -> true | _ -> false
 
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  (match unfold t with Prod(_) -> true | _ -> false)
+(** [is_prod t] returns [true] iff [t] is of the form [Prod _]. *)
+let is_prod t = match unfold t with Prod _ -> true | _ -> false
+
+(** [is_tref t] returns [true] iff [t] is of the form [TRef _]. *)
+let is_TRef t = match unfold t with TRef _ -> true | _ -> false
 
 (** [iter_atoms db f g t] applies f to every occurrence of a variable in t,
     g to every occurrence of a symbol, and db to every occurrence of a

@@ -20,8 +20,9 @@ bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "3.7"}
-  (("ocaml" {>= "4.13.0"} & "dream" {>= "1.0.0~alpha3"})
-  |("ocaml" {>= "4.09.0" & < "4.13.0"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
+  (("ocaml" {>= "5.3"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha4"} & "dream" {= "1.0.0~alpha8"})
+  |("ocaml" {>= "4.13" & < "5.3"} & "dream" {>= "1.0.0~alpha3"})
+  |("ocaml" {>= "4.9" & < "4.13"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
   "menhir" {>= "20200624"}
   "sedlex" {>= "3.2"}
   "alcotest" {with-test}
@@ -37,7 +38,6 @@ depends: [
   "stdlib-shims" {>= "0.1.0"}
   "odoc" {with-doc}
   "lwt_ppx" {>= "1.0.0"}
-  "dream" {>= "1.0.0~alpha3"}
 ]
 build: [
   ["dune" "subst"] {dev}
