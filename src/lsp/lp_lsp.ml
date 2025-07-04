@@ -229,7 +229,7 @@ let get_node_at_pos doc line pos =
   List.find_opt (fun { ast; _ } ->
       let loc = Pure.Command.get_pos ast in
       let res = in_range ?loc (line,pos) in
-      let ls = Format.asprintf "%B l:%d p:%d / %a "
+      let ls = Format.asprintf "%B l:%d p:%d / %a"
                  res line pos Pos.pp loc in
       LIO.log_error "get_node_at_pos" ("call: "^ls);
       res
