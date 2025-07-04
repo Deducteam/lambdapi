@@ -68,7 +68,6 @@ For developers
    :maxdepth: 1
 
    structure.rst
-   implementation.rst
    dtrees.rst
    testing.rst
    profiling.rst
