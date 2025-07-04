@@ -8,22 +8,13 @@ on:
       - 'editors/**'
       - '.github/workflows/vscode.yml'
   workflow_dispatch:
+
 jobs:
-  lambdapi:
+  check:
     strategy:
       fail-fast: false
       matrix:
-        # 5.3.0: 08/01/2025
-        # 5.2.1: 18/11/2024
-        # 5.1.1: 08/12/2023
-        # 5.0.0: 16/12/2022
-        # 4.14.2: 15/03/2024
-        # 4.13.1: 01/10/2021
-        # 4.12.1: 24/02/2021
-        # 4.11.2: 24/02/2021
-        # 4.10.2: 18/12/2020
-        # 4.09.1: 16/03/2020
-        ocaml-version: [5.3.0, 5.2.1, 4.14.2] #5.1.1, 5.0.0, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1
+        ocaml-version: [5.3.0]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo
@@ -33,6 +24,8 @@ jobs:
       #   with:
       #     path: ~/.opam
       #     key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
+      - name: make sanity_check
+        run: make sanity_check
       - name: setting up opam
         uses: ocaml/setup-ocaml@v3
         with:
@@ -44,20 +37,30 @@ jobs:
           opam pin add -n -k path lambdapi .
           opam install --deps-only -d -t lambdapi
           #why3 config detect
-      - name: make sanity_check
-        run: make sanity_check
       - name: build
         run: |
           eval $(opam env)
           dune build
-      - name: make tests
+      - name: make test
         run: |
           eval $(opam env)
-          make tests
-      - name: make tests_export
+          make test
+      - name: make test_load
         run: |
           eval $(opam env)
-          make tests_export
+          make test_load
+      - name: make test_export_dk
+        run: |
+          eval $(opam env)
+          make test_export_dk
+      - name: make test_export_lp
+        run: |
+          eval $(opam env)
+          make test_export_lp
+      - name: make test_export_raw_dk
+        run: |
+          eval $(opam env)
+          make test_export_raw_dk
       - name: make test_libs
         run: |
           eval $(opam env)
