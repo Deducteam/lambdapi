@@ -1,0 +1,47 @@
+# check compilation with previous versions of ocaml
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'editors/**'
+      - '.github/workflows/vscode.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 5.3.0: 08/01/2025
+        # 5.2.1: 18/11/2024
+        # 5.1.1: 08/12/2023
+        # 5.0.0: 16/12/2022
+        # 4.14.2: 15/03/2024
+        # 4.13.1: 01/10/2021
+        # 4.12.1: 24/02/2021
+        # 4.11.2: 24/02/2021
+        # 4.10.2: 18/12/2020
+        # 4.09.1: 16/03/2020
+        ocaml-version: [5.2.1, 4.14.2]
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup-ocaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+      - name: install dependencies
+        run: |
+          #opam update
+          #opam upgrade
+          opam pin add -n -k path lambdapi .
+          opam install --deps-only -d -t lambdapi
+      - name: build
+        run: |
+          eval $(opam env)
+          dune build
