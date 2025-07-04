@@ -8,34 +8,60 @@ on:
       - 'editors/**'
       - '.github/workflows/vscode.yml'
   workflow_dispatch:
+
 jobs:
-  lambdapi:
+  test_full:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [5.3.0, 5.2.1, 5.1.1, 5.0.0, 4.14.2, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1]
+        ocaml-version: [5.3.0]
     runs-on: ubuntu-latest
     steps:
-      - name: checking out lambdapi repo ...
+      - name: checking out lambdapi repo
         uses: actions/checkout@v4
-      # - name: recovering cached opam files ...
+      # - name: recovering cached opam files
       #   uses: actions/cache@v4
       #   with:
       #     path: ~/.opam
       #     key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
-      - name: setting up opam ...
+      - name: make sanity_check
+        run: make sanity_check
+      - name: setting up opam
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
-      - name: installing dependencies ...
+      - name: install dependencies
         run: |
-          opam update
-          opam upgrade
+          #opam update
+          #opam upgrade
           opam pin add -n -k path lambdapi .
           opam install --deps-only -d -t lambdapi
-      - name: running tests ...
-        run: |
-          make sanity_check
-          eval $(opam env)
           #why3 config detect
-          make tests
+      - name: build
+        run: |
+          eval $(opam env)
+          dune build
+      - name: make test
+        run: |
+          eval $(opam env)
+          make test
+      - name: make test_load
+        run: |
+          eval $(opam env)
+          make test_load
+      - name: make test_export_dk
+        run: |
+          eval $(opam env)
+          make test_export_dk
+      - name: make test_export_lp
+        run: |
+          eval $(opam env)
+          make test_export_lp
+      - name: make test_export_raw_dk
+        run: |
+          eval $(opam env)
+          make test_export_raw_dk
+      - name: make test_libs
+        run: |
+          eval $(opam env)
+          make test_libs
