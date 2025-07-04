@@ -62,37 +62,42 @@ let handle_open : sig_state -> p_path -> sig_state =
   open_sign ss (try Path.Map.find p !(Sign.loaded)
                 with Not_found -> assert false)
 
-(** [handle_require b ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state and [compile] the
-   main compile function (passed as argument to avoid cyclic dependencies).
-   On success, an updated signature state is returned. *)
+(** [handle_require b ss p] handles the command [require p] (or [require open
+    p] if b is true) with [ss] as the signature state and [compile] as compile
+    function (passed as argument to avoid cyclic dependencies). On success,
+    an updated signature state is returned. *)
 let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
-  fun compile b ss {elt=p;pos} ->
-  (* Check that the module has not already been required. *)
-  if Path.Map.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module %a is already required." path p;
-  (* Compile required path (adds it to [Sign.loaded] among other things) *)
-  let new_sign = compile p in
-  (* Add the dependency (it was compiled already while parsing). *)
-  let d = {dep_symbols=StrMap.empty; dep_open=b} in
-  ss.signature.sign_deps := Path.Map.add p d !(ss.signature.sign_deps);
-  (* Add builtins. *)
-  let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-  let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
-  let ss = {ss with builtins} in
-  if b then open_sign ss new_sign else ss
+  fun compile b ss {elt=p;_} ->
+  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+  else
+    begin
+      (* Compile [p] (this adds it to [Sign.loaded]). *)
+      let new_sign = compile p in
+      (* Add the dependency (it was compiled already while parsing). *)
+      let d = {dep_symbols=StrMap.empty; dep_open=b} in
+      ss.signature.sign_deps := Path.Map.add p d !(ss.signature.sign_deps);
+      (* Add builtins. *)
+      let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+      let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
+      let ss = {ss with builtins} in
+      if b then open_sign ss new_sign else ss
+    end
 
-(** [handle_require_as compile ss p id] handles the command
-    [require p as id] with [ss] as the signature state and [compile] the main
-    compilation function passed as argument to avoid cyclic dependencies. On
-    success, an updated signature state is returned. *)
+(** [handle_require_as compile ss p id] handles the command [require p as id]
+    with [ss] as the signature state and [compile] as compilation function
+    (passed as argument to avoid cyclic dependencies). On success, an updated
+    signature state is returned. *)
 let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
   sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
-  let ss = handle_require compile false ss mp in
-  let alias_path = StrMap.add id p ss.alias_path in
-  let path_alias = Path.Map.add p id ss.path_alias in
-  {ss with alias_path; path_alias}
+  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+  else
+    begin
+      let ss = handle_require compile false ss mp in
+      let alias_path = StrMap.add id p ss.alias_path in
+      let path_alias = Path.Map.add p id ss.path_alias in
+      {ss with alias_path; path_alias}
+    end
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
