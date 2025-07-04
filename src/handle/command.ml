@@ -49,9 +49,6 @@ let handle_open : sig_state -> p_path -> sig_state =
   (* Check that [p] has been required. *)
   if not (Path.Map.mem p !(ss.signature.sign_deps)) then
     fatal pos "Module \"%a\" needs to be required first." path p;
-  (* Check that [p] has not been open already. *)
-  if Path.Set.mem p ss.open_paths then
-    fatal pos "Module \"%a\" already open." path p;
   (* Record opening. *)
   let f = function
     | None -> assert false
