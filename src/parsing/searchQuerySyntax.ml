@@ -16,6 +16,7 @@ type op =
  | Union
 type filter =
  | Path of string
+ | RegExp of Str.regexp
 type query =
  | QBase of base_query
  | QOpp of query * op * query

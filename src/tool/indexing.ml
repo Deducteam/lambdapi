@@ -3,9 +3,14 @@ open Common open Pos
 
 type sym_name = Common.Path.t * string
 
+let string_of_path x = Format.asprintf "%a" Common.Path.pp x
+
 let is_path_prefix patt p =
- let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
-  Lplib.String.is_prefix patt (string_of_path p)
+ Lplib.String.is_prefix patt (string_of_path p)
+
+let re_matches_sym_name re (p,name) =
+ (* CSC: fix me *)
+ Str.string_match re (string_of_path p ^ "." ^ name) 0
 
 let name_of_sym s = (s.sym_path, s.sym_name)
 
@@ -670,7 +675,10 @@ module QueryLanguage = struct
         (fun _ positions1 positions2 -> Some (positions1 @ positions2))
 
  let filter set f =
-  let g ((p',_),_) _ = let Path p = f in is_path_prefix p p' in
+  let g ((p',_ as name),_) _ =
+   match f with
+    | Path p -> is_path_prefix p p'
+    | RegExp re -> re_matches_sym_name re name in
   ItemSet.filter g set
 
  let answer_query ~mok ss env =

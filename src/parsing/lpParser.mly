@@ -502,5 +502,8 @@ search_query:
        else
         Format.asprintf "%a.%a" Core.Print.path p Core.Print.uid n in
       SearchQuerySyntax.QFilter (q,Path path) }
+  | q=search_query VBAR s=STRINGLIT
+    { let re = Str.regexp s in
+      SearchQuerySyntax.QFilter (q,RegExp re) }
 
 %%
