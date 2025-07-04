@@ -132,8 +132,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let decl ppf s =
           out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
             expo s.sym_expo prop s.sym_prop
-            match_strat s.sym_mstrat sym s
-            prod (!(s.sym_type), s.sym_impl)
+            match_strat s.sym_mstrat sym s sym_type s
             def !(s.sym_def) notation s rules s
         in
         (* Function to print constructors and the induction principle if [qid]
