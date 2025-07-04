@@ -80,7 +80,7 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
     [c] and problem [pb]. *)
 let rec coerce : problem -> ctxt -> term -> term -> term -> term * bool =
   fun pb c t a b ->
-  if Logger.log_enabled () then log "coerce %a\n\nto %a" term a term b;
+  if Logger.log_enabled () then log "coerce %a\nto %a" term a term b;
   if Eval.pure_eq_modulo c a b then (t, false)
   else
      match reduce_coercions c (Coercion.apply a b t) with
