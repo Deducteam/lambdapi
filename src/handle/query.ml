@@ -176,8 +176,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   match elt with
   | P_query_search q ->
       let dbpath = Path.default_dbpath in
-      return string
-        (Tool.Indexing.search_cmd_txt_query ss q ~dbpath)
+      return string (Tool.Indexing.search_cmd_txt_query ss q ~dbpath)
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)
