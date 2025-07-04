@@ -62,7 +62,7 @@ tests_alt_ergo: lambdapi
 	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
 
 .PHONY: test_libs
-test_libs: tests
+test_libs: lambdapi
 	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
 	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
 

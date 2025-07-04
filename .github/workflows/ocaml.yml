@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
+  test_compile:
     strategy:
       fail-fast: false
       matrix:
