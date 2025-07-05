@@ -243,15 +243,15 @@ The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previou
 
 .. _open:
 
-``open``
---------
+``[private] open``
+------------------
 
-Puts into scope the symbols of the previously required module given
-in argument. It can also be combined with the ``require`` command.
+Puts into scope the symbols of the previously required modules given
+in arguments. It can also be combined with the ``require`` command.
 
-``open`` commands are transitively inherited: if A opens B and B opens
-C, then the symbols of C are also put in scope in the current
-environment.
+Non-private ``open`` commands are transitively inherited: if A opens B
+and B opens C, then the symbols of C are also put in scope in the
+environment of A.
 
 ::
 

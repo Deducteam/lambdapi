@@ -313,10 +313,9 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require  of bool * p_path list
-    (* "require open" if the boolean is true *)
+  | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
-  | P_open of p_path list
+  | P_open of (*private?*)bool * p_path list
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
@@ -474,9 +473,8 @@ let eq_p_symbol : p_symbol eq = fun
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
-  | P_require(b1,l1), P_require(b2,l2) ->
-      b1 = b2 && List.eq eq_p_path l1 l2
-  | P_open l1, P_open l2 -> List.eq eq_p_path l1 l2
+  | P_require(b1,l1), P_require(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
+  | P_open(b1,l1), P_open(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
   | P_require_as(m1,i1), P_require_as(m2,i2) ->
       eq_p_path m1 m2 && eq_p_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
