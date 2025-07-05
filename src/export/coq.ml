@@ -296,11 +296,16 @@ let is_lem x = is_opaq x || is_priv x
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> string oc "Import "; list path " " oc ps; string oc ".\n"
-  | P_require (true, ps) ->
-      string oc "Require Import "; list path " " oc ps; string oc ".\n"
-  | P_require (false, ps) ->
+  | P_open(true,ps) ->
+      string oc "Import "; list path " " oc ps; string oc ".\n"
+  | P_open(false,ps) ->
+      string oc "Export "; list path " " oc ps; string oc ".\n"
+  | P_require (None, ps) ->
       string oc "Require "; list path " " oc ps; string oc ".\n"
+  | P_require (Some true, ps) ->
+      string oc "Require Import "; list path " " oc ps; string oc ".\n"
+  | P_require (Some false, ps) ->
+      string oc "Require Export "; list path " " oc ps; string oc ".\n"
   | P_require_as (p,i) ->
     string oc "Module "; ident oc i; string oc " := "; path oc p;
     string oc ".\n"
