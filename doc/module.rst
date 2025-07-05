@@ -1,7 +1,7 @@
 Module system
 =============
 
-Lambdapi has a very light module system based on file paths. It allows
+Lambdapi has a light module system based on file paths. It allows
 you to split your developments across files and folders.
 The main thing to know is that a file holds a single module,
 and accessing this module in other files requires using its *full*
@@ -22,8 +22,8 @@ variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line flag <options>`
 
 The typical case is when we want to access a module of some installed
 library. In that case, the module path
-is built using the file path as follows: if our source file is at
-``<LIB_ROOT>/std/bool.lp`` it is accessed with module path ``std.bool``.
+is built using the file path as follows: if the source file is at
+``<LIB_ROOT>/std/bool.lp``, it is accessed with module path ``std.bool``.
 And if there are nested folders then the module path gets more members.
 File ``<LIB_ROOT>/std/a/b/c/d.lp`` has module path ``std.a.b.c.d``.
 

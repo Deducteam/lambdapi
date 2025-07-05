@@ -249,13 +249,17 @@ The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previou
 Puts into scope the symbols of the previously required module given
 in argument. It can also be combined with the ``require`` command.
 
+``open`` commands are transitively inherited: if A opens B and B opens
+C, then the symbols of C are also put in scope in the current
+environment.
+
 ::
 
    require std.bool;
    open std.bool;
    require open church.sums;
 
-Note that ``open`` always take as argument a qualified
+Note that ``open`` always takes as argument a qualified
 identifier. See :doc:`module` for more details.
 
 .. _require:
@@ -263,18 +267,26 @@ identifier. See :doc:`module` for more details.
 ``require``
 -----------
 
-Informs the type-checker that the current module
-depends on some other module, which must hence be compiled.
+Informs Lambdapi to import in the current environment the (non
+private) symbols, rules and builtins declared or defined in some other
+module. These symbols can be used by prefixing them with their module
+path: if a module ``Stdlib.Bool`` declares a symbol ``true`` then,
+after ``require Stdlib.Bool``, one can use ``true`` by writing
+``Stdlib.Bool.true``. It is possible to get rid of the prefix by using
+the ``open`` command.
 
-A required module can optionally be aliased, in which case it
-can be referred to with the provided name.
+Dependencies are transitively inherited: if A requires B and B
+requires C, then the symbols of C are also imported in the current
+environment.
+
+A required module can be aliased.
 
 ::
 
    require std.bool;
    require church.list as list;
 
-Note that ``require`` always take as argument a qualified
+Note that ``require`` always takes as argument a qualified
 identifier. See :doc:`module` for more details.
 
 .. _rule:

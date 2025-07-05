@@ -78,25 +78,26 @@ let handle_open : sig_state -> p_path -> sig_state = fun ss {elt=p;pos} ->
     state is returned. *)
 let rec handle_require : compiler -> sig_state -> Path.t -> sig_state =
   fun compile ss p ->
-  if p = Sign.Ghost.path then ss else
-  let deps = ss.signature.sign_deps in
-  if Path.Map.mem p !deps then ss
+  if p = Sign.Ghost.path then ss
   else
-    begin
-      (* Compile [p] (this adds it to [Sign.loaded]). *)
-      let sign = compile p in
-      (* Recurse on the dependencies of [p]. *)
-      let f p _ ss = handle_require compile ss p in
-      let ss = Path.Map.fold f !(sign.sign_deps) ss in
-      (* Add builtins of [p] in [ss]. *)
-      let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-      let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
-      let ss = {ss with builtins} in
-      (* Add [p] in dependencies. *)
-      let dep = {dep_symbols=StrMap.empty; dep_open=false} in
-      deps := Path.Map.add p dep !deps;
-      ss
-    end
+    let deps = ss.signature.sign_deps in
+    if Path.Map.mem p !deps then ss
+    else
+      begin
+        (* Compile [p] (this adds it to [Sign.loaded]). *)
+        let sign = compile p in
+        (* Recurse on the dependencies of [p]. *)
+        let f p _ ss = handle_require compile ss p in
+        let ss = Path.Map.fold f !(sign.sign_deps) ss in
+        (* Add builtins of [p] in [ss]. *)
+        let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+        let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+        let ss = {ss with builtins} in
+        (* Add [p] in dependencies. *)
+        let dep = {dep_symbols=StrMap.empty; dep_open=false} in
+        deps := Path.Map.add p dep !deps;
+        ss
+      end
 
 let handle_require compile b ss p =
   let ss = handle_require compile ss p.elt in
