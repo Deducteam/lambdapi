@@ -59,25 +59,51 @@ let handle_open : sig_state -> p_path -> sig_state =
   open_sign ss (try Path.Map.find p !(Sign.loaded)
                 with Not_found -> assert false)
 
-(** [handle_require b ss p] handles the command [require p] (or [require open
-    p] if b is true) with [ss] as the signature state and [compile] as compile
-    function (passed as argument to avoid cyclic dependencies). On success,
-    an updated signature state is returned. *)
+(** [handle_require compile b ss p] handles the command [require p] (or
+    [require open p] if b is true) with [ss] as the signature state and
+    [compile] as compile function (passed as argument to avoid cyclic
+    dependencies). On success, an updated signature state is returned. *)
 let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   fun compile b ss {elt=p;_} ->
+  (*sout "%a: require %a\n%!" path ss.signature.sign_path path p;*)
   if Path.Map.mem p !(ss.signature.sign_deps) then ss
   else
     begin
       (* Compile [p] (this adds it to [Sign.loaded]). *)
       let new_sign = compile p in
-      (* Add the dependency (it was compiled already while parsing). *)
-      let d = {dep_symbols=StrMap.empty; dep_open=b} in
-      ss.signature.sign_deps := Path.Map.add p d !(ss.signature.sign_deps);
+      let new_ss = ref ss in
+      let deps = ss.signature.sign_deps in
+      let update newp newd =
+        (*sout "%a: add dep %a (open %b)\n%!"
+          path ss.signature.sign_path path newp newd.dep_open;*)
+        let sign = try Path.Map.find newp !loaded
+                   with Not_found -> assert false in
+        let f = function
+          | None ->
+              (*sout "add\n%!";*)
+              if newd.dep_open then new_ss := open_sign !new_ss sign;
+              Some newd
+          | Some oldd ->
+              let dep_open = oldd.dep_open || newd.dep_open in
+              if dep_open <> oldd.dep_open then
+                new_ss := open_sign !new_ss sign;
+              (*sout "update old:%b -> %b\n%!" oldd.dep_open dep_open;*)
+              Some {oldd with dep_open}
+        in
+        deps := Path.Map.update newp f !deps
+      in
+      (* Add [p] as dependency (it was compiled already while parsing). *)
+      update p {dep_symbols=StrMap.empty; dep_open=b};
+      (*if b then new_ss := open_sign !new_ss new_sign;*)
+      (* Add the dependencies of [p] as dependencies. *)
+      (*sout "start deps of %a\n%!" path new_sign.sign_path;*)
+      Path.Map.iter update !(new_sign.sign_deps);
+      (*sout "end deps of %a\n%!" path new_sign.sign_path;*)
       (* Add builtins. *)
       let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-      let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
-      let ss = {ss with builtins} in
-      if b then open_sign ss new_sign else ss
+      let builtins =
+        StrMap.union f (!new_ss).builtins !(new_sign.sign_builtins) in
+      {!new_ss with builtins}
     end
 
 (** [handle_require_as compile ss p id] handles the command [require p as id]
