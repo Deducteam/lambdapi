@@ -259,8 +259,10 @@ environment of A.
    open std.bool;
    require open church.sums;
 
-Note that ``open`` always takes as argument a qualified
-identifier. See :doc:`module` for more details.
+Note that ``open`` always takes as arguments qualified
+identifiers. See :doc:`module` for more details.
+
+Note that aliased modules cannot be open.
 
 .. _require:
 
@@ -269,7 +271,7 @@ identifier. See :doc:`module` for more details.
 
 Informs Lambdapi to import in the current environment the (non
 private) symbols, rules and builtins declared or defined in some other
-module. These symbols can be used by prefixing them with their module
+modules. These symbols can be used by prefixing them with their module
 path: if a module ``Stdlib.Bool`` declares a symbol ``true`` then,
 after ``require Stdlib.Bool``, one can use ``true`` by writing
 ``Stdlib.Bool.true``. It is possible to get rid of the prefix by using
@@ -279,15 +281,15 @@ Dependencies are transitively inherited: if A requires B and B
 requires C, then the symbols of C are also imported in the current
 environment.
 
-A required module can be aliased.
+A required module also can be aliased.
 
 ::
 
    require std.bool;
    require church.list as list;
 
-Note that ``require`` always takes as argument a qualified
-identifier. See :doc:`module` for more details.
+Note that ``require`` always takes as arguments qualified
+identifiers. See :doc:`module` for more details.
 
 .. _rule:
 
