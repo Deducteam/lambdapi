@@ -37,74 +37,70 @@ let _ =
   in
   register "nat_succ" expected_succ_type
 
-(** [handle_open ss p] handles the command [open p] with [ss] as the
-   signature state. On success, an updated signature state is returned. *)
-let handle_open : sig_state -> p_path -> sig_state =
-  fun ss {elt=p;pos} ->
+(** [open_module ss p] handles the command [open p] with [ss] as the signature
+    state, assuming that [p] is already loaded. On success, an updated
+    signature state is returned. *)
+let rec open_module : sig_state -> Path.t -> sig_state = fun ss p ->
+  if Path.Set.mem p ss.open_paths then ss
+  else
+    begin
+      match Path.Map.find_opt p !loaded with
+      | None -> assert false
+      | Some sign ->
+          (* Recursively open the dependencies of [p] declared as open. *)
+          let f p d ss = if d.dep_open then open_module ss p else ss in
+          let ss = Path.Map.fold f !(sign.sign_deps) ss in
+          (* Record that [p] must be open. *)
+          let f = function
+            | None -> assert false
+            | Some d -> Some {d with dep_open=true}
+          in
+          let deps = ss.signature.sign_deps in
+          deps := Path.Map.update p f !deps;
+          (* Add symbols of [p] in scope. *)
+          open_sign ss sign
+    end
+
+let handle_open : sig_state -> p_path -> sig_state = fun ss {elt=p;pos} ->
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-    fatal pos "Module aliases cannot be open."
+      fatal pos "Module aliases cannot be open."
   | _ ->
-  (* Check that [p] has been required. *)
-  if not (Path.Map.mem p !(ss.signature.sign_deps)) then
-    fatal pos "Module \"%a\" needs to be required first." path p;
-  (* Record opening. *)
-  let f = function
-    | None -> assert false
-    | Some d -> Some {d with dep_open=true}
-  in
-  ss.signature.sign_deps := Path.Map.update p f !(ss.signature.sign_deps);
-  (* Obtain the signature corresponding to [p]. *)
-  open_sign ss (try Path.Map.find p !(Sign.loaded)
-                with Not_found -> assert false)
+      (* Check that [p] has been required. *)
+      match Path.Map.find_opt p !loaded with
+      | None -> fatal pos "Module \"%a\" needs to be required first." path p
+      | Some _ -> open_module ss p
 
-(** [handle_require compile b ss p] handles the command [require p] (or
-    [require open p] if b is true) with [ss] as the signature state and
-    [compile] as compile function (passed as argument to avoid cyclic
-    dependencies). On success, an updated signature state is returned. *)
-let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
-  fun compile b ss {elt=p;_} ->
-  (*sout "%a: require %a\n%!" path ss.signature.sign_path path p;*)
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+(** [handle_require compile ss p] handles the command [require p] with [ss] as
+    the signature state and [compile] as compilation function (passed as
+    argument to avoid cyclic dependencies). On success, an updated signature
+    state is returned. *)
+let rec handle_require : compiler -> sig_state -> Path.t -> sig_state =
+  fun compile ss p ->
+  if p = Sign.Ghost.path then ss else
+  let deps = ss.signature.sign_deps in
+  if Path.Map.mem p !deps then ss
   else
     begin
       (* Compile [p] (this adds it to [Sign.loaded]). *)
-      let new_sign = compile p in
-      let new_ss = ref ss in
-      let deps = ss.signature.sign_deps in
-      let update newp newd =
-        (*sout "%a: add dep %a (open %b)\n%!"
-          path ss.signature.sign_path path newp newd.dep_open;*)
-        let sign = try Path.Map.find newp !loaded
-                   with Not_found -> assert false in
-        let f = function
-          | None ->
-              (*sout "add\n%!";*)
-              if newd.dep_open then new_ss := open_sign !new_ss sign;
-              Some newd
-          | Some oldd ->
-              let dep_open = oldd.dep_open || newd.dep_open in
-              if dep_open <> oldd.dep_open then
-                new_ss := open_sign !new_ss sign;
-              (*sout "update old:%b -> %b\n%!" oldd.dep_open dep_open;*)
-              Some {oldd with dep_open}
-        in
-        deps := Path.Map.update newp f !deps
-      in
-      (* Add [p] as dependency (it was compiled already while parsing). *)
-      update p {dep_symbols=StrMap.empty; dep_open=b};
-      (*if b then new_ss := open_sign !new_ss new_sign;*)
-      (* Add the dependencies of [p] as dependencies. *)
-      (*sout "start deps of %a\n%!" path new_sign.sign_path;*)
-      Path.Map.iter update !(new_sign.sign_deps);
-      (*sout "end deps of %a\n%!" path new_sign.sign_path;*)
-      (* Add builtins. *)
+      let sign = compile p in
+      (* Recurse on the dependencies of [p]. *)
+      let f p _ ss = handle_require compile ss p in
+      let ss = Path.Map.fold f !(sign.sign_deps) ss in
+      (* Add builtins of [p] in [ss]. *)
       let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-      let builtins =
-        StrMap.union f (!new_ss).builtins !(new_sign.sign_builtins) in
-      {!new_ss with builtins}
+      let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+      let ss = {ss with builtins} in
+      (* Add [p] in dependencies. *)
+      let dep = {dep_symbols=StrMap.empty; dep_open=false} in
+      deps := Path.Map.add p dep !deps;
+      ss
     end
+
+let handle_require compile b ss p =
+  let ss = handle_require compile ss p.elt in
+  if b then open_module ss p.elt else ss
 
 (** [handle_require_as compile ss p id] handles the command [require p as id]
     with [ss] as the signature state and [compile] as compilation function
@@ -112,13 +108,13 @@ let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
     signature state is returned. *)
 let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
   sig_state =
-  fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+  fun compile ss p {elt=id;_} ->
+  if Path.Map.mem p.elt !(ss.signature.sign_deps) then ss
   else
     begin
-      let ss = handle_require compile false ss mp in
-      let alias_path = StrMap.add id p ss.alias_path in
-      let path_alias = Path.Map.add p id ss.path_alias in
+      let ss = handle_require compile false ss p in
+      let alias_path = StrMap.add id p.elt ss.alias_path in
+      let path_alias = Path.Map.add p.elt id ss.path_alias in
       {ss with alias_path; path_alias}
     end
 

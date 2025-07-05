@@ -112,8 +112,7 @@ type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
     unqualified. [~prt] indicates whether {!constructor:Term.expo.Protec}
     symbols from other modules are allowed. [~prv] indicates whether
     {!constructor:Term.expo.Privat} symbols are allowed. *)
-let find_sym : find_sym =
-  fun ~prt ~prv ss {elt = (mp, s); pos} ->
+let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
   let s =
     match mp with
     | [] -> (* Symbol in scope. *)
