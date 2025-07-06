@@ -646,17 +646,18 @@ module QueryLanguage = struct
       | _, _ -> false
 
  let filter_constr constr _ positions =
-  match constr with
-   | QType wherep ->
-      List.exists
-       (function
-         | _,_,Type where -> match_where wherep where
-         | _ -> false) positions
-   | QXhs (insp,sidep) ->
-      List.exists
-       (function
-         | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
-         | _ -> false) positions
+  Option.map (fun x -> [x])
+   (match constr with
+    | QType wherep ->
+       List.find_opt
+        (function
+          | _,_,Type where -> match_where wherep where
+          | _ -> false) positions
+    | QXhs (insp,sidep) ->
+       List.find_opt
+        (function
+          | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
+          | _ -> false) positions)
 
  let answer_base_query ~mok ss env =
   function
@@ -665,7 +666,7 @@ module QueryLanguage = struct
       let res = search_pterm ~generalize ~mok ss env patt in
       (match constr with
         | None -> res
-        | Some constr -> ItemSet.filter (filter_constr constr) res)
+        | Some constr -> ItemSet.filter_map (filter_constr constr) res)
 
  let perform_op =
   function
