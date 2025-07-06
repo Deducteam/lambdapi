@@ -14,6 +14,10 @@ let re_matches_sym_name re (p,name) =
 
 let name_of_sym s = (s.sym_path, s.sym_name)
 
+(* Tail recursive implementation of List.append for
+   OCaml < 5.1 *)
+let (@) l1 l2 = List.rev_append (List.rev l1) l2
+
 (* discrimination tree *)
 (* substitution trees would be best *)
 
@@ -376,8 +380,9 @@ module DB = struct
    db := lazy db'
 
  let set_of_list ~generalize k l =
+  (* rev_map is used because it is tail recursive *)
   ItemSet.of_list
-   (List.map
+   (List.rev_map
      (fun (i,pos) ->
        i, List.map (fun x -> generalize,k,x) pos) l)
 
