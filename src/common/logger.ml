@@ -8,7 +8,7 @@ type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 
 (** Type of logging function data. *)
 type logger =
-  { logger_key : char (** Character used to unable the logger. *)
+  { logger_key : char (** Character used to (un)able the logger. *)
   ; logger_name : string (** Four-characters name used as prefix in logs. *)
   ; logger_desc : string (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *)
