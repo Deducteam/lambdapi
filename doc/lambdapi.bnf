@@ -140,7 +140,7 @@ QID ::= [UID "."]+ UID
            | "admit"
            | "apply" <term>
            | "assume" <param>+
-           | CHANGE <term>
+           | "change" <term>
            | "eval" <term>
            | "fail"
            | "generalize" <uid>

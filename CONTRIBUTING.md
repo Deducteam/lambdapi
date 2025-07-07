@@ -80,6 +80,7 @@ following files:
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `misc/lambdapi.tex`
 - `doc/Makefile.bnf`
+- `doc/lambdapi.bnf` by doing make bnf
 - the User Manual files in the `doc/` repository
 
 and do `make bnf` to generate the BNF grammar,
