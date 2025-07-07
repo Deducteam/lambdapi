@@ -79,6 +79,10 @@ let return : 'a pp -> 'a -> result = fun pp x ->
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps {elt;pos} ->
   match elt with
+  | P_query_debug(_,"") ->
+      let f (k,d) = Printf.sprintf "\n%c: %s" k d in
+      let s = String.concat "" (List.map f (Logger.log_summary())) in
+      return string ("debug flags:"^s)
   | P_query_debug(e,s) ->
       Logger.set_debug e s;
       Console.out 1 "debug %s%s" (if e then "+" else "-") s;

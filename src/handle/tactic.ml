@@ -74,7 +74,7 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log "@[<v>tac_solve@ %a@]" goals ps;
+  if Logger.log_enabled () then log "tac_solve";
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
@@ -116,7 +116,7 @@ let tac_refine : ?check:bool ->
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
   fun ?(check=true) pos ps gt gs p t ->
-  if Logger.log_enabled () then log "@[tac_refine@ %a@]" term t;
+  if Logger.log_enabled () then log "tac_refine %a" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
@@ -125,7 +125,7 @@ let tac_refine : ?check:bool ->
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
           let ids = Ctxt.names c in let term = term_in ids in
-          fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+          fatal pos "%a\ndoes not have type\n%a." term t term gt.goal_type
       | Some t -> t
     else t
   in
@@ -133,7 +133,6 @@ let tac_refine : ?check:bool ->
     log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  if Logger.log_enabled () then log "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -681,15 +680,13 @@ let handle :
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-    if Logger.log_enabled () then log "%a@." Pretty.tactic tac;
+    if Logger.log_enabled () then log "%a" Pretty.tactic tac;
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
+  | [] -> fatal pos "No remaining goal."
   | g::_ ->
-    if Logger.log_enabled() then
-      log ("%a@\n" ^^ Color.red "%a")
-        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
+    if Logger.log_enabled() then log "%a" Proof.Goal.pp_no_hyp g;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous

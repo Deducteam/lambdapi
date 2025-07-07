@@ -19,34 +19,49 @@ let string_of_token = function
   | ADMIT -> "admit"
   | ADMITTED -> "admitted"
   | APPLY -> "apply"
+  | ARROW -> "→"
   | AS -> "as"
   | ASSERT _ -> "assert or assertnot"
+  | ASSIGN -> "≔"
   | ASSOCIATIVE -> "associative"
   | ASSUME -> "assume"
+  | BACKQUOTE -> "`"
   | BEGIN -> "begin"
   | BUILTIN -> "builtin"
   | COERCE_RULE -> "coerce_rule"
+  | COLON -> ":"
+  | COMMA -> ","
   | COMMUTATIVE -> "commutative"
   | COMPUTE -> "compute"
   | CONSTANT -> "constant"
   | DEBUG -> "debug"
+  | DEBUG_FLAGS _ -> "debug flags"
+  | DOT -> "."
   | END -> "end"
+  | EQUIV -> "≡"
   | EVAL -> "eval"
   | FAIL -> "fail"
   | FLAG -> "flag"
+  | FLOAT _ -> "float"
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
+  | HOOK_ARROW -> "↪"
   | IN -> "in"
   | INDUCTION -> "induction"
   | INDUCTIVE -> "inductive"
   | INFIX -> "infix"
   | INJECTIVE -> "injective"
   | INT _ -> "integer"
+  | LAMBDA -> "λ"
   | LET -> "let"
+  | L_CU_BRACKET -> "{"
+  | L_PAREN -> "("
+  | L_SQ_BRACKET -> "["
   | NOTATION -> "notation"
   | OPAQUE -> "opaque"
   | OPEN -> "open"
   | ORELSE -> "orelse"
+  | PI -> "Π"
   | POSTFIX -> "postfix"
   | PREFIX -> "prefix"
   | PRINT -> "print"
@@ -55,6 +70,8 @@ let string_of_token = function
   | PROTECTED -> "protected"
   | PROVER -> "prover"
   | PROVER_TIMEOUT -> "prover_timeout"
+  | QID _ -> "qualified identifier"
+  | QID_EXPL _ -> "@-prefixed qualified identifier"
   | QUANTIFIER -> "quantifier"
   | REFINE -> "refine"
   | REFLEXIVITY -> "reflexivity"
@@ -63,52 +80,35 @@ let string_of_token = function
   | REQUIRE -> "require"
   | REWRITE -> "rewrite"
   | RULE -> "rule"
-  | SEARCH -> "search"
-  | SEQUENTIAL -> "sequential"
-  | SET -> "set"
-  | SIMPLIFY -> "simplify"
-  | SOLVE -> "solve"
-  | SYMBOL -> "symbol"
-  | SYMMETRY -> "symmetry"
-  | TRY -> "try"
-  | TYPE_QUERY -> "type"
-  | TYPE_TERM -> "TYPE"
-  | UNIF_RULE -> "unif_rule"
-  | VERBOSE -> "verbose"
-  | WHY3 -> "why3"
-  | WITH -> "with"
-  | DEBUG_FLAGS _ -> "debug flags"
-  | FLOAT _ -> "float"
-  | SIDE _ -> "left or right"
-  | STRINGLIT _ -> "string literal"
-  | SWITCH false -> "off"
-  | SWITCH true -> "on or off"
-  | ASSIGN -> "≔"
-  | ARROW -> "→"
-  | BACKQUOTE -> "`"
-  | COMMA -> ","
-  | COLON -> ":"
-  | DOT -> "."
-  | EQUIV -> "≡"
-  | HOOK_ARROW -> "↪"
-  | LAMBDA -> "λ"
-  | L_CU_BRACKET -> "{"
-  | L_PAREN -> "("
-  | L_SQ_BRACKET -> "["
-  | PI -> "Π"
   | R_CU_BRACKET -> "}"
   | R_PAREN -> ")"
   | R_SQ_BRACKET -> "]"
+  | SEARCH -> "search"
+  | SEQUENTIAL -> "sequential"
   | SEMICOLON -> ";"
+  | SET -> "set"
+  | SIDE _ -> "left or right"
+  | SIMPLIFY -> "simplify"
+  | SOLVE -> "solve"
+  | STRINGLIT _ -> "string literal"
+  | SWITCH false -> "off"
+  | SWITCH true -> "on or off"
+  | SYMBOL -> "symbol"
+  | SYMMETRY -> "symmetry"
+  | TRY -> "try"
   | TURNSTILE -> "⊢"
-  | VBAR -> "|"
-  | UNDERSCORE -> "_"
+  | TYPE_QUERY -> "type"
+  | TYPE_TERM -> "TYPE"
   | UID _ -> "non-qualified identifier"
   | UID_EXPL _ -> "@-prefixed non-qualified identifier"
   | UID_META _ -> "?-prefixed metavariable number"
   | UID_PATT _ -> "$-prefixed non-qualified identifier"
-  | QID _ -> "qualified identifier"
-  | QID_EXPL _ -> "@-prefixed qualified identifier"
+  | UNDERSCORE -> "_"
+  | UNIF_RULE -> "unif_rule"
+  | VBAR -> "|"
+  | VERBOSE -> "verbose"
+  | WHY3 -> "why3"
+  | WITH -> "with"
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -124,8 +124,10 @@ let new_parsing f x1 x2 =
   try let y = f x1 x2 in reset(); y with e -> reset(); raise e
 
 let current_token() : token =
-  let (t,_,_) = !the_current_token in
-  if log_enabled() then log "current_token: %a" pp_token t;
+  let (t,p1,p2) = !the_current_token in
+  let p = locate (p1,p2) in
+  if log_enabled() then
+    log "current token [%a]: \"%a\"" Pos.short (Some p) pp_token t;
   t
 
 let current_pos() : position * position =
@@ -217,6 +219,14 @@ let consume_INT (lb:lexbuf): string =
       s
   | _ ->
       expected "" [INT""]
+
+let consume_DEBUG_FLAGS (lb:lexbuf): bool * string =
+  match current_token() with
+  | DEBUG_FLAGS(b,s) ->
+      consume_token lb;
+      b,s
+  | _ ->
+      expected "" [DEBUG_FLAGS(true,"")]
 
 let qid (lb:lexbuf): (string list * string) loc =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
@@ -714,11 +724,17 @@ and query (lb:lexbuf): p_query =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_query_proofterm
-  | DEBUG_FLAGS fl ->
+  | DEBUG ->
       let pos1 = current_pos() in
       consume_token lb;
-      let (b, s) = fl in
-      make_pos pos1 (P_query_debug(b, s))
+      begin
+        match current_token() with
+        | SEMICOLON ->
+            make_pos pos1 (P_query_debug(true,""))
+        | _ ->
+            let b,s = consume_DEBUG_FLAGS lb in
+            make_pos pos1 (P_query_debug(b,s))
+      end
   | FLAG ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -1440,7 +1456,7 @@ and binder (lb:lexbuf): p_params list * p_term =
 (* search *)
 
 and where (lb:lexbuf): bool * inside option =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
   | UID u ->
       let r =
@@ -1462,7 +1478,7 @@ and where (lb:lexbuf): bool * inside option =
       expected "\">\", \"=\", \"≥\",\">=\"" []
 
 and asearch (lb:lexbuf): query =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
   | TYPE_QUERY ->
       consume_token lb;
@@ -1514,7 +1530,7 @@ and asearch (lb:lexbuf): query =
       expected "name, anywhere, rule, lhs, rhs, type, concl, hyp, spine" []
 
 and csearch (lb:lexbuf): query =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   let aq = asearch lb in
   match current_token() with
   | COMMA ->
@@ -1524,7 +1540,7 @@ and csearch (lb:lexbuf): query =
       aq
 
 and ssearch (lb:lexbuf): query =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   let cq = csearch lb in
   match current_token() with
   | SEMICOLON ->
@@ -1534,7 +1550,7 @@ and ssearch (lb:lexbuf): query =
       cq
 
 and search (lb:lexbuf): query =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   let q = ssearch lb in
   let qids = list (prefix VBAR qid) lb in
   let path_of_qid qid =

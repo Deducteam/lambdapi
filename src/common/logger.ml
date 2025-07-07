@@ -8,7 +8,7 @@ type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 
 (** Type of logging function data. *)
 type logger =
-  { logger_key : char (** Character used to unable the logger. *)
+  { logger_key : char (** Character used to (un)able the logger. *)
   ; logger_name : string (** Four-characters name used as prefix in logs. *)
   ; logger_desc : string (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *)
@@ -32,9 +32,11 @@ let update_log_enabled () =
 
 (** [make key name desc] registers a new logger and returns its pp. *)
 let make logger_key logger_name logger_desc =
+
   (* Sanity checks. *)
   if String.length logger_name <> 4 then
     invalid_arg "Logger.make: name must be 4 characters long";
+
   let check data =
     if logger_key  = data.logger_key then
       invalid_arg "Logger.make: key is already used";
@@ -44,6 +46,7 @@ let make logger_key logger_name logger_desc =
   List.iter check Stdlib.(!loggers);
 
   let logger_enabled = ref false in
+
   (* Actual printing function. *)
   let pp fmt =
     update_with_color Stdlib.(!Error.err_fmt);
