@@ -50,7 +50,8 @@ argument.
 
 Sets some flags ``on`` or ``off``, mainly for modifying the printing
 behavior. Only the flag ``"eta_equality"`` changes the behavior of the
-rewrite engine by reducing η-redexes.
+rewrite engine by reducing η-redexes. You can get the list of
+available flags by using the command ``flag`` with no argument.
 
 ::
 
