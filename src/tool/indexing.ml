@@ -319,10 +319,15 @@ module DB = struct
    let db' = sidx, Index.insert_name idx k v in
    db := lazy db'
 
- let remove ~what =
+ let remove path =
    let sidx,idx = Lazy.force !db in
-   let db' = sidx,Index.remove ~what idx in
-   db := lazy db'
+   let keep sym_path = not (is_path_prefix path sym_path) in
+   let idx =
+     Index.remove
+      ~what:(fun (((sym_path,_),_),_) -> keep sym_path ) idx in
+   let sidx =
+    Sym_nameMap.filter (fun (sym_path,_) _ -> keep sym_path) sidx in
+   db := lazy (sidx,idx)
 
  let set_of_list ~generalize k l =
   (* rev_map is used because it is tail recursive *)
@@ -680,9 +685,7 @@ let index_sign sign =
      rules)
   rules
 
-let deindex_path path =
- DB.remove
-  ~what:(fun (((sym_path,_),_),_) -> not (is_path_prefix path sym_path))
+let deindex_path path = DB.remove path
 
 (* let's flatten the interface *)
 include DB

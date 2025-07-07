@@ -12,8 +12,6 @@ Index and search
 * document new features, e.g. -sources (and find better
   terminology), deindex
 
-* remove should remove also from source index
-
 * After "Number of results: 3" there is a missing CRLF
 
 * why type only supports? =
