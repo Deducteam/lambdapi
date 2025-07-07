@@ -14,6 +14,8 @@ QID ::= [UID "."]+ UID
 
 <term_alone> ::= <term> EOF
 
+<rw_patt_spec_alone> ::= <rw_patt_spec> EOF
+
 <qid_alone> ::= <qid> EOF
 
 <search_query_alone> ::= <search_query> EOF
@@ -42,7 +44,9 @@ QID ::= [UID "."]+ UID
           | "compute" <term>
           | "print" [<qid_or_rule>]
           | "proofterm"
+          | "debug"
           | "debug" ("+"|"-") <char>+
+          | "flag"
           | "flag" <string> <switch>
           | "prover" <string>
           | "prover_timeout" <integer>
@@ -136,6 +140,7 @@ QID ::= [UID "."]+ UID
            | "admit"
            | "apply" <term>
            | "assume" <param>+
+           | CHANGE <term>
            | "eval" <term>
            | "fail"
            | "generalize" <uid>

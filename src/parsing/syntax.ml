@@ -245,6 +245,7 @@ type p_tactic_aux =
   | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
   | P_tac_generalize of p_ident
@@ -621,6 +622,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_eval t
     | P_tac_refine t
     | P_tac_apply t
+    | P_tac_change t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
     | P_tac_rewrite (_, Some p, t) ->
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
