@@ -144,11 +144,14 @@ let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     file at position [pos]. [sep] is the separator replacing each newline
     (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
     "unknown location" message returned when the position does not refer to a
-    file. [escape] is used to escape the file contents.*)
+    file. [escape] is used to escape the file contents.
+
+    The value -1 for end_col is to be interpreted as "at the end of line".  *)
 let print_file_contents :
   escape:(string -> string) ->
-    delimiters:(string*string) -> popt Lplib.Base.pp =
-  fun ~escape ~delimiters:(db,de) ppf pos ->
+    delimiters:(string*string) -> complain_if_location_unknown:bool ->
+      popt Lplib.Base.pp =
+  fun ~escape ~delimiters:(db,de) ~complain_if_location_unknown ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
@@ -156,7 +159,10 @@ let print_file_contents :
 
      (* ignore the lines before the start_line *)
      let ch = open_in fname in
-     let out = Buffer.create ((end_line - start_line) * 80 + end_col + 1) in
+     let out =
+       Buffer.create
+        ((end_line - start_line) * 80 +
+         (if end_col = -1 then 80 else end_col) + 1) in
      for i = 0 to start_line - 2 do
       ignore (input_line ch)
      done ;
@@ -189,20 +195,32 @@ let print_file_contents :
      (* identify what the end_line is and how many UTF8 codepoints to keep *)
      let endl,end_col =
       if start_line = end_line then
-        startstr, end_col - start_col
+        if end_col = -1 then
+         startstr, -1
+        else
+         startstr, end_col - start_col
       else input_line ch, end_col in
 
      (* keep the first end_col UTF8 codepoints of the end_line *)
      assert (String.is_valid_utf_8 endl);
      let bytepos = ref 0 in
-     for i = 0 to end_col - 1 do
-      let uchar = String.get_utf_8_uchar endl !bytepos in
-      assert (Uchar.utf_decode_is_valid uchar) ;
-      bytepos := !bytepos + Uchar.utf_decode_length uchar
-     done ;
+     let i = ref 0 in
+     (try
+       while !i <= end_col -1 || end_col = -1 do
+        let uchar = String.get_utf_8_uchar endl !bytepos in
+        assert (Uchar.utf_decode_is_valid uchar) ;
+        bytepos := !bytepos + Uchar.utf_decode_length uchar ;
+        incr i
+       done
+      with
+       Invalid_argument _ -> () (* End of line reached *)) ;
      let str = String.sub endl 0 !bytepos in
      Buffer.add_string out (escape str) ;
 
      close_in ch ;
      string ppf (Buffer.contents out)
-  | None | Some {fname=None} -> string ppf (db ^ "unknown location" ^ de)
+  | None | Some {fname=None} ->
+      if complain_if_location_unknown then
+       string ppf (db ^ "unknown location" ^ de)
+      else
+       string ppf ""

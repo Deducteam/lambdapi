@@ -4,6 +4,7 @@ open Core
 val empty : unit -> unit
 val load_rewriting_rules: string list -> unit
 val index_sign : Sign.t -> unit
+val parse_source_map : string -> unit (* the name of the file *)
 val deindex_path : string -> unit
 val dump : dbpath:string -> unit -> unit
 

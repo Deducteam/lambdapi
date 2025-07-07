@@ -18,6 +18,17 @@ let name_of_sym s = (s.sym_path, s.sym_name)
    OCaml < 5.1 *)
 let (@) l1 l2 = List.rev_append (List.rev l1) l2
 
+let dump_to ~filename i =
+ let ch = open_out_bin filename in
+ Marshal.to_channel ch i [] ;
+ close_out ch
+
+let restore_from ~filename =
+  let ch = open_in_bin filename in
+  let i = Marshal.from_channel ch in
+  close_in ch ;
+  i
+
 (* discrimination tree *)
 (* substitution trees would be best *)
 
@@ -219,17 +230,6 @@ let search ~generalize (_,index) term =
 let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
-let dump_to ~filename i =
- let ch = open_out_bin filename in
- Marshal.to_channel ch i [] ;
- close_out ch
-
-let restore_from ~filename =
-  let ch = open_in_bin filename in
-  let i = Marshal.from_channel ch in
-  close_in ch ;
-  i
-
 end
 
 module DB = struct
@@ -283,7 +283,98 @@ module DB = struct
         m) empty l
   end
 
+ module Sym_nameMap =
+   Map.Make(struct type t = sym_name let compare = compare end)
+
  type answer = ((*generalized:*)bool * term * position) list
+
+ (* disk persistence *)
+
+ let the_dbpath : string ref = ref Path.default_dbpath
+
+ let rwpaths = ref []
+
+ let restore_from_disk () =
+  try restore_from ~filename:!the_dbpath
+  with Sys_error msg ->
+     Common.Error.wrn None "%s.\n\
+      Type \"lambdapi index --help\" to learn how to create the index." msg ;
+     Sym_nameMap.empty, Index.empty
+
+ (* The persistent database *)
+ let db :
+  ((string * string * int * int) Sym_nameMap.t *
+   (item * position list) Index.db) Lazy.t ref =
+   ref (lazy (restore_from_disk ()))
+
+ let empty () = db := lazy (Sym_nameMap.empty,Index.empty)
+
+ let insert k v =
+   let sidx,idx = Lazy.force !db in
+   let db' = sidx, Index.insert idx k v in
+   db := lazy db'
+
+ let insert_name k v =
+   let sidx,idx = Lazy.force !db in
+   let db' = sidx, Index.insert_name idx k v in
+   db := lazy db'
+
+ let remove ~what =
+   let sidx,idx = Lazy.force !db in
+   let db' = sidx,Index.remove ~what idx in
+   db := lazy db'
+
+ let set_of_list ~generalize k l =
+  (* rev_map is used because it is tail recursive *)
+  ItemSet.of_list
+   (List.rev_map
+     (fun (i,pos) ->
+       i, List.map (fun x -> generalize,k,x) pos) l)
+
+ let search ~generalize k =
+  set_of_list ~generalize k
+   (Index.search ~generalize (snd (Lazy.force !db)) k)
+
+ let dump ~dbpath () =
+  dump_to ~filename:dbpath (Lazy.force !db)
+
+ let locate_name name =
+  let k = Term.mk_Wild (* dummy, unused *) in
+  set_of_list ~generalize:false k
+   (Index.locate_name (snd (Lazy.force !db)) name)
+
+ let parse_source_map filename =
+  let sidx,idx = Lazy.force !db in
+  let sidx = ref sidx in
+  let ch = open_in filename in
+  (try
+   while true do
+     let line = input_line ch in
+     match String.split_on_char ' ' line with
+      | [fname; start_line; end_line; sourceid; lpid] ->
+          let rec sym_name_of =
+           function
+             | [] -> assert false
+             | [name] -> [],name
+             | hd::tl -> let path,name = sym_name_of tl in hd::path,name in
+          let lpid = sym_name_of (String.split_on_char '.' lpid) in
+          let start_line = int_of_string start_line in
+          let end_line = int_of_string end_line in
+          sidx :=
+           Sym_nameMap.add lpid (sourceid,fname,start_line,end_line) !sidx
+      | _ ->
+         raise
+          (Common.Error.Fatal(None,"wrong file format for source map file"))
+   done ;
+  with
+   | Failure _ as exn ->
+      close_in ch;
+      raise
+       (Common.Error.Fatal(None,"wrong file format for source map file: " ^
+         Printexc.to_string exn))
+   | End_of_file -> close_in ch) ;
+  db := lazy (!sidx,idx)
+
 
  type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
 
@@ -295,6 +386,15 @@ module DB = struct
      let res = Dream.html_escape (Format.asprintf "%a" pp x) in
      Format.pp_print_string fmt res
   }
+
+ let source_infos_of_sym_name sym_name =
+  match Sym_nameMap.find_opt sym_name (fst (Lazy.force !db)) with
+   | None -> None, None
+   | Some (sourceid, fname, start_line, end_line) ->
+      let start_col = 0 in
+      let end_col = -1 in (* to the end of line *)
+      Some sourceid,
+       Some { fname=Some fname; start_line; start_col; end_line; end_col }
 
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
@@ -323,14 +423,25 @@ module DB = struct
    Lplib.Base.out fmt "Nothing found"
   else
    Lplib.List.pp
-    (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%s%s@."
+    (fun ppf (((p,n) as sym_name,pos),(positions : answer)) ->
+     let sourceid,sourcepos = source_infos_of_sym_name sym_name in
+     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s@."
        lisb (escaper.run Core.Print.path) p boldb n bolde
        (popt_to_string ~print_dirname:false pos)
        separator (generic_pp_of_position_list ~escaper ~sep) positions
        separator preb codeb
-       (Common.Pos.print_file_contents ~escape ~delimiters)
-       pos codee pree lise)
+       (Common.Pos.print_file_contents ~escape ~delimiters
+         ~complain_if_location_unknown:true) pos
+       separator
+       (fun ppf opt ->
+         match opt with
+          | None -> Lplib.Base.string ppf ""
+          | Some sourceid ->
+             Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
+       separator
+       (Common.Pos.print_file_contents ~escape ~delimiters
+         ~complain_if_location_unknown:false) sourcepos
+       codee pree lise)
     "" fmt l
 
  let html_of_item_list =
@@ -348,56 +459,6 @@ module DB = struct
 
  let html_of_results_list from fmt l =
   Lplib.Base.out fmt "<ol start=\"%d\">%a</ol>" from html_of_item_list l
-
- (* disk persistence *)
-
- let the_dbpath : string ref = ref Path.default_dbpath
-
- let rwpaths = ref []
-
- let restore_from_disk () =
-  try Index.restore_from ~filename:!the_dbpath
-  with Sys_error msg ->
-     Common.Error.wrn None "%s.\n\
-      Type \"lambdapi index --help\" to learn how to create the index." msg ;
-     Index.empty
-
- let db : (item * position list) Index.db Lazy.t ref =
-   ref (lazy (restore_from_disk ()))
-
- let empty () = db := lazy Index.empty
-
- let insert k v =
-   let db' = Index.insert (Lazy.force !db) k v in
-   db := lazy db'
-
- let insert_name k v =
-   let db' = Index.insert_name (Lazy.force !db) k v in
-   db := lazy db'
-
- let remove ~what =
-   let db' = Index.remove ~what (Lazy.force !db) in
-   db := lazy db'
-
- let set_of_list ~generalize k l =
-  (* rev_map is used because it is tail recursive *)
-  ItemSet.of_list
-   (List.rev_map
-     (fun (i,pos) ->
-       i, List.map (fun x -> generalize,k,x) pos) l)
-
- let search ~generalize k =
-  set_of_list ~generalize k
-   (Index.search ~generalize (Lazy.force !db) k)
-
- let dump ~dbpath () =
-  the_dbpath := dbpath;
-  Index.dump_to ~filename:dbpath (Lazy.force !db)
-
- let locate_name name =
-  let k = Term.mk_Wild (* dummy, unused *) in
-  set_of_list ~generalize:false k
-   (Index.locate_name (Lazy.force !db) name)
 
 end
 

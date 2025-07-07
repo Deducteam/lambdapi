@@ -4,6 +4,16 @@ TODO
 Index and search
 ----------------
 
+* generate mappings from LP to V automatically with HOL2DK and find
+  what to do with manually written files; also right now there are
+  mappings that are lost and mappings that are confused in a many-to-one
+  relation
+
+* document new features, e.g. -sources (and find better
+  terminology), deindex
+
+* remove should remove also from source index
+
 * After "Number of results: 3" there is a missing CRLF
 
 * why type only supports? =

@@ -95,7 +95,7 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
   Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url () in
  Error.handle_exceptions run
 
-let index_cmd cfg add_only rules files dbpath_opt =
+let index_cmd cfg add_only rules files source dbpath_opt =
  Config.init cfg;
  let run () =
   if not add_only then Tool.Indexing.empty ();
@@ -108,6 +108,7 @@ let index_cmd cfg add_only rules files dbpath_opt =
    Tool.Indexing.load_rewriting_rules rules;
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
+  Option.iter Tool.Indexing.parse_source_map source;
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
   Tool.Indexing.dump ~dbpath () in
  Error.handle_exceptions run
@@ -491,6 +492,11 @@ let custom_dbpath : string option CLT.t =
     "Path to the search DB file." in
   Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
 
+let source_file : string option CLT.t =
+  let doc =
+    "Path to the mapping to additional sources." in
+  Arg.(value & opt (some string) None & info ["sources"] ~docv:"PATH" ~doc)
+
 let path_in_url : string option CLT.t =
   let doc =
     "The path in the URL accepted by the server." in
@@ -511,7 +517,7 @@ let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
-   $ add_only_arg $ rules_arg $ files $ custom_dbpath)
+   $ add_only_arg $ rules_arg $ files $ source_file $ custom_dbpath)
 
 let deindex_cmd =
  let doc =
