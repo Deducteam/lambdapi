@@ -133,7 +133,7 @@ with ($x +1) ∸1 ↪ $x;
 
 opaque symbol +1_inj [x y] : π (x +1 = y +1) → π (x = y) ≔
 begin
-  assume x y h; apply feq (∸1) h
+  assume x y h; refine feq (∸1) h
 end;
 
 // boolean equality on ℕ
@@ -329,7 +329,7 @@ begin
   }
   { assume x h; induction
     { refine s≠0 }
-    { assume y i j; apply h y; apply +1_inj; apply +1_inj; apply j }
+    { assume y i j; apply h y; apply +1_inj; apply +1_inj; refine j }
   }
 end;
 
@@ -847,11 +847,11 @@ opaque symbol leq_add2l p m n : π (istrue (p + m ≤ p + n) ⇔ istrue (m ≤ n
 begin
   assume p m n; apply ∧ᵢ {
     generalize p; induction
-    { assume m n h; apply h }
+    { assume m n h; refine h }
     { assume p h m n i; apply h m n i }
   } {
     generalize p; induction
-    { assume m n h; apply h }
+    { assume m n h; refine h }
     { assume p h m n i; apply h m n i }
   }; 
 end;
@@ -954,7 +954,7 @@ begin
         have t: π (istrue (m < n)) { apply h n j };
         have u: π (istrue (m +1 < n +1))
                   { refine ∧ₑ₂ (ltn_add2r (_0 +1) m n) t };
-        rewrite left addn1 m; rewrite left addn1 n; apply u;
+        rewrite left addn1 m; rewrite left addn1 n; refine u;
       }
     }
   } {
@@ -983,12 +983,12 @@ begin
   assume m n p; apply ∧ᵢ
   { assume h;
     have t: π (((m - (n + p)) = _0)) → π (istrue (m ≤ (n + p)))
-      { apply ∧ₑ₁ (subn_eq0 m (n + p)) };
+      { refine ∧ₑ₁ (subn_eq0 m (n + p)) };
     apply t; rewrite subnDA; apply ∧ₑ₂ (subn_eq0 (m - n) p) h;
   }
   { assume h;
     have t: π (((m - n) - p) = _0) → π (istrue ((m - n) ≤ p))
-      { apply ∧ₑ₁ (subn_eq0 (m - n) p) };
+      { refine ∧ₑ₁ (subn_eq0 (m - n) p) };
     apply t; rewrite left subnDA; apply ∧ₑ₂ (subn_eq0 m (n + p)) h;
   };
 end;
@@ -1008,7 +1008,7 @@ begin
   induction
   { assume n; apply eq_refl n }
   { assume m h; induction
-    { apply eq_refl (m +1) }
+    { reflexivity }
     { assume n i; simplify; apply feq (+1); apply h n }
   }
 end;
