@@ -479,6 +479,17 @@ let rec handle :
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct_idopts idopts;
       assume idopts
+  | P_tac_change pa ->
+      let vname = "x" in
+      let vabs = Pos.make pos vname in
+      let varg = Pos.make pos ([],vname) in
+      let vparam = [[Some vabs],Some pa,false] in
+      let mk = Pos.make pos in
+      let idbody = mk(P_Iden(varg,false)) in
+      let id = mk(P_Abst(vparam,idbody)) in
+      let t = mk(P_Appl(id,mk P_Wild)) in
+      let p = new_problem() in
+      tac_refine pos ps gt gs p (scope t)
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)

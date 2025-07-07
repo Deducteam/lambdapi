@@ -15,8 +15,12 @@ Adds in the environment new symbols (axioms) proving the focused goal.
 ``apply``
 ---------
 
-If ``t`` is a term of type ``Π x₁:T₁, …, Π xₙ:Tₙ,U``, then ``apply t``
-refines the focused typing goal with ``t _ … _`` (with n underscores).
+``apply t`` refines the current goal with ``t _ … _``, i.e. ``t``
+applied to a number of underscores, which depends on the goal and the
+type of ``t``. For instance, if ``t`` is a term of type ``Π x₁:T₁, …,
+Π xₙ:Tₙ,U`` and ``U`` matches the current goal, then it will generated
+``n`` subgoals for ``T₁``, …,``Tₙ``.
+
 
 .. _assume:
 
@@ -24,10 +28,15 @@ refines the focused typing goal with ``t _ … _`` (with n underscores).
 ----------
 
 If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
-``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
+``assume h₁ … hₙ`` replaces it by ``T`` with each ``xᵢ`` replaced by
 ``hᵢ``.
 
 .. _fail:
+
+``change``
+---------
+
+``change t`` replaces the current goal ``u`` by ``t``, if ``t ≡ u``.
 
 ``fail``
 --------
