@@ -39,9 +39,9 @@ debug mode for some functionalities as follows:
    debug +ts;
    debug -s;
 
-Each functionality is represented by a single character. For instance,
-``i`` stands for type inference. To get the list of all debuggable
-functionalities, run the command ``lambdapi check --help``.
+Each functionality is represented by a single character. To get the
+list of all available flags, use the command ``debug`` with no
+argument.
 
 .. _flag:
 

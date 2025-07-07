@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tacticals orelse and repeat.
 - Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
 - Added builtin String for string literals between double quotes.
-- Added the `--header` option to the `websearch` command
-- Added the `url` opyion to the `websearch` command
-- Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries
-- Added websearch queries and corresponding responses to the logs
+- Added the `--header` option to the `websearch` command.
+- Added the `url` opyion to the `websearch` command.
+- Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries.
+- Added websearch queries and corresponding responses to the logs.
+- Added `debug` command with no argument to get the list of available debug flags.
 
 ### Changed
 
