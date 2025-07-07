@@ -9,8 +9,10 @@ let is_path_prefix patt p =
  Lplib.String.is_prefix patt (string_of_path p)
 
 let re_matches_sym_name re (p,name) =
- (* CSC: fix me *)
- Str.string_match re (string_of_path p ^ "." ^ name) 0
+ try
+  ignore (Str.search_forward re (string_of_path p ^ "." ^ name) 0) ;
+  true
+ with Not_found -> false
 
 let name_of_sym s = (s.sym_path, s.sym_name)
 
