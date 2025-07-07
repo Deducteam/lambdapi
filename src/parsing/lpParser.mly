@@ -205,8 +205,10 @@ query:
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | PRINT i=qid_or_rule? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
+  | DEBUG { make_pos $sloc (P_query_debug(true,"")) }
   | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
+  | FLAG { make_pos $sloc (P_query_flag("",true)) }
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT n=INT

@@ -8,13 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Tactic `simplify rule off` to simplify the focused goal wrt β-reduction only.
-- Tacticals orelse and repeat.
-- Added tactic eval which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
-- Added builtin String for string literals between double quotes.
-- Added the `--header` option to the `websearch` command
-- Added the `url` opyion to the `websearch` command
-- Transform `forall` and `->` to unicode caracters `Π` and `→` in search queries
-- Added websearch queries and corresponding responses to the logs
+- Tacticals `orelse` and `repeat`.
+- Tactic `eval` which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
+- Builtin `"String"` for string literals between double quotes.
+- Options `--header` and `--url` for the `websearch` command.
+- In search queries, replace the substring `"forall"` and `"->"` by `"Π"` and `"→"` respectively.
+- Websearch queries and responses are now recorded in the log.
+- Commands `debug` and `flag` with no argument to get the list of debug flags and the list of flags respectively.
 
 ### Changed
 

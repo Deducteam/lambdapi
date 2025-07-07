@@ -95,6 +95,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
+  | P_query_flag("",_) ->
+      let f n _ l = n::l in
+      let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
+      let l = List.sort Stdlib.compare l in
+      let l = List.map (fun s -> "\""^s^"\"") l in
+      return string ("flags: "^String.concat ", " l)
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
