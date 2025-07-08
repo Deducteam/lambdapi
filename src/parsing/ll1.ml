@@ -28,6 +28,7 @@ let string_of_token = function
   | BACKQUOTE -> "`"
   | BEGIN -> "begin"
   | BUILTIN -> "builtin"
+  | CHANGE -> "change"
   | COERCE_RULE -> "coerce_rule"
   | COLON -> ":"
   | COMMA -> ","
@@ -813,6 +814,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | ADMIT
   | APPLY
   | ASSUME
+  | CHANGE
   | EVAL
   | FAIL
   | GENERALIZE
@@ -871,6 +873,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | ADMIT
   | APPLY
   | ASSUME
+  | CHANGE
   | EVAL
   | FAIL
   | GENERALIZE
@@ -954,6 +957,11 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist param lb in
       make_pos pos1 (P_tac_assume xs)
+  | CHANGE ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = term lb in
+      make_pos pos1 (P_tac_change t)
   | EVAL ->
       let pos1 = current_pos() in
       consume_token lb;
