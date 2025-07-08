@@ -140,35 +140,44 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt -> in_pos (locate lps) elt
 
-(** [print_file_contents escape sep delimiters pos] prints the contents of the
-    file at position [pos]. [sep] is the separator replacing each newline
+(** [print_file_contents parse_file escape sep delimiters pos] prints the
+    contents of the file at position [pos]. The [parse_file] function
+    takes in input [pos.fname] (that in reality may be a filename or
+    a URI, e.g. when the text comes from LSP) and it returns both a stream
+    of lines provided by a function that raises End_of_file if the file
+    content is terminated, and a function to close the resources when
+    we are done with the stream.
+    [sep] is the separator replacing each newline
     (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
     "unknown location" message returned when the position does not refer to a
     file. [escape] is used to escape the file contents.
 
     The value -1 for end_col is to be interpreted as "at the end of line".  *)
 let print_file_contents :
-  escape:(string -> string) ->
+  parse_file:(string -> (unit -> string) * (unit -> unit)) ->
+   escape:(string -> string) ->
     delimiters:(string*string) -> complain_if_location_unknown:bool ->
       popt Lplib.Base.pp =
-  fun ~escape ~delimiters:(db,de) ~complain_if_location_unknown ppf pos ->
+  fun ~parse_file ~escape ~delimiters:(db,de) ~complain_if_location_unknown
+   ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
         It's dangerous for your health! *)
 
-     (* ignore the lines before the start_line *)
-     let ch = open_in fname in
+     let input_line,finish = parse_file fname in
      let out =
        Buffer.create
         ((end_line - start_line) * 80 +
          (if end_col = -1 then 80 else end_col) + 1) in
+
+     (* ignore the lines before the start_line *)
      for i = 0 to start_line - 2 do
-      ignore (input_line ch)
+      ignore (input_line ())
      done ;
 
      (* skip the first start_col UTF8 codepoints of the start_line *)
-     let startl = input_line ch in
+     let startl = input_line () in
      assert (String.is_valid_utf_8 startl);
      let bytepos = ref 0 in
      for i = 0 to start_col - 1 do
@@ -188,7 +197,7 @@ let print_file_contents :
 
      (* add the lines in between the start_line and the end_line *)
      for i = 0 to end_line - start_line - 2 do
-       Buffer.add_string out (escape (input_line ch)) ;
+       Buffer.add_string out (escape (input_line ())) ;
        Buffer.add_string out "\n"
      done ;
 
@@ -199,7 +208,7 @@ let print_file_contents :
          startstr, -1
         else
          startstr, end_col - start_col
-      else input_line ch, end_col in
+      else input_line (), end_col in
 
      (* keep the first end_col UTF8 codepoints of the end_line *)
      assert (String.is_valid_utf_8 endl);
@@ -217,7 +226,7 @@ let print_file_contents :
      let str = String.sub endl 0 !bytepos in
      Buffer.add_string out (escape str) ;
 
-     close_in ch ;
+     finish () ;
      string ppf (Buffer.contents out)
   | None | Some {fname=None} ->
       if complain_if_location_unknown then

@@ -32,10 +32,9 @@ Index and search
 
 * better pagination
 
-* Command.handle_require_as: require as X   <== what should we do with the renaming?
-
-* Compile.compile_with: where it calls link we must index all the signature
-  Sign.add_rules + Sign.add_symbol
+* document require ... as Foo: using Foo.X in the query already
+  works (pure magic!); of course it does not work when using
+  regular expressions [ check before! ]
 
 * check the semantics of indexing the Plac _ as variables
 

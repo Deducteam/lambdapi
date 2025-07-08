@@ -219,6 +219,9 @@ let unlink : t -> unit = fun sign ->
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
 
+let add_symbol_callback = Stdlib.ref (fun _ -> ())
+let add_rules_callback = Stdlib.ref (fun _ _ -> ())
+
 (** [add_symbol sign expo prop mstrat opaq name pos typ impl notation] adds in
     the signature [sign] a symbol with name [name], exposition [expo],
     property [prop], matching strategy [strat], opacity [opaq], type [typ],
@@ -233,6 +236,7 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
       (cleanup typ) (minimize_impl impl)
   in
   sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
+  if Stdlib.(!Common.Mode.lsp_mod) then Stdlib.(!add_symbol_callback sym) ;
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -340,7 +344,8 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
       | Some(rs',n) -> Some(rs'@rs,n)
     in
     let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps) ;
+    if Stdlib.(!Common.Mode.lsp_mod) then Stdlib.(!add_rules_callback sym rs)
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
    rule does not correspond to a symbol of signature [sign], it is stored in

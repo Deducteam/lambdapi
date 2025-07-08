@@ -104,7 +104,7 @@ let index_cmd cfg add_only rules files source dbpath_opt =
   let time = Time.save () in
   let handle file =
    Console.reset_default ();
-   Time.restore time;
+   Tool.Indexing.preserving_index Time.restore time;
    Tool.Indexing.load_rewriting_rules rules;
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
@@ -210,7 +210,10 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
 (** Running the LSP server. *)
 let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  let run _ = Config.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  let run _ =
+   Config.init cfg;
+   Common.Mode.lsp_mod := true ;
+   Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Error.handle_exceptions run
 
 (** Printing a decision tree. *)

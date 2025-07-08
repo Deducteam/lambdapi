@@ -1,5 +1,8 @@
 open Core open Term
 open Common open Pos
+open Timed
+
+let lsp_input = Stdlib.ref ("","")
 
 type sym_name = Common.Path.t * string
 
@@ -306,12 +309,12 @@ module DB = struct
 
  (* disk persistence *)
 
- let the_dbpath : string ref = ref Path.default_dbpath
+ let the_dbpath : string Stdlib.ref = Stdlib.ref Path.default_dbpath
 
- let rwpaths = ref []
+ let rwpaths = Stdlib.ref []
 
  let restore_from_disk () =
-  try restore_from ~filename:!the_dbpath
+  try restore_from ~filename:Stdlib.(!the_dbpath)
   with Sys_error msg ->
      Common.Error.wrn None "%s.\n\
       Type \"lambdapi index --help\" to learn how to create the index." msg ;
@@ -322,6 +325,12 @@ module DB = struct
   ((string * string * int * int) Sym_nameMap.t *
    (item * position list) Index.db) Lazy.t ref =
    ref (lazy (restore_from_disk ()))
+
+ let preserving_index f x =
+   let saved_db = !db in
+   let res = f x in
+   db := saved_db ;
+   res
 
  let empty () = db := lazy (Sym_nameMap.empty,Index.empty)
 
@@ -436,6 +445,22 @@ module DB = struct
           pp_inside inside pp_side side))
    sep
 
+ (* given a filename/URI it returns the stream of lines
+    and a function to close the resources *)
+ let parse_file fname =
+  if String.starts_with ~prefix:"file:///" fname then
+   (assert (fst Stdlib.(!lsp_input) = fname) ;
+   let text = snd Stdlib.(!lsp_input) in
+   let lines = ref (String.split_on_char '\n' text) in
+   (fun () ->
+     match !lines with
+      | [] -> raise End_of_file
+      | he::tl -> lines := tl ; he),
+   (fun () -> ()))
+  else
+   let ch = open_in fname in
+   (fun () -> input_line ch), (fun () -> close_in ch)
+
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
   ~lis:(lisb,lise) ~pres:(preb,pree)
   ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
@@ -451,7 +476,7 @@ module DB = struct
        (popt_to_string ~print_dirname:false pos)
        separator (generic_pp_of_position_list ~escaper ~sep) positions
        separator preb codeb
-       (Common.Pos.print_file_contents ~escape ~delimiters
+       (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
          ~complain_if_location_unknown:true) pos
        separator
        (fun ppf opt ->
@@ -460,7 +485,7 @@ module DB = struct
           | Some sourceid ->
              Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
        separator
-       (Common.Pos.print_file_contents ~escape ~delimiters
+       (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
          ~complain_if_location_unknown:false) sourcepos
        codee pree lise)
     "" fmt l
@@ -535,7 +560,7 @@ let load_meta_rules () =
      match elt with
        Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
      | _ -> ())
-   cmdstream) !DB.rwpaths ;
+   cmdstream) Stdlib.(!DB.rwpaths) ;
  let rules = List.rev !rules in
  let handle_rule map r =
    let (s,r) = check_rule r in
@@ -670,12 +695,22 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rhs = rule.rhs in
  let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
  let filename = Option.get rule_pos.fname in
+ let filename =
+   if String.starts_with ~prefix:"file:///" filename then
+    let n = String.length "file://" in
+    String.sub filename n (String.length filename - n)
+   else
+    filename in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
   (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Lhs)])) ;
  index_term_and_subterms ~is_spine:false rhs
   (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Rhs)]))
+
+let _ =
+ Stdlib.(Core.Sign.add_rules_callback :=
+   fun sym rules -> List.iter (index_rule sym) rules)
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -695,8 +730,10 @@ let index_sym sym =
  (* Rules *)
  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
 
+let _ = Stdlib.(Core.Sign.add_symbol_callback := index_sym)
+
 let load_rewriting_rules rwrules =
- DB.rwpaths := rwrules
+ Stdlib.(DB.rwpaths := rwrules)
 
 let index_sign sign =
  (*Console.set_flag "print_domains" true ;
@@ -833,13 +870,13 @@ module UserLevelQueries = struct
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
  let search_cmd_html ss ~from ~how_many s ~dbpath =
-  the_dbpath := dbpath;
+  Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>") s
 
  let search_cmd_txt ss s ~dbpath =
-  the_dbpath := dbpath;
+  Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
    ~pp_results:pp_results_list ~title_tag:("","") s
