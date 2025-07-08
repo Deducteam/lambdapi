@@ -100,7 +100,8 @@ begin
   eval 2 * #rewrite addnA & #reflexivity
 end;
 
+/*debug +tn;
 symbol lem2 p : π p → π p ≔
 begin
   assume p h; eval #refine "h"
-end;
+end;*/
