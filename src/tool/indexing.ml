@@ -90,7 +90,13 @@ let rec node_of_stack t s v =
     (* Let-ins are expanded during indexing *)
     node_of_stack (subst bind bod) s v
  | Meta _ -> assert false
- | Plac _ -> assert false (* not for meta-closed terms *)
+ | Plac _ ->
+    (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+       that is NOT instantiated; the rule is meant to open a proof
+       obligation.
+
+       Tentative implementation: a placeholder is seen as a variable *)
+    IRigid(IVar, index_of_stack s v)
  | Wild -> assert false (* used only by tactics and reduction *)
  | TRef _  -> assert false (* destroyed by unfold *)
  | Bvar _ -> assert false
@@ -114,7 +120,14 @@ let rec match_rigid r term =
  | IAbst, Abst(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
  | IProd, Prod(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
  | _, LLet (_typ, bod, bind) -> match_rigid r (subst bind bod)
- | _, (Meta _ | Plac _ | Wild | TRef _) -> assert false
+ | IVar, Plac _ ->
+    (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+       that is NOT instantiated; the rule is meant to open a proof
+       obligation.
+
+       Tentative implementation: a placeholder is seen as a variable *)
+    []
+ | _, (Meta _ | Wild | TRef _) -> assert false
  | _, _ -> raise NoMatch
 
 (* match anything with a flexible term *)
@@ -559,7 +572,14 @@ let rec is_flexible t =
   | Appl(t,_) -> is_flexible t
   | LLet(_,_,b) -> let _, t = unbind b in is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
-  | Meta _ | Plac _ | Wild | TRef _ | Bvar _ -> assert false
+  | Plac _ ->
+     (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+        that is NOT instantiated; the rule is meant to open a proof
+        obligation
+
+       Tentative implementation: a placeholder is seen as a variable *)
+     false
+  | Meta _ | Wild | TRef _ | Bvar _ -> assert false
 
 let enter =
  DB.(function
@@ -589,6 +609,7 @@ let subterms_to_index ~is_spine t =
   | Vari _
   | Type
   | Kind
+  | Plac _
   | Symb _ -> []
   | Abst(t,b) ->
      let _, t2 = unbind b in
@@ -613,7 +634,7 @@ let subterms_to_index ~is_spine t =
      let _, t3 = unbind b in
      aux ~where:(enter where) t1 @ aux ~where:(enter where) t2 @
       aux ~where:(enter where) t3
-  | Meta _ | Plac _ | Wild | TRef _ -> assert false
+  | Meta _ | Wild | TRef _ -> assert false
  in aux ~where:(if is_spine then Spine Exact else Conclusion Exact) t
 
 let insert_rigid t v =

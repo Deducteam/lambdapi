@@ -32,6 +32,13 @@ Index and search
 
 * better pagination
 
+* Command.handle_require_as: require as X   <== what should we do with the renaming?
+
+* Compile.compile_with: where it calls link we must index all the signature
+  Sign.add_rules + Sign.add_symbol
+
+* check the semantics of indexing the Plac _ as variables
+
 Performance improvements
 ------------------------
 
