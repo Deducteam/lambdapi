@@ -1,3 +1,5 @@
+(** Generation of fresh names. *)
+
 open Lplib open Base open Extra
 open Debug
 
