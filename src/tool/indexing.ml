@@ -4,13 +4,14 @@ open Common open Pos
 type sym_name = Common.Path.t * string
 
 let string_of_path x = Format.asprintf "%a" Common.Path.pp x
+let string_of_sym_name (p,n) = string_of_path p ^ "." ^ n
 
 let is_path_prefix patt p =
  Lplib.String.is_prefix patt (string_of_path p)
 
-let re_matches_sym_name re (p,name) =
+let re_matches_sym_name re sym_name =
  try
-  ignore (Str.search_forward re (string_of_path p ^ "." ^ name) 0) ;
+  ignore (Str.search_forward re (string_of_sym_name sym_name) 0) ;
   true
  with Not_found -> false
 
@@ -658,6 +659,11 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
 let index_sym sym =
  let qname = name_of_sym sym in
  (* Name *)
+ if List.exists (fun ((sn,_),_) -> sn=qname)
+     (DB.ItemSet.bindings (DB.locate_name (snd qname)))
+  then
+   raise
+    (Common.Error.Fatal(None,string_of_sym_name qname ^ " already indexed")) ;
  DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
