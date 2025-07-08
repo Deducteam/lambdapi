@@ -210,6 +210,7 @@ type tactic =
   | T_and
   | T_apply
   | T_assume
+  | T_change
   | T_fail
   | T_generalize
   | T_have
@@ -238,6 +239,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "and" T_and;
   add "apply" T_apply;
   add "assume" T_assume;
+  add "change" T_change;
   add "fail" T_fail;
   add "generalize" T_generalize;
   add "have" T_have;
@@ -364,6 +366,8 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
             | T_assume, _ -> assert false
+            | T_change, [_;t] -> P_tac_apply(p_term pos idmap t)
+            | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
