@@ -327,21 +327,6 @@ let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
-(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-   rule does not correspond to a symbol of signature [sign], it is stored in
-   its dependencies. /!\ does not update the decision tree or the critical
-   pairs. *)
-let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
-  sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path then
-    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function
-      | None -> Some([r],None)
-      | Some(rs,n) -> Some(rs@[r],n)
-    in
-    let sm = StrMap.update sym.sym_name f sm in
-    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
-
 (** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
    the rules do not correspond to a symbol of signature [sign], they are
    stored in its dependencies. /!\ does not update the decision tree or the
@@ -356,6 +341,13 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
     in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+
+(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
+   rule does not correspond to a symbol of signature [sign], it is stored in
+   its dependencies. /!\ does not update the decision tree or the critical
+   pairs. *)
+let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
+ add_rules sign sym [r]
 
 (** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
     the signature [sign]. *)
