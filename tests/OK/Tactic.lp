@@ -18,6 +18,9 @@ builtin "apply" ≔ #apply;
 constant symbol #assume : String → Tactic;
 builtin "assume" ≔ #assume;
 
+constant symbol #change [p] : π p → Tactic;
+builtin "change" ≔ #change;
+
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
