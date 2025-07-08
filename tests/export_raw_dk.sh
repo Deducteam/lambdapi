@@ -58,7 +58,7 @@ do
         # nested module name
         require_nondkmident);;
         # proofs
-        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit);;
+        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change);;
         # "open"
         triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|Option|String|HOL|Impred|PropExt|Classic|1217|1151);;
         # "inductive"

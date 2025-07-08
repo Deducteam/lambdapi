@@ -33,6 +33,7 @@
 %token ASSUME
 %token BEGIN
 %token BUILTIN
+%token CHANGE
 %token COERCE_RULE
 %token COMMUTATIVE
 %token COMPUTE
@@ -338,6 +339,7 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | CHANGE t=term { make_pos $sloc (P_tac_change t) }
   | EVAL t=term { make_pos $sloc (P_tac_eval t) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }

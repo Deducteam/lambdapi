@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - In search queries, replace the substring `"forall"` and `"->"` by `"Π"` and `"→"` respectively.
 - Websearch queries and responses are now recorded in the log.
 - Commands `debug` and `flag` with no argument to get the list of debug flags and the list of flags respectively.
+- Tactic `change`.
 
 ### Changed
 
