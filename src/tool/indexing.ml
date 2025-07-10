@@ -849,17 +849,17 @@ module UserLevelQueries = struct
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "%sNumber of results: %d%s%a@."
+   Format.asprintf "%sNumber of results: %d%s@.%a@."
     hb resultsno he pp_results items
   with
    | Stream.Failure ->
-      fail (Format.asprintf "Syntax error: a query was expected")
+      fail (Format.asprintf "Syntax error: a query was expected@.")
    | Common.Error.Fatal(_,msg) ->
       fail (Format.asprintf "Error: %s@." msg)
    | Overloaded(name,res) ->
       fail (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
-        with a fully qualified identifier among the following: %a"
+        with a fully qualified identifier among the following:@.%a@."
         name name pp_results (ItemSet.bindings res))
    | Stack_overflow ->
       fail

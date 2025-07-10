@@ -4,9 +4,6 @@ TODO
 Index and search
 ----------------
 
-* after "Number of results: 3" there is a missing CRLF
-* also after "Please rewrite the query ... following:"
-
 * when disambiguating an identifier, after rewriting one could be
   left with just one id (not working now)
 
