@@ -841,9 +841,8 @@ module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results
   ~title_tag:(hb,he) s =
-  let s = transform_ascii_to_unicode s in
   try
-   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
+   let pstream = Parsing.Parser.Rocq.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
    let mok _ = None in
    let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
@@ -876,6 +875,7 @@ module UserLevelQueries = struct
    ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>") s
 
  let search_cmd_txt ss s ~dbpath =
+  let s = transform_ascii_to_unicode s in
   Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
