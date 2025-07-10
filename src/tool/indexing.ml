@@ -496,10 +496,14 @@ module DB = struct
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
    ~code:("<code>","</code>")
 
- let pp_item_list =
+ let pp_item_list fmt l =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
-   ~lis:("* ","") ~pres:("","") ~bold:("","") ~code:("","")
+   ~lis:("* ","") ~pres:("","")
+   ~bold:(if Stdlib.(!Common.Mode.lsp_mod) || Unix.isatty Unix.stdout then
+            ("[0;36m","[0m")
+          else ("",""))
+    ~code:("","") fmt l
 
  let pp_results_list fmt l = pp_item_list fmt l
 

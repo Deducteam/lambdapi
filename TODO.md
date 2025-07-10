@@ -13,9 +13,6 @@ Index and search
   expression - only query efficiently
     (concl = _ | "regexpr")
 
-* CLI interface: use colors? be aware of redirections over files / more
-  / less
-
 * normalize queries when given as commands in lambdapi
 
 * generate mappings from LP to V automatically with HOL2DK and find
