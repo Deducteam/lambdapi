@@ -4,14 +4,13 @@ TODO
 Index and search
 ----------------
 
+* after "Number of results: 3" there is a missing CRLF
+* also after "Please rewrite the query ... following:"
+
+* when disambiguating an identifier, after rewriting one could be
+  left with just one id (not working now)
+
 * add notations for Coq stdlib to websearch (using Pratter?)
-
-* generate mappings from LP to V automatically with HOL2DK and find
-  what to do with manually written files; also right now there are
-  mappings that are lost and mappings that are confused in a many-to-one
-  relation
-
-* normalize queries when given as commands in lambdapi
 
 * syntactic sugar for regular expressions / way to write a regular
   expression - only query efficiently
@@ -20,13 +19,12 @@ Index and search
 * CLI interface: it tries to render way too many results
   and it takes ages
 
-* after "Number of results: 3" there is a missing CRLF
-* also after "Please rewrite the query ... following:"
+* normalize queries when given as commands in lambdapi
 
-* check the semantics of indexing the Plac _ as variables
-
-* when disambiguating an identifier, after rewriting one could be
-  left with just one id (not working now)
+* generate mappings from LP to V automatically with HOL2DK and find
+  what to do with manually written files; also right now there are
+  mappings that are lost and mappings that are confused in a many-to-one
+  relation
 
 Think about
 -----------
