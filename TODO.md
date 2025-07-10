@@ -21,9 +21,7 @@ Index and search
   and it takes ages
 
 * after "Number of results: 3" there is a missing CRLF
-
-* why type only supports? =
-  also doc is wrong, but I suppose code is wrong
+* also after "Please rewrite the query ... following:"
 
 * check the semantics of indexing the Plac _ as variables
 
@@ -63,6 +61,10 @@ Performance improvements
 
 Documentation
 -------------
+
+* fix the doc: not only "anywhere" but also "type" can be paired
+  only with ">="; maybe make it explicit that to match exactly the
+  type of a constant one should use "spine ="
 
 * document new features, e.g. -sources (and find better
   terminology), deindex
