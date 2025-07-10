@@ -4,6 +4,8 @@ TODO
 Index and search
 ----------------
 
+* add notations for Coq stdlib to websearch (using Pratter?)
+
 * generate mappings from LP to V automatically with HOL2DK and find
   what to do with manually written files; also right now there are
   mappings that are lost and mappings that are confused in a many-to-one
