@@ -13,8 +13,8 @@ Index and search
   expression - only query efficiently
     (concl = _ | "regexpr")
 
-* CLI interface: it tries to render way too many results
-  and it takes ages
+* CLI interface: use colors? be aware of redirections over files / more
+  / less
 
 * normalize queries when given as commands in lambdapi
 

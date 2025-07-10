@@ -471,7 +471,7 @@ module DB = struct
    Lplib.List.pp
     (fun ppf (((p,n) as sym_name,pos),(positions : answer)) ->
      let sourceid,sourcepos = source_infos_of_sym_name sym_name in
-     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s@."
+     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s%s@."
        lisb (escaper.run Core.Print.path) p boldb n bolde
        (popt_to_string ~print_dirname:false pos)
        separator (generic_pp_of_position_list ~escaper ~sep) positions
@@ -487,7 +487,7 @@ module DB = struct
        separator
        (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
          ~complain_if_location_unknown:false) sourcepos
-       codee pree lise)
+       codee pree lise separator)
     "" fmt l
 
  let html_of_item_list =
@@ -840,46 +840,50 @@ module UserLevelQueries = struct
     Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
 
  let search_cmd_gen ss ~from ~how_many ~fail ~pp_results
-  ~title_tag:(hb,he) s =
+  ~title_tag:(hb,he) fmt s =
   try
    let pstream = Parsing.Parser.Rocq.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
    let mok _ = None in
-   let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
+   let items = answer_query ~mok ss [] pq in
+   let items = ItemSet.bindings items in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "%sNumber of results: %d%s@.%a@."
+   Lplib.Base.out fmt "%sNumber of results: %d%s@.%a@."
     hb resultsno he pp_results items
   with
    | Stream.Failure ->
-      fail (Format.asprintf "Syntax error: a query was expected@.")
+      Lplib.Base.out fmt "%s"
+       (fail (Format.asprintf "Syntax error: a query was expected@."))
    | Common.Error.Fatal(_,msg) ->
-      fail (Format.asprintf "Error: %s@." msg)
+      Lplib.Base.out fmt "%s" (fail (Format.asprintf "Error: %s@." msg))
    | Overloaded(name,res) ->
-      fail (Format.asprintf
+      Lplib.Base.out fmt "%s" (fail (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
         with a fully qualified identifier among the following:@.%a@."
-        name name pp_results (ItemSet.bindings res))
+        name name pp_results (ItemSet.bindings res)))
    | Stack_overflow ->
-      fail
+      Lplib.Base.out fmt "%s" (fail
        (Format.asprintf
-         "Error: too many results. Please refine your query.@." )
+         "Error: too many results. Please refine your query.@." ))
    | exn ->
-      fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
+      Lplib.Base.out fmt "%s"
+       (fail (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
  let search_cmd_html ss ~from ~how_many s ~dbpath =
   Stdlib.(the_dbpath := dbpath);
-  search_cmd_gen ss ~from ~how_many
-   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>") s
+  Format.asprintf "%a"
+   (search_cmd_gen ss ~from ~how_many
+    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+    ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>")) s
 
- let search_cmd_txt ss s ~dbpath =
+ let search_cmd_txt ss ~dbpath fmt s =
   let s = transform_ascii_to_unicode s in
   Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list ~title_tag:("","") s
+   ~pp_results:pp_results_list ~title_tag:("","") fmt s
 
 end
 

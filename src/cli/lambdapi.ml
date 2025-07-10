@@ -35,8 +35,8 @@ let search_cmd cfg rules require s dbpath_opt =
   Tool.Indexing.load_rewriting_rules rules ;
   let ss = sig_state_of_require require in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
-  out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ss s ~dbpath) in
+  out Format.std_formatter "%a@."
+   (Tool.Indexing.search_cmd_txt ss ~dbpath) s in
  Error.handle_exceptions run
 
 let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =

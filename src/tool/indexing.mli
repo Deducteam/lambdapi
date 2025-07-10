@@ -14,7 +14,8 @@ val preserving_index : ('a -> 'b) -> 'a -> 'b
 val lsp_input : ((*uri*)string * (*text*)string) ref
 
 (* search command used by cli *)
-val search_cmd_txt: Sig_state.sig_state -> string -> dbpath:string -> string
+val search_cmd_txt:
+ Sig_state.sig_state -> dbpath:string -> string Lplib.Base.pp
 
 (* search command used by websearch *)
 val search_cmd_html:
