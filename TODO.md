@@ -4,6 +4,9 @@ TODO
 Index and search
 ----------------
 
+* @abdelghani include git sub-repos and automatize the generation
+  of the file to output Coq sources
+
 * when disambiguating an identifier, after rewriting one could be
   left with just one id (not working now)
 
