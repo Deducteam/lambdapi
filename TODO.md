@@ -4,8 +4,9 @@ TODO
 Index and search
 ----------------
 
-* @abdelghani include git sub-repos and automatize the generation
-  of the file to output Coq sources
+* @abdelghani include in HOL2DK_indexing git sub-repos of
+  coq-hol-light-real-with-N and coq-hol-light
+  and automatize the generation of the file to output Coq sources
 
 * when disambiguating an identifier, after rewriting one could be
   left with just one id (not working now)
