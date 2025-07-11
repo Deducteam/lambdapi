@@ -172,6 +172,11 @@ let rec token lb =
   | '|' -> VBAR
   | '_' -> UNDERSCORE
 
+  (* rocq identifiers *)
+  | "\\/" -> UID("∨")
+  | "/\\" -> UID("∧")
+  | "~" -> UID("¬")
+
   (* identifiers *)
   | regid -> UID(Utf8.lexeme lb)
   | escid -> UID(remove_useless_escape(Utf8.lexeme lb))

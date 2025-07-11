@@ -72,6 +72,8 @@ Performance improvements
 Documentation
 -------------
 
+* document the Coq syntax:  ~ /\ \/ -> forall exists =
+
 * fix the doc: --require can now be repeated
 
 * fix the doc: not only "anywhere" but also "type" can be paired
