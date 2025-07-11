@@ -37,10 +37,10 @@ let _ =
   in
   register "nat_succ" expected_succ_type
 
-(** [do_open ss p] handles the command [open p] with [ss] as the signature
-    state, assuming that [p] is already loaded. On success, an updated
-    signature state is returned. *)
-let rec do_open : sig_state -> Path.t -> sig_state = fun ss p ->
+(** [rec_open_sign ss p] handles the command [open p] with [ss] as the
+    signature state, assuming that [p] is already loaded. On success, an
+    updated signature state is returned. *)
+let rec rec_open_sign : sig_state -> Path.t -> sig_state = fun ss p ->
   if Path.Set.mem p ss.open_paths then ss
   else
     begin
@@ -48,12 +48,13 @@ let rec do_open : sig_state -> Path.t -> sig_state = fun ss p ->
       | None -> assert false
       | Some sign ->
           (* Recursively open the dependencies of [p] declared as open. *)
-          let f p d ss = if d.dep_open then do_open ss p else ss in
+          let f p d ss = if d.dep_open then rec_open_sign ss p else ss in
           let ss = Path.Map.fold f !(sign.sign_deps) ss in
-          (* Record that [p] must be open if it is not privately open. *)
+          (* Record that [p] must be open. *)
           let f = function
             | None -> assert false
-            | Some d -> Some {d with dep_open=true}
+            | Some ({dep_open=false;_} as d) -> Some {d with dep_open=true}
+            | x -> x
           in
           let deps = ss.signature.sign_deps in
           deps := Path.Map.update p f !deps;
@@ -72,7 +73,7 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
       match Path.Map.find_opt p !loaded with
       | None -> fatal pos "Module \"%a\" needs to be required first." path p
       | Some sign ->
-          if prv then open_sign ss sign else do_open ss p
+          if prv then open_sign ss sign else rec_open_sign ss p
 
 (** [do_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument
@@ -124,13 +125,13 @@ let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
 let handle_require compile bo ss {elt=p;_} =
   let ss = do_require compile ss p in
   match bo with
-  | Some true ->
+  | Some true -> (* private open *)
       begin
         match Path.Map.find_opt p !loaded with
         | None -> assert false
         | Some sign -> open_sign ss sign
       end
-  | Some false -> do_open ss p
+  | Some false -> (* open *) rec_open_sign ss p
   | None -> ss
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
