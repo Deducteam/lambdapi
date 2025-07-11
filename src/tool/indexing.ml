@@ -545,7 +545,7 @@ let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
   Core.Sig_state.find_sym ~prt ~prv sig_state s
  with
   Common.Error.Fatal _ ->
-   let pos,mp =
+   let pos,mp,name =
     match mp with
       [] ->
        let res_orig = DB.locate_name name in
@@ -554,9 +554,9 @@ let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
          raise (Overloaded (name,res_orig)) ;
        (match DB.ItemSet.choose_opt res with
          | None -> Common.Error.fatal pos "Unknown symbol %s." name
-         | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
+         | Some (((mp,name),sympos),[_,_,DB.Name]) -> sympos,mp,name
          | Some _ -> assert false) (* locate only returns DB.Name*)
-    | _::_ -> None,mp
+    | _::_ -> None,mp,name
    in
     mk_bogus_sym mp name pos
 
