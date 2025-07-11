@@ -514,25 +514,51 @@ end
 
 exception Overloaded of string * DB.answer DB.ItemSet.t
 
+let normalize_fun = ref (fun _ -> assert false)
+
+let mk_bogus_sym mp name pos =
+ Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+  false (Common.Pos.make pos name) None Core.Term.mk_Type []
+
+let elim_duplicates_up_to_normalization res =
+ let resl = DB.ItemSet.bindings res in
+ let norm =
+  List.map
+   (fun ((((mp,name),sympos),l) as inp) ->
+     let s = mk_bogus_sym mp name sympos in
+     match !normalize_fun (Core.Term.mk_Symb s) with
+     | Symb {sym_path ; sym_name ; _} ->
+        (((sym_path,sym_name),sympos), l)
+     | _ -> inp) resl in
+ let res = List.sort (fun ((x,_),_) ((y,_),_) -> compare x y) norm in
+ let res =
+  let rec uniq =
+   function
+    | [] | [_] as l -> l
+    | ((x,_),_)::(((y,_),_)::_ as l) when x=y -> uniq l
+    | i::l -> i::uniq l in
+   uniq res in
+ DB.ItemSet.of_list res
+
 let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
- let pos,mp =
-  match mp with
-    [] ->
-     let res = DB.locate_name name in
-     if DB.ItemSet.cardinal res > 1 then
-       raise (Overloaded (name,res)) ;
-     (match DB.ItemSet.choose_opt res with
-       | None -> Common.Error.fatal pos "Unknown symbol %s." name
-       | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
-       | Some _ -> assert false) (* locate only returns DB.Name*)
-  | _::_ -> None,mp
- in
  try
   Core.Sig_state.find_sym ~prt ~prv sig_state s
  with
   Common.Error.Fatal _ ->
-   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-    false (Common.Pos.make pos name) None Core.Term.mk_Type []
+   let pos,mp =
+    match mp with
+      [] ->
+       let res_orig = DB.locate_name name in
+       let res = elim_duplicates_up_to_normalization res_orig in
+       if DB.ItemSet.cardinal res > 1 then
+         raise (Overloaded (name,res_orig)) ;
+       (match DB.ItemSet.choose_opt res with
+         | None -> Common.Error.fatal pos "Unknown symbol %s." name
+         | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
+         | Some _ -> assert false) (* locate only returns DB.Name*)
+    | _::_ -> None,mp
+   in
+    mk_bogus_sym mp name pos
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -584,6 +610,8 @@ let normalize typ =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
+
+let _ = normalize_fun := normalize
 
 let search_pterm ~generalize ~mok ss env pterm =
  let env =

@@ -22,9 +22,6 @@ Index and search
     generated webpage an HTML snippet (e.g. with examples or
     additional infos for that instance)
 
-* when disambiguating an identifier, after rewriting one could be
-  left with just one id (not working now)
-
 * add notations for Coq stdlib to websearch (using Pratter?)
 
 * syntactic sugar for regular expressions / way to write a regular
