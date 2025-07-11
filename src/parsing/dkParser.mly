@@ -77,7 +77,7 @@
 
     let query lps q = make_pos lps (P_query q)
 
-    let require (lps,id) = make_pos lps (P_require(false,[make_pos lps [id]]))
+    let require (lps,id) = make_pos lps (P_require(None,[make_pos lps [id]]))
 
     let arrow lps a b = make_pos lps (P_Arro (a, b))
     let binary lps a = arrow lps a (arrow lps a a)

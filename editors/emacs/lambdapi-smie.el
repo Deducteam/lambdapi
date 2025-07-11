@@ -163,6 +163,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("opaque" symdec ";")
                ("private" "inductive" inddec ";")
                ("private" symdec ";")
+               ("private" "open" ident ";")
                ("protected" "inductive" inddec ";")
                ("protected" symdec ";")
                ("prover" ident)
