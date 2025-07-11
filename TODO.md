@@ -8,6 +8,14 @@ Index and search
   coq-hol-light-real-with-N and coq-hol-light
   and automatize the generation of the file to output Coq sources
 
+* @abdelghani
+  - use lplib/color.ml in place of our color management of the
+    output [ but do not lose our code to check if we are
+    in lsp_mode or targeting a tty ]
+  - "Overloaded symbol prod. Please rewrite the query replacing..."
+    is printed in red but the following lines are also in red
+    (i.e. black color is not restored)
+
 * when disambiguating an identifier, after rewriting one could be
   left with just one id (not working now)
 
