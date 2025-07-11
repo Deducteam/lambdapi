@@ -16,6 +16,12 @@ Index and search
     is printed in red but the following lines are also in red
     (i.e. black color is not restored)
 
+* @abdelghani
+  - commit the very nice new look&feel of websearch
+  - (maybe?) allow an --add-examples=FNAME to include in the
+    generated webpage an HTML snippet (e.g. with examples or
+    additional infos for that instance)
+
 * when disambiguating an identifier, after rewriting one could be
   left with just one id (not working now)
 
