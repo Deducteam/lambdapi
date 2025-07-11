@@ -25,8 +25,6 @@ Index and search
     generated webpage an HTML snippet (e.g. with examples or
     additional infos for that instance)
 
-* add notations for Coq stdlib to websearch (using Pratter?)
-
 * syntactic sugar for regular expressions / way to write a regular
   expression - only query efficiently
     (concl = _ | "regexpr")
@@ -41,7 +39,14 @@ Index and search
 Think about
 -----------
 
-* alignments with same name ==> automatic preference?
+* what notations for Coq should websearch know about;
+  right now they are in:
+   - notation.lp file
+     problem: if you want to add a lot of them, you need to
+     require the definitions first (without requiring all the
+     library...)
+   - hard-coded lexing tokens in rocqLexer, e.g. /\ mapped to
+     the corresponding Unicode character
 
 * would it be more reasonable to save the normalization rules
   when the index is created and apply them as default when searching,
@@ -72,7 +77,7 @@ Performance improvements
 Documentation
 -------------
 
-* document the Coq syntax:  ~ /\ \/ -> forall exists =
+* document the Coq syntax:  ~ /\ \/ -> = forall exists fun
 
 * fix the doc: --require can now be repeated
 
@@ -82,8 +87,6 @@ Documentation
 
 * document new features, e.g. -sources (and find better
   terminology), deindex
-
-* document Coq syntax in websearch
 
 * document require ... as Foo: using Foo.X in the query already
   works (pure magic!); of course it does not work when using
