@@ -4,6 +4,9 @@ TODO
 Index and search
 ----------------
 
+* @abdelghani test if search in vscode still works once that
+  you have repaired lsp :-)
+
 * @abdelghani include in HOL2DK_indexing git sub-repos of
   coq-hol-light-real-with-N and coq-hol-light
   and automatize the generation of the file to output Coq sources
@@ -68,6 +71,8 @@ Performance improvements
 
 Documentation
 -------------
+
+* fix the doc: --require can now be repeated
 
 * fix the doc: not only "anywhere" but also "type" can be paired
   only with ">="; maybe make it explicit that to match exactly the

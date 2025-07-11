@@ -605,6 +605,8 @@ let load_meta_rules () =
 
 let meta_rules = lazy (load_meta_rules ())
 
+let force_meta_rules_loading () = ignore (Lazy.force meta_rules)
+
 let normalize typ =
  let dtree sym =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
@@ -616,11 +618,12 @@ let _ = normalize_fun := normalize
 let search_pterm ~generalize ~mok ss env pterm =
  let env =
   ("V#",(new_var "V#",Term.mk_Type,None))::env in
+ Dream.log "QUERY before scoping: %a@." Parsing.Pretty.term pterm ;
  let query =
   Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
- Dream.log "QUERY before: %a" Core.Print.term query ;
+ Dream.log "QUERY before normalize: %a" Core.Print.term query ;
  let query = normalize query in
- Dream.log "QUERY after: %a" Core.Print.term query ;
+ Dream.log "QUERY to be executed: %a" Core.Print.term query ;
  DB.search ~generalize query
 
 let rec is_flexible t =

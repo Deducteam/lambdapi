@@ -20,19 +20,22 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let sig_state_of_require =
- function
-   None -> Core.Sig_state.dummy
- | Some req ->
-    (* Search for a package from the current working directory. *)
-    Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
-    Core.Sig_state.of_sign
-     (Compile.compile (Parsing.Parser.path_of_string req))
+let sig_state_of_require l =
+ (* Search for a package from the current working directory. *)
+ Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+ List.fold_left
+  (fun ss req ->
+    Handle.Command.handle Compile.compile ss
+     (Pos.none
+      (Parsing.Syntax.P_require
+        (true, [Pos.none (Parsing.Parser.path_of_string req)]))))
+  Core.Sig_state.dummy l
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
+  Tool.Indexing.force_meta_rules_loading () ;
   let ss = sig_state_of_require require in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
   out Format.std_formatter "%a@."
@@ -43,6 +46,7 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
+  Tool.Indexing.force_meta_rules_loading () ;
   let ss = sig_state_of_require require in
   let header = match header_file with
     | None ->
@@ -485,10 +489,10 @@ let rules_arg : string list CLT.t =
      multiple times to fetch rules from multiple files." in
   Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
 
-let require_arg : string option CLT.t =
+let require_arg : string list CLT.t =
   let doc =
     "LP file to be required before starting the search engine." in
-  Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
+  Arg.(value & opt_all string [] & info ["require"] ~docv:"PATH" ~doc)
 
 let custom_dbpath : string option CLT.t =
   let doc =
