@@ -38,15 +38,15 @@ with isGt Gt ↪ true;
 
 symbol isLe : Comp → 𝔹;
 
-rule isLt Eq ↪ true
-with isLt Lt ↪ true
-with isLt Gt ↪ false;
+rule isLe Eq ↪ true
+with isLe Lt ↪ true
+with isLe Gt ↪ false;
 
 symbol isGe : Comp → 𝔹;
 
-rule isLt Eq ↪ true
-with isLt Lt ↪ false
-with isLt Gt ↪ true;
+rule isGe Eq ↪ true
+with isGe Lt ↪ false
+with isGe Gt ↪ true;
 
 // Discriminate constructors
 
