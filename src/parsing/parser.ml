@@ -64,7 +64,7 @@ module Dk : PARSER = struct
     parse_lexbuf "" None entry (from_string s)
 
   let command =
-    let r = ref (Pos.none (P_open [])) in
+    let r = ref (Pos.none (P_open(false,[]))) in
     fun (lb:lexbuf): p_command ->
     Debug.(record_time Parsing
              (fun () -> r := DkParser.line DkLexer.token lb)); !r

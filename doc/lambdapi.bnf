@@ -21,10 +21,10 @@ QID ::= [UID "."]+ UID
 <search_query_alone> ::= <search_query> EOF
 
 <command> ::= "opaque" <qid> ";"
-            | "require" "open" <path>* ";"
             | "require" <path>* ";"
+            | "require" <open_cmd> <path>* ";"
             | "require" <path> "as" <uid> ";"
-            | "open" <path>* ";"
+            | <open_cmd> <path>* ";"
             | <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>]
               ";"
             | <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔"
@@ -38,6 +38,9 @@ QID ::= [UID "."]+ UID
             | "notation" <qid> <notation> ";"
             | <query> ";"
             
+
+<open_cmd> ::= "open"
+             | "private" "open"
 
 <query> ::= <assert> <param_list>* "⊢" <term> ":" <term>
           | <assert> <param_list>* "⊢" <term> "≡" <term>

@@ -391,7 +391,16 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
         | OPEN ->
             consume_token lb;
             let ps = nelist path lb in
-            make_pos pos1 (P_require(true,ps))
+            make_pos pos1 (P_require(Some false,ps))
+        | PRIVATE ->
+            consume_token lb;
+            begin
+              match current_token() with
+              | OPEN -> consume_token lb
+              | _ -> expected "" [OPEN]
+            end;
+            let ps = nelist path lb in
+            make_pos pos1 (P_require(Some true,ps))
         | _ ->
             let ps = nelist path lb in
             begin
@@ -406,15 +415,20 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
                   let i = uid lb in
                   make_pos pos1 (P_require_as(p,i))
               | _ ->
-                  make_pos pos1 (P_require(false,ps))
+                  make_pos pos1 (P_require(None,ps))
             end
       end
   | OPEN ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
+      let prv =
+        match p_sym_mod with
+        | [] -> false
+        | {elt=P_expo Term.Privat;_}::_ -> true
+        | _ -> expected "" [SYMBOL]
+      in
       let pos1 = current_pos() in
       consume_token lb;
       let l = list path lb in
-      make_pos pos1 (P_open l)
+      make_pos pos1 (P_open(prv,l))
   | SYMBOL ->
       let pos1 = current_pos() in
       consume_token lb;
