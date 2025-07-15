@@ -609,8 +609,8 @@ let check_cps :
   iter_sym_rules (check_cps_subterms_eq pos) srs;
   (* Verification of CP*(R,S). *)
   check_cps_sign_with pos sign sym_map;
-  let f path str_map =
-    if path != Sign.Ghost.path && str_map <> StrMap.empty then
+  let f path d =
+    if path != Sign.Ghost.path && d.Sign.dep_symbols <> StrMap.empty then
       let sign =
         try Path.Map.find path !Sign.loaded with Not_found -> assert false
       in

@@ -124,7 +124,7 @@ module Dk : PARSER = struct
 
   let command :
     (Lexing.lexbuf -> DkTokens.token) -> Lexing.lexbuf -> Syntax.p_command =
-    let r = ref (Pos.none (Syntax.P_open [])) in fun token lb ->
+    let r = ref (Pos.none (Syntax.P_open(false,[]))) in fun token lb ->
     Debug.(record_time Parsing (fun () -> r := DkParser.line token lb)); !r
 
   let stream_of_lexbuf :

@@ -51,13 +51,16 @@ let rec compile_with :
       Console.out 1 "Checking \"%s\"%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
-      let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
+      let ss = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
+      (*let open Base in sout "loaded:";
+        Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
+        sout "\n%!";*)
       Tactic.reset_admitted();
       let compile = compile_with ~handle ~force in
-      let consume cmd = Stdlib.(sig_st := handle compile !sig_st cmd) in
+      let consume cmd = Stdlib.(ss := handle compile !ss cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
