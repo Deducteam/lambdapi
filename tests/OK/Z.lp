@@ -557,10 +557,10 @@ begin
    { assume y h H; refine H }
    { assume x;
      induction
-      { assume h1 h2; refine λ x, x;   }
-      { assume y h h'; refine λ x, x }
-      { simplify; assume y h f; refine ⊥ₑ _; refine f ⊤ᵢ } }
-  { assume x y f h; apply ⊥ₑ; refine f ⊤ᵢ }
+      { assume h1 h2; refine h1 }
+      { assume y h h' i; refine i }
+      { assume y h f h'; refine f ⊤ᵢ } }
+  { assume x y f h i; refine f ⊤ᵢ }
 end;
 
 symbol <_compat_≤ x y : π (Z0 < x ⇒ Z0 ≤ y ⇒ Z0 < x + y) ≔

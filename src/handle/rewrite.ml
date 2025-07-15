@@ -123,6 +123,9 @@ let get_eq_data :
     if Logger.log_enabled () then log "get_eq %a" term t;
     match get_args t with
     | Prod(_,t), _ ->
+        (* We prefix variable names by "$" to distinguish them from the
+           variables occurring in other assumptions or in the goal, and
+           because we will try to match them with some subterm of the goal. *)
         let v,t = unbind ~name:("$"^binder_name t) t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
@@ -208,15 +211,7 @@ let matches : term -> term -> bool =
   let r = try eq [p,t]; true with Not_equal -> false in
   if Logger.log_enabled() then log "matches result: %b" r; r
 
-let no_match ?(subterm=false) pos (*g_env*) (_vars,p) t =
-  (* Rename [vars] with names distinct from those of [g_env] and [t]. *)
-  (*let f idmap x =
-    let name, idmap = Name.get_safe_prefix (base_name x) idmap in
-    idmap, mk_Vari (new_var name)
-  in
-  let ts = snd (Array.fold_left_map f (Env.names g_env) vars) in*)
-  (*let ts = Array.map (fun v -> mk_Vari (new_var ("$"^base_name v))) vars in
-  let p = msubst (bind_mvar vars p) ts in*)
+let no_match ?(subterm=false) pos p t =
   if subterm then fatal pos "No subterm of [%a] matches [%a]." term t term p
   else fatal pos "[%a] doesn't match [%a]." term t term p
 
@@ -249,10 +244,10 @@ let check_subs pos vars ts =
   in
   Array.iteri f ts
 
-let matching_subs_check_TRef pos ((vars,_) as xsp) t =
+let matching_subs_check_TRef pos ((vars,p) as xsp) t =
   match matching_subs xsp t with
   | Some ts -> check_subs pos vars ts; ts
-  | None -> no_match pos xsp t
+  | None -> no_match pos p t
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
    matching [p]. If successful, the function returns the array of terms by
@@ -285,7 +280,7 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
 
 let find_subst pos (vars,p) t =
   match find_subst (vars,p) t with
-  | None -> no_match ~subterm:true pos (vars,p) t
+  | None -> no_match ~subterm:true pos p t
   | Some ts -> check_subs pos vars ts; ts
 
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
@@ -325,7 +320,7 @@ let rec replace_wild_by_tref : term -> term = fun t ->
 let find_subterm_matching pos p t =
   let p_refs = replace_wild_by_tref p in
   if not (find_subterm_matching p_refs t) then
-    no_match ~subterm:true pos ([||],p) t;
+    no_match ~subterm:true pos p t;
   p_refs
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern

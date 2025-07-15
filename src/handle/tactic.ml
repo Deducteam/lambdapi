@@ -450,9 +450,9 @@ let rec handle :
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
       let is_reduced = Stdlib.ref false in
-      (* [ext_whnf] reduces a term to whnf and, if it is already in whnf,
-         reduce also its subterms similarly. Records also whether there has
-         been a reduction. *)
+      (* If [t] is not in whnf, then [ext_whnf t] returns its whnf. Otherwise,
+         if it is headed by a constant symbol, then it reduces its subterms
+         similarly. It also records whether there has been a reduction. *)
       let rec ext_whnf c t =
         if Logger.log_enabled() then log "ext_whnf %a" term t;
         match Eval.whnf_opt c t with
@@ -470,9 +470,10 @@ let rec handle :
         in*)
       (*let ext_whnf c t =
         print_result "ext_whnf" (ext_whnf c) term t term in*)
-      (* [top_ext_whnf] reduces a term to whnf and, if it is already in
-         whnf and of the form [Appl(_,u)], then reduces [u] according to
-         [ext_whnf]. Records also whether there has been a reduction. *)
+      (* If [t] is not in whnf, then [top_ext_whnf] returns its
+         whnf. Otherwise, if [t] is of the form [Appl(_,u)], then it reduces
+         [u] with [ext_whnf]. It also records whether there has been a
+         reduction. *)
       let top_ext_whnf c t =
         if Logger.log_enabled() then log "top_ext_whnf %a" term t;
         match Eval.whnf_opt c t with
