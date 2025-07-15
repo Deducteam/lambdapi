@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - In search queries, replace the substring `"forall"` and `"->"` by `"Π"` and `"→"` respectively.
 - Websearch queries and responses are now recorded in the log.
 - Commands `debug` and `flag` with no argument to get the list of debug flags and the list of flags respectively.
+- Tactic `change`.
+- Modifier `private` for `open` command to not record the opening.
 
 ### Changed
 
@@ -27,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   * improve error message for overloaded symbols
 - Tactic set x ≔ t: replace all subterms equal to t by x.
 - Enhance the formatting of the search results.
+- `require` and `open` are now recursive.
 
 ### Fixed
 

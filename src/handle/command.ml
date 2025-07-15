@@ -37,52 +37,101 @@ let _ =
   in
   register "nat_succ" expected_succ_type
 
-(** [handle_open ss p] handles the command [open p] with [ss] as the
-   signature state. On success, an updated signature state is returned. *)
-let handle_open : sig_state -> p_path -> sig_state =
-  fun ss {elt=p;pos} ->
+(** [rec_open record ss p] opens [p] and all its dependencies marked as
+    open. It assumes that [p] and all its dependencies are already
+    loaded. Records open modules if [record]. On success, an updated signature
+    state is returned. *)
+let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
+  fun record ss p ->
+  if Path.Set.mem p ss.open_paths then ss
+  else
+    begin
+      match Path.Map.find_opt p !loaded with
+      | None -> assert false
+      | Some sign ->
+          (* Recursively open the dependencies of [p] declared as open. *)
+          let f p d ss = if d.dep_open then rec_open record ss p else ss in
+          let ss = Path.Map.fold f !(sign.sign_deps) ss in
+          (* Record that [p] must be open if [record]. *)
+          if record then
+            begin
+              let f = function
+                | None -> assert false
+                | Some ({dep_open=false;_} as d) ->
+                    Some {d with dep_open=true}
+                | x -> x
+              in
+              let deps = ss.signature.sign_deps in
+              deps := Path.Map.update p f !deps
+            end;
+          (* Add symbols of [p] in scope. *)
+          open_sign ss sign
+    end
+
+let handle_open : bool -> sig_state -> p_path -> sig_state =
+  fun prv ss {elt=p;pos} ->
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-    fatal pos "Module aliases cannot be open."
+      fatal pos "Module aliases cannot be open."
   | _ ->
-  (* Check that [p] has been required. *)
-  if not (Path.Map.mem p !(ss.signature.sign_deps)) then
-    fatal pos "Module %a needs to be required first." path p;
-  (* Obtain the signature corresponding to [p]. *)
-  open_sign ss (Path.Map.find p !(Sign.loaded))
+      (* Check that [p] has been required. *)
+      match Path.Map.find_opt p !loaded with
+      | None -> fatal pos "Module \"%a\" needs to be required first." path p
+      | Some _ -> rec_open (not prv) ss p
 
-(** [handle_require b ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state and [compile] the
-   main compile function (passed as argument to avoid cyclic dependencies).
-   On success, an updated signature state is returned. *)
-let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
-  fun compile b ss {elt=p;pos} ->
-  (* Check that the module has not already been required. *)
-  if Path.Map.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module %a is already required." path p;
-  (* Compile required path (adds it to [Sign.loaded] among other things) *)
-  let new_sign = compile p in
-  (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps :=
-    Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
-  (* Add builtins. *)
-  let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-  let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
-  let ss = {ss with builtins} in
-  if b then open_sign ss new_sign else ss
+(** [rec_require compile ss p] handles the command [require p] with [ss] as
+    signature state and [compile] as compilation function (passed as argument
+    to avoid cyclic dependencies). On success, an updated signature state is
+    returned. *)
+let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
+  fun compile ss p ->
+  if p = Sign.Ghost.path then ss
+  else
+    let deps = ss.signature.sign_deps in
+    if Path.Map.mem p !deps then ss
+    else
+      begin
+        (* Compile [p] (this adds it to [Sign.loaded]). *)
+        let sign = compile p in
+        (* Recurse on the dependencies of [p]. *)
+        let f p _ ss = rec_require compile ss p in
+        let ss = Path.Map.fold f !(sign.sign_deps) ss in
+        (* Add builtins of [p] in [ss]. *)
+        let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+        let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+        let ss = {ss with builtins} in
+        (* Add [p] in dependencies. *)
+        let dep = {dep_symbols=StrMap.empty; dep_open=false} in
+        deps := Path.Map.add p dep !deps;
+        ss
+      end
 
-(** [handle_require_as compile ss p id] handles the command
-    [require p as id] with [ss] as the signature state and [compile] the main
-    compilation function passed as argument to avoid cyclic dependencies. On
-    success, an updated signature state is returned. *)
-let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
-  sig_state =
-  fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
-  let ss = handle_require compile false ss mp in
-  let alias_path = StrMap.add id p ss.alias_path in
-  let path_alias = Path.Map.add p id ss.path_alias in
-  {ss with alias_path; path_alias}
+(** [handle_require_as compile ss p id] handles the command [require p as id]
+    with [ss] as the signature state and [compile] as compilation function
+    (passed as argument to avoid cyclic dependencies). On success, an updated
+    signature state is returned. *)
+let handle_require_as :
+      compiler -> sig_state -> p_path -> p_ident -> sig_state =
+  fun compile ss {elt=p;_} {elt=id;_} ->
+  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+  else
+    begin
+      let ss = rec_require compile ss p in
+      let alias_path = StrMap.add id p ss.alias_path in
+      let path_alias = Path.Map.add p id ss.path_alias in
+      {ss with alias_path; path_alias}
+    end
+
+(** [handle_require compile bo ss p] handles the command [require p as id]
+    with [ss] as signature state and [compile] as compilation function (passed
+    as argument to avoid cyclic dependencies). On success, an updated
+    signature state is returned. *)
+let handle_require compile bo ss {elt=p;_} =
+  let ss = rec_require compile ss p in
+  match bo with
+  | Some prv -> rec_open (not prv) ss p
+  | None -> ss
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
@@ -195,10 +244,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     s.sym_opaq := true;
     (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
-  | P_require(b,ps) ->
-      (List.fold_left (handle_require compile b) ss ps, None, None)
+  | P_require(bo,ps) ->
+      (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
+  | P_open(b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
