@@ -340,14 +340,15 @@ and comment next i lb =
   | any -> comment next i lb
   | _ -> invalid_character lb
 
-(** [token buf] is a lexing function on buffer [buf] that can be passed to
-    a parser. *)
-let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
-  fun lb () -> try with_tokenizer token lb () with
+(** [token lb] is a lexing function on [lb] that can be passed to a parser. *)
+let token : lexbuf -> token * Lexing.position * Lexing.position =
+  fun lb -> try Sedlexing.with_tokenizer token lb () with
   | MalFormed -> fail lb "Not Utf8 encoded file"
   | InvalidCodepoint k ->
       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
+let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
+
 let token =
-  let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->
-  Debug.(record_time Lexing (fun () -> r := token lb ())); !r
+  let r = ref dummy_token in fun lb ->
+  Debug.(record_time Lexing (fun () -> r := token lb)); !r

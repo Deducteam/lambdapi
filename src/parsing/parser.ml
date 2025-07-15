@@ -126,18 +126,20 @@ sig
   let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
     parse_in_channel entry fname (open_in fname)
 
-  let first parse entry fname s =
-    try Stream.next (Ll1.new_parsing parse entry fname s)
-    with Stream.Failure -> assert false
+  let parse_entry_string (entry:lexbuf -> 'a) (fname:string) (s:string): 'a =
+    let lb = Utf8.from_string s in
+    set_filename lb fname;
+    Ll1.new_parsing entry lb
 
   (* exported functions *)
-  let parse_term_string = first parse_string (Ll1.alone Ll1.term)
-  let parse_rwpatt_string = first parse_string (Ll1.alone Ll1.rw_patt_spec)
-  let parse_search_query_string = first parse_string (Ll1.alone Ll1.search)
+  let parse_term_string = parse_entry_string Ll1.term
+  let parse_rwpatt_string = parse_entry_string Ll1.rw_patt_spec
+  let parse_search_query_string = parse_entry_string Ll1.search
 
   let parse_in_channel = parse_in_channel Ll1.command
   let parse_file = parse_file Ll1.command
   let parse_string = parse_string Ll1.command
+
 end
 
 include Lp
@@ -148,7 +150,7 @@ open Error
 let path_of_string : string -> Path.t = fun s ->
   let lb = Utf8.from_string s in
   try
-    begin match token lb () with
+    begin match token lb with
       | UID s, _, _ -> [s]
       | QID p, _, _ -> List.rev p
       | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
@@ -160,7 +162,7 @@ let path_of_string : string -> Path.t = fun s ->
 let qident_of_string : string -> Core.Term.qident = fun s ->
   let lb = Utf8.from_string s in
   try
-    begin match token lb () with
+    begin match token lb with
       | QID [], _, _ -> assert false
       | QID (s::p), _, _ -> (List.rev p, s)
       | _ ->
