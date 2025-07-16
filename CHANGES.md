@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 3.0.0 (2025-07-16)
 
 ### Added
 
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Websearch queries and responses are now recorded in the log.
 - Commands `debug` and `flag` with no argument to get the list of debug flags and the list of flags respectively.
 - Tactic `change`.
-- Modifier `private` for `open` command to not record the opening.
+- Modifier `private` for `open` command to not be exported.
 
 ### Changed
 
