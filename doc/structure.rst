@@ -38,6 +38,7 @@ Overview of directories and files
   * ``escape.ml``: basic functions on escaped identifiers
   * ``library.ml``: Lambdapi library management
   * ``logger.ml``: logging tools
+  * ``name.ml``: generation of fresh names
   * ``path.ml``: module paths in the Lambdapi library
   * ``pos.ml``: source file position management
 
@@ -73,6 +74,14 @@ Overview of directories and files
     * ``unif_rule.ml``: ghost signature for unification rules
     * ``unif.ml``: unification algorithm
     * ``inverse.ml``: inverse of injective functions
+
+* ``src/export/``: export to other rule/proof formats
+
+  * ``coq.ml``: export to Rocq
+  * ``dk.ml``: export to Dedukti (after scoping and type-checking)
+  * ``hrs.ml``: export to the .hrs format of the confluence competition
+  * ``rawdk.ml``: export to Dedukti (before scoping and type-checking)
+  * ``xtc.ml``: export to the .xtc format of the termination competition
 
 * ``src/handle``: signature building
 
@@ -140,10 +149,11 @@ Overview of directories and files
 * ``src/tool/``: tools
 
   * ``external.ml``: call of external tools
-  * ``hrs.ml``: export to the .hrs format of the confluence competition
-  * ``sr.ml``: algorithm for checking subject reduction
+  * ``indexing.ml``: indexation of symbols and rules
+  * ``lcr.ml``: local confluence checking
+  * ``sr.ml``: subject-reduction checking
   * ``tree_graphviz.ml``: representation of trees as graphviz files
-  * ``xtc.ml``: export to the .xtc format of the termination competition
+  * ``websearch.eml.ml``: web server for searching theorems and rules
 
 * ``tests/``: unit tests
 
@@ -152,11 +162,13 @@ Overview of directories and files
 
 * ``misc/``:
 
-  * ``gen_version.ml``: script used by dune to generate ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
-  * ``sanity_check.sh``: script checking some style guidelines below (called by ``make sanity_check``)
-  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can be parametrised
-  * ``listings.tex``: setup of the LaTeX package `listings <https://www.ctan.org/pkg/listings>`__ for including Lambdapi code into a LaTeX document
   * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added at the beginning of a Dedukti file
+  * ``example.tex``: example of LaTeX file including Lambdapi code
+  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can be parametrised
+  * ``gen_version.ml``: script used by dune to generate ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
+  * ``git_hook_helper.sh``: script to run once to add a git hook to call ``sanity_check?sh`` before committing
+  * ``lambdapi.tex``: setup of the LaTeX package `listings <https://www.ctan.org/pkg/listings>`__ for including Lambdapi code into a LaTeX document
+  * ``sanity_check.sh``: script checking some style guidelines below (called by ``make sanity_check``)
 
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
 .. _Restructured Text: https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html

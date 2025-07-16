@@ -775,16 +775,16 @@ let index_sign sign =
  Console.set_flag "print_implicits" true ;
  Common.Logger.set_debug true "e" ;*)
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
- let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
+ let deps = Timed.(!(sign.Core.Sign.sign_deps)) in
  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
  Common.Path.Map.iter
-  (fun path rules ->
+  (fun path d ->
     Lplib.Extra.StrMap.iter
-     (fun name (rules,_) ->
+     (fun name sd ->
        let sym = Core.Sign.find_sym path name in
-       List.iter (index_rule sym) rules)
-     rules)
-  rules
+       List.iter (index_rule sym) sd.Sign.rules)
+     d.Sign.dep_symbols)
+  deps
 
 let deindex_path path = DB.remove path
 

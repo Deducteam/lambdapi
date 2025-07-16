@@ -31,7 +31,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   in
   (* Create a symbol with the same type as the metavariable *)
   let sym =
-    Console.out 1 (Color.red "axiom %a: %a") uid name term !(m.meta_type);
+    wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
        they are created. *)
     let pos = shift Stdlib.(!admitted) sym_pos in
@@ -211,6 +211,7 @@ type tactic =
   | T_and
   | T_apply
   | T_assume
+  | T_change
   | T_fail
   | T_generalize
   | T_have
@@ -239,6 +240,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "and" T_and;
   add "apply" T_apply;
   add "assume" T_assume;
+  add "change" T_change;
   add "fail" T_fail;
   add "generalize" T_generalize;
   add "have" T_have;
@@ -369,6 +371,8 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
             | T_assume, _ -> assert false
+            | T_change, [_;t] -> P_tac_apply(p_term pos idmap t)
+            | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
@@ -479,6 +483,17 @@ let rec handle :
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct_idopts idopts;
       assume idopts
+  | P_tac_change pa ->
+      let vname = "x" in
+      let vabs = Pos.make pos vname in
+      let varg = Pos.make pos ([],vname) in
+      let vparam = [[Some vabs],Some pa,false] in
+      let mk = Pos.make pos in
+      let idbody = mk(P_Iden(varg,false)) in
+      let id = mk(P_Abst(vparam,idbody)) in
+      let t = mk(P_Appl(id,mk P_Wild)) in
+      let p = new_problem() in
+      tac_refine pos ps gt gs p (scope t)
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)

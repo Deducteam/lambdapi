@@ -78,18 +78,12 @@ module D = struct
 
 end
 
-(** Logging function for command handling. *)
-
-(* The two successive let-bindings are necessary for type variable
-   generalisation purposes *)
-let log_hndl = Logger.make 'h' "hndl" "command handling"
-let log_hndl = log_hndl.pp
-
-(** [time_of f x] computes [f x] and prints the time for computing it. *)
-let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
+(** [time_of log f x] computes [f x] and prints the time for computing it. *)
+let time_of : ('a outfmt -> 'a) -> string -> (unit -> 'b) -> 'b =
+  fun log s f ->
   if false && Logger.log_enabled () then begin
     let t0 = Sys.time () in
-    let log _ = log_hndl "%s time: %f" s (Sys.time () -. t0) in
+    let log _ = log "%s time: %f" s (Sys.time () -. t0) in
     try f () |> D.log_and_return log
     with e -> e |> D.log_and_raise log
   end else f ()

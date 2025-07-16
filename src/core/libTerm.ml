@@ -167,7 +167,7 @@ let rec eq_alpha a b =
   | _ -> false
 
 (** [fold id t a] returns term binder [b] with binder name [id] such that
-    [Bindlib.subst b t ≡ a]. *)
+    [subst b t ≡ a]. *)
 let fold (x:var) (t:term): term -> term =
   let rec aux u =
     if eq_alpha t u then mk_Vari x

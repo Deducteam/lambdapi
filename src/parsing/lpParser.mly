@@ -33,6 +33,7 @@
 %token ASSUME
 %token BEGIN
 %token BUILTIN
+%token CHANGE
 %token COERCE_RULE
 %token COMMUTATIVE
 %token COMPUTE
@@ -158,14 +159,14 @@ search_query_alone:
 
 command:
   | OPAQUE i=qid SEMICOLON { make_pos $sloc (P_opaque i) }
-  | REQUIRE OPEN l=list(path) SEMICOLON
-    { make_pos $sloc (P_require(true,l)) }
   | REQUIRE l=list(path) SEMICOLON
-    { make_pos $sloc (P_require(false,l)) }
+    { make_pos $sloc (P_require(None,l)) }
+  | REQUIRE b=open_cmd l=list(path) SEMICOLON
+    { make_pos $sloc (P_require(Some b,l)) }
   | REQUIRE p=path AS i=uid SEMICOLON
     { make_pos $sloc (P_require_as(p,i)) }
-  | OPEN l=list(path) SEMICOLON
-    { make_pos $sloc (P_open l) }
+  | b=open_cmd l=list(path) SEMICOLON
+    { make_pos $sloc (P_open(b,l)) }
   | ms=modifier* SYMBOL s=uid al=param_list* COLON a=term
     po=proof? SEMICOLON
     { let sym =
@@ -192,6 +193,10 @@ command:
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
+open_cmd:
+  | OPEN { false }
+  | PRIVATE OPEN { true }
+
 query:
   | k=ASSERT ps=param_list* TURNSTILE t=term COLON a=term
     { let t = make_abst $startpos(ps) ps t $endpos(t) in
@@ -205,8 +210,10 @@ query:
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | PRINT i=qid_or_rule? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
+  | DEBUG { make_pos $sloc (P_query_debug(true,"")) }
   | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
+  | FLAG { make_pos $sloc (P_query_flag("",true)) }
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT n=INT
@@ -336,6 +343,7 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | CHANGE t=term { make_pos $sloc (P_tac_change t) }
   | EVAL t=term { make_pos $sloc (P_tac_eval t) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }

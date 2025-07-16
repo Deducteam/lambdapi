@@ -107,8 +107,8 @@ let popt_to_string :
   ?print_dirname:bool -> ?print_fname:bool -> popt -> string =
   fun ?(print_dirname=true) ?(print_fname=true) pop ->
   match pop with
-    | None -> "Unknown location "
-    | Some (p) -> to_string ~print_dirname ~print_fname p ^ " "
+    | None -> "Unknown location"
+    | Some (p) -> to_string ~print_dirname ~print_fname p
 
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->

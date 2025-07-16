@@ -534,14 +534,6 @@ let check_cp : cp_fun = fun pos _ l r p l_p _ g d s ->
   let t = apply_subs s' t in
   let r1 = apply_subs s' (apply_subs s r)
   and r2 = apply_subs s' (apply_subs s (replace l p d)) in
-  Console.out 2 "@[<v>Critical pair:@ \
-                 t ≔ %a@ \
-                 t ↪[] %a@   \
-                   with %a@ \
-                 t ↪%a %a@   \
-                   with %a@]"
-    term t term r1 rule_of_pair (l,r)
-    subterm_pos p term r2 rule_of_pair (g,d);
   if not (Eval.eq_modulo [] r1 r2) then
     wrn pos "@[<v>Unjoinable critical pair:@ \
              t ≔ %a@ \
@@ -609,8 +601,8 @@ let check_cps :
   iter_sym_rules (check_cps_subterms_eq pos) srs;
   (* Verification of CP*(R,S). *)
   check_cps_sign_with pos sign sym_map;
-  let f path str_map =
-    if path != Sign.Ghost.path && str_map <> StrMap.empty then
+  let f path d =
+    if path != Sign.Ghost.path && d.Sign.dep_symbols <> StrMap.empty then
       let sign =
         try Path.Map.find path !Sign.loaded with Not_found -> assert false
       in

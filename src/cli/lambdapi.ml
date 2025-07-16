@@ -28,7 +28,7 @@ let sig_state_of_require l =
     Handle.Command.handle Compile.compile ss
      (Pos.none
       (Parsing.Syntax.P_require
-        (true, [Pos.none (Parsing.Parser.path_of_string req)]))))
+        (Some false, [Pos.none (Parsing.Parser.path_of_string req)]))))
   Core.Sig_state.dummy l
 
 let search_cmd cfg rules require s dbpath_opt =

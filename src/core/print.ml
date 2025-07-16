@@ -380,6 +380,8 @@ let rec prod_in : int StrMap.t -> (term * bool list) pp =
 
 let prod = prod_in StrMap.empty
 
+let sym_type ppf s = prod ppf (!(s.sym_type), s.sym_impl)
+
 let sym_rule : sym_rule pp = fun ppf r ->
   out ppf "%a ↪ %a" term (lhs r) term (rhs r)
 
