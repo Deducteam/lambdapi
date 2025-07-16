@@ -11,6 +11,24 @@ open Print
 let log = Logger.make 'u' "unif" "unification"
 let log = log.pp
 
+(** To indicate whether error messages should be generated. *)
+let print_error = Stdlib.ref true
+
+(** Exception raised when a constraint is not solvable. *)
+exception Unsolvable
+
+(** [error t1 t2]
+@raise Unsolvable. *)
+let error : ctxt -> term -> term -> 'a = fun c t1 t2 ->
+  if Stdlib.(!print_error) then
+    begin
+      let ids = Ctxt.names c in
+      let term = term_in ids in
+      fatal_msg "\n%a\nis not unifiable with\n%a.\n" term t1 term t2
+    end;
+  if Logger.log_enabled() then log "Unsolvable";
+  raise Unsolvable
+
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
    to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
    and [m2] fresh metavariables, and adds these metavariables to [p]. *)
@@ -58,8 +76,7 @@ let add_constr : problem -> constr -> unit = fun p c ->
 
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
-let try_unif_rules : problem -> ctxt -> term -> term -> bool =
-  fun p c s t ->
+let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
   if Logger.log_enabled () then log "check unif_rules";
   let exception No_match in
   let open Unif_rule in
@@ -77,16 +94,19 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
       match Infer.infer_noexn p c t, Infer.infer_noexn p c u with
       | Some (t, a), Some(u, b) ->
           add_constr p (c,t,u); add_constr p (c,a,b); (c,t,u)
-      | t', u' ->
-          (* Error reporting *)
-          Error.fatal_msg "@[A unification rule generated the \
+      | t', u' -> (* Error reporting *)
+          if Stdlib.(!print_error) then
+            begin
+              fatal_msg "@[A unification rule generated the \
                            ill-typed unification problem@ [%a].@]"
-            Print.constr (c, t, u);
-          if t' = None then
-            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
-          if u' = None then
-            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
-          Error.fatal_no_pos "Untypable unification problem."
+                Print.constr (c, t, u);
+              if t' = None then
+                fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
+              if u' = None then
+                fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
+              fatal_msg "Untypable unification problem."
+            end;
+          raise Unsolvable
     in
     let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
     if Logger.log_enabled () then log "rewrites to: %a" constrs cs;
@@ -304,17 +324,6 @@ let inverse_opt : sym -> term list -> term -> (term * term) option =
     | _ -> raise Not_found
   with Not_found -> if Logger.log_enabled () then log "failed"; None
 
-(** Exception raised when a constraint is not solvable. *)
-exception Unsolvable
-
-(** [error t1 t2]
-@raise Unsolvable. *)
-let error : ctxt -> term -> term -> 'a = fun c t1 t2 ->
-  let ids = Ctxt.names c in let term = term_in ids in
-  fatal_msg "@[<hov>%a and %a are not unifiable.@]@."
-    (D.bracket term) t1 (D.bracket term) t2;
-  raise Unsolvable
-
 (** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
@@ -502,12 +511,16 @@ let solve : problem -> unit = fun p ->
    contain constraints that could not be simplified. Metavariable
    instantiations are type-checked only if the optional argument [~type_check]
    is [true] (default). *)
-let solve_noexn : ?type_check:bool -> problem -> bool =
-  fun ?(type_check=true) p ->
+let solve_noexn : ?print:bool -> ?type_check:bool -> problem -> bool =
+  fun ?(print=true) ?(type_check=true) p ->
   Stdlib.(do_type_check := type_check);
+  Stdlib.(print_error := print);
   if Logger.log_enabled() then log "solve_noexn %a" problem p;
   try time_of log "solve" (fun () -> solve p; true) with Unsolvable -> false
 
 let solve_noexn =
-  let open Stdlib in let r = ref false in fun ?type_check p ->
-  Debug.(record_time Solving (fun () -> r := solve_noexn ?type_check p)); !r
+  let open Stdlib in
+  let r = ref false in
+  fun ?print ?type_check p ->
+  Debug.(record_time Solving
+           (fun () -> r := solve_noexn ?print ?type_check p)); !r
