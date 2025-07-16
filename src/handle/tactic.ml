@@ -416,14 +416,25 @@ let rec handle :
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl SimpAll ->
-      {ps with proof_goals = Goal.simpl Eval.snf g :: gs}
+      begin
+        match Goal.simpl_opt Eval.snf_opt g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_simpl SimpBetaOnly ->
-      let tags = [`NoRw; `NoExpand] in
-      {ps with proof_goals = Goal.simpl (Eval.snf ~tags) g :: gs}
+      begin
+        let tags = [`NoRw; `NoExpand] in
+        match Goal.simpl_opt (Eval.snf_opt ~tags) g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_simpl (SimpSym qid) ->
-      let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
-      let g = Goal.simpl (fun _ctx -> Eval.unfold_sym s) g in
-      {ps with proof_goals = g :: gs}
+      begin
+        let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
+        match Goal.simpl_opt (fun _ctx -> Eval.unfold_sym_opt s) g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_solve -> tac_solve pos ps
   | _ ->
   (* Tactics that apply to typing goals only: *)

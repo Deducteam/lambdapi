@@ -501,7 +501,7 @@ symbol ≐_compat_add x y z : π ((x ≐ y) = (x + z ≐ y + z)) ≔
 begin
   assume x y z;
   rewrite ≐_sub; rewrite .[x in _ = x] ≐_sub;
-  simplify; rewrite distr_—_+; rewrite .[— y + — z] +_com;
+  rewrite distr_—_+; rewrite .[— y + — z] +_com;
   rewrite +_assoc; rewrite left +_assoc z (— z) (— y);
   rewrite -_same z; reflexivity;
 end;
@@ -545,7 +545,7 @@ end;
 symbol <_compat_add x y a : π (x < y ⇒ x + a < y + a) ≔
 begin
   assume x y a; simplify; assume H; rewrite ≐_sub;
-  simplify; rewrite +_assoc; rewrite .[y + a] +_com;
+  rewrite +_assoc; rewrite .[y + a] +_com;
   rewrite distr_—_+; rewrite left +_assoc a (— a) (— y);
   rewrite -_same; rewrite left +_assoc;
   simplify; rewrite left ≐_sub; refine H;
