@@ -31,7 +31,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   in
   (* Create a symbol with the same type as the metavariable *)
   let sym =
-    Console.out 1 (Color.red "axiom %a: %a") uid name term !(m.meta_type);
+    wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
        they are created. *)
     let pos = shift Stdlib.(!admitted) sym_pos in
