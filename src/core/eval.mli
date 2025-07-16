@@ -65,6 +65,11 @@ val pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
     trees. *)
 val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
 
+(** [snf_opt ~dtree ~tags c t] computes the snf of [t] in the context [c]. The
+    function [dtree] maps symbols to decision trees. *)
+val snf_opt : ?dtree:(sym -> dtree) -> ?tags:rw_tag list
+              -> ctxt -> term -> term option
+
 (** [hnf ?tags c t] computes a head-normal form of the term [t] in
     context [c]. *)
 val hnf : ?tags:rw_tag list -> ctxt -> term -> term
@@ -77,6 +82,7 @@ val beta_simplify : ctxt -> term -> term
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
 val unfold_sym : sym -> term -> term
+val unfold_sym_opt : sym -> term -> term option
 
 (** Dedukti evaluation strategies. *)
 type strategy =
