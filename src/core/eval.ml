@@ -467,29 +467,37 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 (** {1 Define exposed functions}
     that take optional arguments rather than a config. *)
 
-type reducer = ?tags:rw_tag list -> ctxt -> term -> term
+type 'a reducer = ?tags:rw_tag list -> ctxt -> term -> 'a
 
-let time_reducer (f: reducer): reducer =
-  let open Stdlib in let r = ref mk_Kind in fun ?tags cfg t ->
+let time_reducer (x:'a) (f: 'a reducer): 'a reducer =
+  let open Stdlib in let r = ref x in fun ?tags cfg t ->
     Debug.(record_time Rewriting (fun () -> r := f ?tags cfg t)); !r
 
 (** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
     the context [c]. The function [dtree] maps symbols to dtrees. *)
-let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
+let snf_opt : ?dtree:(sym -> dtree) -> term option reducer =
+  fun ?dtree ?tags c t ->
+  Stdlib.(steps := 0);
+  let u = snf (whnf (Config.make ?dtree ?tags c)) t in
+  if Stdlib.(!steps = 0) then None else Some u
+
+let snf_opt ?dtree = time_reducer None (snf_opt ?dtree)
+
+let snf : ?dtree:(sym -> dtree) -> term reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (Config.make ?dtree ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let snf ?dtree = time_reducer (snf ?dtree)
+let snf ?dtree = time_reducer mk_Kind (snf ?dtree)
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
-let hnf : reducer = fun ?tags c t ->
+let hnf : term reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = hnf (whnf (Config.make ?tags c)) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let hnf = time_reducer hnf
+let hnf = time_reducer mk_Kind hnf
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
@@ -508,12 +516,19 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
-let whnf : reducer = fun ?tags c t ->
+let whnf_opt : term option reducer = fun ?tags c t ->
+  Stdlib.(steps := 0);
+  let u = whnf (Config.make ?tags c) t in
+  if Stdlib.(!steps = 0) then None else Some u
+
+let whnf_opt = time_reducer None whnf_opt
+
+let whnf : term reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-let whnf = time_reducer whnf
+let whnf = time_reducer mk_Kind whnf
 
 (** [beta_simplify c t] computes a beta whnf of [t] in context [c] belonging
     to the set S such that (1) terms of S are in beta whnf normal format, (2)
@@ -534,14 +549,15 @@ let beta_simplify =
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
-let unfold_sym : sym -> term -> term =
+let unfold_sym_opt : sym -> term -> term option =
+  let reduced = Stdlib.ref false in
   let unfold_sym : sym -> (term list -> term) -> term -> term =
     fun s unfold_sym_app ->
     let rec unfold_sym t =
       let h, args = get_args t in
       let args = List.map unfold_sym args in
       match h with
-      | Symb s' when s' == s -> unfold_sym_app args
+      | Symb s' when s' == s -> Stdlib.(reduced := true); unfold_sym_app args
       | _ ->
           let h =
             match h with
@@ -556,20 +572,31 @@ let unfold_sym : sym -> term -> term =
       let x, b = unbind b in bind_var x (unfold_sym b)
     in unfold_sym
   in
-  fun s ->
-  if Timed.(!(s.sym_opaq)) then fun t -> t else
-  match Timed.(!(s.sym_def)) with
-  | Some d -> unfold_sym s (add_args d)
-  | None ->
-  match Timed.(!(s.sym_rules)) with
-  | [] -> fun t -> t
-  | _ ->
-      let cfg = Config.make [] and dt = Timed.(!(s.sym_dtree)) in
-      let unfold_sym_app args =
-        match tree_walk cfg dt args with
-        | Some(r,ts) -> add_args r ts
-        | None -> add_args (mk_Symb s) args
-      in unfold_sym s unfold_sym_app
+  let unfold_sym s =
+    if Timed.(!(s.sym_opaq)) then fun t -> t
+    else
+      match Timed.(!(s.sym_def)) with
+      | Some d -> unfold_sym s (add_args d)
+      | None ->
+          match Timed.(!(s.sym_rules)) with
+          | [] -> fun t -> t
+          | _ ->
+              let cfg = Config.make [] and dt = Timed.(!(s.sym_dtree)) in
+              let unfold_sym_app args =
+                match tree_walk cfg dt args with
+                | Some(r,ts) -> add_args r ts
+                | None -> add_args (mk_Symb s) args
+              in unfold_sym s unfold_sym_app
+  in
+  fun s t ->
+  Stdlib.(reduced := false);
+  let r = unfold_sym s t in
+  if Stdlib.(!reduced) then Some r else None
+
+let unfold_sym s t =
+  match unfold_sym_opt s t with
+  | None -> t
+  | Some u -> u
 
 (** Dedukti evaluation strategies. *)
 type strategy =

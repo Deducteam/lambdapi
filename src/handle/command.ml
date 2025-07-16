@@ -299,7 +299,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
         | _ -> assert false
-      and real = Tactic.count_products [] !(s.sym_type) in
+      and real = LibTerm.count_products Eval.whnf [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Check that the notation is compatible with the theory. *)

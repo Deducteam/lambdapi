@@ -22,7 +22,6 @@ opaque symbol eq_sym_other_2 a (x y:T a) : P (x = y) → P (y = x)
 ≔ begin
   assume a x y h;
   refine eqind a x y h (λ z, y = z) _;
-  simplify;
   refine refl a y
 end;
 
@@ -59,7 +58,6 @@ opaque symbol add_succ_r n m : P (n + (s m) = s (n + m))
   simplify;
   assume pn ih;
   rewrite ih;
-  simplify;
   refine refl nat (s (s (pn + m)))}
 end;
 
