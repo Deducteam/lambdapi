@@ -65,14 +65,14 @@ let rec compile_with :
       Console.out 1 (Color.blu "End checking \"%s\"%s") src forced;
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
-        Console.out 1 (Color.blu "Writing \"%s\" ...")obj; Sign.write sign obj
+        Console.out 2 (Color.blu "Writing \"%s\" ...")obj; Sign.write sign obj
       end;
       loading := List.tl !loading;
       sign
     end
     else
     begin
-      Console.out 1 (Color.blu "Loading \"%s\" ...") obj;
+      Console.out 2 (Color.blu "Loading \"%s\" ...") obj;
       let sign = Sign.read obj in
       (* We recursively load every module [mp'] on which [mp] depends. *)
       let compile mp' _ = ignore (compile_with ~handle ~force:false mp') in
