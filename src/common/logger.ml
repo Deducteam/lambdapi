@@ -1,6 +1,6 @@
 (** Functions for creating loggers. **)
 
-open Lplib open Base open Color
+open Lplib open Base
 
 (** Type of a logging function. It needs to be boxed for higher-rank
    polymorphism reasons *)
@@ -49,9 +49,9 @@ let make logger_key logger_name logger_desc =
 
   (* Actual printing function. *)
   let pp fmt =
-    update_with_color Stdlib.(!Error.err_fmt);
+    Color.update_with_color Stdlib.(!Error.err_fmt);
     let out = Format.(if !logger_enabled then fprintf else ifprintf) in
-    out Stdlib.(!Error.err_fmt) (cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
+    out Stdlib.(!Error.err_fmt) (Color.cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
       logger_name
   in
 

@@ -202,3 +202,13 @@ let rec free_vars (t:term): VarSet.t =
       Array.fold_right
         (fun t acc -> VarSet.union acc (free_vars t)) ts VarSet.empty
   | _ -> VarSet.empty
+
+(** [count_products norm a] returns the product arity of the term [a],
+    reducing codomains with [norm] if needed. *)
+let count_products : (ctxt -> term -> term) -> ctxt -> term -> int =
+  fun norm c ->
+  let rec count is_norm acc t =
+    match unfold t with
+    | Prod(_,b) -> count false (acc + 1) (subst b mk_Kind)
+    | _ -> if is_norm then acc else count true acc (norm c t)
+  in count false 0

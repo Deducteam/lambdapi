@@ -31,7 +31,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   in
   (* Create a symbol with the same type as the metavariable *)
   let sym =
-    Console.out 1 (Color.red "axiom %a: %a") uid name term !(m.meta_type);
+    wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
        they are created. *)
     let pos = shift Stdlib.(!admitted) sym_pos in
@@ -74,7 +74,7 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log "tac_solve";
+  if Logger.log_enabled() then log "tac_solve";
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
@@ -118,7 +118,6 @@ let tac_refine : ?check:bool ->
   fun ?(check=true) pos ps gt gs p t ->
   if Logger.log_enabled () then log "tac_refine %a" term t;
   let c = Env.to_ctxt gt.goal_hyps in
-  if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   let t =
     if check then
@@ -129,6 +128,7 @@ let tac_refine : ?check:bool ->
       | Some t -> t
     else t
   in
+  if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   if Logger.log_enabled () then
     log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
@@ -179,15 +179,6 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
   | _ ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "[%a] is not a product." term goal_type
-
-(** [count_products a] returns the number of consecutive products at
-   the top of the term [a]. *)
-let count_products : ctxt -> term -> int = fun c ->
-  let rec count acc t =
-    match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (subst b mk_Kind)
-    | _ -> acc
-  in count 0
 
 (** [get_prod_ids env do_whnf t] returns the list [v1;..;vn] if [do_whnf] is
     true and [whnf t] is of the form [Π v1:A1, .., Π vn:An, u] with [u] not a
@@ -421,14 +412,25 @@ let rec handle :
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl SimpAll ->
-      {ps with proof_goals = Goal.simpl Eval.snf g :: gs}
+      begin
+        match Goal.simpl_opt Eval.snf_opt g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_simpl SimpBetaOnly ->
-      let tags = [`NoRw; `NoExpand] in
-      {ps with proof_goals = Goal.simpl (Eval.snf ~tags) g :: gs}
+      begin
+        let tags = [`NoRw; `NoExpand] in
+        match Goal.simpl_opt (Eval.snf_opt ~tags) g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_simpl (SimpSym qid) ->
-      let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
-      let g = Goal.simpl (fun _ctx -> Eval.unfold_sym s) g in
-      {ps with proof_goals = g :: gs}
+      begin
+        let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
+        match Goal.simpl_opt (fun _ctx -> Eval.unfold_sym_opt s) g with
+        | Some g -> {ps with proof_goals = g :: gs}
+        | None -> fatal pos "Could not simplify the goal."
+      end
   | P_tac_solve -> tac_solve pos ps
   | _ ->
   (* Tactics that apply to typing goals only: *)
@@ -456,7 +458,6 @@ let rec handle :
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
-      (* FIXME: this does not take into account implicit arguments. *)
       let n =
         let c = Env.to_ctxt env in
         let p = new_problem () in
@@ -464,7 +465,7 @@ let rec handle :
         | None ->
             let ids = Ctxt.names c in let term = term_in ids in
             fatal pos "[%a] is not typable." term t
-        | Some (_, a) -> count_products c a
+        | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
       let p = new_problem () in

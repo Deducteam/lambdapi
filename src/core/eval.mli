@@ -45,9 +45,12 @@ type rw_tag =
 (** {b NOTE} that all reduction functions, and {!eq_modulo}, may reduce
     in-place some subterms of the reduced term. *)
 
-(** [whnf ?tags c t] computes a whnf of the term [t] in context
-    [c]. *)
+(** [whnf ?tags c t] computes a whnf of the term [t] in context [c]. *)
 val whnf : ?tags:rw_tag list -> ctxt -> term -> term
+
+(** [whnf ?tags c t] returns some whnf of the term [t] in context [c] if it is
+    different from [t]. *)
+val whnf_opt : ?tags:rw_tag list -> ctxt -> term -> term option
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. *)
@@ -62,6 +65,11 @@ val pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
     trees. *)
 val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
 
+(** [snf_opt ~dtree ~tags c t] computes the snf of [t] in the context [c]. The
+    function [dtree] maps symbols to decision trees. *)
+val snf_opt : ?dtree:(sym -> dtree) -> ?tags:rw_tag list
+              -> ctxt -> term -> term option
+
 (** [hnf ?tags c t] computes a head-normal form of the term [t] in
     context [c]. *)
 val hnf : ?tags:rw_tag list -> ctxt -> term -> term
@@ -74,6 +82,7 @@ val beta_simplify : ctxt -> term -> term
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
 val unfold_sym : sym -> term -> term
+val unfold_sym_opt : sym -> term -> term option
 
 (** Dedukti evaluation strategies. *)
 type strategy =

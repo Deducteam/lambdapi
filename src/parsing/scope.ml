@@ -283,7 +283,7 @@ and scope_head : ?find_sym:find_sym ->
       begin
         let s = "\""^s^"\"" in
         let sym =
-          try Sign.Ghost.find s
+          try Sign.find Sign.Ghost.sign s
           with Not_found ->
             let s_typ = mk_Symb (Builtin.get ss pos "String") in
             Sign.add_symbol Sign.Ghost.sign Public Const Eager true

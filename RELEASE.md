@@ -29,7 +29,7 @@ Using [dune-release](https://github.com/ocamllabs/dune-release)
 
 - update ~/.config/dune/github.token
 
-- dune-release publish distrib
+- dune-release publish
 
 - dune-release opam pkg
 

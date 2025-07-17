@@ -201,7 +201,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     fatal pos "We have %a : %a." uid name term typ
   end;
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
+  Console.out 2 (Color.gre "symbol %a : %a") uid name term typ;
   let r =
    Sig_state.add_symbol ss expo prop mstrat false id declpos typ impl None in
   sig_state := fst r; r
@@ -274,7 +274,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add rules in the signature. *)
       SymMap.iter (Sign.add_rules ss.signature) map;
       if !Console.verbose >= 2 then
-        List.iter (Console.out 2 (Color.red "rule %a") sym_rule)
+        List.iter (Console.out 2 (Color.gre "rule %a") sym_rule)
           (List.rev srs);
       (* Update critical pair positions. *)
       sign.Sign.sign_cp_pos :=
@@ -288,7 +288,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           fatal pos "Builtin \"%s\" already mapped to %a" n sym s
         | _ ->
           Builtin.check ss pos n s;
-          Console.out 2 "builtin \"%s\" ≔ %a" n sym s;
+          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
           (Sig_state.add_builtin ss n s, None, None)
       end
   | P_notation(qid,n) ->
@@ -299,7 +299,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
         | _ -> assert false
-      and real = Tactic.count_products [] !(s.sym_type) in
+      and real = LibTerm.count_products Eval.whnf [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Check that the notation is compatible with the theory. *)
@@ -328,7 +328,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | _ -> assert false
       in
       let n = float_notation_from_string_notation n in
-      Console.out 2 "notation %a %a" sym s (notation float) n;
+      Console.out 2 (Color.gre "notation %a %a") sym s (notation float) n;
       Sign.add_notation ss.signature s n;
       (ss, None, None)
   | P_unif_rule(h) ->
@@ -336,13 +336,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let r = scope_rule true ss h in
       Sign.add_rule ss.signature r;
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 "unif_rule %a" sym_rule r;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
       Sign.add_rule ss.signature r;
       Tree.update_dtree Coercion.coerce [];
-      Console.out 2 "coercion %a" sym_rule r;
+      Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -410,7 +410,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         if Sign.mem ss.signature rec_name then
           fatal pos "Symbol %a already exists." uid rec_name;
         let (ss, rec_sym) =
-          Console.out 2 (Color.red "symbol %a : %a")
+          Console.out 2 (Color.gre "symbol %a : %a")
             uid rec_name term rec_typ;
           (* Recursors are declared after the types and constructors. *)
           let pos = after (pos_end pos) in
@@ -431,7 +431,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let r = scope_rule false ss pr in
         let r = Tool.Sr.check_rule pos r in
         Sign.add_rule ss.signature r;
-        Console.out 2 (Color.red "rule %a") sym_rule r
+        Console.out 2 (Color.gre "rule %a") sym_rule r
       in
       no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
       List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
@@ -556,7 +556,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
@@ -576,7 +576,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
