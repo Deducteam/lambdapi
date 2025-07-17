@@ -64,6 +64,7 @@ val pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
     defined in the context [c]. The function [dtree] maps symbols to decision
     trees. *)
 val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
+val snf_beta : term -> term
 
 (** [snf_opt ~dtree ~tags c t] computes the snf of [t] in the context [c]. The
     function [dtree] maps symbols to decision trees. *)

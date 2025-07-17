@@ -92,7 +92,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   let non_instantiated g =
     match g with
     | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        Some (Goal.simpl Eval.beta_simplify g)
+        Some (Goal.simpl (fun _ -> Eval.snf_beta) g)
     | _ -> None
   in
   let gs_typ = List.filter_map non_instantiated gs_typ in
@@ -477,7 +477,7 @@ let rec handle :
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
-        fatal pos "underscores not allowed in assume";
+        fatal pos "Underscores not allowed in assume.";
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)

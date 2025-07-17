@@ -490,6 +490,8 @@ let snf : ?dtree:(sym -> dtree) -> term reducer = fun ?dtree ?tags c t ->
 
 let snf ?dtree = time_reducer mk_Kind (snf ?dtree)
 
+let snf_beta t = snf ~tags:[`NoRw; `NoExpand] [] t
+
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
 let hnf : term reducer = fun ?tags c t ->
