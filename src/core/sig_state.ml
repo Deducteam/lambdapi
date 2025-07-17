@@ -15,14 +15,6 @@ open Timed
 open Term
 open Sign
 
-(** [create_sign path] creates a signature with path [path] and the ghost
-    module as dependency. *)
-let create_sign : Path.t -> Sign.t = fun sign_path ->
-  let sign = Sign.dummy() in
-  let dep = {dep_symbols = StrMap.empty; dep_open=true} in
-  let deps = Path.Map.singleton Sign.Ghost.path dep in
-  {sign with sign_path; sign_deps = ref deps}
-
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature. *)
@@ -33,12 +25,6 @@ type sig_state =
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
-
-(** Dummy [sig_state]. *)
-let dummy : sig_state =
-  { signature = Sign.dummy (); in_scope = StrMap.empty;
-    alias_path = StrMap.empty; path_alias = Path.Map.empty;
-    builtins = StrMap.empty; open_paths = Path.Set.empty }
 
 (** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
     signature state from [ss] by creating a new symbol with expo [e], property
@@ -97,10 +83,22 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; open_paths}
 
-(** [of_sign sign] creates a state from the signature [sign] and open it as
-   well as the ghost signature. *)
+(** [of_sign sign] creates a new sig_state with signature [sign] and open it
+    and the ghost signature as well, assuming that [sign] has been created
+    using [Sign.create]. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  open_sign (open_sign {dummy with signature} Ghost.sign) signature
+  let ss =
+    { signature
+    ; in_scope = StrMap.empty
+    ; alias_path = StrMap.empty
+    ; path_alias = Path.Map.empty
+    ; builtins = StrMap.empty
+    ; open_paths = Path.Set.empty }
+  in
+  open_sign (open_sign ss Ghost.sign) signature
+
+(** Dummy [sig_state]. *)
+let dummy : sig_state = of_sign (Sign.create [])
 
 (** [find_sym] is the type of functions used to return the symbol
     corresponding to a qualified / non qualified name *)

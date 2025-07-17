@@ -217,7 +217,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)
-        try Sign.Ghost.find sym
+        try Sign.find Sign.Ghost.sign sym
         with Not_found -> fatal_no_pos "Unknown ghost symbol %s." sym
       else
         try Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none (mp, sym))

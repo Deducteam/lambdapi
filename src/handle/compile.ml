@@ -50,7 +50,7 @@ let rec compile_with :
       let forced = if force then " (forced)" else "" in
       Console.out 1 (Color.blu "Start checking \"%s\"%s") src forced;
       loading := mp :: !loading;
-      let sign = Sig_state.create_sign mp in
+      let sign = Sign.create mp in
       let ss = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
