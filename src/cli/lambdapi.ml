@@ -29,7 +29,7 @@ let sig_state_of_require l =
      (Pos.none
       (Parsing.Syntax.P_require
         (Some false, [Pos.none (Parsing.Parser.path_of_string req)]))))
-  Core.Sig_state.dummy l
+  (Sig_state.open_sign Core.Sig_state.dummy Sign.Ghost.sign) l
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
