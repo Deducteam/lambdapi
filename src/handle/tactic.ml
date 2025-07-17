@@ -91,17 +91,17 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
      and adding the new goals at the end *)
   let non_instantiated g =
     match g with
-    | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        Some (Goal.simpl Eval.beta_simplify g)
-    | _ -> None
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> false
   in
-  let gs_typ = List.filter_map non_instantiated gs_typ in
+  let gs_typ = List.filter non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
   in
   let add_goal m gs =
-    if List.exists (is_eq_goal_meta m) gs_typ then gs
+    if !(m.meta_value) <> None || List.exists (is_eq_goal_meta m) gs_typ
+    then gs
     else Goal.of_meta m :: gs
   in
   let proof_goals =
@@ -423,8 +423,7 @@ let rec handle :
       end
   | P_tac_simpl SimpBetaOnly ->
       begin
-        let tags = [`NoRw; `NoExpand] in
-        match Goal.simpl_opt (Eval.snf_opt ~tags) g with
+        match Goal.simpl_opt (Eval.snf_opt ~tags:[`NoRw; `NoExpand]) g with
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end
@@ -477,7 +476,7 @@ let rec handle :
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
-        fatal pos "underscores not allowed in assume";
+        fatal pos "Underscores not allowed in assume.";
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)

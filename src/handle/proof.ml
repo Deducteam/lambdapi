@@ -49,7 +49,11 @@ module Goal = struct
     let goal_hyps, goal_type =
       try Env.of_prod_nth [] m.meta_arity !(m.meta_type)
       with Invalid_argument _ -> assert false
-    in Typ {goal_meta = m; goal_hyps; goal_type}
+    in
+    let f (s,(v,a,d)) = (s,(v,Eval.snf_beta a,d)) in
+    Typ {goal_meta = m
+       ; goal_hyps = List.map f goal_hyps
+       ; goal_type = Eval.snf_beta goal_type}
 
   (** [simpl_opt f g] tries to simplify the goal [g] with the function [f]. *)
   let simpl_opt : (ctxt -> term -> term option) -> goal -> goal option =
