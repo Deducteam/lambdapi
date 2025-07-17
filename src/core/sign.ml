@@ -5,7 +5,7 @@ open Common open Error open Pos
 open Timed
 open Term
 
-(** Data associated to inductive type symbols. *)
+(** Data associated to inductive types. *)
 type ind_data =
   { ind_cons : sym list (** Constructors. *)
   ; ind_prop : sym      (** Induction principle. *)
@@ -13,7 +13,7 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
-(** Data associated to a symbol defined in another file. *)
+(** Rules and notation added to an external symbol. *)
 type sym_data =
   { rules : rule list
   ; nota : float notation option }
@@ -23,8 +23,8 @@ type dep_data =
   { dep_symbols : sym_data StrMap.t
   ; dep_open : bool }
 
-(** Representation of a signature. It roughly corresponds to a set of symbols,
-    defined in a single module (or file). *)
+(** Representation of a signature, that is, what is introduced by a
+    module/file. *)
 type t =
   { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
@@ -33,41 +33,60 @@ type t =
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
 
-(* NOTE the [deps] field contains a map binding the external modules on
-   which the current signature depends to an association list mapping symbols
-   to additional rules defined in the current signature. *)
-
-(** The empty signature. WARNING: to be used for creating ghost signatures
-   only. Use Sig_state functions otherwise. It's a thunk to force the creation
-   of a new record on each call (and avoid unwanted sharing). *)
-let dummy : unit -> t = fun () ->
-  { sign_symbols = ref StrMap.empty; sign_path = []
-  ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_ind = ref SymMap.empty; sign_cp_pos = ref SymMap.empty }
-
-(** [find sign name] finds the symbol named [name] in [sign] if it exists, and
-    raises the [Not_found] exception otherwise. *)
-let find : t -> string -> sym =
-  fun sign name -> StrMap.find name !(sign.sign_symbols)
-
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
-let mem : t -> string -> bool =
-  fun sign name -> StrMap.mem name !(sign.sign_symbols)
+let mem : t -> string -> bool = fun sign name ->
+  StrMap.mem name !(sign.sign_symbols)
+
+(** [find sign name] finds the symbol named [name] in signature [sign] if it
+    exists, and raises the [Not_found] exception otherwise. *)
+let find : t -> string -> sym = fun sign name ->
+  StrMap.find name !(sign.sign_symbols)
 
 (** [loaded] stores the signatures of the known (already compiled or currently
-    being compiled) modules. An important invariant is that all occurrences of
-    a symbol are physically equal, even across signatures). This is ensured by
-    making copies of terms when loading an object file. *)
+    being compiled) modules. The current module is stored in [loaded] so that
+    the symbols that it contains can be qualified with the name of the
+    module. This behavior was inherited from previous versions of Dedukti. *)
 let loaded : t Path.Map.t ref = ref Path.Map.empty
 
-(** [find_sym path name] returns the symbol identified by [path] and [name]
-    in the known modules (already compiled or currently being compiled) *)
-let find_sym : Path.t -> string -> sym = fun path name ->
+(** [find_qualified path name] returns the symbol identified by [path] and
+    [name] in the known modules (already compiled or currently being
+    compiled) *)
+let find_qualified : Path.t -> string -> sym = fun path name ->
  find (Path.Map.find path !loaded) name
 
-(* NOTE that the current module is stored in [loaded] so that the symbols that
-   it contains can be qualified with the name of the module. This behavior was
-   inherited from previous versions of Dedukti. *)
+(** Signature for symbols introduced by Lambdapi and not the user
+    (e.g. unification/coercion rules, strings) and always loaded. *)
+module Ghost = struct
+
+  let path = Path.ghost "ghost"
+
+  let sign =
+    { sign_symbols = ref StrMap.empty
+    ; sign_path = path
+    ; sign_deps = ref Path.Map.empty
+    ; sign_builtins = ref StrMap.empty
+    ; sign_ind = ref SymMap.empty
+    ; sign_cp_pos = ref SymMap.empty }
+
+  let _ = loaded := Path.Map.add path sign !loaded
+
+  (** [iter f] iters function [f] on ghost symbols. *)
+  let iter : (sym -> unit) -> unit = fun f ->
+    StrMap.iter (fun _ s -> f s) !(sign.sign_symbols)
+
+end
+
+(** [create path] creates a new signature with path [path] and the ghost
+    module as dependency. *)
+let create : Path.t -> t = fun sign_path ->
+  let dep = {dep_symbols = StrMap.empty; dep_open=true} in
+  let sign_deps = ref (Path.Map.singleton Ghost.path dep) in
+  { sign_symbols = ref StrMap.empty
+  ; sign_path
+  ; sign_deps
+  ; sign_builtins = ref StrMap.empty
+  ; sign_ind = ref SymMap.empty
+  ; sign_cp_pos = ref SymMap.empty }
 
 (** [loading] contains the modules that are being processed. They are stored
    in a stack due to dependencies. Note that the topmost element corresponds
@@ -78,25 +97,6 @@ let loading : Path.t list ref = ref []
 (** [current_path ()] returns the current signature path. *)
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
-
-(** Signature for symbols introduced by Lambdapi and not the user
-    (e.g. unification/coercion rules, strings) and always loaded. *)
-module Ghost = struct
-
-  let path = Path.ghost "ghost"
-
-  let sign =
-    let sign = { (dummy()) with sign_path = path } in
-    loaded := Path.Map.add path sign !loaded;
-    sign
-
-  let find s = StrMap.find s !(sign.sign_symbols)
-
-  (** [iter f] iters function [f] on ghost symbols. *)
-  let iter : (sym -> unit) -> unit = fun f ->
-    StrMap.iter (fun _ s -> f s) !(sign.sign_symbols)
-
-end
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -332,7 +332,7 @@ let read : string -> t = fun fname ->
   sign
 
 let read =
-  let open Stdlib in let r = ref (dummy ()) in fun n ->
+  let open Stdlib in let r = ref Ghost.sign in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
 (** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
