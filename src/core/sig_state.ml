@@ -84,7 +84,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   {ss with in_scope; open_paths}
 
 (** [of_sign sign] creates a new sig_state with signature [sign] and open it
-    and the ghost signature as well. *)
+    and the ghost signature as well, assuming that [sign] has been created
+    using [Sign.create]. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
   let ss =
     { signature

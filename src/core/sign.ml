@@ -24,7 +24,8 @@ type dep_data =
   ; dep_open : bool }
 
 (** Representation of a signature, that is, what is introduced by a
-    module/file. *)
+    module/file. Signatures must be created with the functions [create] or
+    [read] below only.*)
 type t =
   { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
