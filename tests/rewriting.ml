@@ -20,8 +20,7 @@ let add_sym ss id =
 (* Define a signature state and some symbols. *)
 
 let sig_state : Sig_state.t =
-  let sign = Sig_state.create_sign (Path.ghost "rewriting_tests") in
-  Sig_state.of_sign sign
+  Sig_state.of_sign (Sign.create (Path.ghost "rewriting_tests"))
 
 let sig_state, c = add_sym sig_state "C"
 let sig_state, ok = add_sym sig_state "Ok"

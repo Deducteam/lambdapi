@@ -781,7 +781,7 @@ let index_sign sign =
   (fun path d ->
     Lplib.Extra.StrMap.iter
      (fun name sd ->
-       let sym = Core.Sign.find_sym path name in
+       let sym = Core.Sign.find_qualified path name in
        List.iter (index_rule sym) sd.Sign.rules)
      d.Sign.dep_symbols)
   deps
