@@ -51,6 +51,23 @@ module Goal = struct
       with Invalid_argument _ -> assert false
     in Typ {goal_meta = m; goal_hyps; goal_type}
 
+  (** [simpl_opt f g] tries to simplify the goal [g] with the function [f]. *)
+  let simpl_opt : (ctxt -> term -> term option) -> goal -> goal option =
+    fun f g ->
+    match g with
+    | Typ gt ->
+        begin
+          match f (Env.to_ctxt gt.goal_hyps) gt.goal_type with
+          | None -> None
+          | Some goal_type -> Some(Typ {gt with goal_type})
+        end
+    | Unif (c,t,u) ->
+        begin
+          match f c t, f c u with
+          | Some t, Some u -> Some(Unif(c,t,u))
+          | _ -> None
+        end
+
   (** [simpl f g] simplifies the goal [g] with the function [f]. *)
   let simpl : (ctxt -> term -> term) -> goal -> goal = fun f g ->
     match g with

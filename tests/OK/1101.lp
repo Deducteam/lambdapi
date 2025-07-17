@@ -55,7 +55,6 @@ end;
 symbol test2' a b : π (f (a + b) (λ _, O) = f (b + a) (λ _, O))
 ≔ begin
   assume a b;
-  simplify;
   set p ≔ (a + b);
   set g ≔ (a + b + O + O);
   //type p;

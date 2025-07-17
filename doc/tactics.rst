@@ -118,6 +118,8 @@ If ``f`` is a symbol identifier having rewriting rules, then ``simplify
 f`` applies these rules bottom-up on every occurrence of ``f`` in the
 focused goal.
 
+Remark: ``simplify`` fails if the goal cannot be simplified.
+
 .. _solve:
 
 ``solve``

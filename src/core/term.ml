@@ -878,7 +878,7 @@ let add_args : term -> term list -> term = fun t ts ->
     List.fold_left (fun t u -> mk_Appl(t,u)) t ts
   | _ -> List.fold_left (fun t u -> Appl(t,u)) t ts
 
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+(** [add_args_map t f ts] is equivalent to [add_args t (List.map f ts)] but
    more efficient. *)
 let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
   match get_args t with
