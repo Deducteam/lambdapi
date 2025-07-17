@@ -150,7 +150,7 @@ let initial_state : string -> state = fun fname ->
   Package.apply_config fname;
   let mp = Library.path_of_file LpLexer.escape fname in
   Sign.loading := [mp];
-  let sign = Sig_state.create_sign mp in
+  let sign = Sign.create mp in
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
