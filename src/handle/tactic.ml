@@ -100,8 +100,8 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | _ -> assert false
   in
   let add_goal m gs =
-    if !(m.meta_value) <> None || List.exists (is_eq_goal_meta m) gs_typ then
-      gs
+    if !(m.meta_value) <> None || List.exists (is_eq_goal_meta m) gs_typ
+    then gs
     else Goal.of_meta m :: gs
   in
   let proof_goals =
