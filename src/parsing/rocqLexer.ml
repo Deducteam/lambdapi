@@ -1,4 +1,4 @@
-(** Lexer for Lambdapi syntax, using Sedlex, a Utf8 lexer generator. *)
+(** Lexer for Rocq syntax, using Sedlex, a Utf8 lexer generator. *)
 
 open Lplib
 open Sedlexing

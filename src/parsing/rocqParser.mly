@@ -1,4 +1,4 @@
-(** Lambdapi parser, using the parser generator Menhir. *)
+(** Rocq parser, using the parser generator Menhir. *)
 
 %{
   open Lplib
