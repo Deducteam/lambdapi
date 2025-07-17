@@ -91,18 +91,21 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
      and adding the new goals at the end *)
   let non_instantiated g =
     match g with
-    | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        Some (Goal.simpl (fun _ -> Eval.snf_beta) g)
-    | _ -> None
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> false
   in
-  let gs_typ = List.filter_map non_instantiated gs_typ in
+  let gs_typ = List.filter non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
   in
   let add_goal m gs =
-    if List.exists (is_eq_goal_meta m) gs_typ then gs
-    else Goal.of_meta m :: gs
+    if !(m.meta_value) <> None then
+      begin
+        if List.exists (is_eq_goal_meta m) gs_typ then gs
+        else Goal.of_meta m :: gs
+      end
+    else gs
   in
   let proof_goals =
     gs_typ @ MetaSet.fold add_goal (!p).metas
@@ -423,8 +426,7 @@ let rec handle :
       end
   | P_tac_simpl SimpBetaOnly ->
       begin
-        let tags = [`NoRw; `NoExpand] in
-        match Goal.simpl_opt (Eval.snf_opt ~tags) g with
+        match Goal.simpl_opt (Eval.snf_opt ~tags:[`NoRw; `NoExpand]) g with
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end
