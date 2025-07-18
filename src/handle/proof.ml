@@ -49,7 +49,7 @@ module Goal = struct
       unchanged. *)
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
-      try Env.of_prod_nth [] m.meta_arity (Eval.snf_beta !(m.meta_type))
+      try Env.of_prod_nth [] m.meta_arity !(m.meta_type)
       with Invalid_argument _ -> assert false
     in
     Typ {goal_meta = m; goal_hyps; goal_type }
@@ -84,16 +84,15 @@ module Goal = struct
       if l <> [] then
         out ppf "%a---------------------------------------------\
         ---------------------------------\n"
-        (List.pp (fun ppf -> out ppf "%a\n" elt) "") (List.rev l);
-
+        (List.pp (fun ppf -> out ppf "%a\n" elt) "") (List.rev l)
     in
     fun idmap ppf g ->
     let term = term_in idmap in
     match g with
     | Typ gt ->
-      let elt ppf (s,(_,t,u)) =
-        match u with
-        | None -> out ppf "%a: %a" uid s term t
+      let elt ppf (s,(_,ty,def)) =
+        match def with
+        | None -> out ppf "%a: %a" uid s term (Eval.snf_beta ty)
         | Some u -> out ppf "%a ≔ %a" uid s term u
       in
       hyps elt ppf gt.goal_hyps
@@ -109,7 +108,9 @@ module Goal = struct
   let pp_aux : int StrMap.t -> goal pp = fun idmap ppf g ->
     let term = term_in idmap in
     match g with
-    | Typ gt -> out ppf "?%d: %a" gt.goal_meta.meta_key term gt.goal_type
+    | Typ gt ->
+        out ppf "?%d: %a" gt.goal_meta.meta_key
+          term (Eval.snf_beta gt.goal_type)
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [pp ppf g] prints on [ppf] the goal [g] with its hypotheses. *)
@@ -118,6 +119,7 @@ module Goal = struct
 
   (** [pp_aux ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp_no_hyp ppf g = let idmap = get_names g in pp_aux idmap ppf g
+
 end
 
 (** [add_goals_of_problem p gs] extends the list of goals [gs] with the

@@ -101,24 +101,24 @@ let string_of_goal : Proof.goal -> goal =
   let open Print in
   let ids = Proof.get_names g in
   let term = term_in ids in
-  let env_elt (s,(_,t,d)) =
-    let t = to_string term t in
+  let env_elt (s,(_,ty,def)) =
+    let ty = to_string term (Eval.snf_beta ty) in
     s,
-    match d with
-    | None -> t
-    | Some d -> t^" ≔ "^to_string term d
+    match def with
+    | None -> ty
+    | Some d -> "≔ "^to_string term d
   in
-  let ctx_elt (x,a,d) =
-    let a = to_string term a in
+  let ctx_elt (x,ty,def) =
+    let ty = to_string term (Eval.snf_beta ty) in
     to_string var x,
-    match d with
-    | None -> a
-    | Some d -> a^" ≔ "^to_string term d
+    match def with
+    | None -> ty
+    | Some d -> "≔ "^to_string term d
   in
   match g with
   | Proof.Typ gt ->
-      let meta = to_string meta gt.goal_meta in
-      let typ = to_string term gt.goal_type in
+      let meta = "?"^to_string int gt.goal_meta.meta_key in
+      let typ = to_string term (Eval.snf_beta gt.goal_type) in
       List.rev_map env_elt gt.goal_hyps, Typ (meta, typ)
   | Proof.Unif (c,t,u) ->
       let t = to_string term t and u = to_string term u in

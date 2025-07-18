@@ -91,14 +91,10 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
      and adding the new goals at the end *)
   let non_instantiated g =
     match g with
-    | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        (* previous but still unsolved goals are beta-normalized because
-           instantiations done during solving may have introduced
-           beta-redexes. *)
-        Some (Goal.simpl (fun _ -> Eval.snf_beta) g)
-    | _ -> None
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> false
   in
-  let gs_typ = List.filter_map non_instantiated gs_typ in
+  let gs_typ = List.filter non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
