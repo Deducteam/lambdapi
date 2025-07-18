@@ -5,10 +5,6 @@ open Timed
 open Core open Term open Print
 open Common open Pos
 
-(** Logging function for tactics. *)
-let log = Logger.make 't' "tact" "tactics"
-let log = log.pp
-
 (** Type of goals. *)
 type goal_typ =
   { goal_meta : meta  (** Goal metavariable. *)
@@ -52,7 +48,6 @@ module Goal = struct
       to make them more readable, but the underlying meta is left
       unchanged. *)
   let of_meta : meta -> goal = fun m ->
-    if Logger.log_enabled() then log "of_meta %a" meta m;
     let goal_hyps, goal_type =
       try Env.of_prod_nth [] m.meta_arity (Eval.snf_beta !(m.meta_type))
       with Invalid_argument _ -> assert false

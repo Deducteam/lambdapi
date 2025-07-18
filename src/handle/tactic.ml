@@ -7,6 +7,10 @@ open Core open Term open Print
 open Proof
 open Timed
 
+(** Logging function for tactics. *)
+let log = Logger.make 't' "tact" "tactics"
+let log = log.pp
+
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)
