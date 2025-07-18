@@ -87,7 +87,6 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   (* try to solve the problem *)
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
-  if Logger.log_enabled () then log "%a" problem p;
   (* compute the new list of goals by preserving the order of initial goals
      and adding the new goals at the end *)
   let non_instantiated g =
