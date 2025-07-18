@@ -44,9 +44,7 @@ module Goal = struct
        with Invalid_argument _ -> assert false)
     | Typ gt -> gt.goal_hyps
 
-  (** [of_meta m] creates a goal from the meta [m]. Goals are beta-normalized
-      to make them more readable, but the underlying meta is left
-      unchanged. *)
+  (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
       try Env.of_prod_nth [] m.meta_arity !(m.meta_type)
@@ -78,7 +76,8 @@ module Goal = struct
         Typ {gt with goal_type = f (Env.to_ctxt gt.goal_hyps) gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f c t, f c u)
 
-  (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
+  (** [hyps ppf g] prints on [ppf] the beta-normal forms of the hypotheses of
+      the goal [g]. *)
   let hyps : int StrMap.t -> goal pp =
     let hyps elt ppf l =
       if l <> [] then
@@ -105,7 +104,9 @@ module Goal = struct
       in
       hyps elt ppf c
 
-  let pp_aux : int StrMap.t -> goal pp = fun idmap ppf g ->
+  (** [concl ppf g] prints on [ppf] the beta-normal form of the conclusion of
+      the goal [g]. *)
+  let concl : int StrMap.t -> goal pp = fun idmap ppf g ->
     let term = term_in idmap in
     match g with
     | Typ gt ->
@@ -113,12 +114,14 @@ module Goal = struct
           term (Eval.snf_beta gt.goal_type)
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
-  (** [pp ppf g] prints on [ppf] the goal [g] with its hypotheses. *)
+  (** [pp ppf g] prints on [ppf] the beta-normal form of the goal [g] with its
+      hypotheses. *)
   let pp ppf g =
-    let idmap = get_names g in hyps idmap ppf g; pp_aux idmap ppf g
+    let idmap = get_names g in hyps idmap ppf g; concl idmap ppf g
 
-  (** [pp_aux ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
-  let pp_no_hyp ppf g = let idmap = get_names g in pp_aux idmap ppf g
+  (** [pp_no_hyp ppf g] prints on [ppf] the beta-normal form of the conclusion
+      of the goal [g] without its hypotheses. *)
+  let pp_no_hyp ppf g = concl (get_names g) ppf g
 
 end
 
@@ -147,7 +150,7 @@ let goals : proof_state pp = fun ppf ps ->
   | [] -> out ppf "No goal."
   | g::gs ->
       let idmap = get_names g in
-      out ppf "%a0. %a" (Goal.hyps idmap) g (Goal.pp_aux idmap) g;
+      out ppf "%a0. %a" (Goal.hyps idmap) g (Goal.concl idmap) g;
       let goal ppf i g = out ppf "\n%d. %a" (i+1) Goal.pp_no_hyp g in
       List.iteri (goal ppf) gs
 
