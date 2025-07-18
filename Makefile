@@ -28,8 +28,8 @@ bnf:
 sanity_check: misc/sanity_check.sh
 	@./$<
 
-.PHONY: tests
-tests: test
+.PHONY: test_all
+test_all: test
 	$(MAKE) test_load
 	$(MAKE) test_export_dk
 	$(MAKE) test_export_lp

@@ -11,6 +11,7 @@
 (************************************************************************)
 
 open Common
+open Handle
 
 (* Whether to send extended lsp messages *)
 let std_protocol = ref true
@@ -41,17 +42,17 @@ let mk_range (p : Pos.pos) : J.t =
 let json_of_goal (hyps, concl) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in
   match concl with
-  | Pure.Typ (meta, typ) ->
+  | Goal.Typ(meta,typ) ->
     `Assoc [
       "typeofgoal", `String "Typ"
     ; "gid", `String meta
     ; "hyps", `List (List.map json_of_hyp hyps)
     ; "type", `String typ]
-  | Pure.Unif (t,u) ->
+  | Goal.Unif c ->
     `Assoc [
       "typeofgoal", `String "Unif"
     ; "hyps", `List (List.map json_of_hyp hyps)
-    ; "constr", `String (t ^ " ≡ " ^ u)]
+    ; "constr", `String c]
 
 let json_of_goals ?logs goals =
   let logs = match logs with None -> "" | Some s -> s in

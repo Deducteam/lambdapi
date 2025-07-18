@@ -6,6 +6,7 @@ open Parsing open Syntax
 open Core open Term open Print
 open Proof
 open Timed
+open Goal
 
 (** Logging function for tactics. *)
 let log = Logger.make 't' "tact" "tactics"
@@ -91,11 +92,10 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
      and adding the new goals at the end *)
   let non_instantiated g =
     match g with
-    | Typ gt when !(gt.goal_meta.meta_value) = None ->
-        Some (Goal.simpl Eval.beta_simplify g)
-    | _ -> None
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> false
   in
-  let gs_typ = List.filter_map non_instantiated gs_typ in
+  let gs_typ = List.filter non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
@@ -130,10 +130,10 @@ let tac_refine : ?check:bool ->
   in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   if Logger.log_enabled () then
-    log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
+    log (Color.gre "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
+  tac_solve pos {ps with proof_goals = add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
@@ -423,8 +423,7 @@ let rec handle :
       end
   | P_tac_simpl SimpBetaOnly ->
       begin
-        let tags = [`NoRw; `NoExpand] in
-        match Goal.simpl_opt (Eval.snf_opt ~tags) g with
+        match Goal.simpl_opt (Eval.snf_opt ~tags:[`NoRw; `NoExpand]) g with
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end
@@ -569,7 +568,7 @@ let rec handle :
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
-        fatal pos "underscores not allowed in assume";
+        fatal pos "Underscores not allowed in assume.";
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
@@ -654,7 +653,7 @@ let rec handle :
               LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
               (*let g = Goal.of_meta m in*)
               let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
-              {ps with proof_goals = g :: Proof.add_goals_of_problem p gs}
+              {ps with proof_goals = g :: add_goals_of_problem p gs}
             end else fatal pos "The unification constraints for %a \
                             to be typable are not satisfiable." term t
       end
@@ -790,17 +789,16 @@ let handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss sym_pos prv ps ({elt;pos} as tac) ->
   match elt with
-  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\"."
   | P_tac_query(q) ->
-    if Logger.log_enabled () then log "%a@." Pretty.tactic tac;
+    if Logger.log_enabled () then log "%a" Pretty.tactic tac;
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
     if Logger.log_enabled() then
-      log ("%a@\n" ^^ Color.red "%a")
-        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
+      log ("Goal %a%a") Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
