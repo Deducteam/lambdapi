@@ -2,5 +2,5 @@
  (name pure)
  (public_name lambdapi.pure)
  (modules :standard)
- (libraries camlp-streams lambdapi.handle lambdapi.core)
+ (libraries camlp-streams lambdapi.handle lambdapi.core lambdapi.tool)
  (flags -w +3))
