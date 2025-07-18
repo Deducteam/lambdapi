@@ -314,8 +314,7 @@ let p_term_of_string (pos:popt) (t:term): p_term =
       begin
         let string = remove_quotes s.sym_name in
         let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-        let stream = Parsing.Parser.Lp.parse_term_string fname string in
-        try Stream.next stream with Stream.Failure -> assert false
+        Parsing.Parser.Lp.parse_term_string fname string
       end
   | _ -> fatal pos "refine tactic not applied to a term string literal"
 
@@ -325,11 +324,8 @@ let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
       let string = remove_quotes s.sym_name in
       if string = "" then None
       else
-        begin
-          let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-          let stream = Parsing.Parser.Lp.parse_rwpatt_string fname string in
-          try Some (Stream.next stream) with Stream.Failure -> assert false
-        end
+        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
+        Some (Parsing.Parser.Lp.parse_rwpatt_string fname string)
   | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
 
 let is_right (pos:popt) (t:term): bool =
@@ -703,7 +699,7 @@ let handle :
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
+  | [] -> fatal pos "No remaining goal."
   | g::_ ->
     if Logger.log_enabled() then
       log ("Goal %a%a") Goal.pp_no_hyp g Pretty.tactic tac;
