@@ -6,6 +6,7 @@ open Parsing open Syntax
 open Core open Term open Print
 open Proof
 open Timed
+open Goal
 
 (** Logging function for tactics. *)
 let log = Logger.make 't' "tact" "tactics"
@@ -132,7 +133,7 @@ let tac_refine : ?check:bool ->
     log (Color.gre "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
+  tac_solve pos {ps with proof_goals = add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
@@ -560,7 +561,7 @@ let rec handle :
               LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
               (*let g = Goal.of_meta m in*)
               let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
-              {ps with proof_goals = g :: Proof.add_goals_of_problem p gs}
+              {ps with proof_goals = g :: add_goals_of_problem p gs}
             end else fatal pos "The unification constraints for %a \
                             to be typable are not satisfiable." term t
       end
@@ -705,7 +706,7 @@ let handle :
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
     if Logger.log_enabled() then
-      log ("Goal %a%a") Proof.Goal.pp_no_hyp g Pretty.tactic tac;
+      log ("Goal %a%a") Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous

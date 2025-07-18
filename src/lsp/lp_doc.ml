@@ -12,6 +12,7 @@
 
 open Common
 open Lplib
+open Handle
 
 module LSP = Lsp_base
 
@@ -24,7 +25,7 @@ type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
   (*; tactics : Proof.Tactic.t list*)
-  ; goals : (Pure.goal list * Pos.popt) list
+  ; goals : (Goal.info list * Pos.popt) list
   }
 
 (* Private. A doc is a list of nodes for now. The first element in

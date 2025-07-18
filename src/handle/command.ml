@@ -6,6 +6,7 @@ open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
 open Parsing open Syntax open Scope
 open Proof
+open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
@@ -582,7 +583,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Create the proof state. *)
       let pdata_state =
-        let proof_goals = Proof.add_goals_of_problem p [] in
+        let proof_goals = add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
           let m = LibMeta.fresh p a 0 in
