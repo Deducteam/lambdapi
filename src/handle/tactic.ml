@@ -7,10 +7,6 @@ open Core open Term open Print
 open Proof
 open Timed
 
-(** Logging function for tactics. *)
-let log = Logger.make 't' "tact" "tactics"
-let log = log.pp
-
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)
@@ -87,21 +83,25 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   (* try to solve the problem *)
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
+  if Logger.log_enabled () then log "%a" problem p;
   (* compute the new list of goals by preserving the order of initial goals
      and adding the new goals at the end *)
   let non_instantiated g =
     match g with
-    | Typ gt -> !(gt.goal_meta.meta_value) = None
-    | _ -> false
+    | Typ gt when !(gt.goal_meta.meta_value) = None ->
+        (* previous but still unsolved goals are beta-normalized because
+           instantiations done during solving may have introduced
+           beta-redexes. *)
+        Some (Goal.simpl (fun _ -> Eval.snf_beta) g)
+    | _ -> None
   in
-  let gs_typ = List.filter non_instantiated gs_typ in
+  let gs_typ = List.filter_map non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
   in
   let add_goal m gs =
-    if !(m.meta_value) <> None || List.exists (is_eq_goal_meta m) gs_typ
-    then gs
+    if List.exists (is_eq_goal_meta m) gs_typ then gs
     else Goal.of_meta m :: gs
   in
   let proof_goals =
@@ -130,7 +130,7 @@ let tac_refine : ?check:bool ->
   in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   if Logger.log_enabled () then
-    log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
+    log (Color.gre "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
@@ -697,17 +697,16 @@ let handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss sym_pos prv ps ({elt;pos} as tac) ->
   match elt with
-  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\"."
   | P_tac_query(q) ->
-    if Logger.log_enabled () then log "%a@." Pretty.tactic tac;
+    if Logger.log_enabled () then log "%a" Pretty.tactic tac;
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
     if Logger.log_enabled() then
-      log ("%a@\n" ^^ Color.red "%a")
-        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
+      log ("Goal %a%a") Proof.Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
