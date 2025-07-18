@@ -11,6 +11,7 @@
 (************************************************************************)
 
 open Common
+open Handle
 
 module J = Yojson.Basic
 
@@ -23,7 +24,7 @@ val mk_reply : id:int -> result:J.t -> J.t
 val mk_diagnostics
   : uri:string
   -> version: int
-  -> (Pos.pos * int * string * Pure.goal list option) list
+  -> (Pos.pos * int * string * Goal.info list option) list
   -> J.t
 
-val json_of_goals : ?logs:string -> Pure.goal list option -> J.t
+val json_of_goals : ?logs:string -> Goal.info list option -> J.t

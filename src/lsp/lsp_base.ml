@@ -38,20 +38,19 @@ let mk_range (p : Pos.pos) : J.t =
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
-let json_of_goal (hyps, concl) =
+let json_of_goal (hyps, typ_goal, lhs, rhs) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in
-  match concl with
-  | Pure.Typ (meta, typ) ->
+  if typ_goal then
     `Assoc [
       "typeofgoal", `String "Typ"
-    ; "gid", `String meta
+    ; "gid", `String lhs
     ; "hyps", `List (List.map json_of_hyp hyps)
-    ; "type", `String typ]
-  | Pure.Unif (t,u) ->
+    ; "type", `String rhs]
+  else
     `Assoc [
       "typeofgoal", `String "Unif"
     ; "hyps", `List (List.map json_of_hyp hyps)
-    ; "constr", `String (t ^ " ≡ " ^ u)]
+    ; "constr", `String (lhs ^ " ≡ " ^ rhs)]
 
 let json_of_goals ?logs goals =
   let logs = match logs with None -> "" | Some s -> s in

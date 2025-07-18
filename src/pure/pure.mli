@@ -3,6 +3,7 @@
 open Lplib
 open Core
 open Common
+open Handle
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
@@ -42,15 +43,8 @@ type proof_state
     val parse_text :
     fname:string -> string -> Command.t list * (Pos.pos * string) option
 
-(** A goal is given by a list of assumptions and a conclusion. Each assumption
-   has a name and a type. *)
-type conclusion =
-  | Typ of string * string (** Metavariable name and type. *)
-  | Unif of string * string (** LHS and RHS of the unification goal. *)
-type goal = (string * string) list * conclusion
-
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
-val current_goals : proof_state -> goal list
+val current_goals : proof_state -> Goal.info list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
