@@ -75,6 +75,22 @@ let simpl : (ctxt -> term -> term) -> goal -> goal = fun f g ->
       Typ {gt with goal_type = f (Env.to_ctxt gt.goal_hyps) gt.goal_type}
   | Unif (c,t,u) -> Unif (c, f c t, f c u)
 
+(** [typ_or_def idmap ppf (_,ty,def)] prints in [ppf] the type [ty] or the
+    definition [def] if there is one. *)
+let typ_or_def idmap ppf (ty,def) =
+  let term = term_in idmap in
+  match def with
+  | None -> out ppf "%a" term (Eval.snf_beta ty)
+  | Some u -> out ppf "≔ %a" term u
+
+(** [ctxt_elt idmap ppf x] prints in [ppf] the conttext element [x]. *)
+let ctxt_elt idmap ppf (v,ty,def) =
+  out ppf "%a%a" var v (typ_or_def idmap) (ty,def)
+
+(** [env_elt idmap ppf x] prints in [ppf] the environment element [x]. *)
+let env_elt idmap ppf (s,(_,ty,def)) =
+  out ppf "%a%a" uid s (typ_or_def idmap) (ty,def)
+
 (** [hyps ppf g] prints on [ppf] the beta-normal forms of the hypotheses of
     the goal [g]. *)
 let hyps : int StrMap.t -> goal pp =
@@ -85,23 +101,9 @@ let hyps : int StrMap.t -> goal pp =
         (List.pp (fun ppf -> out ppf "%a\n" elt) "") (List.rev l)
   in
   fun idmap ppf g ->
-  let term = term_in idmap in
   match g with
-  | Typ gt ->
-      let elt ppf (s,(_,ty,def)) =
-        match def with
-        | None -> out ppf "%a: %a" uid s term (Eval.snf_beta ty)
-        | Some u -> out ppf "%a ≔ %a" uid s term u
-      in
-      hyps elt ppf gt.goal_hyps
-  | Unif (c,_,_) ->
-      let elt ppf (x,a,t) =
-        out ppf "%a: %a" var x term a;
-        match t with
-        | None -> ()
-        | Some t -> out ppf " ≔ %a" term t
-      in
-      hyps elt ppf c
+  | Typ gt -> hyps (env_elt idmap) ppf gt.goal_hyps
+  | Unif (c,_,_) -> hyps (ctxt_elt idmap) ppf c
 
 (** [concl ppf g] prints on [ppf] the beta-normal form of the conclusion of
     the goal [g]. *)
@@ -111,7 +113,8 @@ let concl : int StrMap.t -> goal pp = fun idmap ppf g ->
   | Typ gt ->
       out ppf "?%d: %a" gt.goal_meta.meta_key
         term (Eval.snf_beta gt.goal_type)
-  | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
+  | Unif (_, t, u) ->
+      out ppf "%a ≡ %a" term (Eval.snf_beta t) term (Eval.snf_beta u)
 
 (** [pp ppf g] prints on [ppf] the beta-normal form of the goal [g] with its
     hypotheses. *)
@@ -133,26 +136,18 @@ let to_info : goal -> info =
     res
   in
   fun g ->
-  let term = term_in (get_names g) in
+  let idmap = get_names g in
+  let term = term_in idmap in
   match g with
   | Typ gt ->
-      let env_elt (s,(_,ty,def)) =
-        s,
-        match def with
-        | None -> to_string term (Eval.snf_beta ty)
-        | Some d -> "≔ "^to_string term d
-      in
-      List.rev_map env_elt gt.goal_hyps,
+      let f (s,(_,ty,def)) = s, to_string (typ_or_def idmap) (ty,def) in
+      List.rev_map f gt.goal_hyps,
       Typ("?"^to_string int gt.goal_meta.meta_key,
           to_string term gt.goal_type)
   | Unif(c,t,u) ->
-      let ctx_elt (v,ty,def) =
-        to_string var v,
-        match def with
-        | None -> to_string term (Eval.snf_beta ty)
-        | Some d -> "≔ "^to_string term d
-      in
-      List.rev_map ctx_elt c,
+      let f (v,ty,def) =
+        to_string var v, to_string (typ_or_def idmap) (ty,def) in
+      List.rev_map f c,
       Unif(to_string term t^" ≡ "^to_string term u)
 
 (** [add_goals_of_problem p gs] extends the list of goals [gs] with the
