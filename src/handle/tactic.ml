@@ -100,8 +100,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | _ -> assert false
   in
   let add_goal m gs =
-    if !(m.meta_value) <> None || List.exists (is_eq_goal_meta m) gs_typ
-    then gs
+    if List.exists (is_eq_goal_meta m) gs_typ then gs
     else Goal.of_meta m :: gs
   in
   let proof_goals =
@@ -130,7 +129,7 @@ let tac_refine : ?check:bool ->
   in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   if Logger.log_enabled () then
-    log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
+    log (Color.gre "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
@@ -697,17 +696,16 @@ let handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss sym_pos prv ps ({elt;pos} as tac) ->
   match elt with
-  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\"."
   | P_tac_query(q) ->
-    if Logger.log_enabled () then log "%a@." Pretty.tactic tac;
+    if Logger.log_enabled () then log "%a" Pretty.tactic tac;
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
     if Logger.log_enabled() then
-      log ("%a@\n" ^^ Color.red "%a")
-        Proof.Goal.pp_no_hyp g Pretty.tactic tac;
+      log ("Goal %a%a") Proof.Goal.pp_no_hyp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
