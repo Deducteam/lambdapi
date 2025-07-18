@@ -490,6 +490,8 @@ let snf : ?dtree:(sym -> dtree) -> term reducer = fun ?dtree ?tags c t ->
 
 let snf ?dtree = time_reducer mk_Kind (snf ?dtree)
 
+let snf_beta t = snf ~tags:[`NoRw; `NoExpand] [] t
+
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
 let hnf : term reducer = fun ?tags c t ->
@@ -529,23 +531,6 @@ let whnf : term reducer = fun ?tags c t ->
   if Stdlib.(!steps = 0) then unfold t else u
 
 let whnf = time_reducer mk_Kind whnf
-
-(** [beta_simplify c t] computes a beta whnf of [t] in context [c] belonging
-    to the set S such that (1) terms of S are in beta whnf normal format, (2)
-    if [t] is a product, then both its domain and codomain are in S. *)
-let beta_simplify : ctxt -> term -> term = fun c ->
-  let tags = [`NoRw; `NoExpand] in
-  let rec simp t =
-    match get_args (whnf ~tags c t) with
-    | Prod(a,b), _ ->
-       let x, b = unbind b in
-       mk_Prod (simp a, bind_var x (simp b))
-    | h, ts -> add_args_map h (whnf ~tags c) ts
-  in simp
-
-let beta_simplify =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := beta_simplify c t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
