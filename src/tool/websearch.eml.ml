@@ -97,7 +97,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
 
     Dream.get  (favicon_path)
       (fun request ->
-        Dream.from_filesystem "assets" "pi.ico" request);
+        Dream.from_filesystem "assets" "lambdapi.ico" request);
 
     Dream.get  ("/" ^ path_in_url)
       (fun request ->
