@@ -100,14 +100,16 @@ export
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
   - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
   - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``raw_lean``: `Lean <https://lean-lang.org/>`__ format
+  - ``stt_lean``: `Lean <https://lean-lang.org/>`__ format assuming that the input file is in an encoding of simple type theory
 
-**WARNING**: With the formats ``raw_coq``, ``stt_coq`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
+**WARNING**: With the formats ``raw_coq``, ``stt_coq``, ``raw_lean``, ``stt_lean`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
 
 The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-The formats ``raw_coq`` and ``stt_coq`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
-For the format ``stt_coq``, several other options are available:
+For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
 
 * ``--encoding <LP_FILE>`` (mandatory option) where ``<LP_FILE>`` contains the following sequence of builtin declarations:
 
@@ -136,11 +138,11 @@ In symbol declarations or definitions, parameters with no type are assumed to be
 
 ::
    
-   builtin "coq_expr" ≔ lp_id;
+   builtin "expr" ≔ lp_id;
 
-It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`__.
+It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``expr``, which can be any expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`__.
 
-* ``--requiring <MODNAME>`` to add ``Require Import <MODNAME>`` at the beginning of the output. ``<MODNAME>.v`` usually needs to contain at least the following definitions:
+* ``--requiring <MODNAME>`` to add ``Require Import <MODNAME>`` at the beginning of the output. ``<MODNAME>.v`` (and similarly ``<MODNAME>.lean``) usually needs to contain at least the following definitions:
 
 ::
 
