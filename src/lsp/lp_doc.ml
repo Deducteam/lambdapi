@@ -138,8 +138,10 @@ let new_doc ~uri ~version ~text =
           fname = Some(uri);
           start_line = 0;
           start_col  = 0;
+          start_offset  = 0;
           end_line = 0;
-          end_col = 0
+          end_col = 0;
+          end_offset  = 0
         } in
       (None, [(1, msg), Some(loc)])
   in
@@ -161,8 +163,10 @@ let dummy_loc =
     Pos.{ fname = None
         ; start_line = 1
         ; start_col = 1
+        ; start_offset = -1
         ; end_line = 2
         ; end_col = 2
+        ; end_offset = -1
         }
 
 let check_text ~doc =

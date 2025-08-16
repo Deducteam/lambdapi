@@ -296,6 +296,10 @@ type p_modifier_aux =
 
 type p_modifier = p_modifier_aux loc
 
+(* ppx ? *)
+let eq_p_modifier { elt = m1; _} {elt = m2; _} =
+  m1 = m2
+
 let is_prop {elt; _} = match elt with P_prop _ -> true | _ -> false
 let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo _ -> true | _ -> false
@@ -462,7 +466,7 @@ let eq_p_symbol : p_symbol eq = fun
   { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
     p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
     p_sym_def=p_sym_def2} ->
-  p_sym_mod1 = p_sym_mod2
+  List.eq eq_p_modifier p_sym_mod1 p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
   && List.eq eq_p_params p_sym_arg1 p_sym_arg2
   && Option.eq eq_p_term p_sym_typ1 p_sym_typ2
