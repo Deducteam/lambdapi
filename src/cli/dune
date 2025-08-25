@@ -4,4 +4,11 @@
  (modes byte native)
  (modules :standard)
  (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle
-            lambdapi.export unix))
+            lambdapi.export unix dune-site)           
+)
+(install
+ (section (site (lambdapi server_resources)))
+ (files
+  (lambdapi.ico as default/lambdapi.ico)
+ )
+)
