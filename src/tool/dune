@@ -2,10 +2,22 @@
  (name tool)
  (public_name lambdapi.tool)
  (modules :standard)
- (libraries lambdapi.parsing lambdapi.core dream unix)
+ (libraries lambdapi.parsing lambdapi.core dream unix dune-site)
  (preprocess (pps lwt_ppx)))
+ 
 
 (rule
  (targets websearch.ml)
  (deps websearch.eml.ml)
  (action (run dream_eml %{deps} --workspace %{workspace_root})))
+
+; (install
+;  (section (site (lambdapi server_resources)))
+;  (files
+;   (lambdapi.ico as default/lambdapi.ico)
+;  )
+; )
+
+(generate_sites_module
+ (module mysites)
+ (sites lambdapi))
