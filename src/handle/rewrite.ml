@@ -3,7 +3,7 @@
 open Lplib
 open Common open Pos open Error open Debug
 open Core open Term open Print
-open Proof
+open Goal
 
 (** Logging function for the rewrite tactic. *)
 let log = Logger.make 'r' "rewr" "the rewrite tactic"
@@ -122,7 +122,11 @@ let get_eq_data :
   let rec get_eq vs t notin_whnf =
     if Logger.log_enabled () then log "get_eq %a" term t;
     match get_args t with
-    | Prod(_,t), _ -> let v,t = unbind t in get_eq (v::vs) t true
+    | Prod(_,t), _ ->
+        (* We prefix variable names by "$" to distinguish them from the
+           variables occurring in other assumptions or in the goal, and
+           because we will try to match them with some subterm of the goal. *)
+        let v,t = unbind ~name:("$"^binder_name t) t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
         let u = Eval.whnf ~tags:[`NoRw;`NoExpand] [] u in
@@ -154,15 +158,14 @@ type to_subst = var array * term
 let matches : term -> term -> bool =
   let exception Not_equal in
   let add_eqs = List.fold_left2 (fun l pi ti -> (pi,ti)::l) in
-  let check_alpha = Stdlib.ref false in
   let rec eq l =
     match l with
     | [] -> ()
     | (p,t)::l ->
       if Term.cmp p t = 0 then eq l else begin
-      let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
+      let hp, ps, kp = get_args_len p and ht, ts, kt = get_args_len t in
       if Logger.log_enabled() then
-        log "matches? %a %a ≡ %a %a"
+        log "%a %a \nmatches? %a %a"
           term hp (D.list term) ps term ht (D.list term) ts;
       match hp with
       | Wild -> assert false (* used in user syntax only *)
@@ -173,29 +176,30 @@ let matches : term -> term -> bool =
       | Kind -> assert false (* not possible because of typing *)
       | Bvar _ -> assert false (* used in reduction only *)
       | TRef r ->
-        if k > n then raise Not_equal;
-        let ts1, ts2 = List.cut ts (n-k) in
+        if kp > kt then raise Not_equal;
+        let ts1, ts2 = List.cut ts (kt-kp) in
         let u = add_args ht ts1 in
         if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
         Timed.(r := Some u);
         eq (add_eqs l ps ts2)
-      | Meta _
+      | Meta _ -> eq l (* We assume that metas can always be instantiated by
+                          the corresponding RHS although this might not be the
+                          case, in which case tac_refine or solve will later
+                          fail. This way, we may chose the wrong subterm. *)
       | Prod _
       | Abst _
       | LLet _
       | Symb _
       | Vari _ ->
-        if k <> n then raise Not_equal;
+        if kp <> kt then raise Not_equal;
         match hp, ht with
         | Vari x, Vari y when eq_vars x y -> eq (add_eqs l ps ts)
         | Symb f, Symb g when f == g -> eq (add_eqs l ps ts)
         | Abst(a,b), Abst(a',b')
         | Prod(a,b), Prod(a',b') ->
-            if binder_occur b' then check_alpha := true;
             let _,b,b' = unbind2 b b' in
             eq ((a,a')::(b,b')::add_eqs l ps ts)
         | LLet(a,c,b), LLet(a',c',b') ->
-            if binder_occur b' then check_alpha := true;
             let _,b,b' = unbind2 b b' in
             eq ((a,a')::(c,c')::(b,b')::add_eqs l ps ts)
         | _ ->
@@ -204,26 +208,46 @@ let matches : term -> term -> bool =
       end
   in
   fun p t ->
-  let r =
-    try
-      check_alpha := false;
-      eq [p,t];
-      if !check_alpha then
-        (if Logger.log_enabled() then log "check_alpha"; LibTerm.eq_alpha p t)
-      else true
-    with Not_equal -> false
-  in
+  let r = try eq [p,t]; true with Not_equal -> false in
   if Logger.log_enabled() then log "matches result: %b" r; r
+
+let no_match ?(subterm=false) pos p t =
+  if subterm then fatal pos "No subterm of [%a] matches [%a]." term t term p
+  else fatal pos "[%a] doesn't match [%a]." term t term p
 
 (** [matching_subs (xs,p) t] attempts to match the pattern [p] containing the
    variables [xs]) with the term [t]. If successful, it returns [Some ts]
    where [ts] is an array of terms such that substituting [xs] by the
-   corresponding elements of [ts] in [p] yields [t]. *)
+   corresponding elements of [ts] in [p] yields [t].
+
+WARNING: Some elements of [ts] may be uninstantiated TRef's. It will happen if
+not all [vars] are in [LibTerm.free_vars p], for instance when some [vars] are
+type variables not occurring in [p], for instance when trying to apply an
+equation of the form [x = ...] with [x] of polymorphic type. This could be
+improved by generating p_terms instead of terms. Indeed, in this case, we
+could replace uninstantiated TRef's by underscores. *)
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
   (* We replace [xs] by fresh [TRef]'s. *)
   let ts = Array.map (fun _ -> mk_TRef(Timed.ref None)) xs in
   let p = msubst (bind_mvar xs p) ts in
-  if matches p t then Some(Array.map unfold ts) else None
+  if matches p t then Some ts else None
+
+(** [check_subs vars ts] check that no element of [ts] is an uninstantiated
+    TRef. *)
+let check_subs pos vars ts =
+  let f i ti =
+    match unfold ti with
+    | TRef _ ->
+        fatal pos "Don't know how to instantiate the argument \"%a\" \
+                   of the equation." var vars.(i)
+    | _ -> ()
+  in
+  Array.iteri f ts
+
+let matching_subs_check_TRef pos ((vars,p) as xsp) t =
+  match matching_subs xsp t with
+  | Some ts -> check_subs pos vars ts; ts
+  | None -> no_match pos p t
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
    matching [p]. If successful, the function returns the array of terms by
@@ -254,6 +278,11 @@ let find_subst : to_subst -> term -> term array option = fun xsp t ->
     | sub -> sub
   in find t
 
+let find_subst pos (vars,p) t =
+  match find_subst (vars,p) t with
+  | None -> no_match ~subterm:true pos p t
+  | Some ts -> check_subs pos vars ts; ts
+
 (** [find_subterm_matching p t] tries to find a subterm of [t] that matches
    [p] by instantiating the [TRef]'s of [p].  In case of success, the function
    returns [true]. *)
@@ -278,6 +307,21 @@ let find_subterm_matching : term -> term -> bool = fun p t ->
     | false -> Timed.Time.restore time; find2 c b
     | true -> true
   in find t
+
+(** [replace_wild_by_tref t] substitutes every wildcard of [t] by a fresh
+   [TRef]. *)
+let rec replace_wild_by_tref : term -> term = fun t ->
+  match unfold t with
+  | Wild -> mk_TRef(Timed.ref None)
+  | Appl(t,u) ->
+    mk_Appl_not_canonical(replace_wild_by_tref t, replace_wild_by_tref u)
+  | _ -> t
+
+let find_subterm_matching pos p t =
+  let p_refs = replace_wild_by_tref p in
+  if not (find_subterm_matching p_refs t) then
+    no_match ~subterm:true pos p t;
+  p_refs
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
    [p] by a fresh variable, and returns the binder on this variable. *)
@@ -320,15 +364,6 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
   add_args (mk_Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [replace_wild_by_tref t] substitutes every wildcard of [t] by a fresh
-   [TRef]. *)
-let rec replace_wild_by_tref : term -> term = fun t ->
-  match unfold t with
-  | Wild -> mk_TRef(Timed.ref None)
-  | Appl(t,u) ->
-    mk_Appl_not_canonical(replace_wild_by_tref t, replace_wild_by_tref u)
-  | _ -> t
-
 (** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
    [gt]. Every occurrence of the first instance of the left-hand side is
@@ -342,6 +377,13 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
+
+  (* Extract the term from the goal type (get “u” from “P u”). *)
+  let g_term =
+    match get_args g_type with
+    | t, [u] when is_symb cfg.symb_P t -> u
+    | _ -> fatal pos "Goal not of the form (%a _)." sym cfg.symb_P
+  in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
@@ -361,26 +403,13 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let bound = let bind = bind_mvar vars in bind t, bind l, bind r in
   let msubst3 (b1, b2, b3) ts = msubst b1 ts, msubst b2 ts, msubst b3 ts in
 
-(* Extract the term from the goal type (get “u” from “P u”). *)
-  let g_term =
-    match get_args g_type with
-    | t, [u] when is_symb cfg.symb_P t -> u
-    | _ -> fatal pos "Goal not of the form (%a _)." sym cfg.symb_P
-  in
-
   (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
     match pat with
     (* Simple rewrite, no pattern. *)
     | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
-        let sigma =
-          match find_subst (vars, l) g_term with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos "No subterm of [%a] matches [%a]."
-                term g_term term l
-        in
+        let sigma = find_subst pos (vars, l) g_term in
         (* Build the required data from that substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
@@ -389,21 +418,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Basic patterns. *)
     | Some(Rw_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
-        let match_p =
-          let p_refs = replace_wild_by_tref p in
-          if not (find_subterm_matching p_refs g_term) then
-            fatal pos "No subterm of [%a] matches [%a]."
-              term g_term term p;
-          p_refs (* [TRef] cells have been instantiated here. *)
-        in
+        let match_p = find_subterm_matching pos p g_term in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
-        let sigma =
-          match matching_subs (vars,l) match_p with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos "No subterm of [%a] matches [%a]."
-                term match_p term l
-        in
+        let sigma = matching_subs_check_TRef pos (vars,l) match_p in
         (* Build the data from the substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
@@ -412,21 +429,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Nested patterns. *)
     | Some(Rw_InTerm(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
-        let match_p =
-          let p_refs = replace_wild_by_tref p in
-          if not (find_subterm_matching p_refs g_term) then
-            fatal pos "No subterm of [%a] matches [%a]."
-              term g_term term p;
-          p_refs (* [TRef] cells have been instantiated here. *)
-        in
+        let match_p = find_subterm_matching pos p g_term in
         (* Build a substitution from a subterm of [match_p] matching [l]. *)
-        let sigma =
-          match find_subst (vars,l) match_p with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos "No subterm of the pattern [%a] matches [%a]."
-                term match_p term l
-        in
+        let sigma = find_subst pos (vars,l) match_p in
         (* Build the data from the substitution. *)
         let (t, l, r) = msubst3 bound sigma in
         let p_x = bind_pattern l match_p in
@@ -455,27 +460,15 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                in [pred_bind_l]. *)
         let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
-        let id_val =
-          match find_subst ([|id|],p_refs) g_term with
-          | Some(id_val) -> id_val.(0)
-          | None         ->
-              fatal pos "The pattern [%a] does not match [%a]."
-                term p term l
-        in
+        let sigma = find_subst pos ([|id|],p_refs) g_term in
+        let id_val = sigma.(0) in
         let pat = bind_var id p_refs in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
         (* id_val. *)
         let pat_l = subst pat id_val in
 
         (* This must match with the LHS of the equality proof we use. *)
-        let sigma =
-          match matching_subs (vars,l) id_val with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos
-                "The value of [%a], [%a], in [%a] does not match [%a]."
-                var id term id_val term p term l
-        in
+        let sigma = matching_subs_check_TRef pos (vars,l) id_val in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
         (* id val. *)
@@ -510,16 +503,10 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            was matched with the identifier. *)
         let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
-        let id_val =
-          match find_subst ([|id|],p_refs) g_term with
-          | Some(id_val) -> id_val
-          | None         ->
-              fatal pos "The pattern [%a] does not match [%a]."
-                term p term l
-        in
+        let sigma = find_subst pos ([|id|],p_refs) g_term in
         (* Once we get the value of id, we work with that as our main term
            since this is where s will appear and will be substituted in. *)
-        let id_val = id_val.(0) in
+        let id_val = sigma.(0) in
         (* [pat] is the full value of the pattern, with the wildcards now
            replaced by subterms of the goal and [id]. *)
         let pat = bind_var id p_refs in
@@ -527,20 +514,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
         (* We then try to match the wildcards in [s] with subterms of
            [id_val]. *)
-        let s_refs = replace_wild_by_tref s in
-        if not (find_subterm_matching s_refs id_val) then
-          fatal pos "The value of [%a], [%a], in [%a] does not match [%a]."
-            var id term id_val term p term s;
+        let s = find_subterm_matching pos s id_val in
+
         (* Now we must match s, which no longer contains any TRef's
-           with the LHS of the lemma,*)
-        let s = s_refs in
-        let sigma =
-          match matching_subs (vars,l) s with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos "The term [%a] does not match the LHS [%a]"
-                term s term l
-        in
+           with the LHS of the lemma. *)
+        let sigma = matching_subs_check_TRef pos (vars,l) s in
         let (t,l,r) = msubst3 bound sigma in
 
         (* First we work in [id_val], that is, we substitute all
@@ -582,32 +560,17 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let s = replace_wild_by_tref s in
         let p_s = subst p s in
         (* Try to match p[s/id] with a subterm of the goal. *)
-        let p_refs = replace_wild_by_tref p_s in
-        if not (find_subterm_matching p_refs g_term) then
-            fatal pos "No subterm of [%a] matches the pattern [%a]"
-              term g_term term p_s;
-        let p = p_refs in
+        let p = find_subterm_matching pos p_s g_term in
         let pat_refs = replace_wild_by_tref pat in
         (* Here we have already asserted tat an instance of p[s/id] exists
            so we know that this will match something. The step is repeated
            in order to get the value of [id]. *)
-        let sub =
-          match matching_subs ([|id|], pat_refs) p with
-          | Some(sub) -> sub
-          | None      -> assert false
-        in
+        let sub = matching_subs_check_TRef pos ([|id|],pat_refs) p in
         let id_val = sub.(0) in
         (* This part of the term-building is similar to the previous
            case, as we are essentially rebuilding a term, with some
            subterms that are replaced by new ones. *)
-        let sigma =
-          match matching_subs (vars, l) id_val with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos
-                "The value of X, [%a], does not match the LHS, [%a]"
-                term id_val term l
-        in
+        let sigma = matching_subs_check_TRef pos (vars,l) id_val in
         let (t,l,r) = msubst3 bound sigma in
 
         (* Now to do some term building. *)
@@ -626,24 +589,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            the way we construct a [pat_r]. *)
         let (id,q) = unbind q in
         let q_refs = replace_wild_by_tref q in
-        let id_val =
-          match find_subst ([|id|],q_refs) g_term with
-          | Some(id_val) -> id_val
-          | None         ->
-              fatal pos "The pattern [%a] does not match [%a]."
-                term q term g_term
-        in
-        let id_val = id_val.(0) in
+        let sigma = find_subst pos ([|id|],q_refs) g_term in
+        let id_val = sigma.(0) in
         let pat = bind_var id q_refs in
         let pat_l = subst pat id_val in
-        let sigma =
-          match find_subst (vars,l) id_val with
-          | Some(sigma) -> sigma
-          | None        ->
-              fatal pos
-                "The value of [%a], [%a], in [%a] does not match [%a]."
-                var id term id_val term q term l
-        in
+        let sigma = find_subst pos (vars,l) id_val in
         let (t,l,r) = msubst3 bound sigma in
 
         (* Rewrite in id. *)

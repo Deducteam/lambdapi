@@ -14,18 +14,19 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
    builtin "admit" ≔ …; // : T
    builtin "and" ≔ …; // : T → T → T (stands for ";")
-   builtin "apply" ≔ …; // : Π [a], Prf a → T
+   builtin "apply" ≔ …; // : Π [p], Prf p → T
    builtin "assume" ≔ …; // : String → T
+   builtin "apply" ≔ …; // : Π [p], Prf p → T
    builtin "fail" ≔ …; // : T
    builtin "generalize" ≔ …; // : Π [a], El a → T
-   builtin "have" ≔ …; // : String → Π [a], Prf a → T  
+   builtin "have" ≔ …; // : String → Prop → T  
    builtin "induction" ≔ …; // : T
    builtin "orelse" ≔ …; // : T → T → T
    builtin "refine" ≔ …; // : String → T
    builtin "reflexivity" ≔ …; // : T
    builtin "remove" ≔ …; // : Π [a], El a → T
    builtin "repeat" ≔ …; // : T → T
-   builtin "rewrite" ≔ …; // : String → String → Π [a], Prf a → T
+   builtin "rewrite" ≔ …; // : String → String → Π [p], Prf p → T
    builtin "set" ≔ …; // : String → Π [a], El a → T
    builtin "simplify" ≔ …; // : T
    builtin "simplify rule off" ≔ …; // : T

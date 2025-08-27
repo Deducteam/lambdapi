@@ -81,54 +81,11 @@ type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
   Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * bool * Pos.popt
 
-type conclusion =
-  | Typ of string * string
-  | Unif of string * string
-
-type goal = (string * string) list * conclusion
-
-let string_of_goal : Proof.goal -> goal =
-  let buf = Buffer.create 80 in
-  let fmt = Format.formatter_of_buffer buf in
-  let to_string f x =
-    f fmt x;
-    Format.pp_print_flush fmt ();
-    let res = Buffer.contents buf in
-    Buffer.clear buf;
-    res
-  in
-  fun g ->
-  let open Print in
-  let ids = Proof.get_names g in
-  let term = term_in ids in
-  let env_elt (s,(_,t,d)) =
-    let t = to_string term t in
-    s,
-    match d with
-    | None -> t
-    | Some d -> t^" ≔ "^to_string term d
-  in
-  let ctx_elt (x,a,d) =
-    let a = to_string term a in
-    to_string var x,
-    match d with
-    | None -> a
-    | Some d -> a^" ≔ "^to_string term d
-  in
-  match g with
-  | Proof.Typ gt ->
-      let meta = to_string meta gt.goal_meta in
-      let typ = to_string term gt.goal_type in
-      List.rev_map env_elt gt.goal_hyps, Typ (meta, typ)
-  | Proof.Unif (c,t,u) ->
-      let t = to_string term t and u = to_string term u in
-      List.rev_map ctx_elt c, Unif (t,u)
-
-let current_goals : proof_state -> goal list =
+let current_goals : proof_state -> Goal.info list =
   fun (time, st, ps, _, _, _) ->
   Time.restore time;
   Print.sig_state := st;
-  List.map string_of_goal ps.proof_goals
+  List.map Goal.to_info ps.proof_goals
 
 type command_result =
   | Cmd_OK    of state * string option
@@ -150,7 +107,7 @@ let initial_state : string -> state = fun fname ->
   Package.apply_config fname;
   let mp = Library.path_of_file LpLexer.escape fname in
   Sign.loading := [mp];
-  let sign = Sig_state.create_sign mp in
+  let sign = Sign.create mp in
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
@@ -170,7 +127,7 @@ let handle_command : state -> Command.t -> command_result =
       in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
   with Fatal(Some p,m) ->
-    Cmd_Error(Some p, Pos.popt_to_string p ^ m)
+    Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
   fun (_, ss, ps, finalize, prv, sym_pos) tac n ->
@@ -179,13 +136,13 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(Some p,m) ->
-    Tac_Error(Some p, Pos.popt_to_string p ^ m)
+    Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
   try Cmd_OK((Time.save (), finalize ss ps), None)
   with Fatal(Some p,m) ->
-    Cmd_Error(Some p, Pos.popt_to_string p ^ m)
+    Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope

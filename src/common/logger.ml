@@ -1,6 +1,6 @@
 (** Functions for creating loggers. **)
 
-open Lplib open Base open Color
+open Lplib open Base
 
 (** Type of a logging function. It needs to be boxed for higher-rank
    polymorphism reasons *)
@@ -8,7 +8,7 @@ type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 
 (** Type of logging function data. *)
 type logger =
-  { logger_key : char (** Character used to unable the logger. *)
+  { logger_key : char (** Character used to (un)able the logger. *)
   ; logger_name : string (** Four-characters name used as prefix in logs. *)
   ; logger_desc : string (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *)
@@ -46,9 +46,9 @@ let make logger_key logger_name logger_desc =
   let logger_enabled = ref false in
   (* Actual printing function. *)
   let pp fmt =
-    update_with_color Stdlib.(!Error.err_fmt);
+    Color.update_with_color Stdlib.(!Error.err_fmt);
     let out = Format.(if !logger_enabled then fprintf else ifprintf) in
-    out Stdlib.(!Error.err_fmt) (cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
+    out Stdlib.(!Error.err_fmt) (Color.cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
       logger_name
   in
 

@@ -267,6 +267,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
@@ -326,10 +327,14 @@ let command : p_command pp = fun ppf { elt; _ } ->
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open ps -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(false,ps) -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(true,ps) -> out ppf "private open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
-  | P_require (b, ps) ->
-    out ppf "require%a %a" (pp_if b (unit " open")) () (List.pp path " ") ps
+  | P_require (None, ps) -> out ppf "require %a" (List.pp path " ") ps
+  | P_require (Some false, ps) ->
+      out ppf "require open %a" (List.pp path " ") ps
+  | P_require (Some true, ps) ->
+      out ppf "require private open %a" (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "@[require %a@ as %a@]" path p ident i
   | P_rules [] -> assert false (* not possible *)
   | P_rules (r :: rs) ->

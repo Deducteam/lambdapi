@@ -123,8 +123,6 @@ let sym : sym pp = fun ppf s ->
 
 let var : var pp = fun ppf x -> uid ppf (base_name x)
 
-let meta : meta pp = fun ppf m -> out ppf "?%d" m.meta_key
-
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
 
@@ -211,7 +209,7 @@ let rec pp p idmap ppf t =
         let number f t =
           try out ppf "%i" (f t) with Not_a_nat -> pp_appl h args in
         let args = LibTerm.remove_impl_args s args in
-        begin match !(s.sym_not) with
+        begin match !(s.sym_nota) with
         | Quant when are_quant_args args ->
             if p <> `Func then out ppf "(";
             quantifier idmap ppf s args;
@@ -264,6 +262,11 @@ and quantifier idmap ppf s args =
       end
   | _ -> assert false
 
+and meta idmap ppf m =
+  if !print_meta_types then
+    out ppf "(?%d:%a)" m.meta_key (func idmap) !(m.meta_type)
+  else out ppf "?%d" m.meta_key
+
 and head idmap wrap ppf t =
   let env ppf ts =
     if Array.length ts > 0 then
@@ -282,11 +285,7 @@ and head idmap wrap ppf t =
   | Type        -> out ppf "TYPE"
   | Kind        -> out ppf "KIND"
   | Symb(s)     -> sym ppf s
-  | Meta(m,e)   ->
-      if !print_meta_types then
-        out ppf "(?%d:%a)" m.meta_key (func idmap) !(m.meta_type)
-      else out ppf "?%d" m.meta_key;
-      if !print_meta_args then env ppf e
+  | Meta(m,e)   -> meta idmap ppf m; if !print_meta_args then env ppf e
   | Plac(_)     -> out ppf "_"
   | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
   | Bvar _      -> assert false
@@ -360,6 +359,9 @@ let term_in = func
 
 let term = term_in StrMap.empty
 
+let env ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
+
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
   let decl idmap ppf (x,t) = out ppf "%a : %a" var x (func idmap) t in
   let decl i idmap ppf d =
@@ -376,6 +378,8 @@ let rec prod_in : int StrMap.t -> (term * bool list) pp =
   | _ -> func idmap ppf t
 
 let prod = prod_in StrMap.empty
+
+let sym_type ppf s = prod ppf (!(s.sym_type), s.sym_impl)
 
 let sym_rule : sym_rule pp = fun ppf r ->
   out ppf "%a ↪ %a" term (lhs r) term (rhs r)
@@ -414,6 +418,8 @@ let constr : constr pp = fun ppf (ctx, t, u) ->
 let constrs : constr list pp = fun ppf cs ->
   let pp_sep ppf () = out ppf "@ ;" in
   out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
+
+let meta : meta pp = meta StrMap.empty
 
 let metaset : MetaSet.t pp =
   D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta

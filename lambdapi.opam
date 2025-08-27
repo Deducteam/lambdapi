@@ -20,25 +20,24 @@ bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "3.7"}
-  (("ocaml" {>= "5.03.0"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha4"} & "dream" {= "1.0.0~alpha8"})
-  |("ocaml" {>= "4.13.0" & < "5.03.0"} & "dream" {>= "1.0.0~alpha3"})
-  |("ocaml" {>= "4.09.0" & < "4.13.0"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
+  (("ocaml" {>= "5.3"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha4"} & "dream" {= "1.0.0~alpha8"})
+  |("ocaml" {>= "4.13" & < "5.3"} & "dream" {>= "1.0.0~alpha3"})
+  |("ocaml" {>= "4.10" & < "4.13"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
   "menhir" {>= "20200624"}
   "sedlex" {>= "3.2"}
   "alcotest" {with-test}
   "alt-ergo" {with-test}
   "dedukti" {with-test & >= "2.7"}
-  "bindlib" {>= "6.0.0"}
-  "timed" {>= "1.0"}
-  "pratter" {>= "3.0.0" & < "4"}
-  "camlp-streams" {>= "5.0"}
-  "why3" {>= "1.8.0"}
-  "yojson" {>= "1.6.0"}
-  "cmdliner" {>= "1.1.0"}
-  "stdlib-shims" {>= "0.1.0"}
+  "timed" {>= "1"}
+  "pratter" {>= "5" & < "6"}
+  "camlp-streams" {>= "5"}
+  "why3" {>= "1.8"}
+  "yojson" {>= "1.6"}
+  "cmdliner" {>= "1.1"}
+  "stdlib-shims" {>= "0.1"}
   "odoc" {with-doc}
-  "lwt_ppx" {>= "1.0.0"}
-  "dream" {>= "1.0.0~alpha3"}
+  "lwt_ppx" {>= "1"}
+  "uri" {>= "1.1"}
 ]
 build: [
   ["dune" "subst"] {dev}

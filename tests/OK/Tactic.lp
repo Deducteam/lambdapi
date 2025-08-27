@@ -18,13 +18,16 @@ builtin "apply" ≔ #apply;
 constant symbol #assume : String → Tactic;
 builtin "assume" ≔ #assume;
 
+constant symbol #change [p] : π p → Tactic;
+builtin "change" ≔ #change;
+
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
 constant symbol #generalize : Π [a], τ a → Tactic;
 builtin "generalize" ≔ #generalize;
 
-constant symbol #have : String → Π p, π p → Tactic;
+constant symbol #have : String → Prop → Tactic;
 builtin "have" ≔ #have;
 
 constant symbol #induction : Tactic;

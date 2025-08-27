@@ -22,30 +22,49 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
-.PHONY: test_libs
-test_libs: lambdapi
-	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
-	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
-
 #### Unit tests and sanity check #############################################
 
-.PHONY: tests
-tests: lambdapi
-	@dune runtest
-	@tests/runtests.sh
-	@tests/dtrees.sh
-	@tests/export_dk.sh
-	@tests/export_lp.sh
-	@tests/export_raw_dk.sh
+.PHONY: sanity_check
+sanity_check: misc/sanity_check.sh
+	@./$<
+
+.PHONY: test_all
+test_all: test
+	$(MAKE) test_load
+	$(MAKE) test_export_dk
+	$(MAKE) test_export_lp
+	$(MAKE) test_export_raw_dk
 	$(MAKE) test_libs
+
+.PHONY: test
+test: lambdapi
+	@dune runtest
+	@tests/dtrees.sh
+
+.PHONY: test_load
+test_load: lambdapi
+	@tests/test_load.sh
+
+.PHONY: test_export_dk
+test_export_dk: lambdapi
+	@tests/export_dk.sh
+
+.PHONY: test_export_lp
+test_export_lp: lambdapi
+	@tests/export_lp.sh
+
+.PHONY: test_export_raw_dk
+test_export_raw_dk: lambdapi
+	@tests/export_raw_dk.sh
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi
 	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
 
-.PHONY: sanity_check
-sanity_check: misc/sanity_check.sh
-	@./$<
+.PHONY: test_libs
+test_libs: lambdapi
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
 
 #### Library tests ###########################################################
 

@@ -42,7 +42,7 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
   in
   let (hd, args) = get_args t in
   if is_coercion hd then
-    let* args = List.map (reduce_coercions c) args |> List.sequence_opt in
+    let* args = List.sequence_opt (List.map (reduce_coercions c) args) in
     (* Try to reduce: if there's still a coercion, quit *)
     let reduct = Eval.whnf c (add_args hd args) in
     let hd, args = get_args reduct in
@@ -80,8 +80,10 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
     [c] and problem [pb]. *)
 let rec coerce : problem -> ctxt -> term -> term -> term -> term * bool =
   fun pb c t a b ->
-  if Eval.pure_eq_modulo c a b then (t, false) else
-     match Coercion.apply a b t |> reduce_coercions c with
+  if Logger.log_enabled () then log "coerce %a\nto %a" term a term b;
+  if Eval.pure_eq_modulo c a b then (t, false)
+  else
+     match reduce_coercions c (Coercion.apply a b t) with
      | None -> unif pb c a b; (t, false)
      | Some u ->
          if Logger.log_enabled () then
@@ -157,7 +159,8 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       let cu = Stdlib.ref false in
       let rec ref_esubst i range =
         (* Refine terms of the explicit substitution. *)
-        if i >= Array.length ts then range else
+        if i >= Array.length ts then range
+        else
           match unfold range with
           | Prod(ai, b) ->
               let (tsi, cuf) = force pb c ts.(i) ai in
