@@ -11,6 +11,7 @@ The available commands are:
 
 * ``check``: check the correctness of input files.
 * ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
+* ``deindex``: remove constants from the search index given a prefix path
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
 * ``index``: create an index of symbols and rules of input files.
@@ -87,6 +88,14 @@ decision-tree
 -------------
 
 * ``--ghost`` print the decision tree of a ghost symbol. Ghost symbols are symbols used internally that cannot be used in the concrete syntax.
+
+deindex
+-------
+
+* ``--path`` : indicates the suffix of the paths of the symbols to be removed from the index.
+  The path must be dot (`.`) separated.
+  For insrance, if symbol `tests.OK.natural.N` is indexed, `lambdapi deindex --path tests.OK.natural` 
+  will remove it (together with all the symbols whose path starts with `tests.OK.natural.N`) from the index.
 
 export
 ------

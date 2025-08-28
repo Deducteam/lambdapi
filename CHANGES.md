@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- CLI command `deindex` to remove constants from the index.
+
+
 ### Changed
 
 - `simplify` now fails if the goal cannot be simplified.
