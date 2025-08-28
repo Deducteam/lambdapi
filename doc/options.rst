@@ -93,7 +93,7 @@ deindex
 -------
 
 * ``--path`` : indicates the suffix of the paths of the symbols to be removed from the index.
-  The path must be dot (`.`) separated.
+  The path must be dot (`.`) and is not checked for well formness (i.e. A.B matches A.BC).
   For insrance, if symbol `tests.OK.natural.N` is indexed, `lambdapi deindex --path tests.OK.natural` 
   will remove it (together with all the symbols whose path starts with `tests.OK.natural.N`) from the index.
 
