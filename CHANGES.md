@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - CLI command `deindex` to remove constants from the index.
+- Indexing of symbols from current development (as well as currently required files) and their deindexing when files are closed are now automatically supported.
 
 
 ### Changed
