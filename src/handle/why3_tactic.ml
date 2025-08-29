@@ -8,7 +8,7 @@ open Fol
 open Goal
 
 (** Logging function for external prover calling with Why3. *)
-let log = Logger.make 'y' "why3" "why3 provers"
+let log = Logger.make 'y' "why3" "why3 tactic"
 let log = log.pp
 
 (** [default_prover] contains the name of the current prover. Note that it can
