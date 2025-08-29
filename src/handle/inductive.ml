@@ -16,7 +16,7 @@ open Core open Term open Print
 open Parsing open Syntax
 
 (** Logging function for generating of inductive principle. *)
-let log_ind = Logger.make 'g' "indu" "induction principles generation"
+let log_ind = Logger.make 'g' "indu" "generation of induction principles"
 let log_ind = log_ind.pp
 
 (** Type for inductive type definitions. *)
