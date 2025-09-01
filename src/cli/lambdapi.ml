@@ -489,7 +489,7 @@ let rules_arg : string list CLT.t =
 
 let require_arg : string list CLT.t =
   let doc =
-    "LP file to be required before starting the search engine." in
+    "LP files to be required before starting the search engine." in
   Arg.(value & opt_all string [] & info ["require"] ~docv:"PATH" ~doc)
 
 let custom_dbpath : string option CLT.t =
