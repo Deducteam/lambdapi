@@ -190,11 +190,11 @@ end
 module DB = struct
  (* fix codomain type *)
 
- type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+ type side = Parsing.Syntax.side = Lhs | Rhs
 
- type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+ type inside = Parsing.Syntax.inside = Exact | Inside
 
- type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
+ type 'inside where = 'inside Parsing.Syntax.where =
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
@@ -574,7 +574,7 @@ include DB
 
 module QueryLanguage = struct
 
- open Parsing.SearchQuerySyntax
+ open Parsing.Syntax
 
  let match_opt p x =
   match p,x with
@@ -649,20 +649,10 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
-  (**transform_ascii_to_unicode [s] replaces all the occurences of '->'
-    and 'forall' with '→' and 'Π' in the search query [s] *)
-  let transform_ascii_to_unicode : string -> string = fun s ->
-    let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
-    Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
-
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results
-  ~title_tag:(hb,he) s =
-  let s = transform_ascii_to_unicode s in
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag:(hb,he) q =
   try
-   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
-   let pq = Stream.next pstream in
    let mok _ = None in
-   let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
+   let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
@@ -685,26 +675,43 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html ss ~from ~how_many s ~dbpath =
-  the_dbpath := dbpath;
-  search_cmd_gen ss ~from ~how_many
-   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>") s
-
- let search_cmd_txt ss s ~dbpath =
+  let search_cmd_txt_query ss ~dbpath q =
   the_dbpath := dbpath;
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list ~title_tag:("","") s
+   ~pp_results:pp_results_list ~tag:("","") q
+
+ (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
+     ["forall"] with ["→"] and ["Π"] in the search query [s] *)
+  let transform_ascii_to_unicode : string -> string =
+    let arrow = Str.regexp_string " -> "
+    and forall = Str.regexp "\\bforall\\b" in
+    fun s -> Str.global_replace forall "Π" (Str.global_replace arrow " → " s)
+
+  (* unit tests *)
+  let _ =
+    assert (transform_ascii_to_unicode "a -> b" = "a → b");
+    assert (transform_ascii_to_unicode " forall x, y" = " Π x, y");
+    assert (transform_ascii_to_unicode "forall x, y" = "Π x, y");
+    assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
+    assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
+
+ let search_cmd_html ss ~from ~how_many ~dbpath s =
+  the_dbpath := dbpath;
+  search_cmd_gen ss ~from ~how_many
+   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:(html_of_results_list from)
+   ~tag:("<h1>","</h1")
+   (Parsing.Parser.Lp.parse_search_query_string ""
+      (transform_ascii_to_unicode s))
+
+ let search_cmd_txt ss ~dbpath s =
+   the_dbpath := dbpath;
+   search_cmd_txt_query ss ~dbpath
+     (Parsing.Parser.Lp.parse_search_query_string ""
+        (transform_ascii_to_unicode s))
 
 end
 
 (* let's flatten the interface *)
 include UserLevelQueries
-
-let _ =
-  assert (transform_ascii_to_unicode "a -> b" = "a → b");
-  assert (transform_ascii_to_unicode " forall x, y" = " Π x, y");
-  assert (transform_ascii_to_unicode "forall x, y" = "Π x, y");
-  assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
-  assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
