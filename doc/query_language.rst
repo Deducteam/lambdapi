@@ -11,7 +11,7 @@ Queries can be expressed according to the following syntax:
    WHERE ::= name | anywhere | rule | lhs | rhs | type | concl | hyp | spine
    HOW ::= > | = | >= | ≥
    GENERALIZE ::= generalize
-   PATTERN ::= << term possibly containing placeholders _ (for terms) and V# (for variable occurrences >>
+   PATTERN ::= << term possibly containing placeholders _ (for terms) and V# (for variable occurrences) >>
 
 where
 
@@ -19,6 +19,8 @@ where
 * parentheses can be used as usual to force a different precedence order
 * ``anywhere`` can be paired only with ``>=`` and ``name`` can be paired only with ``>=`` and no ``generalize``
 * a pattern should be wrapped in parentheses, unless it is atomic (e.g. an identifier or a placeholder)
+* a pattern is expressed using the Lambdapi terms syntax. Additionaly, the search engine allows the use of a basic Rocq syntax to express terms.
+   Specifically, ``fun``, ``forall``, ``exists``, ``/\`` and ``~`` are supported to express terms inside the pattern.
 
 The semantics of the query language is the following:
 
@@ -41,8 +43,6 @@ The semantics of the query language is the following:
   * ``>=`` and ``≥`` matches without restrictions
   * ``=`` the pattern must match the whole position
   * ``>`` the pattern must match a strict subterm of the position
-
-Note that for commodity, ``forall`` and ``->`` can be used inside the query instead of the Unicode characters ``Π`` and ``→`` respectively.
 
 Examples:
 

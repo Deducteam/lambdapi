@@ -183,6 +183,9 @@ index
 
 * ``--db <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
+* ``--source`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones).
+  These sources will also be displayed by the websearch engine when showing the results.
+
 install/uninstall
 -----------------
 

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CLI command `deindex` to remove constants from the index.
 - Indexing of symbols from current development (as well as currently required files) and their deindexing when files are closed are now automatically supported.
 - Added filtering of search results using regular expressions.
+- Added support for basic Rocq syntax for writing search queries (fun, forall, exists, /\ and ~)
 
 ### Changed
 

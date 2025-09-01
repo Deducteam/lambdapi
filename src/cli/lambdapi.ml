@@ -67,11 +67,9 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
         query language specification</a> to learn about the query language.
         <br>The query language also uses the <a
         href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
-        Lambdapi terms syntax</a>.<br> with the possibility to use,
-        for commodity,
-        \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
-        (results are displayed with the Unicode symbols
-        \"Π\" and \"→\" though).
+        Lambdapi terms syntax</a>.<br> 
+        while supporting a subset of the Rocq syntax (specificaly,
+        terms using fun, forall, exists, /\ and ~ are allowed)
         In particular, the following constructors can come handy for
         writing queries:<br>
     </p>
