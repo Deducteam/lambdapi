@@ -5,15 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   push:
     paths:
-      - '.github/workflows/ocaml.yml'
-      - 'lambdapi.opam'
-      - 'Makefile'
-      - 'dune-project'
-      - '**/dune'
-      - '**.ml'
-      - '**.mli'
-      - '**.mll'
-      - '**.mly'
+      - '.github/workflows/emacs.yml'
+      - 'editors/emacs/**'
   workflow_dispatch:
 
 jobs:
@@ -31,17 +24,15 @@ jobs:
         # 4.11.2: 24/02/2021
         # 4.10.2: 18/12/2020
         # 4.09.1: 16/03/2020
-        ocaml-version: [5.2.1, 4.14.2]
+        eglot: [1.7]
     runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: setup-ocaml
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
       - name: build lambdapi-mode
-        run: make dist
+        run: make -C editors/emacs dist
       - name: install lambdapi-mode
         run: |
-          ./installAndLanuch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 
+          chmod +x installAndLaunch.sh
+          ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 
+        working-directory: editors/emacs/
