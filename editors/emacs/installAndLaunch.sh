@@ -19,18 +19,36 @@ cat <<'EOF' > ~/.emacs.d/init.el
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (setq package-check-signature nil)
-(use-package eglot)
-(use-package math-symbol-lists)
-(use-package highlight)
-
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/eglot/"))
+(require 'eglot)
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/math-symbol-lists/"))
+(require 'math-symbol-lists)
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/highlight/"))
+(require 'highlight)
 EOF
+ echo "creating elpa folder"
+ mkdir -p ~/.emacs.d/elpa/
+
+echo "cloning dependencies repos"
+git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
+git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
+git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
+
+echo "updating version for Elpa"
+echo "(define-package \"highlight\" \"20210318.2248\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
+echo "(define-package \"eglot\" \"1.5\")" > ~/.emacs.d/elpa/eglot/eglot-pkg.el
+echo "(define-package \"math-symbol-lists\" \"1.3\")" > ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-pkg.el
+
+touch ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
+touch ~/.emacs.d/elpa/highlight/highlight-autoloads.el
+
 echo "🚀 Premier lancement d’Emacs pour déclencher l’installation..."
 # (package-refresh-contents)
 PATH="$BIN:$PATH" emacs \
   -l ~/.emacs.d/init.el \
-  --eval "(require-package 'math-symbol-lists)" \
-  # --batch \
-  # --eval "(package-install-file \"${NAME}-${VERSION}.tar\")"
+  --eval "(package-install-file \"${NAME}-${VERSION}.tar\")" \
+  --batch \
+#   # --eval "(require-package 'math-symbol-lists)" \
 echo "🎉 Terminé ! Lance Emacs normalement pour commencer à coder avec Eglot 1.17."
 
 # (use-package eglot)
