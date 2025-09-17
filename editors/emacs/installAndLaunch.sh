@@ -4,6 +4,9 @@ set -e
 NAME="$1"
 VERSION="$2"
 BIN="$3"
+EGLOT_V="$4"
+MATH_SYMB_V="$5"
+HIGHLIGHT_V="$6"
 
 echo "🔧 Mise à jour du système..."
 # sudo apt update && sudo apt install -y git curl
@@ -34,10 +37,10 @@ git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglo
 git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
 git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
 
-echo "updating version for Elpa"
-echo "(define-package \"highlight\" \"20210318.2248\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
-echo "(define-package \"eglot\" \"1.5\")" > ~/.emacs.d/elpa/eglot/eglot-pkg.el
-echo "(define-package \"math-symbol-lists\" \"1.3\")" > ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-pkg.el
+echo "updating version in Elpa"
+echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
+echo "(define-package \"eglot\" \"${EGLOT_V}\")" > ~/.emacs.d/elpa/eglot/eglot-pkg.el
+echo "(define-package \"math-symbol-lists\" \"${MATH_SYMB_V}\")" > ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-pkg.el
 
 touch ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
 touch ~/.emacs.d/elpa/highlight/highlight-autoloads.el
