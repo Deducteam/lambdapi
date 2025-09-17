@@ -10,6 +10,20 @@ HIGHLIGHT_V="$6"
 
 # For instance, one can run the scrupt with /installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.5 1.3 20210318.2248
 
+convertVersionToCommitDate() {
+  local input="$1"
+  local date_part=${input%%.*}
+  local time_part=${input##*.}
+
+  printf "%s-%s-%s %s:%s\n" \
+    "${date_part:0:4}" \
+    "${date_part:4:2}" \
+    "${date_part:6:2}" \
+    "${time_part:0:2}" \
+    "${time_part:2:2}"
+}
+
+
 echo "📦 Installation d'Emacs..."
 sudo snap install emacs --classic
 
@@ -32,9 +46,29 @@ EOF
  mkdir -p ~/.emacs.d/elpa/
 
 echo "cloning dependencies repos"
-git clone --depth 1 --branch ${EGLOT_V} https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
-git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
-git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
+if [ ! -d ~/.emacs.d/elpa/eglot ]; then
+  git clone --depth 1 --branch ${EGLOT_V} https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
+  echo "Eglot cloned to " ~/.emacs.d/elpa/eglot
+else
+  echo "Eglot is already cloned. Skipping"
+fi
+if [ ! -d ~/.emacs.d/elpa/math-symbol-lists ]; then
+  git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
+  echo "math-symbol-lists cloned to " ~/.emacs.d/elpa/math-symbol-lists
+
+else
+  echo "math-symbol-lists is already cloned. Skipping"
+fi
+
+if [ ! -d ~/.emacs.d/elpa/highlight ]; then
+  commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
+  git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
+  echo cheking out to "${commit_date}"
+  git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --before="${commit_date}" master)
+  echo "highlight cloned to " ~/.emacs.d/elpa/highlight
+else
+  echo "Highlight is already cloned. Skipping"
+fi
 
 echo "updating version in Elpa"
 echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
