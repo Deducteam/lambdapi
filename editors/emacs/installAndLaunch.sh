@@ -8,8 +8,7 @@ EGLOT_V="$4"
 MATH_SYMB_V="$5"
 HIGHLIGHT_V="$6"
 
-echo "🔧 Mise à jour du système..."
-# sudo apt update && sudo apt install -y git curl
+# For instance, one can run the scrupt with /installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.5 1.3 20210318.2248
 
 echo "📦 Installation d'Emacs..."
 sudo snap install emacs --classic
@@ -33,9 +32,9 @@ EOF
  mkdir -p ~/.emacs.d/elpa/
 
 echo "cloning dependencies repos"
-git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
+git clone --depth 1 --branch ${EGLOT_V} https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
 git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
-git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
+git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
 
 echo "updating version in Elpa"
 echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
