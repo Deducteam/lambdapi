@@ -14,9 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        eglot-version: [1.5, 1.6]
-        math-symbol-list-version: [1.3, 1.2.1]
-        highlight-version: [20210318.2248, 20250815.1830]
+        eglot-version: [1.0.0, 1.5, 1.6]
+        math-symbol-list-version: [1.1, 1.3, 1.2.1]
+        highlight-version: [20181228.1826, 20210318.2248, 20250815.1830]
     runs-on: ubuntu-latest
     steps:
       - name: checkout
