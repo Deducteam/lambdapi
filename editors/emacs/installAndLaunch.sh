@@ -62,7 +62,7 @@ fi
 
 if [ ! -d ~/.emacs.d/elpa/highlight ]; then
   commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
-  git clone --depth 1 https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
+  git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
   echo cheking out to "${commit_date}"
   git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --before="${commit_date}" master)
   echo "highlight cloned to " ~/.emacs.d/elpa/highlight
