@@ -72,9 +72,9 @@ if [ ! -d ~/.emacs.d/elpa/highlight ]; then
   commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
   git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
   echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0) it is just ignored."
-  if [[ ${MATH_SYMB_V} == "0" ]]; then # ignore branch
+  if [[ ${HIGHLIGHT_V} == "0" ]]; then # ignore branch
     # git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
-    MATH_SYMB_V=20250815.1830
+    HIGHLIGHT_V=20250815.1830
   else
     git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
   fi
