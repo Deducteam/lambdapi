@@ -15,14 +15,11 @@ HIGHLIGHT_V="$6"
 convertVersionToCommitDate() {
   local input="$1"
   local date_part=${input%%.*}
-  local time_part=${input##*.}
 
   printf "%s-%s-%s %s:%s\n" \
     "${date_part:0:4}" \
     "${date_part:4:2}" \
-    "${date_part:6:2}" \
-    "${time_part:0:2}" \
-    "${time_part:2:2}"
+    "${date_part:6:2}"
 }
 
 
@@ -51,6 +48,7 @@ echo "cloning dependencies repos"
 if [ ! -d ~/.emacs.d/elpa/eglot ]; then
   if [[ ${EGLOT_V} == "0.0" ]]; then  # ignore branch
     git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
+    EGLOT_V="1.9"
   else
     git clone --depth 1 --branch ${EGLOT_V} https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
   fi
@@ -59,7 +57,7 @@ else
   echo "Eglot is already cloned. Skipping"
 fi
 if [ ! -d ~/.emacs.d/elpa/math-symbol-lists ]; then
-  if [[ ${MATH_SYMB_V} == "0.0"]]; then #ignore branch
+  if [[ ${MATH_SYMB_V} == "0.0" ]]; then # ignore branch
     git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
   else
     git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
@@ -72,8 +70,8 @@ fi
 if [ ! -d ~/.emacs.d/elpa/highlight ]; then
   commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
   git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
-  echo cheking out to "${commit_date}". If commit does not exist (i.e. 0.0) it is just ignored.
-  git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --before="${commit_date}" master)
+  echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0.0) it is just ignored."
+  git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
   echo "highlight cloned to " ~/.emacs.d/elpa/highlight
 else
   echo "Highlight is already cloned. Skipping"
