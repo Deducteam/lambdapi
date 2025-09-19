@@ -59,6 +59,7 @@ fi
 if [ ! -d ~/.emacs.d/elpa/math-symbol-lists ]; then
   if [[ ${MATH_SYMB_V} == "0" ]]; then # ignore branch
     git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
+    MATH_SYMB_V=1.2.1
   else
     git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
   fi
@@ -71,7 +72,12 @@ if [ ! -d ~/.emacs.d/elpa/highlight ]; then
   commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
   git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
   echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0) it is just ignored."
-  git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
+  if [[ ${MATH_SYMB_V} == "0" ]]; then # ignore branch
+    # git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
+    MATH_SYMB_V=20250815.1830
+  else
+    git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
+  fi
   echo "highlight cloned to " ~/.emacs.d/elpa/highlight
 else
   echo "Highlight is already cloned. Skipping"
