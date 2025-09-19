@@ -10,7 +10,7 @@ HIGHLIGHT_V="$6"
 
 # For instance, one can run the scrupt with ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.5 1.3 20210318.2248 (Does not work because Eglot.V.1.5 is too old)
 # ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.18 1.3 20210318.2248 Does not work because Eglot repo stoped using tags since 2012.
-# For using the latest commit of a library just use version 0.0. For instance : ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 0.0 1.3 0.0
+# For using the latest commit of a library just use version 0. For instance : ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 0 1.3 0
 
 convertVersionToCommitDate() {
   local input="$1"
@@ -46,7 +46,7 @@ EOF
 
 echo "cloning dependencies repos"
 if [ ! -d ~/.emacs.d/elpa/eglot ]; then
-  if [[ ${EGLOT_V} == "0.0" ]]; then  # ignore branch
+  if [[ ${EGLOT_V} == "0" ]]; then  # ignore branch
     git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
     EGLOT_V="1.9"
   else
@@ -57,7 +57,7 @@ else
   echo "Eglot is already cloned. Skipping"
 fi
 if [ ! -d ~/.emacs.d/elpa/math-symbol-lists ]; then
-  if [[ ${MATH_SYMB_V} == "0.0" ]]; then # ignore branch
+  if [[ ${MATH_SYMB_V} == "0" ]]; then # ignore branch
     git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
   else
     git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
@@ -70,7 +70,7 @@ fi
 if [ ! -d ~/.emacs.d/elpa/highlight ]; then
   commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
   git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
-  echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0.0) it is just ignored."
+  echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0) it is just ignored."
   git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
   echo "highlight cloned to " ~/.emacs.d/elpa/highlight
 else
