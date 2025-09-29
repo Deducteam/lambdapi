@@ -62,6 +62,7 @@ type state = Time.t * Sig_state.t
 let parse_text :
       fname:string -> string -> Command.t list * (Pos.pos * string) option =
   fun ~fname s ->
+  Stdlib.(Tool.Indexing.lsp_input := (fname,s)) ;
   let parse_string =
     if Filename.check_suffix fname dk_src_extension then
       Parser.Dk.parse_string
