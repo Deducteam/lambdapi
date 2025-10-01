@@ -10,16 +10,15 @@ for Emacs is available on MELPA. An extension for VSCode is available
 on the VSCode Marketplace. Lambdapi can read Dedukti files. It
 includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
-systems: Dedukti, Coq, HRS, CPF.
-"""
+systems: Dedukti, Coq, HRS, CPF."""
 maintainer: ["dedukti-dev@inria.fr"]
 authors: ["Deducteam"]
 license: "CECILL-2.1"
 homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
-dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "3.7"}
+  "dune-site" {>= "3.20.2"}
   (("ocaml" {>= "5.3"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha4"} & "dream" {= "1.0.0~alpha8"})
   |("ocaml" {>= "4.13" & < "5.3"} & "dream" {>= "1.0.0~alpha3"})
   |("ocaml" {>= "4.10" & < "4.13"} & "dream-pure" {= "1.0.0~alpha2"} & "dream-httpaf" {= "1.0.0~alpha3"} & "dream" {= "1.0.0~alpha6"}))
@@ -48,7 +47,10 @@ build: [
     name
     "-j"
     jobs
+    "--promote-install-files=false"
     "@install"
   ]
+  ["dune" "install" "-p" name "--create-install-files" name]
 ]
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 conflicts: [ "ocaml-option-bytecode-only" ]
