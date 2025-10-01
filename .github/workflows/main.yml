@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       # - name: recovering cached opam files
       #   uses: actions/cache@v4
       #   with:
