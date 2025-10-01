@@ -19,6 +19,7 @@ homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 depends: [
   "dune" {>= "3.7"}
+  "dune-site" {>= "3.17"}
   "ocaml" {>= "4.10"}
   "dream-pure" {>= "1.0.0~alpha2"}
   "dream-httpaf" {>= "1.0.0~alpha3"}

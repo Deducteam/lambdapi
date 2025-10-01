@@ -1,6 +1,6 @@
 (lang dune 3.7)
 (using dune_site 0.1)
-(generate_opam_files true)
+(generate_opam_files false)
 
 (name lambdapi)
 (source (github Deducteam/lambdapi))
