@@ -64,8 +64,10 @@ let do_check_text ofmt ~doc =
           fname = Some(doc.uri);
           start_line = 0;
           start_col  = 0;
+          start_offset  = 0;
           end_line = 0;
-          end_col = 0
+          end_col = 0;
+          end_offset  = 0;
         } in
       (doc, Lp_doc.mk_error ~doc loc msg)
   in

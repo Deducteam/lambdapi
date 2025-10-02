@@ -39,6 +39,8 @@ depends: [
   "odoc" {with-doc}
   "lwt_ppx" {>= "1"}
   "uri" {>= "1.1"}
+  # tests
+  "ppx_inline_test" { with-test }
 ]
 build: [
   ["dune" "subst"] {dev}

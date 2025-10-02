@@ -15,6 +15,8 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
+  type lexbuf
+
   val parse : in_channel -> Syntax.ast
   (** [parse inchan] returns a stream of commands parsed from
       channel [inchan]. Commands are parsed lazily and the channel is
@@ -27,11 +29,16 @@ module type PARSER = sig
   val parse_string : string -> string -> Syntax.ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
+
+  val parse_from_lexbuf : lexbuf -> Syntax.ast
+  (** [parse_from_lexbuf lexbuf] is the same than [parse_string] but with an
+      already created lexbuf *)
+
 end
 
 module Lp :
 sig
-  include PARSER
+  include PARSER with type lexbuf := Sedlexing.lexbuf
 
   val parse_term : in_channel -> Syntax.p_term Stream.t
   (** [parse inchan] returns a stream of terms parsed from
@@ -57,6 +64,10 @@ sig
       string [s] which comes from file [f] ([f] can be anything). *)
 
   val parse_qid : string -> Core.Term.qident
+
+  val parse_from_lexbuf : Sedlexing.lexbuf -> Syntax.ast
+  (** [parse_from_lexbuf lexbuf] Same than [parse_string] but with an already created lexbuf *)
+
   end
 = struct
 
@@ -97,6 +108,9 @@ sig
   let parse_string ~grammar_entry fname s =
     stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
 
+  let parse_from_lexbuf ~grammar_entry lexbuf =
+    stream_of_lexbuf ~grammar_entry ?fname:None lexbuf
+
   let parse_term = parse ~grammar_entry:LpParser.term_alone
   let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
   let parse_rwpatt_string =
@@ -113,10 +127,12 @@ sig
   let parse_string = parse_string ~grammar_entry:LpParser.command
   let parse_file = parse_file ~grammar_entry:LpParser.command
 
+  let parse_from_lexbuf = parse_from_lexbuf ~grammar_entry:LpParser.command
+
 end
 
 (** Parsing dk syntax. *)
-module Dk : PARSER = struct
+module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
 
   let token : Lexing.lexbuf -> DkTokens.token =
     let r = ref DkTokens.EOF in fun lb ->
@@ -156,6 +172,8 @@ module Dk : PARSER = struct
     stream_of_lexbuf ~inchan ~fname (Lexing.from_channel inchan)
 
   let parse_string fname s = stream_of_lexbuf ~fname (Lexing.from_string s)
+
+  let parse_from_lexbuf lexbuf = stream_of_lexbuf ?fname:None lexbuf
 end
 
 (* Include parser of new syntax so that functions are directly available.*)
