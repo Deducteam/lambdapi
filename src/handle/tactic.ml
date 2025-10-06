@@ -459,20 +459,112 @@ let rec handle :
   | P_tac_solve -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
-      let t = scope pt in
-      (* Compute the product arity of the type of [t]. *)
-      let n =
-        let c = Env.to_ctxt env in
-        let p = new_problem () in
-        match Infer.infer_noexn p c t with
+      let is_reduced = Stdlib.ref false in
+      (* If [t] is not in whnf, then [ext_whnf t] returns its whnf. Otherwise,
+         if it is headed by a constant symbol, then it reduces its subterms
+         similarly. It also records whether there has been a reduction. *)
+      let rec ext_whnf c t =
+        if Logger.log_enabled() then log "ext_whnf %a" term t;
+        match Eval.whnf_opt c t with
+        | Some t' -> Stdlib.(is_reduced := true); t'
         | None ->
-            let ids = Ctxt.names c in let term = term_in ids in
-            fatal pos "[%a] is not typable." term t
-        | Some (_, a) -> LibTerm.count_products Eval.whnf c a
+            match get_args t with
+            | (Symb s) as h, ts when is_constant s ->
+                add_args_map h (ext_whnf c) ts
+            | _ -> t
       in
-      let t = scope (P.appl_wild pt n) in
-      let p = new_problem () in
-      tac_refine pos ps gt gs p t
+      (*let print_result s f arg x result =
+        let r = f x in
+          if Logger.log_enabled() then log "%s %a ≡ %a" s arg x result r;
+          r
+        in*)
+      (*let ext_whnf c t =
+        print_result "ext_whnf" (ext_whnf c) term t term in*)
+      (* If [t] is not in whnf, then [top_ext_whnf] returns its
+         whnf. Otherwise, if [t] is of the form [Appl(_,u)], then it reduces
+         [u] with [ext_whnf]. It also records whether there has been a
+         reduction. *)
+      let top_ext_whnf c t =
+        if Logger.log_enabled() then log "top_ext_whnf %a" term t;
+        match Eval.whnf_opt c t with
+        | Some t' -> Stdlib.(is_reduced := true); t'
+        | None ->
+            match unfold t with
+            | Appl(pi,u) -> mk_Appl(pi,ext_whnf c u)
+            | _ -> t
+      in
+      (*let top_ext_whnf c t =
+        print_result "top_ext_whnf" (top_ext_whnf c) term t term in*)
+      let top_ext_whnf_opt c t =
+        if Logger.log_enabled() then log "top_ext_whnf_opt %a" term t;
+        Stdlib.(is_reduced := false);
+        let t' = top_ext_whnf c t in
+        if Stdlib.(!is_reduced) then Some t' else None
+      in
+      (*let top_ext_whnf_opt c t =
+        print_result "top_ext_whnf_opt"
+          (top_ext_whnf_opt c) term t (D.option term) in*)
+      (* Try to find [k >= 0] such that [lem] reduces to [Π x1:A1, .., Π
+         xk:Ak, B] and [B] matches [goal]. *)
+      let rec find goal k xs lem is_whnf_lem =
+        if Logger.log_enabled() then
+          log "find %d %a %b\nmatching %a"
+            k term lem is_whnf_lem term goal;
+        let t0 = Time.save() in
+        match Rewrite.matching_subs (xs,lem) goal with
+        | Some _ -> Some k
+        | None ->
+            Time.restore t0;
+            match unfold lem with
+            | Prod(_,b) ->
+                let x,lem' = unbind ~name:("$"^binder_name b) b in
+                find goal (k+1) (Array.append xs [|x|]) lem' false
+            | _ ->
+                if is_whnf_lem then None
+                else
+                  match top_ext_whnf_opt [] lem with
+                  | None -> None
+                  | Some lem' -> find goal k xs lem' true
+      in
+      begin
+        let t = scope pt in
+        let c = Env.to_ctxt env in
+        if let p = new_problem() in
+           Infer.check_noexn p c t gt.goal_type <> None
+           && Unif.solve_noexn ~print:false p && Timed.(!p).unsolved = []
+        then
+          let p = new_problem() in
+          tac_refine pos ps gt gs p t
+        else
+          let a =
+            let p = new_problem() in
+            match Infer.infer_noexn p c t with
+            | None ->
+                let ids = Ctxt.names c in
+                let term = term_in ids in
+                fatal pos "[%a] is not typable." term t
+            | Some (_, a) -> a
+          in
+          let r =
+            let t0 = Time.save () in
+            match find gt.goal_type 0 [||] a false with
+            | Some _ as r -> r
+            | None ->
+                Time.restore t0;
+                match top_ext_whnf_opt c gt.goal_type with
+                | None -> None
+                | Some u -> find u 0 [||] a false
+          in
+          match r with
+          | Some k ->
+              let t = scope (P.appl_wild pt k) in
+              let p = new_problem() in
+              tac_refine pos ps gt gs p t
+          | None ->
+              fatal pos "Could not find a subterm of [%a] or of its whnf \
+                         matching the current goal or its whnf. \
+                         Try refine instead." term a
+      end
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
