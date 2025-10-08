@@ -121,7 +121,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
     let loc = option_default loc Command.(get_pos ast) in
-    nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
+    nodes, st, (cmd_loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
