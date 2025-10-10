@@ -62,8 +62,9 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
-    let qres = match qres with None -> "OK" | Some x -> x in
-    pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    (match qres with
+      | None -> pstate, diags, logs
+      | Some x -> pstate, (tac_loc, 4, x, goals) :: diags, logs)
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -93,23 +94,21 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
-    let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, qres, None in
-    nodes, st, ok_diag :: dg, logs
-  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
-    let start_goals = current_goals pst in
+    (match qres with
+      | None -> nodes, st, dg, logs
+      | Some x -> nodes, st, (cmd_loc, 4, x, None) :: dg, logs)
+  | Cmd_Proof (pst, tlist, _thm_loc, qed_loc) ->
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, qres)   ->
-        let qres = match qres with None -> "OK" | Some x -> x in
-        let pg = qed_loc, 4, qres, None in
         let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
-        st, pg :: dg_proof, logs
+        (match qres with
+          | None -> st, dg_proof, logs
+          | Some x -> st, (qed_loc, 4, x, None) :: dg_proof, logs)
       | Cmd_Error(_loc,msg) ->
         let pg = qed_loc, 1, msg, None in
         st, pg :: dg_proof, ((1, msg), qed_loc) :: logs
@@ -121,8 +120,19 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
-    let loc = option_default loc Command.(get_pos ast) in
-    nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
+    let cmd_loc, loc = match cmd_loc, loc with
+    | Some l, Some Some l' ->
+        if l.fname = l'.fname then
+          (* if error in the same file, use the precise location *)
+          Some l', Some l'
+        else
+          (* else, use the location of the command *)
+          cmd_loc, Some l'
+    (* Otherwise,
+      cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
+    | _, Some l' -> cmd_loc, l'
+    | _, None -> cmd_loc, cmd_loc in
+    nodes, st, (cmd_loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
