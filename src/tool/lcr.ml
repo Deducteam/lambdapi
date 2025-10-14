@@ -327,8 +327,12 @@ let id_sym_rule : sym_rule -> rule_id = fun (_,r) ->
 
 (** [new_rule_id()] generates a new unique rule id. *)
 let new_rule_id : unit -> rule_id =
-  let open Stdlib in let n = ref 0 in fun () -> decr n;
-  {fname=None; start_line=(!n); start_col=0; start_offset=0; end_line=0; end_col=0; end_offset=0}
+  let open Stdlib in
+  let n = ref 0 in
+  fun () ->
+  decr n;
+  {fname=None; start_line=(!n); start_col=0; start_offset=0; end_line=0;
+   end_col=0; end_offset=0}
 
 (** [is_generated i] says if [i] is a generated rule id. *)
 let is_generated : rule_id -> bool = fun p -> p.start_line < 0
