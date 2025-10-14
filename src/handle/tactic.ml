@@ -705,8 +705,7 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
-    if Logger.log_enabled() then
-      log ("Goal %a%a") Goal.pp_no_hyp g Pretty.tactic tac;
+    if Logger.log_enabled() then log ("goal %a") Goal.pp_no_hyp g;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
