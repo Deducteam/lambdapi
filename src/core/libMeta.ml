@@ -19,7 +19,8 @@ let reset_meta_counter () = Stdlib.(meta_counter := -1)
 let fresh : problem -> term -> int -> meta = fun p a n ->
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
            meta_type = ref a; meta_arity = n; meta_value = ref None } in
-  if Logger.log_enabled() then log "fresh ?%d#%d: %a" m.meta_key n Raw.term a;
+  if Logger.log_enabled() then
+    log "create ?%d of arity %d and type %a" m.meta_key n Raw.term a;
   p := {!p with metas = MetaSet.add m !p.metas};
   if Logger.log_enabled() then log "%a" Print.problem p;
   m

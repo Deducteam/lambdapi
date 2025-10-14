@@ -66,7 +66,8 @@ sig
   val parse_qid : string -> Core.Term.qident
 
   val parse_from_lexbuf : Sedlexing.lexbuf -> Syntax.ast
-  (** [parse_from_lexbuf lexbuf] Same than [parse_string] but with an already created lexbuf *)
+  (** [parse_from_lexbuf lexbuf] is the same as [parse_string] but with an
+      already created lexbuf *)
 
   end
 = struct

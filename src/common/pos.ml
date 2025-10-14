@@ -8,10 +8,12 @@ type pos =
   { fname        : string option (** File name for the position.       *)
   ; start_line   : int (** Line number of the starting point.          *)
   ; start_col    : int (** Column number (utf8) of the starting point. *)
-  ; start_offset : int (** Number of chars since the beginning of the document for the starting point *)
+  ; start_offset : int (** Number of chars since the beginning of the document
+                           for the starting point *)
   ; end_line     : int (** Line number of the ending point.            *)
   ; end_col      : int (** Column number (utf8) of the ending point.   *)
-  ; end_offset   : int (** Number of chars since the beginning of the document for the ending point *)
+  ; end_offset   : int (** Number of chars since the beginning of the document
+                           for the ending point *)
   }
 
 (** Total comparison function on pos. *)

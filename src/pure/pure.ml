@@ -200,8 +200,11 @@ module TestUtil = struct
     if debug_test then
       begin
         Format.eprintf "@[";
-        (* Format.eprintf "@[%s %s %-10s: @[" (level_to_string level) (comp_to_string component) (L.tostring loc); *)
-        Format.kfprintf (fun ppf -> Format.fprintf ppf "@]@\n%!") Format.err_formatter
+        (* Format.eprintf "@[%s %s %-10s: @["
+           (level_to_string level) (comp_to_string component)
+           (L.tostring loc); *)
+        Format.kfprintf (fun ppf -> Format.fprintf ppf "@]@\n%!")
+          Format.err_formatter
       end
     else
       Format.ifprintf Format.err_formatter
@@ -385,23 +388,28 @@ let list_take n l =
   if n < 0 then invalid_arg "List.take";
   aux n l
 
-(* this function tries to split a set of sentences using a heuristic, then compares, including positions! *)
+(* this function tries to split a set of sentences using a heuristic, then
+   compares, including positions! *)
 let parse_split input =
   let debug = false in
   let input_split = String.split_on_char ';' input in
   let input_split = List.map (fun s -> s ^ ";") input_split in
   let input_split = List.(list_take (length input_split - 1)) input_split in
-  if debug then Format.eprintf "input_split: @[%a@]@\n" Format.(pp_print_list pp_print_string) input_split;
+  if debug then
+    Format.eprintf "input_split: @[%a@]@\n"
+      Format.(pp_print_list pp_print_string) input_split;
   let cmds_1, _ = parse_text ~fname:test_file input in
-  match parse_with_pos ~fname:test_file (Parsing.zero_pos test_file) input_split with
+  match parse_with_pos ~fname:test_file (Parsing.zero_pos test_file)
+          input_split with
   | Error err ->
     (* log "error in parse_with_pos %s" err; *)
     false
   | Ok cmds_2 ->
-    if debug then Format.eprintf "pos for 1: @[%a@]@\n" TestUtil.pp_cmd_list_pos cmds_1;
-    if debug then Format.eprintf "pos for 2: @[%a@]@\n" TestUtil.pp_cmd_list_pos cmds_2;
-    (* Here, we compare with positions *)
-    List.equal Command.equal_with_pos cmds_1 cmds_2
+      if debug then
+        Format.eprintf "pos for 1: @[%a@]@\npos for 2: @[%a@]@\n"
+          TestUtil.pp_cmd_list_pos cmds_1 TestUtil.pp_cmd_list_pos cmds_2;
+      (* Here, we compare with positions *)
+      List.equal Command.equal_with_pos cmds_1 cmds_2
 
 let%test _ =
   let input = "
@@ -437,7 +445,8 @@ constant symbol case (p : B → Prop) : P (p true) → P (p false) → Π b, P b
 " in
   parse_split input
 
-(* TODO test for notation: check that parsing with notation is correct and that fails when not present *)
+(* TODO test for notation: check that parsing with notation is correct and
+   that fails when not present *)
 
-(* TODO test for positions: check that the positions are correct, including when we
-   resume parsing from the middle of the file *)
+(* TODO test for positions: check that the positions are correct, including
+   when we resume parsing from the middle of the file *)
