@@ -289,7 +289,7 @@ and head idmap wrap ppf t =
           let (x,t),idmap' = safe_unbind_no_check idmap b in
           out ppf "λ %a" var x;
           if !print_domains then
-            out ppf ":%a,%a" (func idmap) a (func idmap') t
+            out ppf ": %a, %a" (func idmap) a (func idmap') t
           else abstractions idmap' ppf t
         end
       else
@@ -297,7 +297,7 @@ and head idmap wrap ppf t =
           let _,t = unbind b in
           out ppf "λ _";
           if !print_domains then
-            out ppf ":%a,%a" (func idmap) a (func idmap) t
+            out ppf ": %a, %a" (func idmap) a (func idmap) t
           else abstractions idmap ppf t
         end;
       if wrap then out ppf ")"
@@ -305,7 +305,7 @@ and head idmap wrap ppf t =
       if wrap then out ppf "(";
       if binder_occur b then
         let (x,t),idmap' = safe_unbind_no_check idmap b in
-        out ppf "Π %a:%a,%a" var x (appl idmap) a (func idmap') t
+        out ppf "Π %a: %a, %a" var x (appl idmap) a (func idmap') t
       else
         begin
           let _,t = unbind b in
