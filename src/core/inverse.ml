@@ -98,20 +98,6 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
 (** cached version of [prod_graph]. *)
 let prod_graph : sym -> (sym * sym * sym * bool) list = cache prod_graph
 
-(** [inverse_prod s s'] returns [(s0,s1,s2,b)] if [s] has a rule of the form
-   [s (s0 _ _) ↪ Π x:s1 _, s2 r] with [b=true] iff [x] occurs in [r], and
-   either [s1] has a rule of the form [s1 (s3 ...) ↪ s' ...] or [s1 == s'].
-@raise [Not_found] otherwise. *)
-let inverse_prod : sym -> sym -> sym * sym * sym * bool = fun s s' ->
-  match prod_graph s with
-  | [] -> raise Not_found
-  | [x] -> x
-  | graph ->
-  let f (_,s1,_,_) =
-    try let _ = inverse_const s1 s' in true with Not_found -> false in
-  try List.find f graph
-  with Not_found -> List.find (fun (_,s1,_,_) -> s1 == s') graph
-
 (** [inverse s v] tries to compute a term [u] such that [s(u)] reduces to [v].
 @raise [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
@@ -120,22 +106,24 @@ let rec inverse : sym -> term -> term = fun s v ->
   | Symb s', [t] when s' == s -> t
   | Symb s', ts -> add_args (mk_Symb (inverse_const s s')) ts
   | Prod(a,b), _ ->
-      let s0,s1,s2,occ =
-        match get_args a with
-        | Symb s', _ -> inverse_prod s s'
-        | _ -> raise Not_found
+      let x, b = unbind b in
+      let f (s0,s1,s2,occ) =
+        try
+          let t1 = inverse s1 a in
+          let t2 = inverse s2 b in
+          let t2 = if occ then mk_Abst (a, bind_var x t2) else t2 in
+          Some (add_args (mk_Symb s0) [t1;t2])
+        with Not_found -> None
       in
-      let t1 = inverse s1 a in
-      let t2 =
-        let x, b = unbind b in
-        let b = inverse s2 b in
-        if occ then mk_Abst (a, bind_var x b) else b
-      in
-      add_args (mk_Symb s0) [t1;t2]
+      begin
+        match List.find_map f (prod_graph s) with
+        | None -> raise Not_found
+        | Some t -> t
+      end
   | _ -> raise Not_found
 
 let inverse : sym -> term -> term = fun s v ->
   let t = inverse s v in let v' = mk_Appl(mk_Symb s,t) in
   if Eval.eq_modulo [] v' v then t
-  else (if Logger.log_enabled() then log "%a ≢ %a@" term v' term v;
+  else (if Logger.log_enabled() then log "%a ≢ %a" term v' term v;
         raise Not_found)
