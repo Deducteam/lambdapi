@@ -22,7 +22,6 @@ let fresh : problem -> term -> int -> meta = fun p a n ->
   if Logger.log_enabled() then
     log "create ?%d of arity %d and type %a" m.meta_key n Raw.term a;
   p := {!p with metas = MetaSet.add m !p.metas};
-  if Logger.log_enabled() then log "%a" Print.problem p;
   m
 
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific
