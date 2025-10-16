@@ -463,47 +463,55 @@ module DB = struct
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
   ~lis:(lisb,lise) ~pres:(preb,pree)
-  ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
- =
+  ~bold:(boldb,bolde) ~code:(codeb,codee) ?(colorizer=Lplib.Color.default)
+  fmt l =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
-   Lplib.List.pp
-    (fun ppf (((p,n) as sym_name,pos),(positions : answer)) ->
-     let sourceid,sourcepos = source_infos_of_sym_name sym_name in
-     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s%s@."
-       lisb (escaper.run Core.Print.path) p boldb n bolde
-       (popt_to_string ~print_dirname:false pos)
-       separator (generic_pp_of_position_list ~escaper ~sep) positions
-       separator preb codeb
-       (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
-         ~complain_if_location_unknown:true) pos
-       separator
-       (fun ppf opt ->
-         match opt with
-          | None -> Lplib.Base.string ppf ""
-          | Some sourceid ->
-             Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
-       separator
-       (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
-         ~complain_if_location_unknown:false) sourcepos
-       codee pree lise separator)
+    Lplib.List.pp (fun ppf (((p,n) as sym_name,pos),(positions : answer)) ->
+      let sourceid,sourcepos = source_infos_of_sym_name sym_name in
+      (* let n_pp = (Lplib.Color.red "%s") n in *)
+      Lplib.Base.out ppf
+      ("%s%a.%s"
+      ^^
+      (colorizer "%s")
+      ^^ "%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s%s@.")
+      lisb (escaper.run Core.Print.path) p boldb n bolde
+      (popt_to_string ~print_dirname:false pos)
+      separator (generic_pp_of_position_list ~escaper ~sep) positions
+      separator preb codeb
+      (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
+      ~complain_if_location_unknown:true) pos
+      separator
+      (fun ppf opt ->
+        match opt with
+        | None -> Lplib.Base.string ppf ""
+        | Some sourceid ->
+          Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
+          separator
+          (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
+          ~complain_if_location_unknown:false) sourcepos
+          codee pree lise separator)
     "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
-   ~code:("<code>","</code>")
+   ~code:("<code>","</code>") ~colorizer: Lplib.Color.default
 
  let pp_item_list fmt l =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
-   ~bold:(if Stdlib.(!Common.Mode.lsp_mod) || Unix.isatty Unix.stdout then
-            ("[0;36m","[0m")
-          else ("",""))
-    ~code:("","") fmt l
+   ~bold:("","")
+    ~code:("","")
+    ~colorizer:
+      (if Stdlib.(!Common.Mode.lsp_mod) || Unix.isatty Unix.stdout then
+        Lplib.Color.red
+      else
+        Lplib.Color.default)
+    fmt l
 
  let pp_results_list fmt l = pp_item_list fmt l
 
