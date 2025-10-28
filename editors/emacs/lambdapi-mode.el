@@ -153,8 +153,14 @@
   :group 'languages)
 
 (defun pre-process-diagnostics  (orig-fun server method uri diagnostics de e)
-  
-  (apply orig-fun (list server method uri diagnostics de e))
+
+
+;;  (dolist (d diagnostics)
+;;    (setf (alist-get 'message d)
+;;      ("[Filtered Info] ")
+;;    )
+;;  )
+  (apply orig-fun (list server method (list) uri de e))
 )
 
 ;; Main function creating the mode (lambdapi)
