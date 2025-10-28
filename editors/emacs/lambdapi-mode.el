@@ -152,6 +152,11 @@
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
+(defun pre-process-diagnostics  (orig-fun server method uri diagnostics de e)
+  
+  (apply orig-fun (list server method uri diagnostics de e))
+)
+
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
@@ -160,6 +165,10 @@
   (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")
+
+  ;;pre-process diagnostics
+  (advice-add 'eglot-handle-notification :around #'pre-process-diagnostics)
+  (message "Eglot-X: diagnostic filtering enabled.")
 
   ;; Comments
   (setq-local comment-start "//")
