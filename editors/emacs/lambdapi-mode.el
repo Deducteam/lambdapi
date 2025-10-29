@@ -204,12 +204,16 @@
   (let* (
        (first-diagnostic (aref e 0))
        (range (plist-get first-diagnostic :range))
+       (end (plist-get range :end))
+       (character (plist-get end :character))
        )
   (dolist (pair first-diagnostic)
 ;;    (range (alist-get (':range first-diagnostic)))
     (message "J'ai trouvé un truc : %s" pair)
   )
   (message "the range is : %s " range)
+  (message "the end caracter is : %s " character)
+
 
   )
 
