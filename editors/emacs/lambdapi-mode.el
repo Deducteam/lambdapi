@@ -214,7 +214,12 @@
   (message "the range is : %s " range)
   (message "the end caracter is : %s " character)
 
+  (setq end (plist-put end :character 3))
+;;  (character (plist-get end :character))
 
+  
+  (message "Now the range is : %s " range)
+  (message "Now the end range is : %s " end)
   )
 
 
