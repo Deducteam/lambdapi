@@ -172,37 +172,11 @@
 
 
 
-(defun pre-process-diagnostics  (orig-fun server method uri aPath_string diagnostics e)
- 
- 
- 
-  (setq json-data
-      '((method . "textDocument/publishDiagnostics")
-        (params . ((uri . "file:///tmp/foo.x")
-                   (diagnostics .
-                    [((message . "Command succeeded")
-                      (severity . 4))])))))
-
-;;  (let* (
-;;      (params (alist-get 'params json-data))
-;;       (diagnostics (alist-get 'diagnostics params))
-;;       (first-diagnostic (aref diagnostics 0))
-;;
-;;
-;;       (message-text (alist-get 'message first-diagnostic))
-;;        )
-;;        (message "Le message est : %s" message-text)
-;;  )
-;;
-;;  (let* ((params (alist-get 'params json-data))
-;;       (diagnostics (alist-get 'diagnostics params))
-;;       (first-diagnostic (aref diagnostics 0)))
-;;  (dolist (pair first-diagnostic)
-;;    (message "Clé trouvée dans diagnostic: %s" (car pair))))
+(defun pre-process-diagnostics  (orig-fun server method uri aPath_string e diagnostics)
 
 
   (let* (
-       (first-diagnostic (aref e 0))
+       (first-diagnostic (aref diagnostics 0))
        (range (plist-get first-diagnostic :range))
        (end (plist-get range :end))
        (end_character (plist-get end :character))
@@ -211,7 +185,6 @@
        (start_line (plist-get start :line))
        )
   (dolist (pair first-diagnostic)
-;;    (range (alist-get (':range first-diagnostic)))
     (message "J'ai trouvé un truc : %s" pair)
   )
   (message "the range is : %s " range)
@@ -219,28 +192,13 @@
 
   (setq end (plist-put end :character (min end_character (+ 3 start_character))))
   (setq end (plist-put end :line start_line))
-;;  (character (plist-get end :character))
 
   
   (message "Now the range is : %s " range)
   (message "Now the end range is : %s " end)
   )
 
-
-
-;;  (message "Type de diagnostics : %s" (type-of diagnostics))
-;;  (message "le contenu de diagnostics : %s" diagnostics)
-;;  (message "Type de e : %s" (type-of e))
-;;  (message "le contenu de e : %s" e)
-;;  (message "Type de aPath_string : %s" (type-of aPath_string))
-;;  (message "le contenu de aPath_string : %s" aPath_string)
-;;  (message "Type de uri : %s" (type-of uri))
-;;  (message "le contenu de uri : %s" uri)
-;;  (message "Type de method : %s" (type-of method))
-;;  (message "le contenu de method : %s" method)
-
-
-  (apply orig-fun (list server method uri aPath_string diagnostics e))
+  (apply orig-fun (list server method uri aPath_string e diagnostics))
 )
 
 
