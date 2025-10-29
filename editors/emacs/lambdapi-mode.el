@@ -152,16 +152,77 @@
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
-(defun pre-process-diagnostics  (orig-fun server method uri diagnostics de e)
+;;orig-fun
+;;server does not compile
+;;method does not compile
+;;uri nil
+;;diagnostics :"file ...."
+;;de :diagnostics
+;;e something weird happened
 
 
-;;  (dolist (d diagnostics)
-;;    (setf (alist-get 'message d)
-;;      ("[Filtered Info] ")
+
+
+
+
+
+
+
+  ;; (message (concat "here is diagnostics " diagnostics))
+
+
+
+(defun pre-process-diagnostics  (orig-fun server method uri aPath_string diagnostics e)
+  (setq json-data
+      '((method . "textDocument/publishDiagnostics")
+        (params . ((uri . "file:///tmp/foo.x")
+                   (diagnostics .
+                    [((message . "Command succeeded")
+                      (severity . 4))])))))
+
+  (let* (
+      (params (alist-get 'params json-data))
+       (diagnostics (alist-get 'diagnostics params))
+       (first-diagnostic (aref diagnostics 0))
+       (message-text (alist-get 'message first-diagnostic))
+        )
+        (message "Le message est : %s" message-text)
+  )
+
+  (let* ((params (alist-get 'params json-data))
+       (diagnostics (alist-get 'diagnostics params))
+       (first-diagnostic (aref diagnostics 0)))
+  (dolist (pair first-diagnostic)
+    (message "Clé trouvée dans diagnostic: %s" (car pair))))
+
+
+
+
+  ;;(let* (
+  ;;  (first-diagnostic (aref e 1))
+  ;;  (dolist (pair first-diagnostic)
+  ;;  (message "Clé trouvée : %s" (car pair))))
+
+;;    (message-text (alist-get 'message first-diagnostic))
 ;;    )
-;;  )
-  (apply orig-fun (list server method (list) uri de e))
+;;    (message "Le message dans la struct est : %s" message-text)
+  )
+
+  
+
+  (apply orig-fun (list server method uri aPath_string diagnostics e))
 )
+
+
+
+
+
+
+
+
+
+
+
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
