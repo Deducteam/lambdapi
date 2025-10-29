@@ -183,22 +183,22 @@
                     [((message . "Command succeeded")
                       (severity . 4))])))))
 
-  (let* (
-      (params (alist-get 'params json-data))
-       (diagnostics (alist-get 'diagnostics params))
-       (first-diagnostic (aref diagnostics 0))
-
-
-       (message-text (alist-get 'message first-diagnostic))
-        )
-        (message "Le message est : %s" message-text)
-  )
-
-  (let* ((params (alist-get 'params json-data))
-       (diagnostics (alist-get 'diagnostics params))
-       (first-diagnostic (aref diagnostics 0)))
-  (dolist (pair first-diagnostic)
-    (message "Clé trouvée dans diagnostic: %s" (car pair))))
+;;  (let* (
+;;      (params (alist-get 'params json-data))
+;;       (diagnostics (alist-get 'diagnostics params))
+;;       (first-diagnostic (aref diagnostics 0))
+;;
+;;
+;;       (message-text (alist-get 'message first-diagnostic))
+;;        )
+;;        (message "Le message est : %s" message-text)
+;;  )
+;;
+;;  (let* ((params (alist-get 'params json-data))
+;;       (diagnostics (alist-get 'diagnostics params))
+;;       (first-diagnostic (aref diagnostics 0)))
+;;  (dolist (pair first-diagnostic)
+;;    (message "Clé trouvée dans diagnostic: %s" (car pair))))
 
 
   (let* (
@@ -209,16 +209,16 @@
 
 
 
-  (message "Type de diagnostics : %s" (type-of diagnostics))
-  (message "le contenu de diagnostics : %s" diagnostics)
-  (message "Type de e : %s" (type-of e))
-  (message "le contenu de e : %s" e)
-  (message "Type de aPath_string : %s" (type-of aPath_string))
-  (message "le contenu de aPath_string : %s" aPath_string)
-  (message "Type de uri : %s" (type-of uri))
-  (message "le contenu de uri : %s" uri)
-  (message "Type de method : %s" (type-of method))
-  (message "le contenu de method : %s" method)
+;;  (message "Type de diagnostics : %s" (type-of diagnostics))
+;;  (message "le contenu de diagnostics : %s" diagnostics)
+;;  (message "Type de e : %s" (type-of e))
+;;  (message "le contenu de e : %s" e)
+;;  (message "Type de aPath_string : %s" (type-of aPath_string))
+;;  (message "le contenu de aPath_string : %s" aPath_string)
+;;  (message "Type de uri : %s" (type-of uri))
+;;  (message "le contenu de uri : %s" uri)
+;;  (message "Type de method : %s" (type-of method))
+;;  (message "le contenu de method : %s" method)
 
 
   (apply orig-fun (list server method uri aPath_string diagnostics e))
