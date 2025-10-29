@@ -203,9 +203,15 @@
 
   (let* (
        (first-diagnostic (aref e 0))
+       (range (plist-get first-diagnostic :range))
        )
   (dolist (pair first-diagnostic)
-    (message "Clé trouvée dans diagnostic: %s" pair)))
+;;    (range (alist-get (':range first-diagnostic)))
+    (message "J'ai trouvé un truc : %s" pair)
+  )
+  (message "the range is : %s " range)
+
+  )
 
 
 
