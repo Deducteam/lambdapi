@@ -121,6 +121,8 @@
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
+  (define-key lambdapi-mode-map (kbd "C-c C-d") #'deactivate-short-diagnostics)
+  (define-key lambdapi-mode-map (kbd "C-c C-v") #'activate-short-diagnostics)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
@@ -153,9 +155,6 @@
   :group 'languages)
 
 (defun pre-process-diagnostics  (orig-fun server method uri aPath_string e diagnostics)
-
-(setq my-vector [10 20 30 40])
-
 (dotimes (i (length diagnostics))
   (let* (
         (aDiagnostic (aref diagnostics i))
@@ -172,6 +171,21 @@
   (apply orig-fun (list server method uri aPath_string e diagnostics))
 )
 
+
+;;;###autoload
+(defun activate-short-diagnostics ()
+  (interactive)
+  (advice-add 'eglot-handle-notification :around #'pre-process-diagnostics)
+  (message "Lambdapi: diagnostic shortning enabled.")
+)
+
+;;;###autoload
+(defun deactivate-short-diagnostics ()
+  (interactive)
+  (advice-remove 'eglot-handle-notification #'pre-process-diagnostics)
+  (message "Lambdapi: diagnostic shortning disabled.")
+)
+
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
@@ -181,9 +195,6 @@
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")
 
-  ;;pre-process diagnostics
-  (advice-add 'eglot-handle-notification :around #'pre-process-diagnostics)
-  (message "Eglot-X: diagnostic filtering enabled.")
 
   ;; Comments
   (setq-local comment-start "//")
@@ -232,6 +243,8 @@
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
+
+(activate-short-diagnostics)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here
