@@ -205,16 +205,20 @@
        (first-diagnostic (aref e 0))
        (range (plist-get first-diagnostic :range))
        (end (plist-get range :end))
-       (character (plist-get end :character))
+       (end_character (plist-get end :character))
+       (start (plist-get range :start))
+       (start_character (plist-get start :character))
+       (start_line (plist-get start :line))
        )
   (dolist (pair first-diagnostic)
 ;;    (range (alist-get (':range first-diagnostic)))
     (message "J'ai trouvé un truc : %s" pair)
   )
   (message "the range is : %s " range)
-  (message "the end caracter is : %s " character)
+  (message "the end caracter is : %s " end_character)
 
-  (setq end (plist-put end :character 3))
+  (setq end (plist-put end :character (min end_character (+ 3 start_character))))
+  (setq end (plist-put end :line start_line))
 ;;  (character (plist-get end :character))
 
   
