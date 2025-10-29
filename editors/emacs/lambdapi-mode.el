@@ -152,65 +152,25 @@
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
-;;orig-fun
-;;server does not compile
-;;method does not compile
-;;uri nil
-;;diagnostics :"file ...."
-;;de :diagnostics
-;;e something weird happened
-
-
-
-
-
-
-
-
-
-  ;; (message (concat "here is diagnostics " diagnostics))
-
-
-
 (defun pre-process-diagnostics  (orig-fun server method uri aPath_string e diagnostics)
 
+(setq my-vector [10 20 30 40])
 
+(dotimes (i (length diagnostics))
   (let* (
-       (first-diagnostic (aref diagnostics 0))
-       (range (plist-get first-diagnostic :range))
-       (end (plist-get range :end))
-       (end_character (plist-get end :character))
-       (start (plist-get range :start))
-       (start_character (plist-get start :character))
-       (start_line (plist-get start :line))
-       )
-  (dolist (pair first-diagnostic)
-    (message "J'ai trouvé un truc : %s" pair)
-  )
-  (message "the range is : %s " range)
-  (message "the end caracter is : %s " end_character)
-
+        (aDiagnostic (aref diagnostics i))
+        (range (plist-get aDiagnostic :range))
+        (end (plist-get range :end))
+        (end_character (plist-get end :character))
+        (start (plist-get range :start))
+        (start_character (plist-get start :character))
+        (start_line (plist-get start :line)))
   (setq end (plist-put end :character (min end_character (+ 3 start_character))))
-  (setq end (plist-put end :line start_line))
-
-  
-  (message "Now the range is : %s " range)
-  (message "Now the end range is : %s " end)
-  )
-
+  (setq end (plist-put end :line start_line)) 
+  )  
+)
   (apply orig-fun (list server method uri aPath_string e diagnostics))
 )
-
-
-
-
-
-
-
-
-
-
-
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
