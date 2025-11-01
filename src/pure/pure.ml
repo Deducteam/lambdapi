@@ -113,8 +113,11 @@ type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
   Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * bool * Pos.popt
 
+
 let current_goals : proof_state -> Goal.info list =
-  fun (time, st, ps, _, _, _) ->
+  fun (time, st, ps, pf, _, n) ->
+  let s : proof_state = (time, st, ps, pf, true, n) in
+  let (_, _, ps, _pf, _, _n) : proof_state = s in
   Time.restore time;
   Print.sig_state := st;
   List.map Goal.to_info ps.proof_goals
@@ -122,6 +125,7 @@ let current_goals : proof_state -> Goal.info list =
 type command_result =
   | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
+    * string option
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -157,7 +161,8 @@ let handle_command : state -> Command.t -> command_result =
       let ps =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
-        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
+        let qres = Option.map (fun f -> f ()) qres in
+        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos, qres)
   with Fatal(Some p,m) ->
     Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
@@ -169,6 +174,10 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(Some p,m) ->
     Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+
+let name_of_proof : proof_state -> string =
+  fun (_, _ss, ps, _finalize, _, _) ->
+    ps.proof_name.elt
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->

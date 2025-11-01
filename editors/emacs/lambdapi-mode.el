@@ -121,6 +121,8 @@
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
+  (define-key lambdapi-mode-map (kbd "C-c C-d") #'deactivate-short-diagnostics)
+  (define-key lambdapi-mode-map (kbd "C-c C-v") #'activate-short-diagnostics)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
@@ -152,6 +154,38 @@
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
+(defun pre-process-diagnostics  (orig-fun server method uri aPath_string e diagnostics)
+(dotimes (i (length diagnostics))
+  (let* (
+        (aDiagnostic (aref diagnostics i))
+        (range (plist-get aDiagnostic :range))
+        (end (plist-get range :end))
+        (end_character (plist-get end :character))
+        (start (plist-get range :start))
+        (start_character (plist-get start :character))
+        (start_line (plist-get start :line)))
+  (setq end (plist-put end :character (min end_character (+ 3 start_character))))
+  (setq end (plist-put end :line start_line)) 
+  )  
+)
+  (apply orig-fun (list server method uri aPath_string e diagnostics))
+)
+
+
+;;;###autoload
+(defun activate-short-diagnostics ()
+  (interactive)
+  (advice-add 'eglot-handle-notification :around #'pre-process-diagnostics)
+  (message "Lambdapi: diagnostic shortning enabled.")
+)
+
+;;;###autoload
+(defun deactivate-short-diagnostics ()
+  (interactive)
+  (advice-remove 'eglot-handle-notification #'pre-process-diagnostics)
+  (message "Lambdapi: diagnostic shortning disabled.")
+)
+
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
@@ -160,6 +194,7 @@
   (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")
+
 
   ;; Comments
   (setq-local comment-start "//")
@@ -208,6 +243,8 @@
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
+
+(activate-short-diagnostics)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here
