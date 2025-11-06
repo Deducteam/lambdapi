@@ -9,6 +9,7 @@
 (license CECILL-2.1)
 
 (using menhir 2.0)
+(using dune_site 0.1)
 
 (package
  (name lambdapi)
@@ -47,4 +48,5 @@ systems: Dedukti, Coq, HRS, CPF.")
   (lwt_ppx (>= 1))
   (uri (>= 1.1))
  )
+ (sites (share server_resources))
 )
