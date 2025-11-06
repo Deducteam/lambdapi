@@ -288,7 +288,7 @@ let qident : qident CLT.t =
   let qident : qident Arg.conv =
     let parse (s: string): (qident, [>`Msg of string]) result =
       try Ok(Parser.qident_of_string s)
-      with Fatal(_,s) -> Error(`Msg(s))
+      with Fatal(_,s,_) -> Error(`Msg(s))
     in
     let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)

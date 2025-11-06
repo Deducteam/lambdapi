@@ -73,9 +73,9 @@ let parse_text :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_string fname s);
     List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg) -> List.rev Stdlib.(!cmds), Some(pos, msg)
-  | Fatal(Some(None)     , _  ) -> assert false
-  | Fatal(None           , _  ) -> assert false
+  | Fatal(Some(Some(pos)), msg, _) -> List.rev Stdlib.(!cmds), Some(pos, msg)
+  | Fatal(Some(None)     , _  , _) -> assert false
+  | Fatal(None           , _  , _) -> assert false
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 
@@ -170,7 +170,7 @@ let handle_command : state -> Command.t -> command_result =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
-  with Fatal(Some p,m) ->
+  with Fatal(Some p,m, _) ->
     Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
@@ -179,13 +179,13 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
-  with Fatal(Some p,m) ->
+  with Fatal(Some p,m, _) ->
     Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
   try Cmd_OK((Time.save (), finalize ss ps), None)
-  with Fatal(Some p,m) ->
+  with Fatal(Some p,m, _) ->
     Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =

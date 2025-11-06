@@ -394,14 +394,14 @@ module DB = struct
            Sym_nameMap.add lpid (sourceid,fname,start_line,end_line) !sidx
       | _ ->
          raise
-          (Common.Error.Fatal(None,"wrong file format for source map file"))
+          (Common.Error.Fatal(None,"wrong file format for source map file", ""))
    done ;
   with
    | Failure _ as exn ->
       close_in ch;
       raise
        (Common.Error.Fatal(None,"wrong file format for source map file: " ^
-         Printexc.to_string exn))
+         Printexc.to_string exn, ""))
    | End_of_file -> close_in ch) ;
   db := lazy (!sidx,idx)
 
@@ -762,7 +762,7 @@ let index_sym sym =
      (DB.ItemSet.bindings (DB.locate_name (snd qname)))
   then
    raise
-    (Common.Error.Fatal(None,string_of_sym_name qname ^ " already indexed")) ;
+    (Common.Error.Fatal(None,string_of_sym_name qname ^ " already indexed", "")) ;
  DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
@@ -882,7 +882,7 @@ module UserLevelQueries = struct
     let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
     Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results
+    let search_cmd_gen ss ~from ~how_many ~(fail:(?more:string -> string -> string)) ~pp_results
   ~title_tag:(hb,he) fmt s =
   try
    let pstream = Parsing.Parser.Rocq.parse_search_query_string "LPSearch" s in
@@ -899,13 +899,14 @@ module UserLevelQueries = struct
    | Stream.Failure ->
       Lplib.Base.out fmt "%s"
        (fail (Format.asprintf "Syntax error: a query was expected@."))
-   | Common.Error.Fatal(_,msg) ->
+   | Common.Error.Fatal(_,msg, _) ->
       Lplib.Base.out fmt "%s" (fail (Format.asprintf "Error: %s@." msg))
    | Overloaded(name,res) ->
       Lplib.Base.out fmt "%s" (fail (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
-        with a fully qualified identifier among the following:@.%a@."
-        name name pp_results (ItemSet.bindings res)))
+        with a fully qualified identifier among the following:@."
+        name name)
+        ~more:(Format.asprintf "%a@." pp_results (ItemSet.bindings res)))
    | Stack_overflow ->
       Lplib.Base.out fmt "%s" (fail
        (Format.asprintf
@@ -918,14 +919,14 @@ module UserLevelQueries = struct
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a"
    (search_cmd_gen ss ~from ~how_many
-    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+    ~fail:(fun ?more x -> "<font color=\"red\">" ^ x ^ "</font>" ^ (Option.value more ~default:""))
     ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>")) s
 
  let search_cmd_txt ss ~dbpath fmt s =
   let s = transform_ascii_to_unicode s in
   Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+   ~fail:(fun ?more x -> Common.Error.fatal_no_pos ?more "%s" x)
    ~pp_results:pp_results_list ~title_tag:("","") fmt s
 
 end

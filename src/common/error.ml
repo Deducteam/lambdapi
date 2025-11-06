@@ -37,7 +37,7 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
     cases where positions are expected [Some None] may be used to indicate the
     abscence of a position. This may happen when terms are generated (e.g., by
     a form of desugaring). *)
-exception Fatal of Pos.popt option * string
+exception Fatal of Pos.popt option * string * string
 
 (** [fatal_str fmt] may be called an arbitrary number of times to build up the
     error message of the [fatal] or [fatal_no_pos] functions prior to  calling
@@ -46,16 +46,19 @@ exception Fatal of Pos.popt option * string
 let fatal_msg : 'a outfmt -> 'a =
   fun fmt -> out Format.str_formatter fmt
 
-(** [fatal popt fmt] raises the [Fatal(popt,msg)] exception, in which [msg] is
-    built from the format [fmt] (provided the necessary arguments). *)
+(** [fatal popt fmt] raises the [Fatal(popt,msg,more)] exception, in which [msg] is
+    built from the format [fmt] (provided the necessary arguments).
+    [more] continues the error message and is printed in normal format instead of 
+    red color*)
+
 let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
-  let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter ())) in
+  let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter (), "")) in
   Format.kfprintf cont Format.str_formatter fmt
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)
-let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
-  let cont _ = raise (Fatal(None, Format.flush_str_formatter ())) in
+let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a = fun ?(more="") fmt ->
+  let cont _ = raise (Fatal(None, Format.flush_str_formatter (), more)) in
   Format.kfprintf cont Format.str_formatter fmt
 
 (** [handle_exceptions f] runs [f ()] in an exception handler and handles both
@@ -64,15 +67,15 @@ let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
     [1] (indicating failure). Hence, [handle_exceptions] should only be called
     by the main program logic, not by the internals. *)
 let handle_exceptions : (unit -> unit) -> unit = fun f ->
-  let exit_with : type a b. (a,b) koutfmt -> a = fun fmt ->
+  let exit_with : type a b. string -> (a,b) koutfmt -> a = fun cnt fmt ->
     Color.update_with_color Format.err_formatter;
-    Format.kfprintf (fun _ -> exit 1) Format.err_formatter
+    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;(Format.kfprintf (fun _ -> exit 1) Format.err_formatter "%s" cnt)) Format.err_formatter
       (Color.red (fmt ^^ "@."))
   in
   try f () with
-  | Fatal(None,    msg) -> exit_with "%s" msg
-  | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.pp p msg
+  | Fatal(None,    msg, cnt) -> exit_with cnt "%s" msg
+  | Fatal(Some(p), msg, cnt) -> exit_with cnt "[%a] %s" Pos.pp p msg
   | e ->
-      exit_with "Uncaught [%s].\n%s"
+      exit_with "" "Uncaught [%s].\n%s"
         (Printexc.to_string e)
         (Printexc.get_backtrace())

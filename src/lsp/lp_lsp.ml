@@ -58,7 +58,7 @@ let do_check_text ofmt ~doc =
   let doc, diags =
     try
       Lp_doc.check_text ~doc
-    with Common.Error.Fatal(_pos, msg) ->
+    with Common.Error.Fatal(_pos, msg, _) ->
       let loc : Pos.pos =
         {
           fname = Some(doc.uri);
