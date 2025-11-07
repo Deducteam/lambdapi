@@ -4,23 +4,11 @@ TODO
 Index and search
 ----------------
 
-* @abdelghani test if search in vscode still works once that
-  you have repaired lsp :-)
-
 * @abdelghani include in HOL2DK_indexing git sub-repos of
   coq-hol-light-real-with-N and coq-hol-light
   and automatize the generation of the file to output Coq sources
 
 * @abdelghani
-  - use lplib/color.ml in place of our color management of the
-    output [ but do not lose our code to check if we are
-    in lsp_mode or targeting a tty ]
-  - "Overloaded symbol prod. Please rewrite the query replacing..."
-    is printed in red but the following lines are also in red
-    (i.e. black color is not restored)
-
-* @abdelghani
-  - commit the very nice new look&feel of websearch
   - (maybe?) allow an --add-examples=FNAME to include in the
     generated webpage an HTML snippet (e.g. with examples or
     additional infos for that instance)
