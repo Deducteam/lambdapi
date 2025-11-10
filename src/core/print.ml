@@ -28,11 +28,6 @@ let print_domains : bool ref = Console.register_flag "print_domains" false
 (** Flag for printing implicit arguments. *)
 let print_implicits : bool ref = Console.register_flag "print_implicits" false
 
-(** Flag for printing the type of uninstanciated metavariables. Remark: this
-   does not generate parsable terms; use for debug only. *)
-let print_meta_types : bool ref =
-  Console.register_flag "print_meta_types" false
-
 (** Flag for printing contexts in unification problems. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
@@ -262,10 +257,7 @@ and quantifier idmap ppf s args =
       end
   | _ -> assert false
 
-and meta idmap ppf m =
-  if !print_meta_types then
-    out ppf "(?%d:%a)" m.meta_key (func idmap) !(m.meta_type)
-  else out ppf "?%d" m.meta_key
+and meta ppf m = out ppf "?%d" m.meta_key
 
 and head idmap wrap ppf t =
   let env ppf ts =
@@ -285,7 +277,7 @@ and head idmap wrap ppf t =
   | Type        -> out ppf "TYPE"
   | Kind        -> out ppf "KIND"
   | Symb(s)     -> sym ppf s
-  | Meta(m,e)   -> meta idmap ppf m; if !print_meta_args then env ppf e
+  | Meta(m,e)   -> meta ppf m; if !print_meta_args then env ppf e
   | Plac(_)     -> out ppf "_"
   | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
   | Bvar _      -> assert false
@@ -297,7 +289,7 @@ and head idmap wrap ppf t =
           let (x,t),idmap' = safe_unbind_no_check idmap b in
           out ppf "λ %a" var x;
           if !print_domains then
-            out ppf ": %a, %a" (func idmap) a (func idmap') t
+            out ppf ":%a, %a" (func idmap) a (func idmap') t
           else abstractions idmap' ppf t
         end
       else
@@ -305,7 +297,7 @@ and head idmap wrap ppf t =
           let _,t = unbind b in
           out ppf "λ _";
           if !print_domains then
-            out ppf ": %a, %a" (func idmap) a (func idmap) t
+            out ppf ":%a, %a" (func idmap) a (func idmap) t
           else abstractions idmap ppf t
         end;
       if wrap then out ppf ")"
@@ -313,7 +305,7 @@ and head idmap wrap ppf t =
       if wrap then out ppf "(";
       if binder_occur b then
         let (x,t),idmap' = safe_unbind_no_check idmap b in
-        out ppf "Π %a: %a, %a" var x (appl idmap) a (func idmap') t
+        out ppf "Π %a:%a, %a" var x (appl idmap) a (func idmap') t
       else
         begin
           let _,t = unbind b in
@@ -334,7 +326,7 @@ and head idmap wrap ppf t =
         begin
           let _,u = unbind b in
           out ppf "_";
-          if !print_domains then out ppf ": %a" (atom idmap) a;
+          if !print_domains then out ppf ":%a" (atom idmap) a;
           out ppf " ≔ %a in %a" (func idmap) t (func idmap) u
         end;
       if wrap then out ppf ")"
@@ -355,7 +347,8 @@ and atom idmap ppf t = pp `Atom idmap ppf t
 and appl idmap ppf t = pp `Appl idmap ppf t
 and func idmap ppf t = pp `Func idmap ppf t
 
-let term_in = func
+(* we cleanup terms to print non-dependent products are arrow types *)
+let term_in idmap ppf t = func idmap ppf (cleanup t)
 
 let term = term_in StrMap.empty
 
@@ -397,34 +390,34 @@ let typ = typ_in StrMap.empty
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
 (*let term = Raw.term*)
 
-(* ends with a space if [!print_contexts = true] *)
-let ctxt : ctxt pp = fun ppf ctx ->
-  if !print_contexts then
-    begin
-      let def ppf t = out ppf " ≔ %a" term t in
-      let decl ppf (x,a,t) =
-        out ppf "%a%a%a" var x typ a (Option.pp def) t in
-      out ppf "%a%s⊢ "
-        (List.pp decl ", ") (List.rev ctx)
-        (if ctx <> [] then " " else "")
-    end
+let ctxt : ctxt pp =
+  let def ppf t = out ppf " ≔ %a" term t in
+  let decl ppf (x,a,t) = out ppf "%a%a%a" var x typ a (Option.pp def) t in
+  fun ppf c -> List.pp decl ", " ppf (List.rev c)
 
-let typing : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "@[<h>%a%a : %a@]" ctxt ctx term t term u
+let typing : constr pp = fun ppf (c,t,u) ->
+  if !print_contexts then out ppf "%a%s⊢ " ctxt c (if c=[] then "" else " ");
+  out ppf "%a : %a" term t term u
 
-let constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "@[<h>%a%a@ ≡ %a@]" ctxt ctx term t term u
+let constr : constr pp = fun ppf (c,t,u) ->
+  if !print_contexts then out ppf "%a%s⊢ " ctxt c (if c=[] then "" else " ");
+  out ppf "%a ≡ %a" term t term u
 
 let constrs : constr list pp = fun ppf cs ->
-  let pp_sep ppf () = out ppf "@ ;" in
-  out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
-
-let meta : meta pp = meta StrMap.empty
+  let pp_sep ppf () = out ppf "\n       ;" in
+  Format.pp_print_list ~pp_sep constr ppf cs
 
 let metaset : MetaSet.t pp =
-  D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta
+  let meta ppf m =
+    out ppf "?%d:%a" m.meta_key (func StrMap.empty) !(m.meta_type) in
+  let pp_sep ppf () = out ppf "\n       ," in
+  fun ppf set ->
+  Format.pp_print_list ~pp_sep meta ppf (List.rev (MetaSet.elements set))
 
-let problem : problem pp = fun ppf p ->
+let problem : problem pp =
+  let s = "\n       " in
+  fun ppf p ->
   out ppf
-    "{ recompute=%b;@ metas={%a};@ to_solve=%a;@ unsolved=%a }"
-    !p.recompute metaset !p.metas constrs !p.to_solve constrs !p.unsolved
+    "{recompute=%b;%smetas={%a};%sto_solve={%a};%sunsolved={%a}}"
+    !p.recompute s metaset !p.metas s constrs !p.to_solve s
+    constrs !p.unsolved

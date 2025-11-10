@@ -11,6 +11,7 @@ on:
       - 'dune-project'
       - '**/dune'
       - '**.ml'
+      - '**.mli'
       - '**.mll'
       - '**.mly'
   workflow_dispatch:
@@ -20,6 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # 5.4.0: 09/10/2025
         # 5.3.0: 08/01/2025
         # 5.2.1: 18/11/2024
         # 5.1.1: 08/12/2023
@@ -30,11 +32,11 @@ jobs:
         # 4.11.2: 24/02/2021
         # 4.10.2: 18/12/2020
         # 4.09.1: 16/03/2020
-        ocaml-version: [5.2.1, 4.14.2]
+        ocaml-version: [5.3.0, 5.2.1, 4.14.2]
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: setup-ocaml
         uses: ocaml/setup-ocaml@v3
         with:

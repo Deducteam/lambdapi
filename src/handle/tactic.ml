@@ -110,8 +110,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   in
   {ps with proof_goals}
 
-(** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
-   is the set of metavariables created by the scoping of [t]. *)
+(** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
 let tac_refine : ?check:bool ->
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
@@ -467,8 +466,7 @@ let rec handle :
         | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
-      let p = new_problem () in
-      tac_refine pos ps gt gs p t
+      tac_refine pos ps gt gs (new_problem()) t
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
@@ -487,8 +485,7 @@ let rec handle :
       let idbody = mk(P_Iden(varg,false)) in
       let id = mk(P_Abst(vparam,idbody)) in
       let t = mk(P_Appl(id,mk P_Wild)) in
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (scope t)
+      tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -701,8 +698,7 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goal."
   | g::_ ->
-    if Logger.log_enabled() then
-      log ("Goal %a%a") Goal.pp_no_hyp g Pretty.tactic tac;
+    if Logger.log_enabled() then log ("goal %a") Goal.pp_no_hyp g;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous

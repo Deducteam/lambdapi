@@ -10,7 +10,7 @@ open Core open Term open Env open Sig_state open Print
 let term = Raw.term
 
 (** Logging function for term scoping. *)
-let log_scop = Logger.make 'o' "scop" "term scoping"
+let log_scop = Logger.make 'o' "scop" "scoping"
 let log_scop = log_scop.pp
 
 (** [find_qid ~find_sym prt prv ss env qid] returns a boxed term corresponding

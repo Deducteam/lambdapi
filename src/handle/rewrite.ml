@@ -6,7 +6,7 @@ open Core open Term open Print
 open Goal
 
 (** Logging function for the rewrite tactic. *)
-let log = Logger.make 'r' "rewr" "the rewrite tactic"
+let log = Logger.make 'r' "rewr" "rewrite tactic"
 let log = log.pp
 
 (** Equality configuration. *)

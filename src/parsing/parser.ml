@@ -17,6 +17,9 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
+
+  type lexbuf
+
   val parse_in_channel : string -> in_channel -> ast
   (** [parse ic] returns a stream of commands parsed from
       channel [ic]. Commands are parsed lazily and the channel is
@@ -29,6 +32,11 @@ module type PARSER = sig
   val parse_string : string -> string -> ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
+
+  val parse_lexbuf : lexbuf -> ast
+  (** [parse_lexbuf lexbuf] is the same as [parse_string] but with an
+      already created lexbuf *)
+
 end
 
 (* defined in OCaml >= 4.11 only *)
@@ -36,13 +44,13 @@ let set_filename (lb:lexbuf) (fname:string): unit =
   lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
 
 (** Parsing dk syntax. *)
-module Dk : PARSER = struct
+module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
 
   open Lexing
 
-  let parse_lexbuf (fname:string) (icopt:in_channel option)
+  let parse_lexbuf (*fname:string*) (icopt:in_channel option)
         (entry:lexbuf -> 'a) (lb:lexbuf) : 'a Stream.t =
-    set_filename lb fname;
+    (*set_filename lb fname;*)
     let generator _ =
       try Some(entry lb)
       with
@@ -55,13 +63,17 @@ module Dk : PARSER = struct
 
   let parse_in_channel (entry:lexbuf -> 'a) (fname:string) (ic:in_channel)
       : 'a Stream.t =
-    parse_lexbuf fname (Some ic) entry (from_channel ic)
+    let lb = from_channel ic in
+    set_filename lb fname;
+    parse_lexbuf (Some ic) entry lb
 
   let parse_file entry fname = parse_in_channel entry fname (open_in fname)
 
   let parse_string (entry: lexbuf -> 'a) (fname:string) (s:string)
       : 'a Stream.t =
-    parse_lexbuf "" None entry (from_string s)
+    let lb = from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
 
   let command =
     let r = ref (Pos.none (P_open(false,[]))) in
@@ -73,7 +85,7 @@ module Dk : PARSER = struct
   let parse_string = parse_string command
   let parse_in_channel = parse_in_channel command
   let parse_file = parse_file command
-
+  let parse_lexbuf = parse_lexbuf None command
 end
 
 open LpLexer
@@ -82,7 +94,7 @@ open Sedlexing
 (** Parsing lp syntax. *)
 module Lp :
 sig
-  include PARSER
+  include PARSER with type lexbuf := Sedlexing.lexbuf
 
   val parse_term_string :
     (*fname*)string -> (*term*)string -> Syntax.p_term
@@ -102,9 +114,9 @@ sig
   end
 = struct
 
-  let parse_lexbuf (fname:string) (icopt: in_channel option)
+  let parse_lexbuf (*fname:string*) (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
-    set_filename lb fname;
+    (*set_filename lb fname;*)
     let generator _ =
       try Some(entry lb)
       with
@@ -117,11 +129,15 @@ sig
 
   let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
       : 'a Stream.t =
-    parse_lexbuf fname None entry (Utf8.from_string s)
+    let lb = Utf8.from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
 
   let parse_in_channel (entry: lexbuf -> 'a) (fname:string) (ic: in_channel)
       : 'a Stream.t =
-    parse_lexbuf fname (Some ic) entry (Utf8.from_channel ic)
+    let lb = Utf8.from_channel ic in
+    set_filename lb fname;
+    parse_lexbuf (Some ic) entry lb
 
   let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
     parse_in_channel entry fname (open_in fname)
@@ -139,6 +155,7 @@ sig
   let parse_in_channel = parse_in_channel Ll1.command
   let parse_file = parse_file Ll1.command
   let parse_string = parse_string Ll1.command
+  let parse_lexbuf = parse_lexbuf None Ll1.command
 
 end
 

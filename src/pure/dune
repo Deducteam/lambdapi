@@ -2,5 +2,7 @@
  (name pure)
  (public_name lambdapi.pure)
  (modules :standard)
+ (inline_tests (deps tests/foo.lp tests/lambdapi.pkg))
+ (preprocess (pps ppx_inline_test))
  (libraries camlp-streams lambdapi.handle lambdapi.core)
  (flags -w +3))

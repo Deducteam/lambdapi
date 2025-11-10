@@ -152,14 +152,15 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
       in
       if Stdlib.(!do_type_check) then
         begin
-          if Logger.log_enabled () then log "check typing";
+          if Logger.log_enabled () then log (Color.blu "check typing");
           let typ_mts =
             match type_app c !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
           if Infer.check_noexn p c u typ_mts <> None then do_instantiate p
-          else (if Logger.log_enabled () then log "typing failed"; false)
+          else (if Logger.log_enabled() then log (Color.red "typing failed");
+                false)
         end
       else do_instantiate p
   | i ->
@@ -515,7 +516,6 @@ let solve_noexn : ?print:bool -> ?type_check:bool -> problem -> bool =
   fun ?(print=true) ?(type_check=true) p ->
   Stdlib.(do_type_check := type_check);
   Stdlib.(print_error := print);
-  if Logger.log_enabled() then log "solve_noexn %a" problem p;
   try time_of log "solve" (fun () -> solve p; true) with Unsolvable -> false
 
 let solve_noexn =

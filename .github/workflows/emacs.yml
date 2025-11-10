@@ -1,0 +1,30 @@
+# check compilation with previous versions of ocaml
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    paths:
+      - '.github/workflows/emacs.yml'
+      - 'editors/emacs/**'
+  workflow_dispatch:
+
+jobs:
+  test_compile:
+    strategy:
+      fail-fast: false
+      matrix:
+        eglot-version: [1.9, 0]
+        math-symbol-list-version: [1.2.1, 1.3, 0]
+        highlight-version: [20250724.2154, 20250815.1830, 0]
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+      - name: build lambdapi-mode
+        run: make -C editors/emacs dist
+      - name: install lambdapi-mode
+        run: |
+          chmod +x installAndLaunch.sh
+          ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs ${{ matrix.eglot-version }} ${{ matrix.math-symbol-list-version }} ${{ matrix.highlight-version }}
+        working-directory: editors/emacs/

@@ -270,6 +270,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
   | P_query_assert(false,a) -> out ppf "assert ⊢ %a" assertion a
+  | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
   | P_query_flag(s, b) ->

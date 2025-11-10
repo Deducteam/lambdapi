@@ -132,7 +132,8 @@ let set_encoding : string -> unit = fun f ->
     (fun i b ->
       if not b then
         let pos =
-          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0}
+          Some {fname=Some f;start_line=0;start_col=0;start_offset=0;
+                end_line=0;end_col=0;end_offset=0}
         in fatal pos "Builtin %s undefined." (name_of_index i))
     found
 

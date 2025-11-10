@@ -358,9 +358,9 @@ let rec term : term pp = fun ppf t ->
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
   | Prod(a,(n,b,e)) ->
-      out ppf "(Π %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(Π %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
   | Abst(a,(n,b,e)) ->
-      out ppf "(λ %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(λ %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
@@ -368,7 +368,7 @@ let rec term : term pp = fun ppf t ->
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) Timed.(!r)
   | LLet(a,t,(n,b,e)) ->
-      out ppf "let %s : %a ≔ %a in %a#(%a)"
+      out ppf "let %s:%a ≔ %a in %a#(%a)"
         n.binder_name term a term t clos_env e term b
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name

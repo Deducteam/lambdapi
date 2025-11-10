@@ -121,8 +121,19 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
-    let loc = option_default loc Command.(get_pos ast) in
-    nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
+    let cmd_loc, loc = match cmd_loc, loc with
+    | Some l, Some Some l' ->
+        if l.fname = l'.fname then
+          (* if error in the same file, use the precise location *)
+          Some l', Some l'
+        else
+          (* else, use the location of the command *)
+          cmd_loc, Some l'
+    (* Otherwise,
+      cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
+    | _, Some l' -> cmd_loc, l'
+    | _, None -> cmd_loc, cmd_loc in
+    nodes, st, (cmd_loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
@@ -138,8 +149,10 @@ let new_doc ~uri ~version ~text =
           fname = Some(uri);
           start_line = 0;
           start_col  = 0;
+          start_offset  = 0;
           end_line = 0;
-          end_col = 0
+          end_col = 0;
+          end_offset  = 0
         } in
       (None, [(1, msg), Some(loc)])
   in
@@ -161,8 +174,10 @@ let dummy_loc =
     Pos.{ fname = None
         ; start_line = 1
         ; start_col = 1
+        ; start_offset = -1
         ; end_line = 2
         ; end_col = 2
+        ; end_offset = -1
         }
 
 let check_text ~doc =
