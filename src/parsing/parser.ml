@@ -143,17 +143,17 @@ sig
   let parse_entry_string (entry:lexbuf -> 'a) (fname:string) (s:string): 'a =
     let lb = Utf8.from_string s in
     set_filename lb fname;
-    Ll1.new_parsing entry lb
+    LpParser.new_parsing entry lb
 
   (* exported functions *)
-  let parse_term_string = parse_entry_string Ll1.term
-  let parse_rwpatt_string = parse_entry_string Ll1.rw_patt_spec
-  let parse_search_query_string = parse_entry_string Ll1.search
+  let parse_term_string = parse_entry_string LpParser.term
+  let parse_rwpatt_string = parse_entry_string LpParser.rw_patt_spec
+  let parse_search_query_string = parse_entry_string LpParser.search
 
-  let parse_in_channel = parse_in_channel Ll1.command
-  let parse_file = parse_file Ll1.command
-  let parse_string = parse_string Ll1.command
-  let parse_lexbuf = parse_lexbuf None Ll1.command
+  let parse_in_channel = parse_in_channel LpParser.command
+  let parse_file = parse_file LpParser.command
+  let parse_string = parse_string LpParser.command
+  let parse_lexbuf = parse_lexbuf None LpParser.command
 
 end
 
