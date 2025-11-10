@@ -21,21 +21,21 @@ module type PARSER = sig
   type lexbuf
 
   val parse_in_channel : string -> in_channel -> ast
-  (** [parse ic] returns a stream of commands parsed from
-      channel [ic]. Commands are parsed lazily and the channel is
+  (** [parse f ic] returns a stream of commands parsed from channel [ic]
+      created from file [f]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
 
   val parse_file : string -> ast
-  (** [parse_file fname] returns a stream of parsed commands of file
-      [fname]. Commands are parsed lazily. *)
+  (** [parse_file f] returns a stream of parsed commands of file [f]. Commands
+      are parsed lazily. *)
 
   val parse_string : string -> string -> ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
 
   val parse_lexbuf : lexbuf -> ast
-  (** [parse_lexbuf lexbuf] is the same as [parse_string] but with an
-      already created lexbuf *)
+  (** [parse_lexbuf lb] is the same as [parse_string] but with an already
+      created lexbuf. *)
 
 end
 
@@ -48,9 +48,8 @@ module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
 
   open Lexing
 
-  let parse_lexbuf (*fname:string*) (icopt:in_channel option)
+  let parse_lexbuf (icopt:in_channel option)
         (entry:lexbuf -> 'a) (lb:lexbuf) : 'a Stream.t =
-    (*set_filename lb fname;*)
     let generator _ =
       try Some(entry lb)
       with
@@ -114,9 +113,8 @@ sig
   end
 = struct
 
-  let parse_lexbuf (*fname:string*) (icopt: in_channel option)
+  let parse_lexbuf (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
-    (*set_filename lb fname;*)
     let generator _ =
       try Some(entry lb)
       with
