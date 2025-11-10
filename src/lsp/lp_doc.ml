@@ -63,7 +63,10 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
     (match qres with
-      | None -> pstate, diags, logs
+      | None ->
+        pstate,
+        (tac_loc, 4, "tactic applied succefully", goals) :: diags,
+        logs
       | Some x -> pstate, (tac_loc, 4, x, goals) :: diags, logs)
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
