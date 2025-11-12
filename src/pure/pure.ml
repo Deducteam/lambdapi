@@ -114,7 +114,9 @@ type proof_state =
   Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * bool * Pos.popt
 
 let current_goals : proof_state -> Goal.info list =
-  fun (time, st, ps, _, _, _) ->
+  fun (time, st, ps, pf, _, n) ->
+  let s : proof_state = (time, st, ps, pf, true, n) in
+  let (_, _, ps, _pf, _, _n) : proof_state = s in
   Time.restore time;
   Print.sig_state := st;
   List.map Goal.to_info ps.proof_goals
@@ -122,6 +124,7 @@ let current_goals : proof_state -> Goal.info list =
 type command_result =
   | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
+    * string option
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -143,8 +146,21 @@ let initial_state : string -> state = fun fname ->
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
+let get_diag_smg (elt: Syntax.p_command_aux) : string option=
+  match elt with
+        | P_symbol  {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
+          p_sym_prf;p_sym_def} ->
+          (match p_sym_prf with
+          | None -> None
+          | Some (ts, pe) ->
+            match pe.elt with
+            | P_proof_abort -> Some "Proof aborted"
+            | P_proof_admitted -> Some "Proof admitted"
+            | P_proof_end -> Some "Proof ended")
+        | _ -> None
+
 let handle_command : state -> Command.t -> command_result =
-  fun (st,ss) cmd ->
+  fun (st,ss) ({elt; pos} as cmd) ->
   Time.restore st;
   let open Handle in
   try
@@ -157,7 +173,8 @@ let handle_command : state -> Command.t -> command_result =
       let ps =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
-        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
+        let qres = get_diag_smg elt in
+        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos, qres)
   with Fatal(Some p,m) ->
     Cmd_Error(Some p, m)
 
@@ -236,6 +253,10 @@ module TestUtil = struct
       pos_fname pos_lnum pos_bol pos_cnum
 
 end
+
+let name_of_proof : proof_state -> string =
+  fun (_, _ss, ps, _finalize, _, _) ->
+    ps.proof_name.elt
 
 (* Test: equality is reflexive *)
 let%test _ =
