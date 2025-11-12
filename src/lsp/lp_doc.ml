@@ -62,12 +62,8 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
-    (match qres with
-      | None ->
-        pstate,
-        (tac_loc, 4, "tactic applied succefully", goals) :: diags,
-        logs
-      | Some x -> pstate, (tac_loc, 4, x, goals) :: diags, logs)
+    let qres = match qres with None -> "Tactic succeded" | Some x -> x in
+    pstate, (tac_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -99,25 +95,29 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
+    let qres = match qres with None -> "Command succeded" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    (match qres with
-      | None -> nodes, st, (cmd_loc, 4, "Command succeded", None) :: dg, logs
-      | Some x -> nodes, st, (cmd_loc, 4, x, None) :: dg, logs)
-  | Cmd_Proof (pst, tlist, thm_loc, qed_loc, p_qres) ->
+    let ok_diag = cmd_loc, 4, qres, None in
+    nodes, st, ok_diag :: dg, logs
+  | Cmd_Proof (pst, tlist, thm_loc, qed_loc, qres) ->
     let name = Pure.name_of_proof pst in
+    let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
+    let dg_proof =
+      (thm_loc, 4, "symbol "^name^" successfully defined", Some start_goals)
+      :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
-    let dg_proof =
-      (thm_loc, 4, "symbol " ^ name ^ " succesfuly defined", None)
-      :: dg_proof in
     let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, _qres)   ->
+        let dg_proof = match qres with
+        | None -> dg_proof
+        | Some x ->  let pg = qed_loc, 4, x, None in pg :: dg_proof
+      in
+        (* let pg = qed_loc, 4, qres, None in *)
         let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
-        (match p_qres with
-          | None -> st, dg_proof, logs
-          | Some x -> st, (qed_loc, 4, x, None) :: dg_proof, logs)
+        st, dg_proof, logs
       | Cmd_Error(_loc,msg) ->
         let pg = qed_loc, 1, msg, None in
         st, pg :: dg_proof, ((1, msg), qed_loc) :: logs
