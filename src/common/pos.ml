@@ -96,13 +96,11 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
   fun ?(print_dirname=true) ?(print_fname=true)
     {fname; start_line; start_col; end_line; end_col} ->
   let fname =
-    if not print_fname then "" else
-    match fname with
-    | None    -> ""
-    | Some(n) ->
-        if print_dirname then n ^ ":"
-        else
-          Filename.basename n ^ ":"
+    if print_fname then
+      match fname with
+      | None -> ""
+      | Some n -> (if print_dirname then n else Filename.basename n) ^ ":"
+    else ""
   in
   if start_line <> end_line then
     Printf.sprintf "%s%d:%d-%d:%d" fname start_line start_col end_line end_col
