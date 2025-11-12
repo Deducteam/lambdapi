@@ -450,7 +450,9 @@ let hover_symInfo ofmt ~id params =
     in
     let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
     let result : J.t =
-      `Assoc [ "contents", `String sym_type; "range", range ] in
+      `Assoc [ "contents", `String ("```lambdapi\n" ^ sym_type ^ "\n```");
+        "range", range;
+        "kind", `String "markdown" ] in
     let msg = LSP.mk_reply ~id ~result in
     LIO.send_json ofmt msg
 
