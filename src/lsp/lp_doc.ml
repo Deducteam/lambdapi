@@ -83,7 +83,6 @@ let get_goals dg_proof =
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 
-
 let process_cmd _file (nodes,st,dg,logs) ast =
   let open Pure in
   (* let open Timed in *)

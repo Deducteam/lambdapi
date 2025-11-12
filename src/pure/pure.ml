@@ -113,7 +113,6 @@ type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
   Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * bool * Pos.popt
 
-
 let current_goals : proof_state -> Goal.info list =
   fun (time, st, ps, pf, _, n) ->
   let s : proof_state = (time, st, ps, pf, true, n) in
@@ -187,10 +186,6 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(Some p,m) ->
     Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
-
-let name_of_proof : proof_state -> string =
-  fun (_, _ss, ps, _finalize, _, _) ->
-    ps.proof_name.elt
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
