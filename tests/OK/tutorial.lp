@@ -77,24 +77,25 @@ define what is a proposition and what is a proof.
 You usually just need to install a package defining some logics and
 require it in your development. For instance, using Opam, you can do:
 
-opam install lambdapi-logics
+opam repository -a --set-default add lambdapi https://github.com/deducteam/opam-lambdapi-repository.git # once
+opam install lambdapi-stdlib
 
 Then, in your development, you can use one of the logics defined in
-this package (see https://github.com/Deducteam/lambdapi-logics for
+this package (see https://github.com/Deducteam/lambdapi-stdlib for
 more details) as follows:
 
-require Logic.TFF.Main;
+require Stdlib.FOL;
 
 This tells Lambdapi to load in the environment the symbols, rules,
-etc.  declared in the package Logic.TFF, which defines multi-sorted
-first-order logic. A symbol f of Logic.TFF can then be refered to by
-Logic.TFF.f.  To avoid writing Logic.TFF every time, you can do:
+etc.  declared in the package Stdlib.FOL, which defines polymorphic
+first-order logic. A symbol f of Stdlib.FOL can then be refered to by
+Stdlib.FOL.f.  To avoid writing Stdlib.FOL every time, you can do:
 
-open Logic.TFF.Main;
+open Stdlib.FOL;
 
 The two operations can also be done at the same time by simply writing;
 
-require open Logic.TFF;
+require open Stdlib.FOL;
 
 But we are going to define our own logic hereafter to show that it is
 simple. */
