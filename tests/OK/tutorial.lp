@@ -77,7 +77,7 @@ define what is a proposition and what is a proof.
 You usually just need to install a package defining some logics and
 require it in your development. For instance, using Opam, you can do:
 
-opam repository add lambdapi -a --set-default https://github.com/deducteam/opam-lambdapi-repository.git
+opam repository -a --set-default add lambdapi https://github.com/deducteam/opam-lambdapi-repository.git # once
 opam install lambdapi-stdlib
 
 Then, in your development, you can use one of the logics defined in
