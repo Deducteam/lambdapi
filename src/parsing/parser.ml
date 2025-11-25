@@ -95,20 +95,17 @@ module Lp :
 sig
   include PARSER with type lexbuf := Sedlexing.lexbuf
 
-  val parse_term_string :
-    (*fname*)string -> (*term*)string -> Syntax.p_term
-  (** [parse_rwpatt_string f s] returns a term from string [s] which comes
-      from file [f] ([f] can be anything). *)
+  val parse_term_string: Lexing.position -> string -> Syntax.p_term
+  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
+      [s] starts at position [p]. *)
 
-  val parse_rwpatt_string :
-    (*fname*)string -> (*rwpatt*)string -> Syntax.p_rw_patt
-  (** [parse_rwpatt_string f s] returns a rewrite pattern specification from
-      string [s] which comes from file [f] ([f] can be anything). *)
+  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rw_patt
+  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
+      string [s] assuming that [s] starts at position [p]. *)
 
-  val parse_search_query_string :
-    (*fname*)string -> (*query*)string -> Syntax.query
-  (** [parse_search_query_string f s] returns a query from string [s] which
-      comes from file [f] ([f] can be anything). *)
+  val parse_search_query_string: Lexing.position -> string -> Syntax.query
+  (** [parse_search_query_string f s] parses a query from string [s] assuming
+      that [s] starts at position [p]. *)
 
   end
 = struct
@@ -140,9 +137,11 @@ sig
   let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
     parse_in_channel entry fname (open_in fname)
 
-  let parse_entry_string (entry:lexbuf -> 'a) (fname:string) (s:string): 'a =
+  let parse_entry_string (entry:lexbuf -> 'a) (lexpos:Lexing.position)
+        (s:string): 'a =
     let lb = Utf8.from_string s in
-    set_filename lb fname;
+    set_position lb lexpos;
+    set_filename lb lexpos.pos_fname;
     LpParser.new_parsing entry lb
 
   (* exported functions *)

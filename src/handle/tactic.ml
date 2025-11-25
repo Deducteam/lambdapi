@@ -312,8 +312,7 @@ let p_term_of_string (pos:popt) (t:term): p_term =
   | Symb s when String.is_string_literal s.sym_name ->
       begin
         let string = remove_quotes s.sym_name in
-        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-        Parsing.Parser.Lp.parse_term_string fname string
+        Parsing.Parser.Lp.parse_term_string (lexing_opt pos) string
       end
   | _ -> fatal pos "refine tactic not applied to a term string literal"
 
@@ -323,8 +322,7 @@ let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
       let string = remove_quotes s.sym_name in
       if string = "" then None
       else
-        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-        Some (Parsing.Parser.Lp.parse_rwpatt_string fname string)
+        Some (Parsing.Parser.Lp.parse_rwpatt_string (lexing_opt pos) string)
   | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
 
 let is_right (pos:popt) (t:term): bool =
@@ -339,8 +337,8 @@ let is_right (pos:popt) (t:term): bool =
       end
   | _ -> fatal pos "rewrite tactic not applied to a side string literal"
 
-(** [p_tactic t] interprets the term [t] as a tactic. *)
-let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
+(** [p_tactic ss pos idmap t] interprets the term [t] as a tactic. *)
+let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
   let c = get_config ss pos in
   let rec tac idmap t = Pos.make pos (tac_aux idmap t)
   and tac_aux idmap t =
@@ -677,6 +675,7 @@ let rec handle :
       let ps = handle ss sym_pos prv ps t1 in
       handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
+      log "%a" Pos.short pt.pos;
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
       let idmap = get_names g in
       handle ss sym_pos prv ps (p_tactic ss pos idmap t)

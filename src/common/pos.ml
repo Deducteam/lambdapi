@@ -59,19 +59,15 @@ let pos_end : popt -> popt = fun po ->
   | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
 
 (** [cat p1 p2] returns a position starting from [p1] start and ending with
-   [p2] end. [p1] and [p2] must have the same filename. *)
+   [p2] end. The result position uses [p2] fname. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
   { fname = p2.fname
-    (*FIXME: temporary fix for
-      https://github.com/Deducteam/lambdapi/issues/1001
-      if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname*)
   ; start_line = p1.start_line
   ; start_col = p1.start_col
   ; start_offset = p1.start_offset
   ; end_line = p2.end_line
   ; end_col = p2.end_col
-  ; end_offset = p2.end_offset
-  }
+  ; end_offset = p2.end_offset }
 
 let cat : popt -> popt -> popt = fun p1 p2 ->
   match p1, p2 with
@@ -130,8 +126,8 @@ let short : popt Lplib.Base.pp = fun ppf p ->
 let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
   {loc with elt = f loc.elt}
 
-(** [locate ?fname loc] converts the pair of position [loc] and filename
-    [fname] of the Lexing library into a {!type:pos}. *)
+(** [locate ?fname (p1,p2)] converts the pair of Lexing positions [p1,p2] and
+    filename [fname] into a {!type:pos}. *)
 let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
   fun ?fname (p1, p2) ->
   let fname = if p1.pos_fname = "" then fname else Some(p1.pos_fname) in
@@ -142,6 +138,18 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
   let end_col = p2.pos_cnum - p2.pos_bol in
   let end_offset = p2.pos_cnum in
   {fname; start_line; start_col; start_offset; end_line; end_col; end_offset }
+
+(** [lexpos p] converts a [pos] into a [Lexing.position]. *)
+let lexing (p:pos): Lexing.position =
+  { pos_fname = (match p.fname with None -> "" | Some s -> s)
+  ; pos_lnum = p.start_line
+  ; pos_bol = p.start_offset - p.start_col
+  ; pos_cnum = p.start_offset }
+
+let lexing_opt (p:popt): Lexing.position =
+  match p with
+  | None -> {pos_fname=""; pos_lnum=1; pos_bol=0; pos_cnum=0}
+  | Some p -> lexing p
 
 (** [make_pos lps elt] creates a located element from the lexing positions
    [lps] and the element [elt]. *)
