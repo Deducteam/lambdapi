@@ -12,6 +12,7 @@ on the VSCode Marketplace. Lambdapi can read Dedukti files. It
 includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF."""
+x-maintenance-intent: ["(latest)"]
 maintainer: ["dedukti-dev@inria.fr"]
 authors: ["Deducteam"]
 license: "CECILL-2.1"
