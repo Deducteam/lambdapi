@@ -316,7 +316,9 @@ let p_term_of_string (pos:popt) (t:term): p_term =
       end
   | _ -> fatal pos "refine tactic not applied to a term string literal"
 
-let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
+let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
+  if Logger.log_enabled() then
+    log "p_rwpatt_of_string %a %a" Pos.short pos term t;
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = remove_quotes s.sym_name in
@@ -377,7 +379,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
             | T_repeat, _ -> assert false
             | T_rewrite, [side;pat;_;t] ->
                 P_tac_rewrite(is_right pos side,
-                              p_rw_patt_of_string pos pat, p_term pos idmap t)
+                              p_rwpatt_of_string pos pat, p_term pos idmap t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1, p_term pos idmap t2)
@@ -626,7 +628,7 @@ let rec handle :
       let g = List.fold_left remove g ids in
       {ps with proof_goals = g::gs}
   | P_tac_rewrite(l2r,pat,eq) ->
-      let pat = Option.map (Scope.scope_rw_patt ss env) pat in
+      let pat = Option.map (Scope.scope_rwpatt ss env) pat in
       let p = new_problem() in
       tac_refine pos ps gt gs p
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))

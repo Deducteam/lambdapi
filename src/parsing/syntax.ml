@@ -189,7 +189,7 @@ end
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
-type ('term, 'binder) rw_patt =
+type ('term, 'binder) rwpatt =
   | Rw_Term           of 'term
   | Rw_InTerm         of 'term
   | Rw_InIdInTerm     of 'binder
@@ -197,7 +197,7 @@ type ('term, 'binder) rw_patt =
   | Rw_TermInIdInTerm of 'term * 'binder
   | Rw_TermAsIdInTerm of 'term * 'binder
 
-type p_rw_patt = (p_term, p_ident * p_term) rw_patt loc
+type p_rwpatt = (p_term, p_ident * p_term) rwpatt loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -280,7 +280,7 @@ type p_tactic_aux =
   | P_tac_refl
   | P_tac_remove of p_ident list
   | P_tac_repeat of p_tactic
-  | P_tac_rewrite of bool * p_rw_patt option * p_term
+  | P_tac_rewrite of bool * p_rwpatt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_set of p_ident * p_term
   | P_tac_simpl of simp_flag
@@ -407,7 +407,7 @@ let eq_p_inductive : p_inductive eq =
   fun {elt=(i1,t1,l1);_} {elt=(i2,t2,l2);_} ->
   List.eq eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
-let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
+let eq_p_rwpatt : p_rwpatt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
   | Rw_Term t1, Rw_Term t2
   | Rw_InTerm t1, Rw_InTerm t2 -> eq_p_term t1 t2
@@ -458,7 +458,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.eq (Option.eq eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
-      b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
+      b1 = b2 && Option.eq eq_p_rwpatt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
@@ -614,7 +614,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     fold_term (fold_term a l) r
   in
 
-  let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
+  let fold_rwpatt_vars : StrSet.t -> 'a -> p_rwpatt -> 'a = fun vs a p ->
     match p.elt with
     | Rw_Term t
     | Rw_InTerm t -> fold_term_vars vs a t
@@ -652,7 +652,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_change t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
     | P_tac_rewrite (_, Some p, t) ->
-        (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
+        (vs, fold_term_vars vs (fold_rwpatt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
     | P_tac_remove ids ->

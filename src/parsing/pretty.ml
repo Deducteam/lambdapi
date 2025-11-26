@@ -226,7 +226,7 @@ let proof_end : p_proof_end pp = fun ppf pe ->
            | P_proof_admitted -> "admitted"
            | P_proof_abort -> "abort")
 
-let rw_patt : p_rw_patt pp = fun ppf p ->
+let rwpatt : p_rwpatt pp = fun ppf p ->
   match p.elt with
   | Rw_Term(t)               -> term ppf t
   | Rw_InTerm(t)             -> out ppf "in %a" term t
@@ -307,7 +307,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_repeat t -> out ppf "repeat %a" tactic t
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
-      let pat ppf p = out ppf " .[%a]" rw_patt p in
+      let pat ppf p = out ppf " .[%a]" rwpatt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
   | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
   | P_tac_simpl SimpAll -> out ppf "simplify"

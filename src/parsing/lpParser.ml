@@ -447,6 +447,7 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
             begin
               match current_token() with
               | BEGIN ->
+                  consume_token lb;
                   let p_sym_prf = Some (proof lb) in
                   let p_sym_def = false in
                   let sym =
@@ -798,6 +799,7 @@ and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | BEGIN ->
+      consume_token lb;
       let p = proof lb in
       None, Some p
   | _ ->
@@ -805,6 +807,7 @@ and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
       begin
         match current_token() with
         | BEGIN ->
+            consume_token lb;
             let p = proof lb in
             Some t, Some p
         | _ ->
@@ -815,7 +818,6 @@ and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
 
 and proof (lb:lexbuf): p_proof * p_proof_end =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
-  consume BEGIN lb;
   match current_token() with
   | L_CU_BRACKET ->
       let l = nelist subproof lb in
@@ -1047,7 +1049,7 @@ and tactic (lb:lexbuf): p_tactic =
               match current_token() with
               | DOT ->
                   consume_token lb;
-                  let p = rw_patt_spec lb in
+                  let p = rwpatt_bracket lb in
                   let t = term lb in
                   let b = d <> Pratter.Left in
                   extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(b,Some p,t))
@@ -1058,7 +1060,7 @@ and tactic (lb:lexbuf): p_tactic =
             end
         | DOT ->
             consume_token lb;
-            let p = rw_patt_spec lb in
+            let p = rwpatt_bracket lb in
             let t = term lb in
             extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(true,Some p,t))
         | _ ->
@@ -1118,7 +1120,7 @@ and tactic (lb:lexbuf): p_tactic =
   | _ ->
       expected "tactic" []
 
-and rw_patt (lb:lexbuf): p_rw_patt =
+and rwpatt_content (lb:lexbuf): p_rwpatt =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   (* bterm *)
@@ -1192,16 +1194,25 @@ and rw_patt (lb:lexbuf): p_rw_patt =
   | _ ->
       expected "term or keyword \"in\"" []
 
-and rw_patt_spec (lb:lexbuf): p_rw_patt =
+and rwpatt_bracket (lb:lexbuf): p_rwpatt =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | L_SQ_BRACKET ->
       consume_token lb;
-      let p = rw_patt lb in
+      let p = rwpatt_content lb in
       consume R_SQ_BRACKET lb; (*add info on opening bracket*)
       p
   | _ ->
       expected "" [L_SQ_BRACKET]
+
+and rwpatt (lb:lexbuf): p_rwpatt =
+  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  match current_token() with
+  | DOT ->
+      consume_token lb;
+      rwpatt_bracket lb
+  | _ ->
+      expected "" [DOT]
 
 (* terms *)
 
@@ -1274,7 +1285,6 @@ and term (lb:lexbuf): p_term =
 
 and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
-  if log_enabled() then log "app %a" pp_lexing pos1;
   match current_token() with
   (* aterm *)
   | UID _

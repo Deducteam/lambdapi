@@ -34,7 +34,7 @@ val scope_search_pattern :
 val scope_rule :
  ?find_sym: find_sym -> bool -> sig_state -> p_rule -> sym_rule
 
-(** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
+(** [scope_rwpatt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-val scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt
+val scope_rwpatt : sig_state -> env -> p_rwpatt -> (term, binder) rwpatt

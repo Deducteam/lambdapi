@@ -99,7 +99,7 @@ sig
   (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
       [s] starts at position [p]. *)
 
-  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rw_patt
+  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
   (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
       string [s] assuming that [s] starts at position [p]. *)
 
@@ -147,7 +147,7 @@ sig
 
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
-  let parse_rwpatt_string = parse_entry_string LpParser.rw_patt_spec
+  let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
   let parse_search_query_string = parse_entry_string LpParser.search
 
   let parse_in_channel = parse_in_channel LpParser.command
