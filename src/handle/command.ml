@@ -124,10 +124,11 @@ let handle_require_as :
       {ss with alias_path; path_alias}
     end
 
-(** [handle_require compile bo ss p] handles the command [require p as id]
-    with [ss] as signature state and [compile] as compilation function (passed
-    as argument to avoid cyclic dependencies). On success, an updated
-    signature state is returned. *)
+(** [handle_require compile bo ss p] handles the command [require p] with
+    [compile] as compilation function (passed as argument to avoid cyclic
+    dependencies), [bo=Some(true)] if the command is [require private open p],
+    [bo=Some(false)] if the command is [require open p], and [ss] as signature
+    state. On success, an updated signature state is returned. *)
 let handle_require compile bo ss {elt=p;_} =
   let ss = rec_require compile ss p in
   match bo with
