@@ -25,7 +25,7 @@ let rec term : p_term pp = fun ppf t ->
   | P_Expl u -> out ppf "(%a)" term u
   | P_Type -> out ppf "Type"
   | P_Wild -> out ppf "_"
-  | P_NLit i -> string ppf i
+  | P_NLit _ -> fatal t.pos "Cannot translate integer literals."
   | P_SLit _ -> fatal t.pos "Cannot translate string literals."
   | P_Iden(qid,_) -> qident ppf qid
   | P_Arro(u,v) -> out ppf "%a -> %a" pterm u term v
