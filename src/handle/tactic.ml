@@ -675,10 +675,9 @@ let rec handle :
       let ps = handle ss sym_pos prv ps t1 in
       handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
-      log "%a" Pos.short pt.pos;
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
       let idmap = get_names g in
-      handle ss sym_pos prv ps (p_tactic ss pos idmap t)
+      handle ss sym_pos prv ps (p_tactic ss pt.pos idmap t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

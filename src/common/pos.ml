@@ -23,41 +23,6 @@ let cmp : pos cmp = fun p1 p2 ->
     (p1.start_line, p1.start_col, (p1.fname, p1.end_line, p1.end_col))
     (p2.start_line, p2.start_col, (p2.fname, p2.end_line, p2.end_col))
 
-(** Convenient short name for an optional position. *)
-type popt = pos option
-
-(** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
-let equal : popt -> popt -> bool = fun p1 p2 ->
-  match (p1, p2) with
-  | (Some(p1), Some(p2)) -> p1 = p2
-  | (None    , None    ) -> true
-  | (_       , _       ) -> false
-
-(** Type constructor extending a type (e.g. a piece of abstract syntax) with a
-    a source code position. *)
-type 'a loc =
-  { elt : 'a   (** The element that is being localised.        *)
-  ; pos : popt (** Position of the element in the source code. *) }
-
-(** Localised string type (widely used). *)
-type strloc = string loc
-
-(** [make pos elt] associates the position [pos] to [elt]. *)
-let make : popt -> 'a -> 'a loc = fun pos elt -> { elt ; pos }
-
-(** [none elt] wraps [elt] in a ['a loc] structure without any specific source
-    code position. *)
-let none : 'a -> 'a loc = fun elt -> make None elt
-
-(** [in_pos pos elt] associates the position [pos] to [elt]. *)
-let in_pos : pos -> 'a -> 'a loc = fun p elt -> make (Some p) elt
-
-(** [pos_end po] creates a position from the end of position [po]. *)
-let pos_end : popt -> popt = fun po ->
-  match po with
-  | None -> None
-  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
-
 (** [cat p1 p2] returns a position starting from [p1] start and ending with
    [p2] end. The result position uses [p2] fname. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
@@ -69,21 +34,25 @@ let cat : pos -> pos -> pos = fun p1 p2 ->
   ; end_col = p2.end_col
   ; end_offset = p2.end_offset }
 
-let cat : popt -> popt -> popt = fun p1 p2 ->
-  match p1, p2 with
-  | Some p1, Some p2 -> Some (cat p1 p2)
-  | Some p, None
-  | None, Some p -> Some p
-  | None, None -> None
+(** [locate ?fname (p1,p2)] converts the pair of Lexing positions [p1,p2] and
+    filename [fname] into a {!type:pos}. *)
+let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
+  fun ?fname (p1, p2) ->
+  let fname = if p1.pos_fname = "" then fname else Some(p1.pos_fname) in
+  let start_line = p1.pos_lnum in
+  let start_col = p1.pos_cnum - p1.pos_bol in
+  let start_offset = p1.pos_cnum in
+  let end_line = p2.pos_lnum in
+  let end_col = p2.pos_cnum - p2.pos_bol in
+  let end_offset = p2.pos_cnum in
+  {fname; start_line; start_col; start_offset; end_line; end_col; end_offset }
 
-(** [shift k p] returns a position that is [k] characters after [p]. *)
-let shift : int -> popt -> popt = fun k p ->
-  match p with
-  | None -> assert false
-  | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
-
-let after = shift 1
-let before = shift (-1)
+(** [lexing p] converts a [pos] into a [Lexing.position]. *)
+let lexing (p:pos): Lexing.position =
+  { pos_fname = (match p.fname with None -> "" | Some s -> s)
+  ; pos_lnum = p.start_line
+  ; pos_bol = p.start_offset - p.start_col
+  ; pos_cnum = p.start_offset }
 
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is
@@ -105,6 +74,78 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
+
+
+(** Type of optional positions. *)
+type popt = pos option
+
+(** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
+let equal : popt -> popt -> bool = fun p1 p2 ->
+  match (p1, p2) with
+  | (Some(p1), Some(p2)) -> p1 = p2
+  | (None    , None    ) -> true
+  | (_       , _       ) -> false
+
+(** [pos_end po] creates a position from the end of position [po]. *)
+let pos_end : popt -> popt = fun po ->
+  match po with
+  | None -> None
+  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
+
+(** [cat] extends and hide the above [cat] function from [pos] to [popt]. *)
+let cat : popt -> popt -> popt = fun p1 p2 ->
+  match p1, p2 with
+  | Some p1, Some p2 -> Some (cat p1 p2)
+  | Some p, None
+  | None, Some p -> Some p
+  | None, None -> None
+
+(** [shift k p] returns a position that is [k] characters after [p]. *)
+let shift : int -> popt -> popt = fun k p ->
+  match p with
+  | None -> assert false
+  | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
+
+let after = shift 1
+let before = shift (-1)
+
+(** [lexing_opt p] converts a [popt] into a [Lexing.position]. *)
+let lexing_opt (p:popt): Lexing.position =
+  match p with
+  | None -> {pos_fname=""; pos_lnum=1; pos_bol=0; pos_cnum=0}
+  | Some p -> lexing p
+
+
+
+(** Type constructor extending a type (e.g. a piece of abstract syntax) with a
+    an optional source code position. *)
+type 'a loc =
+  { elt : 'a   (** The element that is being localised.        *)
+  ; pos : popt (** Position of the element in the source code. *) }
+
+(** Localised string type (widely used). *)
+type strloc = string loc
+
+(** [make pos elt] associates the position [pos] to [elt]. *)
+let make : popt -> 'a -> 'a loc = fun pos elt -> { elt ; pos }
+
+(** [none elt] wraps [elt] in a ['a loc] structure without any specific source
+    code position. *)
+let none : 'a -> 'a loc = fun elt -> make None elt
+
+(** [map f loc] applies function [f] on the value of [loc] and keeps the
+    position unchanged. *)
+let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
+  {loc with elt = f loc.elt}
+
+(** [in_pos pos elt] associates the position [pos] to [elt]. *)
+let in_pos : pos -> 'a -> 'a loc = fun p elt -> make (Some p) elt
+
+(** [make_pos lps elt] creates a located element from the lexing positions
+   [lps] and the element [elt]. *)
+let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
+  fun lps elt -> in_pos (locate lps) elt
+
 let popt_to_string :
   ?print_dirname:bool -> ?print_fname:bool -> popt -> string =
   fun ?(print_dirname=true) ?(print_fname=true) pop ->
@@ -113,48 +154,19 @@ let popt_to_string :
     | Some (p) -> to_string ~print_dirname ~print_fname p
 
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
-let pp : popt Lplib.Base.pp = fun ppf p ->
+let pp : popt pp = fun ppf p ->
   string ppf (popt_to_string p)
 
 (** [short ppf pos] prints the optional position [pos] on [ppf]. *)
-let short : popt Lplib.Base.pp = fun ppf p ->
+let short : popt pp = fun ppf p ->
   let print_fname=false in
   string ppf (popt_to_string ~print_fname p)
 
-(** [map f loc] applies function [f] on the value of [loc] and keeps the
-    position unchanged. *)
-let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
-  {loc with elt = f loc.elt}
+(** [pp_lexing ppf lps] prints the Lexing.position pair [lps] on [ppf]. *)
+let pp_lexing : (Lexing.position * Lexing.position) pp =
+  fun ppf lps -> short ppf (Some (locate lps))
 
-(** [locate ?fname (p1,p2)] converts the pair of Lexing positions [p1,p2] and
-    filename [fname] into a {!type:pos}. *)
-let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
-  fun ?fname (p1, p2) ->
-  let fname = if p1.pos_fname = "" then fname else Some(p1.pos_fname) in
-  let start_line = p1.pos_lnum in
-  let start_col = p1.pos_cnum - p1.pos_bol in
-  let start_offset = p1.pos_cnum in
-  let end_line = p2.pos_lnum in
-  let end_col = p2.pos_cnum - p2.pos_bol in
-  let end_offset = p2.pos_cnum in
-  {fname; start_line; start_col; start_offset; end_line; end_col; end_offset }
 
-(** [lexpos p] converts a [pos] into a [Lexing.position]. *)
-let lexing (p:pos): Lexing.position =
-  { pos_fname = (match p.fname with None -> "" | Some s -> s)
-  ; pos_lnum = p.start_line
-  ; pos_bol = p.start_offset - p.start_col
-  ; pos_cnum = p.start_offset }
-
-let lexing_opt (p:popt): Lexing.position =
-  match p with
-  | None -> {pos_fname=""; pos_lnum=1; pos_bol=0; pos_cnum=0}
-  | Some p -> lexing p
-
-(** [make_pos lps elt] creates a located element from the lexing positions
-   [lps] and the element [elt]. *)
-let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
-  fun lps elt -> in_pos (locate lps) elt
 
 (** [print_file_contents escape sep delimiters pos] prints the contents of the
     file at position [pos]. [sep] is the separator replacing each newline
@@ -162,8 +174,7 @@ let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     "unknown location" message returned when the position does not refer to a
     file. [escape] is used to escape the file contents.*)
 let print_file_contents :
-  escape:(string -> string) ->
-    delimiters:(string*string) -> popt Lplib.Base.pp =
+  escape:(string -> string) -> delimiters:(string*string) -> popt pp =
   fun ~escape ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
