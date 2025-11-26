@@ -154,10 +154,15 @@ let consume_token (lb:lexbuf) : unit =
 (* building positions and terms *)
 
 let extend_pos (*s:string*) (lps:position * position): 'a -> 'a loc =
-  let lps2 = (fst lps, snd (current_pos())) in
+  let p1 = fst lps and p2 = fst (current_pos()) in
+  let p2 =
+    if p2.pos_cnum > p2.pos_bol then
+      {p2 with pos_cnum = p2.pos_cnum - 1}
+    else p2
+  in
   (*if log_enabled() then
     log "extend_pos %s %a -> %a" s Pos.pp_lexing lps Pos.pp_lexing lps2;*)
-  make_pos lps2
+  make_pos (p1,p2)
 
 let qid_of_path (lps: position * position):
       string list -> (string list * string) loc = function
