@@ -110,17 +110,18 @@ sig
   end
 = struct
 
+  let handle_error (icopt: in_channel option)
+        (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
+    try Some(entry lb)
+    with
+    | End_of_file -> Option.iter close_in icopt; None
+    | SyntaxError{pos=None; _} -> assert false
+    | SyntaxError{pos=Some pos; elt} ->
+        parser_fatal pos "Syntax error. %s" elt
+
   let parse_lexbuf (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
-    let generator _ =
-      try Some(entry lb)
-      with
-      | End_of_file -> Option.iter close_in icopt; None
-      | SyntaxError{pos=None; _} -> assert false
-      | SyntaxError{pos=Some pos; elt} ->
-          parser_fatal pos "Syntax error. %s" elt
-    in
-    Stream.from generator
+    Stream.from (fun _ -> handle_error icopt entry lb)
 
   let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
       : 'a Stream.t =
@@ -142,7 +143,7 @@ sig
     let lb = Utf8.from_string s in
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
-    LpParser.new_parsing entry lb
+    Stream.next (parse_lexbuf None (LpParser.new_parsing entry) lb)
 
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
