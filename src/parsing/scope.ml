@@ -285,7 +285,7 @@ and scope_head : ?find_sym:find_sym ->
         let sym =
           try Sign.find Sign.Ghost.sign s
           with Not_found ->
-            let s_typ = mk_Symb (Builtin.get ss pos "String") in
+            let s_typ = mk_Symb (Builtin.find_builtin ss pos "String") in
             Sign.add_symbol Sign.Ghost.sign Public Const Eager true
               {elt=s;pos} pos s_typ []
         in
@@ -298,11 +298,11 @@ and scope_head : ?find_sym:find_sym ->
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      (* Use Builtin.get for unqualified numeric literals (path=[]),
-         and Builtin.get_at for qualified ones (e.g., Nat.12). *)
+      (* Use Builtin.find_builtin for unqualified numeric literals (path=[]),
+         and Builtin.find_builtin_at for qualified ones (e.g., Nat.12). *)
       let sym_of s =
         mk_Symb
-          (if path = [] then Builtin.get ss pos s
+          (if path = [] then Builtin.find_builtin ss pos s
            else Builtin.get_at ss path pos s)
       in
       let sym = Array.map sym_of strint in
