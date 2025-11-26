@@ -7,17 +7,24 @@ open Term
 open Sig_state
 
 (** [find_builtin ss pos name] returns the symbol mapped to the builtin [name] by looking through all builtins scope.
+   It first checks the current signature's path, then searches through all other modules.
    If the symbol cannot be found then [Fatal] is raised. *)
 let find_builtin : sig_state -> popt -> string -> sym = fun ss pos name ->
-  let exception Found of sym in
+  (* First, try to find in the current signature's path *)
   try
-    Path.Map.iter (fun _ strmap ->
-      match StrMap.find_opt name strmap with
-      | Some s -> raise (Found s)
-      | None -> ()
-    ) ss.builtins;
-    fatal pos "Unknown symbol %s." name
-  with Found s -> s
+    StrMap.find name (Path.Map.find ss.signature.sign_path ss.builtins)
+  with Not_found ->
+    (* If not found, search through all other paths *)
+    let exception Found of sym in
+    try
+      Path.Map.iter (fun path strmap ->
+        if path <> ss.signature.sign_path then
+          match StrMap.find_opt name strmap with
+          | Some s -> raise (Found s)
+          | None -> ()
+      ) ss.builtins;
+      fatal pos "Unknown symbol %s." name
+    with Found s -> s
 
 (** [get_at ss path pos name] returns the symbol mapped to the builtin [name]
    in the module located at [path]. If the symbol cannot be found then
