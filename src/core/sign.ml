@@ -39,9 +39,11 @@ let mem : t -> string -> bool = fun sign name ->
   StrMap.mem name !(sign.sign_symbols)
 
 (** [find sign name] finds the symbol named [name] in signature [sign] if it
-    exists, and raises the [Not_found] exception otherwise. *)
+    exists, and raises the [Not_found] exception otherwise. Searches first in
+    sign_symbols, then in sign_builtins. *)
 let find : t -> string -> sym = fun sign name ->
-  StrMap.find name !(sign.sign_symbols)
+  try StrMap.find name !(sign.sign_symbols)
+  with Not_found -> StrMap.find name !(sign.sign_builtins)
 
 (** [loaded] stores the signatures of the known (already compiled or currently
     being compiled) modules. The current module is stored in [loaded] so that

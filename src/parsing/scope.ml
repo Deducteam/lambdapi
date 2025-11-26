@@ -292,13 +292,19 @@ and scope_head : ?find_sym:find_sym ->
         mk_Symb sym
       end
 
-  | (P_NLit s, _) ->
+  | (P_NLit (path, s), _) ->
       let neg, s =
         let neg = s.[0] = '-' in
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss pos s) in
+      (* Use Builtin.get for unqualified numeric literals (path=[]),
+         and Builtin.get_at for qualified ones (e.g., Nat.12). *)
+      let sym_of s =
+        mk_Symb
+          (if path = [] then Builtin.get ss pos s
+           else Builtin.get_at ss path pos s)
+      in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)

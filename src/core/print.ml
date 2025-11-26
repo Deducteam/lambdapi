@@ -122,7 +122,7 @@ let var : var pp = fun ppf x -> uid ppf (base_name x)
 exception Not_a_nat
 
 let builtin name =
-  try StrMap.find name (!sig_state).builtins with Not_found -> raise Not_a_nat
+  try StrMap.find name (Path.Map.find (!sig_state).signature.sign_path (!sig_state).builtins) with Not_found -> raise Not_a_nat
 
 (** [nat_of_term t] converts a term into a natural number.
     @raise Not_a_nat if this is not possible. *)

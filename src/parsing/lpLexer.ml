@@ -97,6 +97,7 @@ type token =
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
   | INT of string
+  | PINT of (Path.t * string)
   | FLOAT of string
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -322,6 +323,7 @@ and qid expl ids lb =
   | "/*" -> comment (qid expl ids) 0 lb
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
   | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
+  | int -> PINT(ids, Utf8.lexeme lb)
   | regid ->
     if expl then QID_EXPL(Utf8.lexeme lb :: ids)
     else QID(Utf8.lexeme lb :: ids)

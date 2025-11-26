@@ -11,6 +11,19 @@ open Goal
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
 
+(** [find_builtin ss name] searches for a builtin symbol named [name] across
+    all paths in [ss.builtins]. Returns [Some sym] if found, [None] otherwise. *)
+let find_builtin : sig_state -> string -> sym option = fun ss name ->
+  let exception Found of sym in
+  try
+    Path.Map.iter (fun _ strmap ->
+      match StrMap.find_opt name strmap with
+      | Some s -> raise (Found s)
+      | None -> ()
+    ) ss.builtins;
+    None
+  with Found s -> Some s
+
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
 let _ =
@@ -21,18 +34,19 @@ let _ =
   in
   let register = Builtin.register_expected_type eq_noexn term in
   let expected_zero_type ss _pos =
-    try
-      match !((StrMap.find "nat_succ" ss.builtins).sym_type) with
-      | Prod(a,_) -> a
-      | _ -> assert false
-    with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+    match find_builtin ss "nat_succ" with
+    | Some s ->
+        (match !(s.sym_type) with
+         | Prod(a,_) -> a
+         | _ -> assert false)
+    | None -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
   in
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      try !((StrMap.find "nat_zero" ss.builtins).sym_type)
-      with Not_found ->
-        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+      match find_builtin ss "nat_zero" with
+      | Some s -> !(s.sym_type)
+      | None -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in
@@ -98,9 +112,8 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
-        (* Add builtins of [p] in [ss]. *)
-        let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-        let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+        (* Add builtins of [p] in [ss] under the path key [p]. *)
+        let builtins = Path.Map.add p !(sign.sign_builtins) ss.builtins in
         let ss = {ss with builtins} in
         (* Add [p] in dependencies. *)
         let dep = {dep_symbols=StrMap.empty; dep_open=false} in
@@ -285,7 +298,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       begin
-        match StrMap.find_opt n ss.builtins with
+        match find_builtin ss n with
         | Some s' when s' == s ->
           fatal pos "Builtin \"%s\" already mapped to %a" n sym s
         | _ ->
