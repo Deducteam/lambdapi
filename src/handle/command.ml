@@ -6,6 +6,7 @@ open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
 open Parsing open Syntax open Scope
 open Proof
+open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
@@ -123,10 +124,11 @@ let handle_require_as :
       {ss with alias_path; path_alias}
     end
 
-(** [handle_require compile bo ss p] handles the command [require p as id]
-    with [ss] as signature state and [compile] as compilation function (passed
-    as argument to avoid cyclic dependencies). On success, an updated
-    signature state is returned. *)
+(** [handle_require compile bo ss p] handles the command [require p] with
+    [compile] as compilation function (passed as argument to avoid cyclic
+    dependencies), [bo=Some(true)] if the command is [require private open p],
+    [bo=Some(false)] if the command is [require open p], and [ss] as signature
+    state. On success, an updated signature state is returned. *)
 let handle_require compile bo ss {elt=p;_} =
   let ss = rec_require compile ss p in
   match bo with
@@ -582,7 +584,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Create the proof state. *)
       let pdata_state =
-        let proof_goals = Proof.add_goals_of_problem p [] in
+        let proof_goals = add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
           let m = LibMeta.fresh p a 0 in

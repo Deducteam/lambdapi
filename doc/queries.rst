@@ -59,7 +59,6 @@ available flags by using the command ``flag`` with no argument.
    flag "print_implicits" on; // default is off
    flag "print_contexts" on; // default is off
    flag "print_domains" on; // default is off
-   flag "print_meta_types" on; // default is off
    flag "print_meta_args" on; // default is off
 
 .. _print:

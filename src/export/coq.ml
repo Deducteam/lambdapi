@@ -132,7 +132,8 @@ let set_encoding : string -> unit = fun f ->
     (fun i b ->
       if not b then
         let pos =
-          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0}
+          Some {fname=Some f;start_line=0;start_col=0;start_offset=0;
+                end_line=0;end_col=0;end_offset=0}
         in fatal pos "Builtin %s undefined." (name_of_index i))
     found
 
@@ -210,14 +211,9 @@ let rec term oc t =
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
+  | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_NLit i ->
-      if !stt then
-        match QidMap.find_opt ([],i) !map_erased_qid_coq with
-        | Some s -> string oc s
-        | None -> raw_ident oc i
-      else raw_ident oc i
   | P_Iden(qid,b) ->
       if b then char oc '@';
       if !stt then

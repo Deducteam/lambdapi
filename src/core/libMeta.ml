@@ -14,14 +14,14 @@ let meta_counter : int Stdlib.ref = Stdlib.ref (-1)
 (** [reset_meta_counter ()] resets the counter used to produce meta keys. *)
 let reset_meta_counter () = Stdlib.(meta_counter := -1)
 
-(** [fresh p ?name a n] creates a fresh metavariable of type [a] and arity [n]
-   with the optional name [name], and adds it to [p]. *)
+(** [fresh p a n] creates a fresh metavariable of type [a] and arity [n] and
+    adds it to [p]. *)
 let fresh : problem -> term -> int -> meta = fun p a n ->
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
            meta_type = ref a; meta_arity = n; meta_value = ref None } in
-  if Logger.log_enabled() then log "fresh ?%d#%d: %a" m.meta_key n Raw.term a;
+  if Logger.log_enabled() then
+    log "create ?%d of arity %d and type %a" m.meta_key n Raw.term a;
   p := {!p with metas = MetaSet.add m !p.metas};
-  if Logger.log_enabled() then log "%a" Print.problem p;
   m
 
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific

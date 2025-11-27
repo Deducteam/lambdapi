@@ -1,5 +1,5 @@
 (lang dune 3.7)
-
+(using dune_site 0.1)
 (generate_opam_files false)
 
 (name lambdapi)
@@ -48,6 +48,7 @@ systems: Dedukti, Coq, HRS, CPF.")
   (lwt_ppx (>= 1))
   (uri (>= 1.1))
   (dune-site (>= 3.15))
+  (ppx_inline_test (>= v0.17))
  )
  (sites (share server_resources))
 )

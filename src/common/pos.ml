@@ -5,11 +5,16 @@ open Lplib open Base
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
 type pos =
-  { fname      : string option (** File name for the position.       *)
-  ; start_line : int (** Line number of the starting point.          *)
-  ; start_col  : int (** Column number (utf8) of the starting point. *)
-  ; end_line   : int (** Line number of the ending point.            *)
-  ; end_col    : int (** Column number (utf8) of the ending point.   *) }
+  { fname        : string option (** File name for the position.       *)
+  ; start_line   : int (** Line number of the starting point.          *)
+  ; start_col    : int (** Column number (utf8) of the starting point. *)
+  ; start_offset : int (** Number of chars since the beginning of the document
+                           for the starting point *)
+  ; end_line     : int (** Line number of the ending point.            *)
+  ; end_col      : int (** Column number (utf8) of the ending point.   *)
+  ; end_offset   : int (** Number of chars since the beginning of the document
+                           for the ending point *)
+  }
 
 (** Total comparison function on pos. *)
 let cmp : pos cmp = fun p1 p2 ->
@@ -62,8 +67,11 @@ let cat : pos -> pos -> pos = fun p1 p2 ->
       if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname*)
   ; start_line = p1.start_line
   ; start_col = p1.start_col
+  ; start_offset = p1.start_offset
   ; end_line = p2.end_line
-  ; end_col = p2.end_col }
+  ; end_col = p2.end_col
+  ; end_offset = p2.end_offset
+  }
 
 let cat : popt -> popt -> popt = fun p1 p2 ->
   match p1, p2 with
@@ -131,9 +139,11 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
   let fname = if p1.pos_fname = "" then fname else Some(p1.pos_fname) in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
+  let start_offset = p1.pos_cnum in
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
- {fname; start_line; start_col; end_line; end_col}
+  let end_offset = p2.pos_cnum in
+  {fname; start_line; start_col; start_offset; end_line; end_col; end_offset }
 
 (** [make_pos lps elt] creates a located element from the lexing positions
    [lps] and the element [elt]. *)

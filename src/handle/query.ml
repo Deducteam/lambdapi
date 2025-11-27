@@ -89,8 +89,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_verbose(i) ->
       let i = try int_of_string i with Failure _ ->
-                fatal pos "Too big number (max is %d)" max_int in
-      if i < 0 then fatal pos "Negative number";
+                fatal pos "Too big number (max is %d)." max_int in
+      if i < 0 then fatal pos "Negative number.";
       if !Console.verbose = 0 then
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
