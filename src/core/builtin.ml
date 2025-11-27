@@ -6,16 +6,37 @@ open Common open Error open Pos
 open Term
 open Sig_state
 
-(** [get ss pos name] returns the symbol mapped to the builtin [name]. If the
-   symbol cannot be found then [Fatal] is raised. *)
-let get : sig_state -> popt -> string -> sym = fun ss pos name ->
-  try StrMap.find name ss.builtins with Not_found ->
-    fatal pos "Builtin symbol \"%s\" undefined." name
-
-(** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to
-   the builtin [name], and [None] otherwise. *)
-let get_opt : sig_state -> string -> sym option = fun ss name ->
-  try Some (StrMap.find name ss.builtins) with Not_found -> None
+(** [get ss ~mp ~pos name] returns the symbol mapped to the builtin [name].
+   If [mp] is empty (unqualified), it first checks the current signature's path,
+   then searches through all other modules. If [mp] is specified (qualified),
+   it looks only in that specific module path.
+   If the symbol cannot be found then [Fatal] is raised. *)
+let get : sig_state -> ?mp:Path.t -> ?pos:popt -> string -> sym = fun ss ?(mp=[]) ?(pos=None) name ->
+  match mp with
+  | [] ->
+    (* Unqualified: search current signature first, then all other paths *)
+    begin
+      try
+        StrMap.find name (Path.Map.find ss.signature.sign_path ss.builtins)
+      with Not_found ->
+        (* If not found, search through all other paths *)
+        let exception Found of sym in
+        try
+          Path.Map.iter (fun path strmap ->
+            if path <> ss.signature.sign_path then
+              match StrMap.find_opt name strmap with
+              | Some s -> raise (Found s)
+              | None -> ()
+          ) ss.builtins;
+          fatal pos "Unknown builtin symbol %s." name
+        with Found s -> s
+    end
+  | path ->
+    (* Qualified: look in the specific path *)
+    begin
+      try StrMap.find name (Path.Map.find path ss.builtins) with Not_found ->
+        fatal pos "Builtin symbol \"%s\" in %a undefined." name Path.pp path
+    end
 
 (** Hash-table used to record checking functions for builtins. *)
 let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t =

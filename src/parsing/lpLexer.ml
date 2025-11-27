@@ -96,7 +96,7 @@ type token =
   (* other tokens *)
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
-  | INT of string
+  | INT of (Path.t * string)
   | FLOAT of string
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -272,7 +272,7 @@ let rec token lb =
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
-  | int -> INT(Utf8.lexeme lb)
+  | int -> INT(([], Utf8.lexeme lb))
   | float -> FLOAT(Utf8.lexeme lb)
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
@@ -322,6 +322,7 @@ and qid expl ids lb =
   | "/*" -> comment (qid expl ids) 0 lb
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
   | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
+  | int -> INT(ids, Utf8.lexeme lb)
   | regid ->
     if expl then QID_EXPL(Utf8.lexeme lb :: ids)
     else QID(Utf8.lexeme lb :: ids)

@@ -21,7 +21,7 @@ type sig_state =
   ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
-  ; builtins  : sym StrMap.t              (** Builtins. *)
+  ; builtins  : sym StrMap.t Path.Map.t   (** Builtins. *)
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -71,7 +71,13 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   (* Update the builtins of the current signature. *)
   Sign.add_builtin ss.signature b s;
   (* Update the builtins of the sig_state. *)
-  let builtins = StrMap.add b s ss.builtins in
+  let path = ss.signature.sign_path in
+  let path_builtins =
+    try Path.Map.find path ss.builtins
+    with Not_found -> StrMap.empty
+  in
+  let path_builtins = StrMap.add b s path_builtins in
+  let builtins = Path.Map.add path path_builtins ss.builtins in
   {ss with builtins}
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
@@ -92,7 +98,7 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; in_scope = StrMap.empty
     ; alias_path = StrMap.empty
     ; path_alias = Path.Map.empty
-    ; builtins = StrMap.empty
+    ; builtins = Path.Map.empty
     ; open_paths = Path.Set.empty }
   in
   open_sign (open_sign ss Ghost.sign) signature

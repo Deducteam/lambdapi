@@ -22,17 +22,19 @@ let _ =
   let register = Builtin.register_expected_type eq_noexn term in
   let expected_zero_type ss _pos =
     try
-      match !((StrMap.find "nat_succ" ss.builtins).sym_type) with
+      let s = Builtin.get ss "nat_succ" in
+      match !(s.sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
-    with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+    with Fatal _ -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
   in
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      try !((StrMap.find "nat_zero" ss.builtins).sym_type)
-      with Not_found ->
-        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+      try
+        let s = Builtin.get ss "nat_zero" in
+        !(s.sym_type)
+      with Fatal _ -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in
@@ -98,9 +100,8 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
-        (* Add builtins of [p] in [ss]. *)
-        let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-        let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+        (* Add builtins of [p] in [ss] under the path key [p]. *)
+        let builtins = Path.Map.add p !(sign.sign_builtins) ss.builtins in
         let ss = {ss with builtins} in
         (* Add [p] in dependencies. *)
         let dep = {dep_symbols=StrMap.empty; dep_open=false} in
@@ -285,10 +286,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
+        try
+          let s' = Builtin.get ss n in
+          if s' == s then
+            fatal pos "Builtin \"%s\" already mapped to %a" n sym s
+          else
+            fatal pos "Builtin \"%s\" already mapped to another symbol" n
+        with Fatal _ ->
+          (* Builtin not yet defined, proceed *)
           Builtin.check ss pos n s;
           Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
           (Sig_state.add_builtin ss n s, None, None)
