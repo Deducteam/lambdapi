@@ -11,19 +11,6 @@ open Goal
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
 
-(** [find_builtin ss name] searches for a builtin symbol named [name] across
-    all paths in [ss.builtins]. Returns [Some sym] if found, [None] otherwise. *)
-let find_builtin : sig_state -> string -> sym option = fun ss name ->
-  let exception Found of sym in
-  try
-    Path.Map.iter (fun _ strmap ->
-      match StrMap.find_opt name strmap with
-      | Some s -> raise (Found s)
-      | None -> ()
-    ) ss.builtins;
-    None
-  with Found s -> Some s
-
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
 let _ =
@@ -34,19 +21,20 @@ let _ =
   in
   let register = Builtin.register_expected_type eq_noexn term in
   let expected_zero_type ss _pos =
-    match find_builtin ss "nat_succ" with
-    | Some s ->
-        (match !(s.sym_type) with
-         | Prod(a,_) -> a
-         | _ -> assert false)
-    | None -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+    try
+      let s = Builtin.get ss "nat_succ" in
+      match !(s.sym_type) with
+      | Prod(a,_) -> a
+      | _ -> assert false
+    with Fatal _ -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
   in
   register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      match find_builtin ss "nat_zero" with
-      | Some s -> !(s.sym_type)
-      | None -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
+      try
+        let s = Builtin.get ss "nat_zero" in
+        !(s.sym_type)
+      with Fatal _ -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
     mk_Arro (typ_0, typ_0)
   in
@@ -298,10 +286,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       begin
-        match find_builtin ss n with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
+        try
+          let s' = Builtin.get ss n in
+          if s' == s then
+            fatal pos "Builtin \"%s\" already mapped to %a" n sym s
+          else
+            fatal pos "Builtin \"%s\" already mapped to another symbol" n
+        with Fatal _ ->
+          (* Builtin not yet defined, proceed *)
           Builtin.check ss pos n s;
           Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
           (Sig_state.add_builtin ss n s, None, None)

@@ -21,7 +21,7 @@ type config =
 
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
-  let builtin = Builtin.find_builtin ss pos in
+  let builtin name = Builtin.get ss ~pos name in
   let symb_P = builtin "P" and symb_T = builtin "T" in
   let symb_Prop =
     match unfold Timed.(!(symb_P.sym_type)) with

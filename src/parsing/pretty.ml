@@ -151,7 +151,7 @@ let rec term : p_term pp = fun ppf t ->
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | (P_NLit(ps, i)           , _    ) -> out ppf "%a %s" (raw_path) ps i
+    | (P_NLit(ps, i)       , _    ) -> out ppf "%a %s" (raw_path) ps i
     | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t

@@ -89,8 +89,7 @@
 // other tokens
 
 %token <bool * string> DEBUG_FLAGS
-%token <string> INT
-%token <Path.t * string> PINT
+%token <Path.t * string> INT
 %token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
@@ -218,8 +217,11 @@ query:
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT n=INT
-    { make_pos $sloc (P_query_prover_timeout n) }
-  | VERBOSE n=INT { make_pos $sloc (P_query_verbose n) }
+    { let (_, m) = n in
+      make_pos $sloc (P_query_prover_timeout m) }
+  | VERBOSE n=INT
+    { let (_, m) = n in
+        make_pos $sloc (P_query_verbose  m) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | SEARCH s=STRINGLIT
@@ -295,11 +297,9 @@ aterm:
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
-  | m=PINT {
+  | m=INT {
       let (p, n) = m in
         make_pos $sloc (P_NLit(List.rev p, n)) }
-  | n=INT {
-      make_pos $sloc (P_NLit([], n)) }
   | s=STRINGLIT { make_pos $sloc (P_SLit s) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
@@ -425,7 +425,7 @@ notation:
 
 float_or_int:
   | s=FLOAT { s }
-  | s=INT { s }
+  | s=INT { let (_, m) = s in m }
 
 maybe_generalize:
   | g = GENERALIZE?
