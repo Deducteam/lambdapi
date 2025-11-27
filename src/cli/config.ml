@@ -109,7 +109,7 @@ let map_dir : (Path.t * string) list CLT.t =
   let path : Path.t Arg.conv =
     let parse (s: string) : (Path.t, [>`Msg of string]) result =
       try Ok(Parser.path_of_string s)
-      with Error.Fatal(_,s) -> Error(`Msg(s))
+      with Error.Fatal(_,s, _) -> Error(`Msg(s))
     in
     let print fmt p = Path.pp fmt p in
     Arg.conv (parse, print)
