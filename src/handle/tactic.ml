@@ -307,15 +307,22 @@ let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
     | Symb s, ts -> p_query c pos s ts
     | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
+(** [p_term_of_string pos t] turns into a p_term a string literal term [t]
+    that is part of a bigger term obtained by scoping and normalizing of a
+    p_term at position [pos]. *)
 let p_term_of_string (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       begin
         let string = remove_quotes s.sym_name in
-        Parsing.Parser.Lp.parse_term_string (lexing_opt pos) string
+        let p = lexing_opt (after s.sym_pos) in
+        Parsing.Parser.Lp.parse_term_string p string
       end
-  | _ -> fatal pos "refine tactic not applied to a term string literal"
+  | _ -> fatal pos "not a string literal"
 
+(** [p_rwpatt_of_string pos t] turns into a p_rwpatt option a string literal
+    term [t] that is part of a bigger term obtained by scoping and normalizing
+    of a p_term at position [pos]. *)
 let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
   if Logger.log_enabled() then
     log "p_rwpatt_of_string %a %a" Pos.short pos term t;
@@ -323,9 +330,9 @@ let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
   | Symb s when String.is_string_literal s.sym_name ->
       let string = remove_quotes s.sym_name in
       if string = "" then None
-      else
-        Some (Parsing.Parser.Lp.parse_rwpatt_string (lexing_opt pos) string)
-  | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
+      else let p = lexing_opt (after s.sym_pos) in
+           Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
+  | _ -> fatal pos "not a string literal"
 
 let is_right (pos:popt) (t:term): bool =
   match t with
@@ -339,7 +346,8 @@ let is_right (pos:popt) (t:term): bool =
       end
   | _ -> fatal pos "rewrite tactic not applied to a side string literal"
 
-(** [p_tactic ss pos idmap t] interprets the term [t] as a tactic. *)
+(** [p_tactic ss pos idmap t] interprets as a tactic the term [t] obtained by
+    scoping and normalization of a p_term at position [pos]. *)
 let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
   let c = get_config ss pos in
   let rec tac idmap t = Pos.make pos (tac_aux idmap t)
