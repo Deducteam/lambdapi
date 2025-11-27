@@ -65,11 +65,11 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
     Result.Error (None, "EOF")
   | Some c ->
     Ok c
-  | exception Fatal(Some(Some(pos)), msg) ->
+  | exception Fatal(Some(Some(pos)), msg, "") ->
     Error(Some pos, msg)
-  | exception Fatal(Some(None)     , _  ) ->
+  | exception Fatal(Some(None)     , _  , "") ->
     assert false
-  | exception Fatal(None           , _  ) ->
+  | exception Fatal(None           , _  , "") ->
     assert false
 
 (** Exception raised by [parse_text] on error. *)
@@ -105,9 +105,9 @@ let parse_file :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_file fname);
     List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg) -> List.rev Stdlib.(!cmds), Some(pos, msg)
-  | Fatal(Some(None)     , _  ) -> assert false
-  | Fatal(None           , _  ) -> assert false
+  | Fatal(Some(Some(pos)), msg, "") -> List.rev Stdlib.(!cmds), Some(pos, msg)
+  | Fatal(Some(None)     , _ , "" ) -> assert false
+  | Fatal(None           , _ , "" ) -> assert false
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 

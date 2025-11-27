@@ -2,7 +2,7 @@
  (name tool)
  (public_name lambdapi.tool)
  (modules :standard)
- (libraries lambdapi.parsing lambdapi.core dream unix dune-site)
+ (libraries lambdapi.parsing lambdapi.core dream unix dune-site lambdapi.ressources)
  (preprocess (pps lwt_ppx)))
  
 

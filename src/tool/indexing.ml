@@ -423,8 +423,10 @@ module DB = struct
    | Some (sourceid, fname, start_line, end_line) ->
       let start_col = 0 in
       let end_col = -1 in (* to the end of line *)
+      (* FIX ME *)
+      let start_offset, end_offset = 0, 0 in
       Some sourceid,
-       Some { fname=Some fname; start_line; start_col; end_line; end_col }
+       Some { fname=Some fname; start_line; start_col; end_line; end_col; start_offset; end_offset }
 
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
