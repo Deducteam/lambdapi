@@ -1,36 +1,32 @@
-QID ::= [UID "."]+ UID
+<qid> ::= [<uid> "."]+ <uid>
 
-<switch> ::= "on"
-           | "off"
+<id> ::= <uid> | <qid>
 
-<side> ::= "left"
-         | "right"
+<switch> ::= "on" | "off"
+
+<side> ::= "left" | "right"
 
 <assert> ::= "assert"
            | "assertnot"
 
 <command> ::= "opaque" <qid> ";"
-            | "require" <path>* ";"
-            | "require" <open_cmd> <path>* ";"
-            | "require" <path> "as" UID ";"
-            | <open_cmd> <path>* ";"
-            | <modifier>* "symbol" UID <param_list>* ":" <term> [<proof>] ";"
-            | <modifier>* "symbol" UID <param_list>* [":" <term>] "≔" <term_proof> ";"
+            | "require" <qid>* ";"
+            | "require" [["private"] "open"] <qid>* ";"
+            | "require" <qid> "as" <uid> ";"
+            | ["private"] "open" <qid>* ";"
+            | <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>] ";"
+            | <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔" <term_proof> ";"
             | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <string> "≔" <qid> ";"
+            | "builtin" <string> "≔" <id> ";"
             | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
-            | "notation" <qid> <notation> ";"
+            | "notation" <id> <notation> ";"
             | <query> ";"
 
-<open_cmd> ::= "open"
-             | "private" "open"
-
-<query> ::= <assert> <param_list>* "⊢" <term> ":" <term>
-          | <assert> <param_list>* "⊢" <term> "≡" <term>
+<query> ::= <assert> <param_list>* "⊢" <term> (":"|"≡") <term>
           | "compute" <term>
-          | "print" [<qid_or_rule>]
+          | "print" [<id> | "unif_rule" | "coerce_rule"]
           | "proofterm"
           | "debug"
           | "debug" ("+"|"-") <char>+
@@ -42,30 +38,20 @@ QID ::= [UID "."]+ UID
           | "type" <term>
           | "search" <string>
 
-<qid_or_rule> ::= <qid>
-                | "unif_rule"
-                | "coerce_rule"
-
-<path> ::= UID
-         | QID
-
 <modifier> ::= [<side>] "associative"
              | "commutative"
              | "constant"
              | "injective"
              | "opaque"
              | "sequential"
-             | <exposition>
-
-<exposition> ::= "private"
-               | "protected"
+             | "private"
+             | "protected"
 
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
                | "[" <param>+ [":" <term>] "]"
 
-<param> ::= UID
-          | "_"
+<param> ::= <uid> | "_"
 
 <term> ::= <bterm>
          | <saterm>
@@ -75,30 +61,23 @@ QID ::= [UID "."]+ UID
 <bterm> ::= "`" <term_id> <binder>
           | "Π" <binder>
           | "λ" <binder>
-          | "let" UID <param_list>* [":" <term>] "≔" <term> "in" <term>
+          | "let" <uid> <param_list>* [":" <term>] "≔" <term> "in" <term>
 
 <saterm> ::= <aterm>+
 
 <aterm> ::= <term_id>
           | "_"
           | "TYPE"
-          | "?" UID [<env>]
-          | "$" UID [<env>]
+          | "?" <uid> [<env>]
+          | "$" <uid> [<env>]
           | "(" <term> ")"
           | "[" <term> "]"
           | <integer>
           | <string>
 
+<term_id> ::= ["@"] <id>
+
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
-
-<term_id> ::= <qid>
-            | <qid_expl>
-
-<qid> ::= UID
-        | QID
-
-<qid_expl> ::= "@" UID
-             | "@" QID
 
 <binder> ::= <param_list>+ "," <term>
            | <param> ":" <term> "," <term>
@@ -129,18 +108,18 @@ QID ::= [UID "."]+ UID
            | "change" <term>
            | "eval" <term>
            | "fail"
-           | "generalize" UID
-           | "have" UID ":" <term>
+           | "generalize" <uid>
+           | "have" <uid> ":" <term>
            | "induction"
            | "orelse" <tactic> <tactic>
            | "refine" <term>
            | "reflexivity"
-           | "remove" UID+
+           | "remove" <uid>+
            | "repeat" <tactic>
            | "rewrite" [<side>] [<rwpatt_spec>] <term>
-           | "set" UID "≔" <term>
+           | "set" <uid> "≔" <term>
            | "simplify"
-           | "simplify" <qid>
+           | "simplify" <id>
            | "simplify" "rule" "off"
            | "solve"
            | "symmetry"
@@ -149,15 +128,15 @@ QID ::= [UID "."]+ UID
 
 <rwpatt> ::= <term>
             | "in" <term>
-            | "in" UID "in" <term>
+            | "in" <uid> "in" <term>
             | <term> "in" <term> ["in" <term>]
-            | <term> "as" UID "in" <term>
+            | <term> "as" <uid> "in" <term>
 
 <rwpatt_spec> ::= "." "[" <rwpatt> "]"
 
-<inductive> ::= UID <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
+<inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
 
-<constructor> ::= UID <param_list>* ":" <term>
+<constructor> ::= <uid> <param_list>* ":" <term>
 
 <rule> ::= <term> "↪" <term>
 
@@ -170,14 +149,13 @@ QID ::= [UID "."]+ UID
              | "prefix" <float_or_int>
              | "quantifier"
 
-<float_or_int> ::= <float>
-                 | <integer>
+<float_or_int> ::= <float> | <integer>
 
 <relation> ::= "=" | ">" | ">=" | "≥"
 
 <where> ::= "concl" | "hyp" | "spine" | "rule" | "lhs" | "rhs"
 
-<asearch_query> ::= "name" "=" UID
+<asearch_query> ::= "name" "=" <uid>
                   | ("type"|"anywhere") ("≥"|">=") ["generalize"] <aterm>
                   | <where> <relation> ["generalize"] <aterm>
                   | "(" <search_query> ")"
@@ -187,4 +165,4 @@ QID ::= [UID "."]+ UID
 <ssearch_query> ::= <csearch_query> (";" <csearch_query>)*
 
 <search_query> ::= <ssearch_query>
-                 | <search_query> "|" <qid>
+                 | <search_query> "|" <id>
