@@ -362,7 +362,7 @@ let term_id (lb:lexbuf): p_term =
 
 (* commands *)
 
-let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
+let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | SIDE _
