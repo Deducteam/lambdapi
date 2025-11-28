@@ -208,25 +208,25 @@ type p_assertion =
 
 (** Search queries. *)
 type side = Lhs | Rhs
-type inside = Exact | Inside
+type relation = Exact | Inside
 type 'a where =
  | Spine of 'a
  | Conclusion of 'a
  | Hypothesis of 'a
-type constr =
- | QType of inside option where option
- | QXhs  of inside option * side option
-type base_search =
+type search_constr =
+ | QType of relation option where option
+ | QXhs  of relation option * side option
+type search_base =
  | QName of string
- | QSearch of p_term * (*generalize:*)bool * constr option
+ | QSearch of p_term * (*generalize:*)bool * search_constr option
 type op =
  | Intersect
  | Union
 type filter =
  | Path of string
 type search =
- | QBase of base_search
- | QOpp of search * op * search
+ | QBase of search_base
+ | QOp of search * op * search
  | QFilter of search * filter
 
 (** Parser-level representation of a query command. *)

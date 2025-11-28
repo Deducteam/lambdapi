@@ -192,37 +192,37 @@ module DB = struct
 
  type side = Parsing.Syntax.side = Lhs | Rhs
 
- type inside = Parsing.Syntax.inside = Exact | Inside
+ type relation = Parsing.Syntax.relation = Exact | Inside
 
- type 'inside where = 'inside Parsing.Syntax.where =
-  | Spine of 'inside
-  | Conclusion of 'inside
-  | Hypothesis of 'inside
- (* the "name" in the sym_name of rules is just the printed position of
-    the rule; the associated position is never None *)
+ type 'relation where = 'relation Parsing.Syntax.where =
+  | Spine of 'relation
+  | Conclusion of 'relation
+  | Hypothesis of 'relation
 
  type position =
   | Name
-  | Type of inside where
-  | Xhs  of inside * side
+  | Type of relation where
+  | Xhs  of relation * side
 
  type item = sym_name * Common.Pos.pos option
+ (* the "name" in the sym_name of rules is just the printed position of
+    the rule; the associated position is never None *)
 
  let pp_side fmt =
   function
    | Lhs -> Lplib.Base.out fmt "lhs"
    | Rhs -> Lplib.Base.out fmt "rhs"
 
- let pp_inside fmt =
+ let pp_relation fmt =
   function
     | Exact -> Lplib.Base.out fmt "as the exact"
     | Inside -> Lplib.Base.out fmt "inside the"
 
  let pp_where fmt =
   function
-   | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_inside ins
-   | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
-   | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
+   | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_relation ins
+   | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_relation ins
+   | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_relation ins
 
  module ItemSet =
   struct
@@ -263,11 +263,11 @@ module DB = struct
           (escaper.run Print.term) term
           (if generalize then "generalized " else "")
           pp_where where
-      | generalize,term,Xhs (inside,side) ->
+      | generalize,term,Xhs (relation,side) ->
          Lplib.Base.out ppf "%a occurs %s %a %a"
           (escaper.run Print.term) term
           (if generalize then "generalized" else "")
-          pp_inside inside pp_side side))
+          pp_relation relation pp_side side))
    sep
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
@@ -528,14 +528,14 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
     | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = rule.rhs in
- let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
+ let get_relation = function | DB.Conclusion r -> r | _ -> assert false in
  let filename = Option.get rule_pos.fname in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
-  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Lhs)])) ;
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Lhs)])) ;
  index_term_and_subterms ~is_spine:false rhs
-  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Rhs)]))
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Rhs)]))
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -637,7 +637,7 @@ module QueryLanguage = struct
   let rec aux =
    function
     | QBase bq -> answer_base_query ~mok ss env bq
-    | QOpp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
+    | QOp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
     | QFilter (q,f) -> filter (aux q) f
   in
    aux

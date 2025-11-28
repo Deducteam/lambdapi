@@ -242,29 +242,35 @@ let assertion : p_assertion pp = fun ppf a ->
   | P_assert_typing (t, a) -> out ppf "@[%a@ : %a@]" term t term a
   | P_assert_conv (t, u)   -> out ppf "@[%a@ ≡ %a@]" term t term u
 
-module Search = struct
-  let inside ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
-  let where elt ppf = function
-    | Spine x -> out ppf "spine%a" elt x
-    | Conclusion x -> out ppf "concl%a" elt x
-    | Hypothesis x -> out ppf "hyp%a" elt x
-  let constr ppf = function
-    | QType x -> out ppf "type%a" (Option.pp (where (Option.pp inside))) x
-    | QXhs (i,None) -> out ppf "rule%a" (Option.pp inside) i
-    | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp inside) i
-    | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp inside) i
-  let generalize ppf b = if b then string ppf " generalize"
-  let base_query ppf = function
-    | QName s -> out ppf "name %s" s
-    | QSearch(t,g,None) -> out ppf "anywhere%a%a" generalize g term t
-    | QSearch(t,g,Some c) -> out ppf "%a%a%a" constr c generalize g term t
-  let op ppf o = string ppf (match o with Union -> "; " | Intersect -> ", ")
-  let filter ppf (Path s) = out ppf " | %s" s
-  let rec query ppf = function
-    | QBase b -> base_query ppf b
-    | QOpp(q1,o,q2) -> out ppf "%a%a%a" query q1 op o query q2
-    | QFilter(q,f) -> out ppf "%a%a" query q filter f
-end
+let relation ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
+
+let where elt ppf = function
+  | Spine x -> out ppf "spine%a" elt x
+  | Conclusion x -> out ppf "concl%a" elt x
+  | Hypothesis x -> out ppf "hyp%a" elt x
+
+let search_constr ppf = function
+  | QType x -> out ppf "type%a" (Option.pp (where (Option.pp relation))) x
+  | QXhs(i,None) -> out ppf "rule%a" (Option.pp relation) i
+  | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp relation) i
+  | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp relation) i
+
+let generalize ppf b = if b then string ppf " generalize"
+
+let search_base ppf = function
+  | QName s -> out ppf "name %s" s
+  | QSearch(t,g,None) -> out ppf "anywhere%a%a" generalize g term t
+  | QSearch(t,g,Some c) ->
+      out ppf "%a%a%a" search_constr c generalize g term t
+
+let op ppf o = string ppf (match o with Union -> "; " | Intersect -> ", ")
+
+let filter ppf (Path s) = out ppf " | %s" s
+
+let rec search ppf = function
+  | QBase b -> search_base ppf b
+  | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
+  | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
@@ -283,7 +289,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
-  | P_query_search q -> out ppf "search %a" Search.query q
+  | P_query_search q -> out ppf "search %a" search q
 
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with

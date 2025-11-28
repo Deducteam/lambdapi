@@ -1508,7 +1508,7 @@ and binder (lb:lexbuf): p_params list * p_term =
 
 (* search *)
 
-and where (lb:lexbuf): bool * inside option =
+and where (lb:lexbuf): bool * relation option =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | UID u ->
@@ -1588,7 +1588,7 @@ and csearch (lb:lexbuf): search =
   match current_token() with
   | COMMA ->
       let aqs = list (prefix COMMA asearch) lb in
-      List.fold_left (fun x aq -> QOpp(x,Intersect,aq)) aq aqs
+      List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
   | _ ->
       aq
 
@@ -1598,7 +1598,7 @@ and ssearch (lb:lexbuf): search =
   match current_token() with
   | SEMICOLON ->
       let cqs = list (prefix SEMICOLON csearch) lb in
-      List.fold_left (fun x cq -> QOpp(x,Union,cq)) cq cqs
+      List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
 
