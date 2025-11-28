@@ -20,6 +20,10 @@ module type PARSER = sig
 
   type lexbuf
 
+  val parse_lexbuf : lexbuf -> ast
+  (** [parse_lexbuf lb] is the same as [parse_string] but with an already
+      created lexbuf. *)
+
   val parse_in_channel : string -> in_channel -> ast
   (** [parse f ic] returns a stream of commands parsed from channel [ic]
       created from file [f]. Commands are parsed lazily and the channel is
@@ -32,10 +36,6 @@ module type PARSER = sig
   val parse_string : string -> string -> ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
-
-  val parse_lexbuf : lexbuf -> ast
-  (** [parse_lexbuf lb] is the same as [parse_string] but with an already
-      created lexbuf. *)
 
 end
 
@@ -103,8 +103,8 @@ sig
   (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
       string [s] assuming that [s] starts at position [p]. *)
 
-  val parse_search_query_string: Lexing.position -> string -> Syntax.search
-  (** [parse_search_query_string f s] parses a query from string [s] assuming
+  val parse_search_string: Lexing.position -> string -> Syntax.search
+  (** [parse_search_string f s] parses a query from string [s] assuming
       that [s] starts at position [p]. *)
 
   end
@@ -148,7 +148,7 @@ sig
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
   let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
-  let parse_search_query_string = parse_entry_string LpParser.search
+  let parse_search_string = parse_entry_string LpParser.search
 
   let parse_in_channel = parse_in_channel LpParser.command
   let parse_file = parse_file LpParser.command

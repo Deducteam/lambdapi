@@ -702,13 +702,13 @@ module UserLevelQueries = struct
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:(html_of_results_list from)
    ~tag:("<h1>","</h1")
-   (Parsing.Parser.Lp.parse_search_query_string (lexing_opt None)
+   (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
       (transform_ascii_to_unicode s))
 
  let search_cmd_txt ss ~dbpath s =
    the_dbpath := dbpath;
    search_cmd_txt_query ss ~dbpath
-     (Parsing.Parser.Lp.parse_search_query_string (lexing_opt None)
+     (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
         (transform_ascii_to_unicode s))
 
 end
