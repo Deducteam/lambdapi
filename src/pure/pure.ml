@@ -146,13 +146,12 @@ let initial_state : string -> state = fun fname ->
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
-let get_diag_smg (elt: Syntax.p_command_aux) : string option=
-  match elt with
-        | P_symbol  {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
-          p_sym_prf;p_sym_def} ->
+let get_diag_msg (cmd: Syntax.p_command) : string option  =
+  match cmd.elt with
+        | P_symbol  {p_sym_prf;_} ->
           (match p_sym_prf with
           | None -> None
-          | Some (ts, pe) ->
+          | Some (_, pe) ->
             match pe.elt with
             | P_proof_abort -> Some "Proof aborted"
             | P_proof_admitted -> Some "Proof admitted"
@@ -160,7 +159,7 @@ let get_diag_smg (elt: Syntax.p_command_aux) : string option=
         | _ -> None
 
 let handle_command : state -> Command.t -> command_result =
-  fun (st,ss) ({elt; pos} as cmd) ->
+  fun (st,ss) cmd ->
   Time.restore st;
   let open Handle in
   try
@@ -173,7 +172,7 @@ let handle_command : state -> Command.t -> command_result =
       let ps =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
-        let qres = get_diag_smg elt in
+        let qres = get_diag_msg cmd in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos, qres)
   with Fatal(Some p,m) ->
     Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)

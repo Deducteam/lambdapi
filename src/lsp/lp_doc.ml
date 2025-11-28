@@ -62,7 +62,7 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
-    let qres = match qres with None -> "Tactic succeded" | Some x -> x in
+    let qres = match qres with None -> "Tactic succeeded" | Some x -> x in
     pstate, (tac_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
@@ -94,7 +94,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
-    let qres = match qres with None -> "Command succeded" | Some x -> x in
+    let qres = match qres with None -> "Command succeeded" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
     let ok_diag = cmd_loc, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
@@ -103,7 +103,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
     let dg_proof =
-      (thm_loc, 4, "symbol "^name^" successfully defined", Some start_goals)
+      (thm_loc, 4, "symbol "^name^" successfully declared", Some start_goals)
       :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in

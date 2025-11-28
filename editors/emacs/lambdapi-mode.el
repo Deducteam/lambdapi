@@ -195,7 +195,6 @@
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")
 
-
   ;; Comments
   (setq-local comment-start "//")
   (setq-local comment-end "")
