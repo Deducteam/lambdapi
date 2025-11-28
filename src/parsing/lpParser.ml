@@ -362,7 +362,7 @@ let term_id (lb:lexbuf): p_term =
 
 (* commands *)
 
-let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
+let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | SIDE _
@@ -718,16 +718,16 @@ and query (lb:lexbuf): p_query =
             consume_token lb;
             let a = term lb in
             let pos2 = current_pos() in
-            let t = make_abst (fst pos1) ps t (snd pos2) in
-            let a = make_prod (fst pos1) ps a (snd pos2) in
+            let t = make_abst (snd pos1) ps t (fst pos2) in
+            let a = make_prod (snd pos1) ps a (fst pos2) in
             extend_pos (*__FUNCTION__*) pos1
               (P_query_assert(b, P_assert_typing(t,a)))
         | EQUIV ->
             consume_token lb;
             let u = term lb in
             let pos2 = current_pos() in
-            let t = make_abst (fst pos1) ps t (snd pos2) in
-            let u = make_abst (fst pos1) ps u (snd pos2) in
+            let t = make_abst (snd pos1) ps t (fst pos2) in
+            let u = make_abst (snd pos1) ps u (fst pos2) in
             extend_pos (*__FUNCTION__*) pos1
               (P_query_assert(b, P_assert_conv(t, u)))
         | _ ->
