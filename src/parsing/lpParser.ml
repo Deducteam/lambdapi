@@ -1536,25 +1536,25 @@ and asearch (lb:lexbuf): search =
   | TYPE_QUERY ->
       consume_token lb;
       let g, w = where lb in
-      let t = aterm lb in
       if w <> None then expected "\"≥\", \">=\"" []
-      else QBase(QSearch(t,g,Some(QType None)))
+      else QBase(QSearch(aterm lb,g,Some(QType None)))
   | RULE ->
       consume_token lb;
       let g, w = where lb in
-      let t = aterm lb in
-      QBase(QSearch(t,g,Some(QXhs(w,None))))
+      QBase(QSearch(aterm lb,g,Some(QXhs(w,None))))
   | UID k ->
       consume_token lb;
       let g, w = where lb in
+      let posw = current_pos() in
       let t = aterm lb in
       begin
         match k, t.elt with
         | "name", P_Iden(id,false) ->
-            assert (fst id.elt = []);
-            if w <> Some Exact then expected "\"=\"" []
+            if fst id.elt <> [] then expected "" [UID""]
+            else if w <> Some Exact then
+              syntax_error posw "Only \"=\" is accepted after \"name\""
             else if g then
-              expected "\"generalize\" cannot be used with \"name\"" []
+              syntax_error posw "\"generalize\" cannot be used with \"name\""
             else QBase(QName(snd id.elt))
         | "name", _ ->
             expected "path prefix" []
