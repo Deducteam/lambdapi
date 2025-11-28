@@ -214,9 +214,9 @@ type 'a where =
  | Conclusion of 'a
  | Hypothesis of 'a
 type constr =
- | QType of (inside option) where option
+ | QType of inside option where option
  | QXhs  of inside option * side option
-type base_query =
+type base_search =
  | QName of string
  | QSearch of p_term * (*generalize:*)bool * constr option
 type op =
@@ -224,10 +224,10 @@ type op =
  | Union
 type filter =
  | Path of string
-type query =
- | QBase of base_query
- | QOpp of query * op * query
- | QFilter of query * filter
+type search =
+ | QBase of base_search
+ | QOpp of search * op * search
+ | QFilter of search * filter
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
@@ -251,9 +251,8 @@ type p_query_aux =
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-  | P_query_search of query
-  (** Runs a search query *) (* I use a string here to be parsed later
-  to avoid polluting LambdaPi code with index and retrieval code *)
+  | P_query_search of search
+  (** Runs a search query *)
 
 type p_query = p_query_aux loc
 

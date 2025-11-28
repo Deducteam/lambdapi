@@ -9,7 +9,7 @@ val dump : dbpath:string -> unit -> unit
 
 (* search command used by cli *)
 val search_cmd_txt: sig_state -> dbpath:string -> string -> string
-val search_cmd_txt_query: sig_state -> dbpath:string -> query -> string
+val search_cmd_txt_query: sig_state -> dbpath:string -> search -> string
 
 (* search command used by websearch *)
 val search_cmd_html:

@@ -103,7 +103,7 @@ sig
   (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
       string [s] assuming that [s] starts at position [p]. *)
 
-  val parse_search_query_string: Lexing.position -> string -> Syntax.query
+  val parse_search_query_string: Lexing.position -> string -> Syntax.search
   (** [parse_search_query_string f s] parses a query from string [s] assuming
       that [s] starts at position [p]. *)
 

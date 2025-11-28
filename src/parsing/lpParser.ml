@@ -1530,7 +1530,7 @@ and where (lb:lexbuf): bool * inside option =
   | _ ->
       expected "\">\", \"=\", \"≥\",\">=\"" []
 
-and asearch (lb:lexbuf): query =
+and asearch (lb:lexbuf): search =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   match current_token() with
   | TYPE_QUERY ->
@@ -1582,7 +1582,7 @@ and asearch (lb:lexbuf): query =
   | _ ->
       expected "name, anywhere, rule, lhs, rhs, type, concl, hyp, spine" []
 
-and csearch (lb:lexbuf): query =
+and csearch (lb:lexbuf): search =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   let aq = asearch lb in
   match current_token() with
@@ -1592,7 +1592,7 @@ and csearch (lb:lexbuf): query =
   | _ ->
       aq
 
-and ssearch (lb:lexbuf): query =
+and ssearch (lb:lexbuf): search =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   let cq = csearch lb in
   match current_token() with
@@ -1602,7 +1602,7 @@ and ssearch (lb:lexbuf): query =
   | _ ->
       cq
 
-and search (lb:lexbuf): query =
+and search (lb:lexbuf): search =
   if log_enabled() then log "Expected: %s" __FUNCTION__;
   let q = ssearch lb in
   let qids = list (prefix VBAR qid) lb in
