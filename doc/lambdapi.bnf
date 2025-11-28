@@ -173,11 +173,13 @@ QID ::= [UID "."]+ UID
 <float_or_int> ::= <float>
                  | <integer>
 
-<where> ::= UID ["generalize"]
+<relation> ::= "=" | ">" | ">=" | "≥"
 
-<asearch_query> ::= "type" <where> <aterm>
-                  | "rule" <where> <aterm>
-                  | UID <where> <aterm>
+<where> ::= "concl" | "hyp" | "spine" | "rule" | "lhs" | "rhs"
+
+<asearch_query> ::= "name" "=" UID
+                  | ("type"|"anywhere") ("≥"|">=") ["generalize"] <aterm>
+                  | <where> <relation> ["generalize"] <aterm>
                   | "(" <search_query> ")"
 
 <csearch_query> ::= <asearch_query> ("," <asearch_query>)*

@@ -114,14 +114,7 @@ let pp_token ppf t = Base.string ppf (string_of_token t)
 let the_current_token : (token * position * position) Stdlib.ref =
   Stdlib.ref dummy_token
 
-let current_token() : token =
-  let (t,_p1,_p2) = !the_current_token in
-  (*begin
-    if log_enabled() then
-      let p = locate (p1,p2) in
-      log "current token [%a]: \"%a\"" Pos.short (Some p) pp_token t
-  end;*)
-  t
+let current_token() : token = let (t,_,_) = !the_current_token in t
 
 let current_pos() : position * position =
   let (_,p1,p2) = !the_current_token in (p1,p2)
@@ -182,18 +175,18 @@ let make_prod (pos1:position) (ps:p_params list) (t:p_term) (pos2:position)
 let ident_of_term pos1 {elt; _} =
   match elt with
   | P_Iden({elt=([], x); pos}, _) -> Pos.make pos x
-  | _ -> LpLexer.syntax_error pos1 "not an identifier."
+  | _ -> LpLexer.syntax_error pos1 "not an unqualified identifier."
 
 (* generic parsing functions *)
 
 let list (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
   (try while true do acc := elt lb :: !acc done with SyntaxError _ -> ());
   List.rev !acc
 
 let nelist (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let x = elt lb in
   x :: list elt lb
 
@@ -242,7 +235,7 @@ let consume_DEBUG_FLAGS (lb:lexbuf): bool * string =
       expected "" [DEBUG_FLAGS(true,"")]
 
 let qid (lb:lexbuf): (string list * string) loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID s ->
       let pos1 = current_pos() in
@@ -256,7 +249,7 @@ let qid (lb:lexbuf): (string list * string) loc =
       expected "" [UID"";QID[]]
 
 let qid_expl (lb:lexbuf): (string list * string) loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID_EXPL s ->
       let pos1 = current_pos() in
@@ -270,7 +263,7 @@ let qid_expl (lb:lexbuf): (string list * string) loc =
       expected "" [UID_EXPL"";QID_EXPL[]]
 
 let uid (lb:lexbuf): string loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID s ->
       let pos1 = current_pos() in
@@ -280,7 +273,7 @@ let uid (lb:lexbuf): string loc =
       expected "" [UID""]
 
 let param (lb:lexbuf): string loc option =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID s ->
       let pos1 = current_pos() in
@@ -293,7 +286,7 @@ let param (lb:lexbuf): string loc option =
       expected "non-qualified identifier or \"_\"" [UID"";UNDERSCORE]
 
 let int (lb:lexbuf): string =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | INT s ->
       consume_token lb;
@@ -302,7 +295,7 @@ let int (lb:lexbuf): string =
       expected "integer" [INT""]
 
 let float_or_int (lb:lexbuf): string =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | INT s
   | FLOAT s ->
@@ -312,7 +305,7 @@ let float_or_int (lb:lexbuf): string =
       expected "integer or float" [INT"";FLOAT""]
 
 let path (lb:lexbuf): string list loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (*| UID s ->
       let pos1 = current_pos() in
@@ -325,7 +318,7 @@ let path (lb:lexbuf): string list loc =
       expected "" [QID[]]
 
 let qid_or_rule (lb:lexbuf): (string list * string) loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID s ->
       let pos1 = current_pos() in
@@ -347,7 +340,7 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
       expected "" [UID"";QID[];UNIF_RULE;COERCE_RULE]
 
 let term_id (lb:lexbuf): p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID _
   | QID _ ->
@@ -363,7 +356,7 @@ let term_id (lb:lexbuf): p_term =
 (* commands *)
 
 let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | SIDE _
   | ASSOCIATIVE
@@ -602,7 +595,7 @@ and constructor (lb:lexbuf): p_ident * p_term =
   i, make_prod (fst pos1) ps t (snd (current_pos()))
 
 and modifier (lb:lexbuf): p_modifier =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | SIDE d ->
       let pos1 = current_pos() in
@@ -644,7 +637,7 @@ and modifier (lb:lexbuf): p_modifier =
       exposition lb
 
 and exposition (lb:lexbuf): p_modifier =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | PRIVATE ->
       let pos1 = current_pos() in
@@ -658,7 +651,7 @@ and exposition (lb:lexbuf): p_modifier =
       expected "" [PRIVATE;PROTECTED]
 
 and notation (lb:lexbuf): string Term.notation =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | INFIX ->
       consume_token lb;
@@ -687,7 +680,7 @@ and notation (lb:lexbuf): string Term.notation =
       expected "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
 
 and rule (lb:lexbuf): (p_term * p_term) loc =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let pos1 = current_pos() in
   let l = term lb in
   consume HOOK_ARROW lb;
@@ -695,7 +688,7 @@ and rule (lb:lexbuf): (p_term * p_term) loc =
   extend_pos (*__FUNCTION__*) pos1 (l, r)
 
 and equation (lb:lexbuf): p_term * p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let l = term lb in
   consume EQUIV lb;
   let r = term lb in
@@ -704,7 +697,7 @@ and equation (lb:lexbuf): p_term * p_term =
 (* queries *)
 
 and query (lb:lexbuf): p_query =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | ASSERT b ->
       let pos1 = current_pos() in
@@ -801,7 +794,7 @@ and query (lb:lexbuf): p_query =
       expected "query" []
 
 and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | BEGIN ->
       consume_token lb;
@@ -822,7 +815,7 @@ and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
 (* proofs *)
 
 and proof (lb:lexbuf): p_proof * p_proof_end =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | L_CU_BRACKET ->
       let l = nelist subproof lb in
@@ -875,7 +868,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
       expected "subproof, tactic or query" []
 
 and subproof (lb:lexbuf): p_proofstep list =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | L_CU_BRACKET ->
       consume_token lb;
@@ -886,7 +879,7 @@ and subproof (lb:lexbuf): p_proofstep list =
       expected "" [L_CU_BRACKET]
 
 and steps (lb:lexbuf): p_proofstep list =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (*queries*)
   | ASSERT _
@@ -934,13 +927,13 @@ and steps (lb:lexbuf): p_proofstep list =
       expected "tactic or query" []
 
 and step (lb:lexbuf): p_proofstep =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let t = tactic lb in
   let l = list subproof lb in
   Tactic(t, l)
 
 and proof_end (lb:lexbuf): p_proof_end =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | ABORT ->
       let pos1 = current_pos() in
@@ -958,7 +951,7 @@ and proof_end (lb:lexbuf): p_proof_end =
       expected "" [ABORT;ADMITTED;END]
 
 and tactic (lb:lexbuf): p_tactic =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (*queries*)
   | ASSERT _
@@ -1126,7 +1119,7 @@ and tactic (lb:lexbuf): p_tactic =
       expected "tactic" []
 
 and rwpatt_content (lb:lexbuf): p_rwpatt =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (* bterm *)
   | BACKQUOTE
@@ -1200,7 +1193,7 @@ and rwpatt_content (lb:lexbuf): p_rwpatt =
       expected "term or keyword \"in\"" []
 
 and rwpatt_bracket (lb:lexbuf): p_rwpatt =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | L_SQ_BRACKET ->
       consume_token lb;
@@ -1211,7 +1204,7 @@ and rwpatt_bracket (lb:lexbuf): p_rwpatt =
       expected "" [L_SQ_BRACKET]
 
 and rwpatt (lb:lexbuf): p_rwpatt =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | DOT ->
       consume_token lb;
@@ -1222,7 +1215,7 @@ and rwpatt (lb:lexbuf): p_rwpatt =
 (* terms *)
 
 and params (lb:lexbuf): p_params =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | L_PAREN ->
       consume_token lb;
@@ -1261,7 +1254,7 @@ and params (lb:lexbuf): p_params =
       [x], None, false
 
 and term (lb:lexbuf): p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (* bterm *)
   | BACKQUOTE
@@ -1289,7 +1282,7 @@ and term (lb:lexbuf): p_term =
       expected "term" []
 
 and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (* aterm *)
   | UID _
@@ -1322,7 +1315,7 @@ and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
       t
 
 and bterm (lb:lexbuf): p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | BACKQUOTE ->
       let pos1 = current_pos() in
@@ -1368,7 +1361,7 @@ and bterm (lb:lexbuf): p_term =
       expected "" [BACKQUOTE;PI;LAMBDA;LET]
 
 and aterm (lb:lexbuf): p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
     | UID _
     | QID _
@@ -1435,7 +1428,7 @@ and aterm (lb:lexbuf): p_term =
                   brackets" []
 
 and env (lb:lexbuf): p_term list =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | L_SQ_BRACKET ->
       consume_token lb;
@@ -1454,7 +1447,7 @@ and env (lb:lexbuf): p_term list =
       expected "" [L_SQ_BRACKET]
 
 and binder (lb:lexbuf): p_params list * p_term =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID _
   | UNDERSCORE ->
@@ -1508,72 +1501,91 @@ and binder (lb:lexbuf): p_params list * p_term =
 
 (* search *)
 
-and where (lb:lexbuf): bool * relation option =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+and generalize (lb:lexbuf): bool =
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
-  | UID u ->
-      let r =
-        match u with
-        | "=" -> Some Exact
-        | ">" -> Some Inside
-        | "≥"
-        | ">=" -> None
-        | _ -> expected "\">\", \"=\", \"≥\",\">=\"" []
-      in
-      consume_token lb;
-      let g =
-        match current_token() with
-        | GENERALIZE -> consume_token lb; true
-        | _ -> false
-      in
-      g,r
-  | _ ->
-      expected "\">\", \"=\", \"≥\",\">=\"" []
+  | GENERALIZE -> consume_token lb; true
+  | _ -> false
+
+and relation (lb:lexbuf): relation option =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | UID "=" -> consume_token lb; Some Exact
+  | UID ">" -> consume_token lb; Some Inside
+  | UID ("≥"|">=") -> consume_token lb; None
+  | _ -> expected "\">\", \"=\", \"≥\",\">=\"" []
+
+and where (lb:lexbuf): bool * relation option =
+  if log_enabled() then log "%s" __FUNCTION__;
+  let r = relation lb in
+  let g = generalize lb in
+  g,r
 
 and asearch (lb:lexbuf): search =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
+  | UID "name" ->
+      begin
+        consume_token lb;
+        match current_token() with
+        | UID "=" ->
+            consume_token lb;
+            QBase(QName (uid lb).elt)
+        | _ -> expected "\"=\"" []
+      end
   | TYPE_QUERY ->
-      consume_token lb;
-      let g, w = where lb in
-      if w <> None then expected "\"≥\", \">=\"" []
-      else QBase(QSearch(aterm lb,g,Some(QType None)))
+      begin
+        consume_token lb;
+        match current_token() with
+        | UID ("≥"|">=") ->
+            consume_token lb;
+            let g = generalize lb in
+            let t = aterm lb in
+            QBase(QSearch(t,g,Some(QType None)))
+        | _ -> expected "\"≥\",\">=\"" []
+      end
+  | UID "anywhere" ->
+      begin
+        consume_token lb;
+        match current_token() with
+        | UID ("≥"|">=") ->
+            consume_token lb;
+            let g = generalize lb in
+            let t = aterm lb in
+            QBase(QSearch(t,g,None))
+        | _ -> expected "\"≥\",\">=\"" []
+      end
   | RULE ->
       consume_token lb;
-      let g, w = where lb in
-      QBase(QSearch(aterm lb,g,Some(QXhs(w,None))))
-  | UID k ->
-      consume_token lb;
-      let g, w = where lb in
-      let posw = current_pos() in
+      let r = relation lb in
+      let g = generalize lb in
       let t = aterm lb in
-      begin
-        match k, t.elt with
-        | "name", P_Iden(id,false) ->
-            if fst id.elt <> [] then expected "" [UID""]
-            else if w <> Some Exact then
-              syntax_error posw "Only \"=\" is accepted after \"name\""
-            else if g then
-              syntax_error posw "\"generalize\" cannot be used with \"name\""
-            else QBase(QName(snd id.elt))
-        | "name", _ ->
-            expected "path prefix" []
-        | "anywhere", _ ->
-            if w <> None then expected "\"≥\", \">=\"" []
-            else QBase(QSearch(t,g,None))
-        | "spine",_ ->
-            QBase(QSearch(t,g,Some(QType(Some(Spine w)))))
-        | "concl",_ ->
-            QBase(QSearch(t,g,Some(QType(Some(Conclusion w)))))
-        | "hyp",_ ->
-            QBase(QSearch(t,g,Some(QType(Some(Hypothesis w)))))
-        | "lhs",_ ->
-            QBase(QSearch(t,g,Some(QXhs(w,Some Lhs))))
-        | "rhs",_ ->
-            QBase(QSearch(t,g,Some(QXhs(w,Some Rhs))))
-        | _ ->
-            expected "Unknown keyword" []
-      end
+      QBase(QSearch(t,g,Some(QXhs(r,None))))
+  | UID "spine" ->
+      let r = relation lb in
+      let g = generalize lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
+  | UID "concl" ->
+      let r = relation lb in
+      let g = generalize lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
+  | UID "hyp" ->
+      let r = relation lb in
+      let g = generalize lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
+  | UID "lhs" ->
+      let r = relation lb in
+      let g = generalize lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
+  | UID "rhs" ->
+      let r = relation lb in
+      let g = generalize lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
   | L_PAREN ->
       consume_token lb;
       let q = search lb in
@@ -1583,7 +1595,7 @@ and asearch (lb:lexbuf): search =
       expected "name, anywhere, rule, lhs, rhs, type, concl, hyp, spine" []
 
 and csearch (lb:lexbuf): search =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let aq = asearch lb in
   match current_token() with
   | COMMA ->
@@ -1593,7 +1605,7 @@ and csearch (lb:lexbuf): search =
       aq
 
 and ssearch (lb:lexbuf): search =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let cq = csearch lb in
   match current_token() with
   | SEMICOLON ->
@@ -1603,7 +1615,7 @@ and ssearch (lb:lexbuf): search =
       cq
 
 and search (lb:lexbuf): search =
-  if log_enabled() then log "Expected: %s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
   let qids = list (prefix VBAR qid) lb in
   let path_of_qid qid =
