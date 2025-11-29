@@ -6,16 +6,15 @@
 
 <side> ::= "left" | "right"
 
-<assert> ::= "assert"
-           | "assertnot"
+<assert> ::= "assert" | "assertnot"
 
 <command> ::= "opaque" <qid> ";"
-            | "require" <qid>* ";"
-            | "require" [["private"] "open"] <qid>* ";"
+            | "require" <qid>+ ";"
+            | "require" [["private"] "open"] <qid>+ ";"
             | "require" <qid> "as" <uid> ";"
-            | ["private"] "open" <qid>* ";"
-            | <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>] ";"
-            | <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔" <term_proof> ";"
+            | ["private"] "open" <qid>+ ";"
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>] ";"
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔" <term_proof> ";"
             | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <string> "≔" <id> ";"
@@ -44,8 +43,8 @@
              | "injective"
              | "opaque"
              | "sequential"
-             | "private"
-             | "protected"
+
+<exposition> ::= "private" | "protected"
 
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
@@ -53,34 +52,31 @@
 
 <param> ::= <uid> | "_"
 
-<term> ::= <bterm>
-         | <saterm>
-         | <saterm> <bterm>
-         | <saterm> "→" <term>
+<term> ::= <application> ["→" <term>]
+         | [<application>] <bterm>
 
-<bterm> ::= "`" <term_id> <binder>
-          | "Π" <binder>
-          | "λ" <binder>
+<application> ::= <hterm> <aterm>*
+
+<bterm> ::= <binder> <abstraction>
           | "let" <uid> <param_list>* [":" <term>] "≔" <term> "in" <term>
 
-<saterm> ::= <aterm>+
+<binder> ::= "λ" | "Π" | "`" ["@"] <id>
 
-<aterm> ::= <term_id>
+<hterm> ::= ["@"] <id>
           | "_"
           | "TYPE"
           | "?" <uid> [<env>]
           | "$" <uid> [<env>]
           | "(" <term> ")"
-          | "[" <term> "]"
           | <integer>
           | <string>
 
-<term_id> ::= ["@"] <id>
+<aterm> ::= <hterm> | "[" <term> "]"
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
-<binder> ::= <param_list>+ "," <term>
-           | <param> ":" <term> "," <term>
+<abstraction> ::= <param_list>+ "," <term>
+                | <param> ":" <term> "," <term>
 
 <term_proof> ::= <term>
                | <proof>
@@ -97,9 +93,7 @@
 
 <proof_step> ::= <tactic> <subproof>*
 
-<proof_end> ::= "abort"
-              | "admitted"
-              | "end"
+<proof_end> ::= "end" | "abort" | "admitted"
 
 <tactic> ::= <query>
            | "admit"
@@ -116,7 +110,7 @@
            | "reflexivity"
            | "remove" <uid>+
            | "repeat" <tactic>
-           | "rewrite" [<side>] [<rwpatt_spec>] <term>
+           | "rewrite" [<side>] ["." "[" <rwpatt> "]"] <term>
            | "set" <uid> "≔" <term>
            | "simplify"
            | "simplify" <id>
@@ -131,8 +125,6 @@
             | "in" <uid> "in" <term>
             | <term> "in" <term> ["in" <term>]
             | <term> "as" <uid> "in" <term>
-
-<rwpatt_spec> ::= "." "[" <rwpatt> "]"
 
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
 
@@ -156,8 +148,8 @@
 <where> ::= "concl" | "hyp" | "spine" | "rule" | "lhs" | "rhs"
 
 <asearch_query> ::= "name" "=" <uid>
-                  | ("type"|"anywhere") ("≥"|">=") ["generalize"] <aterm>
-                  | <where> <relation> ["generalize"] <aterm>
+                  | ("type"|"anywhere") ("≥"|">=") ["generalize"] <term>
+                  | <where> <relation> ["generalize"] <term>
                   | "(" <search_query> ")"
 
 <csearch_query> ::= <asearch_query> ("," <asearch_query>)*

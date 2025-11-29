@@ -1540,7 +1540,7 @@ and asearch (lb:lexbuf): search =
         | UID ("≥"|">=") ->
             consume_token lb;
             let g = generalize lb in
-            let t = aterm lb in
+            let t = term lb in
             QBase(QSearch(t,g,Some(QType None)))
         | _ -> expected "\"≥\",\">=\"" []
       end
@@ -1551,7 +1551,7 @@ and asearch (lb:lexbuf): search =
         | UID ("≥"|">=") ->
             consume_token lb;
             let g = generalize lb in
-            let t = aterm lb in
+            let t = term lb in
             QBase(QSearch(t,g,None))
         | _ -> expected "\"≥\",\">=\"" []
       end
@@ -1559,32 +1559,32 @@ and asearch (lb:lexbuf): search =
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
   | UID "concl" ->
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
   | UID "hyp" ->
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
   | UID "lhs" ->
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
   | UID "rhs" ->
       let r = relation lb in
       let g = generalize lb in
-      let t = aterm lb in
+      let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
   | L_PAREN ->
       consume_token lb;
