@@ -15,12 +15,8 @@ odoc:
 	@dune build --only-packages lambdapi @doc
 
 .PHONY: doc
-doc: bnf
+doc:
 	$(MAKE) -C doc html
-
-.PHONY: bnf
-bnf:
-	$(MAKE) -C doc -f Makefile.bnf
 
 #### Unit tests and sanity check #############################################
 

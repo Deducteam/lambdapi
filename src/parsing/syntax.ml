@@ -189,7 +189,7 @@ end
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
-type ('term, 'binder) rw_patt =
+type ('term, 'binder) rwpatt =
   | Rw_Term           of 'term
   | Rw_InTerm         of 'term
   | Rw_InIdInTerm     of 'binder
@@ -197,7 +197,7 @@ type ('term, 'binder) rw_patt =
   | Rw_TermInIdInTerm of 'term * 'binder
   | Rw_TermAsIdInTerm of 'term * 'binder
 
-type p_rw_patt = (p_term, p_ident * p_term) rw_patt loc
+type p_rwpatt = (p_term, p_ident * p_term) rwpatt loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -205,6 +205,29 @@ type p_assertion =
   (** The given term should have the given type. *)
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
+
+(** Search queries. *)
+type side = Lhs | Rhs
+type relation = Exact | Inside
+type 'a where =
+ | Spine of 'a
+ | Conclusion of 'a
+ | Hypothesis of 'a
+type search_constr =
+ | QType of relation option where option
+ | QXhs  of relation option * side option
+type search_base =
+ | QName of string
+ | QSearch of p_term * (*generalize:*)bool * search_constr option
+type op =
+ | Intersect
+ | Union
+type filter =
+ | Path of string
+type search =
+ | QBase of search_base
+ | QOp of search * op * search
+ | QFilter of search * filter
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
@@ -228,9 +251,8 @@ type p_query_aux =
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-  | P_query_search of string
-  (** Runs a search query *) (* I use a string here to be parsed later
-  to avoid polluting LambdaPi code with index and retrieval code *)
+  | P_query_search of search
+  (** Runs a search query *)
 
 type p_query = p_query_aux loc
 
@@ -257,7 +279,7 @@ type p_tactic_aux =
   | P_tac_refl
   | P_tac_remove of p_ident list
   | P_tac_repeat of p_tactic
-  | P_tac_rewrite of bool * p_rw_patt option * p_term
+  | P_tac_rewrite of bool * p_rwpatt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_set of p_ident * p_term
   | P_tac_simpl of simp_flag
@@ -265,6 +287,7 @@ type p_tactic_aux =
   | P_tac_sym
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
+
 and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
@@ -383,7 +406,7 @@ let eq_p_inductive : p_inductive eq =
   fun {elt=(i1,t1,l1);_} {elt=(i2,t2,l2);_} ->
   List.eq eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
-let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
+let eq_p_rwpatt : p_rwpatt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
   | Rw_Term t1, Rw_Term t2
   | Rw_InTerm t1, Rw_InTerm t2 -> eq_p_term t1 t2
@@ -415,6 +438,7 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
+  | P_query_search q1, P_query_search q2 -> q1 = q2
   | _, _ -> false
 
 let eq_simp_flag : simp_flag eq = fun s1 s2 ->
@@ -433,7 +457,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.eq (Option.eq eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
-      b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
+      b1 = b2 && Option.eq eq_p_rwpatt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
@@ -589,7 +613,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     fold_term (fold_term a l) r
   in
 
-  let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
+  let fold_rwpatt_vars : StrSet.t -> 'a -> p_rwpatt -> 'a = fun vs a p ->
     match p.elt with
     | Rw_Term t
     | Rw_InTerm t -> fold_term_vars vs a t
@@ -627,7 +651,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_change t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
     | P_tac_rewrite (_, Some p, t) ->
-        (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
+        (vs, fold_term_vars vs (fold_rwpatt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
     | P_tac_remove ids ->

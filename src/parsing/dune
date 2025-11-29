@@ -6,8 +6,6 @@
  (libraries camlp-streams lambdapi.core menhirLib pratter sedlex sedlex.ppx lambdapi.common)
  (flags -w +3))
 
-(menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
-
 (ocamllex dkLexer)
 
 (menhir (flags --explain --external-tokens DkTokens) (modules dkParser))

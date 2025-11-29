@@ -66,8 +66,9 @@ Changing the syntax of Lambdapi
 
 When changing the syntax of Lambdapi, make sure to update the
 following files:
+- `doc/lambdapi.bnf`
 - `src/core/lpLexer.ml`
-- `src/core/lpParser.mly`
+- `src/core/lpParser.ml`
 - `src/core/pretty.ml`
 - `src/core/print.ml`
 - `editors/vim/syntax/lambdapi.vim`
@@ -76,8 +77,6 @@ following files:
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `misc/lambdapi.tex`
-- `doc/Makefile.bnf`
-- `doc/lambdapi.bnf` by doing `make bnf`
 - the User Manual files in the `doc/` repository (do `make doc` to generate and check the Sphynx documentation).
 
 Adding a tactic

@@ -631,9 +631,9 @@ let scope_rule :
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
   scope 0 M_Patt ss env t
 
-(** [scope_rw_patt ss env s] scopes the parser-level rewrite tactic
+(** [scope_rwpatt ss env s] scopes the parser-level rewrite tactic
     specification [s] into an actual rewrite specification. *)
-let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
+let scope_rwpatt : sig_state -> env -> p_rwpatt -> (term, binder) rwpatt =
   fun ss env s ->
   match s.elt with
   | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)

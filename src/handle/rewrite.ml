@@ -372,7 +372,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    equational lemma that is appied. It handles the full set of SSReflect
    patterns. *)
 let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
-              (term, binder) Parsing.Syntax.rw_patt option -> term -> term =
+              (term, binder) Parsing.Syntax.rwpatt option -> term -> term =
   fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
 
   (* Obtain the required symbols from the current signature. *)
