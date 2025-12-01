@@ -71,6 +71,7 @@ let string_of_token = function
   | PROVER_TIMEOUT -> "prover_timeout"
   | QID _ -> "qualified identifier"
   | QID_EXPL _ -> "@-prefixed qualified identifier"
+  | QINT _ -> "qualified integer"
   | QUANTIFIER -> "quantifier"
   | REFINE -> "refine"
   | REFLEXIVITY -> "reflexivity"
@@ -1138,6 +1139,7 @@ and rwpatt_content (lb:lexbuf): p_rwpatt =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
+  | QINT _
   | STRINGLIT _ ->
       let pos1 = current_pos() in
       let t1 = term lb in
@@ -1274,6 +1276,7 @@ and term (lb:lexbuf): p_term =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
+  | QINT _
   | STRINGLIT _ ->
       let pos1 = current_pos() in
       let h = aterm lb in
@@ -1296,6 +1299,7 @@ and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
+  | QINT _
   | STRINGLIT _ ->
       let u = aterm lb in
       app pos1 (extend_pos (*__FUNCTION__*) pos1 (P_Appl(t,u))) lb
@@ -1418,7 +1422,11 @@ and aterm (lb:lexbuf): p_term =
     | INT n ->
         let pos1 = current_pos() in
         consume_token lb;
-        make_pos pos1 (P_NLit n)
+        make_pos pos1 (P_NLit([],n))
+    | QINT(p,n) ->
+        let pos1 = current_pos() in
+        consume_token lb;
+        make_pos pos1 (P_NLit(p,n))
     | STRINGLIT s ->
         let pos1 = current_pos() in
         consume_token lb;

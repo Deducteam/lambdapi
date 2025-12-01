@@ -285,20 +285,20 @@ and scope_head : ?find_sym:find_sym ->
         let sym =
           try Sign.find Sign.Ghost.sign s
           with Not_found ->
-            let s_typ = mk_Symb (Builtin.get ss pos "String") in
+            let s_typ = mk_Symb (Builtin.get ss pos [] "String") in
             Sign.add_symbol Sign.Ghost.sign Public Const Eager true
               {elt=s;pos} pos s_typ []
         in
         mk_Symb sym
       end
 
-  | (P_NLit s, _) ->
+  | (P_NLit(p,s), _) ->
       let neg, s =
         let neg = s.[0] = '-' in
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss pos s) in
+      let sym_of s = mk_Symb (Builtin.get ss pos p s) in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)

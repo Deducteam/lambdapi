@@ -116,7 +116,7 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
     | [] -> (* Symbol in scope. *)
         begin
           try StrMap.find s ss.in_scope
-          with Not_found -> fatal pos "Unknown object %s." s
+          with Not_found -> fatal pos "Unknown symbol %s." s
         end
     | [m] when StrMap.mem m ss.alias_path -> (* Aliased module path. *)
         begin
@@ -134,7 +134,7 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
           (* Check that the signature was required (or is the current one). *)
           if mp <> ss.signature.sign_path then
             if not (Path.Map.mem mp !(ss.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
+              fatal pos "No module %a required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded
