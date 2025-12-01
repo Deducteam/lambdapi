@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - `simplify` now fails if the goal cannot be simplified.
-- Hover messages are now formated in Markdown. Position of the error is removed from diagnostics when the error occurs
-in the file currently open in the editor. 
+- Position of the error is removed from diagnostics when the error occurs
+in the file currently open in the editor.
 - Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
 
 ## 3.0.0 (2025-07-16)
