@@ -2,19 +2,13 @@
 
 <id> ::= <uid> | <qid>
 
-<switch> ::= "on" | "off"
-
-<side> ::= "left" | "right"
-
-<assert> ::= "assert" | "assertnot"
-
 <command> ::= "opaque" <qid> ";"
             | "require" <qid>+ ";"
             | "require" [["private"] "open"] <qid>+ ";"
             | "require" <qid> "as" <uid> ";"
             | ["private"] "open" <qid>+ ";"
-            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>] ";"
-            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔" <term_proof> ";"
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof> | "≔" <term_proof>] ";"
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* "≔" <term> [<proof>] ";"
             | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <string> "≔" <id> ";"
@@ -23,19 +17,9 @@
             | "notation" <id> <notation> ";"
             | <query> ";"
 
-<query> ::= <assert> <param_list>* "⊢" <term> (":"|"≡") <term>
-          | "compute" <term>
-          | "print" [<id> | "unif_rule" | "coerce_rule"]
-          | "proofterm"
-          | "debug"
-          | "debug" ("+"|"-") <char>+
-          | "flag"
-          | "flag" <string> <switch>
-          | "prover" <string>
-          | "prover_timeout" <integer>
-          | "verbose" <integer>
-          | "type" <term>
-          | "search" <string>
+<exposition> ::= "private" | "protected"
+
+<side> ::= "left" | "right"
 
 <modifier> ::= [<side>] "associative"
              | "commutative"
@@ -44,7 +28,22 @@
              | "opaque"
              | "sequential"
 
-<exposition> ::= "private" | "protected"
+<inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
+
+<constructor> ::= <uid> <param_list>* ":" <term>
+
+<rule> ::= <term> "↪" <term>
+
+<unif_rule> ::= <equation> "↪" "[" <equation> (";" <equation>)* "]"
+
+<equation> ::= <term> "≡" <term>
+
+<notation> ::= "infix" [<side>] <float_or_int>
+             | "postfix" <float_or_int>
+             | "prefix" <float_or_int>
+             | "quantifier"
+
+<float_or_int> ::= <float> | <integer>
 
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
@@ -55,14 +54,14 @@
 <term> ::= <application> ["→" <term>]
          | [<application>] <bterm>
 
-<application> ::= <hterm> <aterm>*
+<application> ::= <head> <arg>*
 
 <bterm> ::= <binder> <abstraction>
           | "let" <uid> <param_list>* [":" <term>] "≔" <term> "in" <term>
 
 <binder> ::= "λ" | "Π" | "`" ["@"] <id>
 
-<hterm> ::= ["@"] <id>
+<head> ::= ["@"] <id>
           | "_"
           | "TYPE"
           | "?" <uid> [<env>]
@@ -71,7 +70,7 @@
           | <integer>
           | <string>
 
-<aterm> ::= <hterm> | "[" <term> "]"
+<arg> ::= <head> | "[" <term> "]"
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
@@ -87,8 +86,7 @@
 
 <subproof> ::= "{" [<proof_steps>] "}"
 
-<proof_steps> ::= <proof_step>
-                | <proof_step> ";"
+<proof_steps> ::= <proof_step> [";"]
                 | <proof_step> ";" <proof_steps>
 
 <proof_step> ::= <tactic> <subproof>*
@@ -126,35 +124,37 @@
             | <term> "in" <term> ["in" <term>]
             | <term> "as" <uid> "in" <term>
 
-<inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
+<assert> ::= "assert" | "assertnot"
 
-<constructor> ::= <uid> <param_list>* ":" <term>
+<test> ::= ":" | "≡"
 
-<rule> ::= <term> "↪" <term>
+<switch> ::= "on" | "off"
 
-<unif_rule> ::= <equation> "↪" "[" <equation> (";" <equation>)* "]"
-
-<equation> ::= <term> "≡" <term>
-
-<notation> ::= "infix" [<side>] <float_or_int>
-             | "postfix" <float_or_int>
-             | "prefix" <float_or_int>
-             | "quantifier"
-
-<float_or_int> ::= <float> | <integer>
+<query> ::= <assert> <param_list>* "⊢" <term> <test> <term>
+          | "compute" <term>
+          | "print" [<id> | "unif_rule" | "coerce_rule"]
+          | "proofterm"
+          | "debug"
+          | "debug" ("+"|"-") <char>+
+          | "flag"
+          | "flag" <string> <switch>
+          | "prover" <string>
+          | "prover_timeout" <integer>
+          | "verbose" <integer>
+          | "type" <term>
+          | "search" <search>
 
 <relation> ::= "=" | ">" | ">=" | "≥"
 
 <where> ::= "concl" | "hyp" | "spine" | "rule" | "lhs" | "rhs"
 
-<asearch_query> ::= "name" "=" <uid>
-                  | ("type"|"anywhere") ("≥"|">=") ["generalize"] <term>
-                  | <where> <relation> ["generalize"] <term>
-                  | "(" <search_query> ")"
+<base> ::= "name" "=" <uid>
+         | ("type"|"anywhere") ("≥"|">=") ["generalize"] <term>
+         | <where> <relation> ["generalize"] <term>
+         | "(" <search_query> ")"
 
-<csearch_query> ::= <asearch_query> ("," <asearch_query>)*
+<conjunction> ::= <base> ("," <base>)*
 
-<ssearch_query> ::= <csearch_query> (";" <csearch_query>)*
+<disjunction> ::= <conjunction> (";" <conjunction>)*
 
-<search_query> ::= <ssearch_query>
-                 | <search_query> "|" <id>
+<search> ::= <disjunction> | <search> "|" <id>
