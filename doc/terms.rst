@@ -84,7 +84,7 @@ A user-defined term can be either:
 
    builtin "String" := …; // : TYPE
 
-* a (signed) integer if the following builtins are defined:
+* a (qualified) signed decimal number if the following builtins are in defined (in the module path used as qualification):
 
 ::
 

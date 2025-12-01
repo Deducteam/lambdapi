@@ -224,7 +224,10 @@ type config = (string,tactic) Hashtbl.t
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   let t = Hashtbl.create 17 in
-  let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
+  let add n v =
+    let s = Builtin.get ss pos [] n in
+    Hashtbl.add t s.sym_name v
+  in
   add "admit" T_admit;
   add "and" T_and;
   add "apply" T_apply;
@@ -370,7 +373,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
             | T_have, [t1;t2] ->
-                let prf_sym = Builtin.get ss pos "P" in
+                let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term pos idmap (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term pos idmap t2)) in
                 P_tac_have(p_ident_of_sym pos t1, t2)

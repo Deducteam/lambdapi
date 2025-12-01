@@ -97,6 +97,7 @@ type token =
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
   | INT of string
+  | QINT of Path.t * string
   | FLOAT of string
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -173,9 +174,9 @@ let is_regid : string -> bool = fun s ->
 
 (** Unqualified escaped identifiers are any non-empty sequence of characters
     (except "|}") between "{|" and "|}". *)
-let notbars = [%sedlex.regexp? Star (Compl '|')]
+let nobars = [%sedlex.regexp? Star (Compl '|')]
 let escid = [%sedlex.regexp?
-    "{|", notbars, '|', Star ('|' | Compl (Chars "|}"), notbars, '|'), '}']
+    "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
@@ -320,6 +321,7 @@ and qid expl ids lb =
   match%sedlex lb with
   | oneline_comment -> qid expl ids lb
   | "/*" -> comment (qid expl ids) 0 lb
+  | int -> QINT(List.rev ids, Utf8.lexeme lb)
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
   | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
   | regid ->
@@ -328,9 +330,7 @@ and qid expl ids lb =
   | escid ->
     if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
     else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
-  | _ ->
-    fail lb ("Invalid identifier: \""
-             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
+  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
 
 and comment next i lb =
   match%sedlex lb with

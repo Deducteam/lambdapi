@@ -66,7 +66,7 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of string (** Integer literal. *)
+  | P_NLit of Path.t * string (** Integer literal. *)
   | P_SLit of string (** String literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
@@ -390,7 +390,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
       && Option.eq eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
-  | P_NLit s1, P_NLit s2
+  | P_NLit(p1,s1), P_NLit(p2,s2) -> p1 = p2 && s1 = s2
   | P_SLit s1, P_SLit s2 -> s1 = s2
   | _,_ -> false
 

@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+
 ### Changed
 
 - `simplify` now fails if the goal cannot be simplified.
