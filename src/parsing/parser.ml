@@ -36,6 +36,52 @@ module type PARSER = sig
 
 end
 
+module Aux(Lexer :
+  sig
+   type token
+   val get_token :
+    Sedlexing.lexbuf -> unit -> token * Lexing.position * Lexing.position
+  end) =
+struct
+  let stream_of_lexbuf :
+    grammar_entry:(Lexer.token,'b) MenhirLib.Convert.traditional ->
+    ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
+    (* Input channel passed as parameter to be closed at the end of stream. *)
+    'a Stream.t =
+    fun ~grammar_entry ?inchan ?fname lb ->
+      Option.iter (Sedlexing.set_filename lb) fname;
+      let parse =
+        MenhirLib.Convert.Simplified.traditional2revised
+         grammar_entry
+      in
+      let token = Lexer.get_token lb in
+      let generator _ =
+        try Some(parse token)
+        with
+        | End_of_file -> Option.iter close_in inchan; None
+        | LpLexer.SyntaxError {pos=None; _} -> assert false
+        | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
+        | LpParser.Error ->
+            let pos = Pos.locate (Sedlexing.lexing_positions lb) in
+            parser_fatal pos "Unexpected token: \"%s\"."
+              (Sedlexing.Utf8.lexeme lb)
+      in
+      Stream.from generator
+
+  let parse ~grammar_entry inchan =
+    stream_of_lexbuf ~grammar_entry ~inchan
+      (Sedlexing.Utf8.from_channel inchan)
+
+  let parse_file ~grammar_entry fname =
+    let inchan = open_in fname in
+    stream_of_lexbuf ~grammar_entry ~inchan ~fname
+     (Sedlexing.Utf8.from_channel inchan)
+
+  let parse_string ~grammar_entry fname s =
+    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+
+end
+
 module Lp :
 sig
   include PARSER with type lexbuf := Sedlexing.lexbuf
@@ -71,43 +117,8 @@ sig
 
   end
 = struct
-
-  let stream_of_lexbuf :
-    grammar_entry:(LpLexer.token,'b) MenhirLib.Convert.traditional ->
-    ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
-    (* Input channel passed as parameter to be closed at the end of stream. *)
-    'a Stream.t =
-    fun ~grammar_entry ?inchan ?fname lb ->
-      Option.iter (Sedlexing.set_filename lb) fname;
-      let parse =
-        MenhirLib.Convert.Simplified.traditional2revised
-         grammar_entry
-      in
-      let token = LpLexer.token lb in
-      let generator _ =
-        try Some(parse token)
-        with
-        | End_of_file -> Option.iter close_in inchan; None
-        | LpLexer.SyntaxError {pos=None; _} -> assert false
-        | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
-        | LpParser.Error ->
-            let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos "Unexpected token: \"%s\"."
-              (Sedlexing.Utf8.lexeme lb)
-      in
-      Stream.from generator
-
-  let parse ~grammar_entry inchan =
-    stream_of_lexbuf ~grammar_entry ~inchan
-      (Sedlexing.Utf8.from_channel inchan)
-
-  let parse_file ~grammar_entry fname =
-    let inchan = open_in fname in
-    stream_of_lexbuf ~grammar_entry ~inchan ~fname
-     (Sedlexing.Utf8.from_channel inchan)
-
-  let parse_string ~grammar_entry fname s =
-    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+  include Aux(struct type token = LpLexer.token
+                     let get_token = LpLexer.token end)
 
   let parse_from_lexbuf ~grammar_entry lexbuf =
     stream_of_lexbuf ~grammar_entry ?fname:None lexbuf
@@ -130,6 +141,24 @@ sig
 
   let parse_from_lexbuf = parse_from_lexbuf ~grammar_entry:LpParser.command
 
+end
+
+module Rocq :
+sig
+  val parse_search_query_string :
+    string -> string -> SearchQuerySyntax.query Stream.t
+  (** [parse_search_query_string f s] returns a stream of parsed terms from
+      string [s] which comes from file [f] ([f] can be anything). *)
+end
+= struct
+  include Aux(struct type token = RocqLexer.token
+                     let get_token = RocqLexer.token end)
+
+  let parse_string ~grammar_entry fname s =
+    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+
+  let parse_search_query_string =
+    parse_string ~grammar_entry:RocqParser.search_query_alone
 end
 
 (** Parsing dk syntax. *)
