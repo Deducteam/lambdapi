@@ -110,7 +110,8 @@ beginning, the timeout is set to 2s.
 ------------------
 
 Runs a query between double quotes against the index file
-``~/.LPSearch.db`` updated with current development and required files. See :doc:`query_language` for the query language
+``~/.LPSearch.db`` updated with the assets defined in the file under development including the assets "imported" by the `require` command.
+See :doc:`query_language` for the query language
 specification.
 
 ::
