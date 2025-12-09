@@ -891,7 +891,7 @@ module UserLevelQueries = struct
       ss
       ~from
       ~how_many
-      ~(fail:(?more:string -> string -> string))
+      ~(fail:(?err_desc:string -> string -> string))
       ~pp_results
       ~title_tag:(hb,he) fmt s =
   try
@@ -917,7 +917,7 @@ module UserLevelQueries = struct
        "Overloaded symbol %s. Please rewrite the query replacing %s \
         with a fully qualified identifier among the following:@."
         name name)
-        ~more:(Format.asprintf "%a@." pp_results (ItemSet.bindings res)))
+        ~err_desc:(Format.asprintf "%a@." pp_results (ItemSet.bindings res)))
    | Stack_overflow ->
       Lplib.Base.out fmt "%s" (fail
        (Format.asprintf
@@ -930,15 +930,15 @@ module UserLevelQueries = struct
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a"
    (search_cmd_gen ss ~from ~how_many
-    ~fail:(fun ?more x -> "<font color=\"red\">" ^ x ^ "</font>"
-      ^ (Option.value more ~default:""))
+    ~fail:(fun ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
+      ^ (Option.value err_desc ~default:""))
     ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>")) s
 
  let search_cmd_txt ss ~dbpath fmt s =
   let s = transform_ascii_to_unicode s in
   Stdlib.(the_dbpath := dbpath);
   search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun ?more x -> Common.Error.fatal_no_pos ?more "%s" x)
+   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
    ~pp_results:pp_results_list ~title_tag:("","") fmt s
 
 end

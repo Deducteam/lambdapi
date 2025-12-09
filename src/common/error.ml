@@ -47,10 +47,10 @@ exception Fatal of Pos.popt option * string * string
 let fatal_msg : 'a outfmt -> 'a =
   fun fmt -> out Format.str_formatter fmt
 
-(** [fatal popt fmt] raises the [Fatal(popt,msg,more)] exception, in which
+(** [fatal popt fmt] raises the [Fatal(popt,msg,err_desc)] exception, in which
     [msg] is built from the format [fmt] (provided the necessary arguments).
-    [more] continues the error message and is printed in normal format instead
-    of red color*)
+    [err_desc] continues the error message and is printed in normal format
+    instead of red color*)
 
 let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter (), "")) in
@@ -58,9 +58,10 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)
-let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a =
-  fun ?(more="") fmt ->
-    let cont _ = raise (Fatal(None, Format.flush_str_formatter (), more)) in
+let fatal_no_pos : ?err_desc:string -> ('a,'b) koutfmt -> 'a =
+  fun ?(err_desc="") fmt ->
+    let cont _ =
+      raise (Fatal(None, Format.flush_str_formatter (), err_desc)) in
     Format.kfprintf cont Format.str_formatter fmt
 
 (** [handle_exceptions f] runs [f ()] in an exception handler and handles both
@@ -69,11 +70,11 @@ let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a =
     [1] (indicating failure). Hence, [handle_exceptions] should only be called
     by the main program logic, not by the internals. *)
 let handle_exceptions : (unit -> unit) -> unit = fun f ->
-  let exit_with : type a b. string -> (a,b) koutfmt -> a = fun cnt fmt ->
+  let exit_with : type a b. string -> (a,b) koutfmt -> a = fun err_desc fmt ->
     Color.update_with_color Format.err_formatter;
     Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;
     (Format.kfprintf (fun _ -> exit 1)
-      Format.err_formatter "%s" cnt)) Format.err_formatter
+      Format.err_formatter "%s" err_desc)) Format.err_formatter
       (Color.red (fmt ^^ "@."))
   in
   try f () with
