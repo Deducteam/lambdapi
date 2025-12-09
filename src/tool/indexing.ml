@@ -511,7 +511,7 @@ module DB = struct
    ~bold:("","")
     ~code:("","")
     ~colorizer:
-      (if Stdlib.(!Common.Mode.lsp_mod) || Unix.isatty Unix.stdout then
+      (if Stdlib.(!Common.Console.lsp_mod) || Unix.isatty Unix.stdout then
         Lplib.Color.red
       else
         Lplib.Color.default)

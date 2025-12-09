@@ -181,7 +181,7 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
   let run _ =
    Config.init cfg;
-   Common.Mode.lsp_mod := true ;
+   Common.Console.lsp_mod := true ;
    Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Error.handle_exceptions run
 
