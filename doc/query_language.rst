@@ -7,7 +7,7 @@ Queries can be expressed according to the following syntax:
 
    Q ::= B | Q,Q | Q;Q | Q|PATH
    B ::= WHERE HOW GENERALIZE? PATTERN
-   PATH ::= << string >> | "<< RegExp>>"
+   PATH ::= << string >> | "<< regexp>>"
    WHERE ::= name | anywhere | rule | lhs | rhs | type | concl | hyp | spine
    HOW ::= > | = | >= | ≥
    GENERALIZE ::= generalize

@@ -92,10 +92,10 @@ decision-tree
 deindex
 -------
 
-* ``--path`` : indicates the suffix of the paths of the symbols to be removed from the index.
+* ``--path``: indicates the prefix of symbols paths to be removed from the index.
   The path must be dot (`.`) and is not checked for well formness (i.e. A.B matches A.BC).
-  For insrance, if symbol `tests.OK.natural.N` is indexed, `lambdapi deindex --path tests.OK.natural` 
-  will remove it (together with all the symbols whose path starts with `tests.OK.natural.N`) from the index.
+  For instance, `lambdapi deindex --path tests.OK.natural`` removes from the index all the symbols
+  whose path starts with `tests.OK.natural` like `tests.OK.natural.N`.
 
 export
 ------
@@ -203,7 +203,7 @@ search
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the query using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
 
-* ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The files can be used for example to specify implicit arguments for symbols used in the queries.
+* ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
 
 * ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 

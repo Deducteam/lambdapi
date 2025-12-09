@@ -36,7 +36,8 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
     code position (e.g., errors related to command-line arguments parsing). In
     cases where positions are expected [Some None] may be used to indicate the
     abscence of a position. This may happen when terms are generated (e.g., by
-    a form of desugaring). *)
+    a  form of desugaring). The last argument is  used to provide  an optional
+    description of the error, displayed differently from the error itself. *)
 exception Fatal of Pos.popt option * string * string
 
 (** [fatal_str fmt] may be called an arbitrary number of times to build up the
@@ -46,10 +47,10 @@ exception Fatal of Pos.popt option * string * string
 let fatal_msg : 'a outfmt -> 'a =
   fun fmt -> out Format.str_formatter fmt
 
-(** [fatal popt fmt] raises the [Fatal(popt,msg,more)] exception, in which [msg] is
-    built from the format [fmt] (provided the necessary arguments).
-    [more] continues the error message and is printed in normal format instead of 
-    red color*)
+(** [fatal popt fmt] raises the [Fatal(popt,msg,more)] exception, in which
+    [msg] is built from the format [fmt] (provided the necessary arguments).
+    [more] continues the error message and is printed in normal format instead
+    of red color*)
 
 let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter (), "")) in
@@ -57,9 +58,10 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)
-let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a = fun ?(more="") fmt ->
-  let cont _ = raise (Fatal(None, Format.flush_str_formatter (), more)) in
-  Format.kfprintf cont Format.str_formatter fmt
+let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a =
+  fun ?(more="") fmt ->
+    let cont _ = raise (Fatal(None, Format.flush_str_formatter (), more)) in
+    Format.kfprintf cont Format.str_formatter fmt
 
 (** [handle_exceptions f] runs [f ()] in an exception handler and handles both
     expected and unexpected exceptions by displaying a graceful error message.
@@ -69,7 +71,9 @@ let fatal_no_pos : ?more:string -> ('a,'b) koutfmt -> 'a = fun ?(more="") fmt ->
 let handle_exceptions : (unit -> unit) -> unit = fun f ->
   let exit_with : type a b. string -> (a,b) koutfmt -> a = fun cnt fmt ->
     Color.update_with_color Format.err_formatter;
-    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;(Format.kfprintf (fun _ -> exit 1) Format.err_formatter "%s" cnt)) Format.err_formatter
+    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;
+    (Format.kfprintf (fun _ -> exit 1)
+      Format.err_formatter "%s" cnt)) Format.err_formatter
       (Color.red (fmt ^^ "@."))
   in
   try f () with

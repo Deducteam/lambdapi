@@ -17,8 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Supporting `Plac` in rewriting rules.
 - Fixed Stack_overflow exception due large number of search results.
 
-
-
 ### Changed
 
 - `simplify` now fails if the goal cannot be simplified.

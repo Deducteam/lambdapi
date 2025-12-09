@@ -50,7 +50,8 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
   let ss = sig_state_of_require require in
   let header = match header_file with
     | None ->
-      let themes_locations : string list = Ressources.Mysites.Sites.server_resources in
+      let themes_locations : string list =
+        Ressources.Mysites.Sites.server_resources in
       let file = match themes_locations with
         | [] -> assert false
         | x :: _ -> x in

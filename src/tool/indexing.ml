@@ -394,7 +394,8 @@ module DB = struct
            Sym_nameMap.add lpid (sourceid,fname,start_line,end_line) !sidx
       | _ ->
          raise
-          (Common.Error.Fatal(None,"wrong file format for source map file", ""))
+          (Common.Error.Fatal
+            (None,"wrong file format for source map file", ""))
    done ;
   with
    | Failure _ as exn ->
@@ -426,7 +427,8 @@ module DB = struct
       (* FIX ME *)
       let start_offset, end_offset = 0, 0 in
       Some sourceid,
-       Some { fname=Some fname; start_line; start_col; end_line; end_col; start_offset; end_offset }
+       Some { fname=Some fname; start_line; start_col; end_line;
+              end_col; start_offset; end_offset }
 
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
@@ -764,7 +766,8 @@ let index_sym sym =
      (DB.ItemSet.bindings (DB.locate_name (snd qname)))
   then
    raise
-    (Common.Error.Fatal(None,string_of_sym_name qname ^ " already indexed", "")) ;
+    (Common.Error.Fatal
+      (None,string_of_sym_name qname ^ " already indexed", ""));
  DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
@@ -884,10 +887,16 @@ module UserLevelQueries = struct
     let s = Str.global_replace (Str.regexp_string " -> ") " → " s in
     Str.global_replace (Str.regexp "\\bforall\\b") "Π" s
 
-    let search_cmd_gen ss ~from ~how_many ~(fail:(?more:string -> string -> string)) ~pp_results
-  ~title_tag:(hb,he) fmt s =
+    let search_cmd_gen
+      ss
+      ~from
+      ~how_many
+      ~(fail:(?more:string -> string -> string))
+      ~pp_results
+      ~title_tag:(hb,he) fmt s =
   try
-   let pstream = Parsing.Parser.Rocq.parse_search_query_string "LPSearch" s in
+   let pstream = Parsing.Parser.Rocq.parse_search_query_string
+    "LPSearch" s in
    let pq = Stream.next pstream in
    let mok _ = None in
    let items = answer_query ~mok ss [] pq in
@@ -921,7 +930,8 @@ module UserLevelQueries = struct
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a"
    (search_cmd_gen ss ~from ~how_many
-    ~fail:(fun ?more x -> "<font color=\"red\">" ^ x ^ "</font>" ^ (Option.value more ~default:""))
+    ~fail:(fun ?more x -> "<font color=\"red\">" ^ x ^ "</font>"
+      ^ (Option.value more ~default:""))
     ~pp_results:(html_of_results_list from) ~title_tag:("<h1>","</h1>")) s
 
  let search_cmd_txt ss ~dbpath fmt s =
