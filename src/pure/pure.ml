@@ -362,7 +362,7 @@ end = struct
   let loc pa = Sedlexing.lexing_position_curr pa
 
   let parse pa =
-    let p = Parser.parse_from_lexbuf pa in
+    let p = Parser.parse_lexbuf pa in
     parse_command p
 end
 

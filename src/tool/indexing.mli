@@ -1,4 +1,5 @@
-open Core
+open Core open Sig_state
+open Parsing open Syntax
 
 (* indexing *)
 val empty : unit -> unit
@@ -15,10 +16,10 @@ val preserving_index : ('a -> 'b) -> 'a -> 'b
 val lsp_input : ((*uri*)string * (*text*)string) ref
 
 (* search command used by cli *)
-val search_cmd_txt:
- Sig_state.sig_state -> dbpath:string -> string Lplib.Base.pp
+val search_cmd_txt_query: sig_state -> dbpath:string -> search -> string
 
 (* search command used by websearch *)
 val search_cmd_html:
- Sig_state.sig_state
-  -> from:int -> how_many:int -> string -> dbpath:string -> string
+sig_state -> from:int -> how_many:int -> string -> dbpath:string -> string
+
+val search_cmd_txt: sig_state -> dbpath:string -> string Lplib.Base.pp

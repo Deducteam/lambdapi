@@ -71,7 +71,7 @@
 
 // types
 
-%start <SearchQuerySyntax.query> search_query_alone
+%start <Syntax.search> search_query_alone
 
 %%
 
@@ -143,7 +143,7 @@ aterm:
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
-  | n=INT { make_pos $sloc (P_NLit n) }
+  | n=INT { make_pos $sloc (P_NLit ([],n)) }
   | s=STRINGLIT { make_pos $sloc (P_SLit s) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
@@ -181,8 +181,8 @@ maybe_generalize:
 where:
   | u = UID g=maybe_generalize
     { g, match u with
-       | "=" -> Some SearchQuerySyntax.Exact
-       | ">" -> Some SearchQuerySyntax.Inside
+       | "=" -> Some Syntax.Exact
+       | ">" -> Some Syntax.Inside
        | "≥"
        | ">=" -> None
        | _ ->
@@ -198,12 +198,12 @@ asearch_query:
         LpLexer.syntax_error $sloc
          "Only \"≥\" and \">=\" accepted for \"type\""
       else
-       SearchQuerySyntax.QBase(QSearch(t,g,Some (QType None))) }
+       Syntax.QBase(QSearch(t,g,Some (QType None))) }
   | RULE gw=where t=aterm
     { let g,w = gw in
-      SearchQuerySyntax.QBase(QSearch(t,g,Some (QXhs(w,None)))) }
+      Syntax.QBase(QSearch(t,g,Some (QXhs(w,None)))) }
   | k=UID gw=where t=aterm
-    { let open SearchQuerySyntax in
+    { let open Syntax in
       let g,w = gw in
       match k,t.elt with
        | "name",P_Iden(id,false) ->
@@ -244,13 +244,13 @@ csearch_query:
   | q=asearch_query
     { q }
   | q1=csearch_query COMMA q2=asearch_query
-    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Intersect,q2) }
+    { Syntax.QOp (q1,Syntax.Intersect,q2) }
 
 ssearch_query:
   | q=csearch_query
     { q }
   | q1=ssearch_query SEMICOLON q2=csearch_query
-    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Union,q2) }
+    { Syntax.QOp (q1,Syntax.Union,q2) }
 
 search_query:
   | q=ssearch_query
@@ -261,9 +261,9 @@ search_query:
        if p = [] then n
        else
         Format.asprintf "%a.%a" Core.Print.path p Core.Print.uid n in
-      SearchQuerySyntax.QFilter (q,Path path) }
+      Syntax.QFilter (q,Path path) }
   | q=search_query VBAR s=STRINGLIT
     { let re = Str.regexp s in
-      SearchQuerySyntax.QFilter (q,RegExp re) }
+      Syntax.QFilter (q,RegExp re) }
 
 %%

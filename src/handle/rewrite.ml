@@ -20,7 +20,7 @@ type eq_config =
 (** [get_eq_config ss pos] returns the current configuration for
     equality, used by tactics such as “rewrite” or “reflexivity”. *)
 let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
-  let builtin = Builtin.get ss pos in
+  let builtin = Builtin.get ss pos [] in
   { symb_P     = builtin "P"
   ; symb_T     = builtin "T"
   ; symb_eq    = builtin "eq"
@@ -52,8 +52,8 @@ let _ =
   in
   let expected_eq_type pos map =
     (* [Π (a:U), T a → T a → Prop] *)
-    let symb_T = Builtin.get pos map "T" in
-    let symb_P = Builtin.get pos map "P" in
+    let symb_T = Builtin.get pos map [] "T" in
+    let symb_P = Builtin.get pos map [] "P" in
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
     let a = new_var "a" in
@@ -64,9 +64,9 @@ let _ =
   register_builtin "eq" expected_eq_type;
   let expected_refl_type pos map =
     (* [Π (a:U) (x:T a), P (eq a x x)] *)
-    let symb_T = Builtin.get pos map "T" in
-    let symb_P = Builtin.get pos map "P" in
-    let symb_eq = Builtin.get pos map "eq" in
+    let symb_T = Builtin.get pos map [] "T" in
+    let symb_P = Builtin.get pos map [] "P" in
+    let symb_eq = Builtin.get pos map [] "eq" in
     let term_U = get_domain_of_type symb_T in
     let a = new_var "a" in
     let x = new_var "x" in
@@ -80,11 +80,11 @@ let _ =
   register_builtin "refl" expected_refl_type;
   let expected_eqind_type pos map =
     (* [Π (a:U) (x y:T a), P (eq x y) → Π (p:T a→Prop), P (p y) → P (p x)] *)
-    let symb_T = Builtin.get pos map "T" in
+    let symb_T = Builtin.get pos map [] "T" in
     let term_T = mk_Symb symb_T in
-    let symb_P = Builtin.get pos map "P" in
+    let symb_P = Builtin.get pos map [] "P" in
     let term_P = mk_Symb symb_P in
-    let symb_eq = Builtin.get pos map "eq" in
+    let symb_eq = Builtin.get pos map [] "eq" in
     let term_eq = mk_Symb symb_eq in
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
@@ -372,7 +372,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    equational lemma that is appied. It handles the full set of SSReflect
    patterns. *)
 let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
-              (term, binder) Parsing.Syntax.rw_patt option -> term -> term =
+              (term, binder) Parsing.Syntax.rwpatt option -> term -> term =
   fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
 
   (* Obtain the required symbols from the current signature. *)

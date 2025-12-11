@@ -224,7 +224,10 @@ type config = (string,tactic) Hashtbl.t
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   let t = Hashtbl.create 17 in
-  let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
+  let add n v =
+    let s = Builtin.get ss pos [] n in
+    Hashtbl.add t s.sym_name v
+  in
   add "admit" T_admit;
   add "and" T_and;
   add "apply" T_apply;
@@ -307,29 +310,32 @@ let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
     | Symb s, ts -> p_query c pos s ts
     | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
+(** [p_term_of_string pos t] turns into a p_term a string literal term [t]
+    that is part of a bigger term obtained by scoping and normalizing of a
+    p_term at position [pos]. *)
 let p_term_of_string (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       begin
         let string = remove_quotes s.sym_name in
-        let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-        let stream = Parsing.Parser.Lp.parse_term_string fname string in
-        try Stream.next stream with Stream.Failure -> assert false
+        let p = lexing_opt (after s.sym_pos) in
+        Parsing.Parser.Lp.parse_term_string p string
       end
-  | _ -> fatal pos "refine tactic not applied to a term string literal"
+  | _ -> fatal pos "not a string literal"
 
-let p_rw_patt_of_string (pos:popt) (t:term): p_rw_patt option =
+(** [p_rwpatt_of_string pos t] turns into a p_rwpatt option a string literal
+    term [t] that is part of a bigger term obtained by scoping and normalizing
+    of a p_term at position [pos]. *)
+let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
+  if Logger.log_enabled() then
+    log "p_rwpatt_of_string %a %a" Pos.short pos term t;
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = remove_quotes s.sym_name in
       if string = "" then None
-      else
-        begin
-          let fname = match pos with Some{fname=Some fn;_} -> fn | _ -> "" in
-          let stream = Parsing.Parser.Lp.parse_rwpatt_string fname string in
-          try Some (Stream.next stream) with Stream.Failure -> assert false
-        end
-  | _ -> fatal pos "rewrite tactic not applied to a pattern string literal"
+      else let p = lexing_opt (after s.sym_pos) in
+           Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
+  | _ -> fatal pos "not a string literal"
 
 let is_right (pos:popt) (t:term): bool =
   match t with
@@ -343,8 +349,9 @@ let is_right (pos:popt) (t:term): bool =
       end
   | _ -> fatal pos "rewrite tactic not applied to a side string literal"
 
-(** [p_tactic t] interprets the term [t] as a tactic. *)
-let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
+(** [p_tactic ss pos idmap t] interprets as a tactic the term [t] obtained by
+    scoping and normalization of a p_term at position [pos]. *)
+let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
   let c = get_config ss pos in
   let rec tac idmap t = Pos.make pos (tac_aux idmap t)
   and tac_aux idmap t =
@@ -366,7 +373,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
             | T_have, [t1;t2] ->
-                let prf_sym = Builtin.get ss pos "P" in
+                let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term pos idmap (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term pos idmap t2)) in
                 P_tac_have(p_ident_of_sym pos t1, t2)
@@ -383,7 +390,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt) :int StrMap.t -> term -> p_tactic =
             | T_repeat, _ -> assert false
             | T_rewrite, [side;pat;_;t] ->
                 P_tac_rewrite(is_right pos side,
-                              p_rw_patt_of_string pos pat, p_term pos idmap t)
+                              p_rwpatt_of_string pos pat, p_term pos idmap t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1, p_term pos idmap t2)
@@ -632,7 +639,7 @@ let rec handle :
       let g = List.fold_left remove g ids in
       {ps with proof_goals = g::gs}
   | P_tac_rewrite(l2r,pat,eq) ->
-      let pat = Option.map (Scope.scope_rw_patt ss env) pat in
+      let pat = Option.map (Scope.scope_rwpatt ss env) pat in
       let p = new_problem() in
       tac_refine pos ps gt gs p
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
@@ -683,7 +690,7 @@ let rec handle :
   | P_tac_eval pt ->
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
       let idmap = get_names g in
-      handle ss sym_pos prv ps (p_tactic ss pos idmap t)
+      handle ss sym_pos prv ps (p_tactic ss pt.pos idmap t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
@@ -700,7 +707,7 @@ let handle :
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
+  | [] -> fatal pos "No remaining goal."
   | g::_ ->
     if Logger.log_enabled() then log ("goal %a") Goal.pp_no_hyp g;
     handle ss sym_pos prv ps tac, None

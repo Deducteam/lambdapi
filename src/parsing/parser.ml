@@ -7,6 +7,8 @@
 
 open Lplib open Base
 open Common
+open Syntax
+open Lexing
 
 (** [parser_fatal pos fmt] is a wrapper for [Error.fatal] that enforces
     that the error has an attached source code position. *)
@@ -15,228 +17,188 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
+
   type lexbuf
 
-  val parse : in_channel -> Syntax.ast
-  (** [parse inchan] returns a stream of commands parsed from
-      channel [inchan]. Commands are parsed lazily and the channel is
+  val parse_lexbuf : lexbuf -> ast
+  (** [parse_lexbuf lb] is the same as [parse_string] but with an already
+      created lexbuf. *)
+
+  val parse_in_channel : string -> in_channel -> ast
+  (** [parse f ic] returns a stream of commands parsed from channel [ic]
+      created from file [f]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
 
-  val parse_file : string -> Syntax.ast
-  (** [parse_file fname] returns a stream of parsed commands of file
-      [fname]. Commands are parsed lazily. *)
+  val parse_file : string -> ast
+  (** [parse_file f] returns a stream of parsed commands of file [f]. Commands
+      are parsed lazily. *)
 
-  val parse_string : string -> string -> Syntax.ast
+  val parse_string : string -> string -> ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
 
-  val parse_from_lexbuf : lexbuf -> Syntax.ast
-  (** [parse_from_lexbuf lexbuf] is the same than [parse_string] but with an
-      already created lexbuf *)
-
 end
 
-module Aux(Lexer :
-  sig
-   type token
-   val get_token :
-    Sedlexing.lexbuf -> unit -> token * Lexing.position * Lexing.position
-  end) =
-struct
-  let stream_of_lexbuf :
-    grammar_entry:(Lexer.token,'b) MenhirLib.Convert.traditional ->
-    ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
-    (* Input channel passed as parameter to be closed at the end of stream. *)
-    'a Stream.t =
-    fun ~grammar_entry ?inchan ?fname lb ->
-      Option.iter (Sedlexing.set_filename lb) fname;
-      let parse =
-        MenhirLib.Convert.Simplified.traditional2revised
-         grammar_entry
-      in
-      let token = Lexer.get_token lb in
-      let generator _ =
-        try Some(parse token)
-        with
-        | End_of_file -> Option.iter close_in inchan; None
-        | LpLexer.SyntaxError {pos=None; _} -> assert false
-        | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
-        | LpParser.Error ->
-            let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos "Unexpected token: \"%s\"."
-              (Sedlexing.Utf8.lexeme lb)
-      in
-      Stream.from generator
-
-  let parse ~grammar_entry inchan =
-    stream_of_lexbuf ~grammar_entry ~inchan
-      (Sedlexing.Utf8.from_channel inchan)
-
-  let parse_file ~grammar_entry fname =
-    let inchan = open_in fname in
-    stream_of_lexbuf ~grammar_entry ~inchan ~fname
-     (Sedlexing.Utf8.from_channel inchan)
-
-  let parse_string ~grammar_entry fname s =
-    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
-
-end
-
-module Lp :
-sig
-  include PARSER with type lexbuf := Sedlexing.lexbuf
-
-  val parse_term : in_channel -> Syntax.p_term Stream.t
-  (** [parse inchan] returns a stream of terms parsed from
-      channel [inchan]. Terms are parsed lazily and the channel is
-      closed once all entries are parsed. *)
-
-  val parse_term_file : string -> Syntax.p_term Stream.t
-  (** [parse_file fname] returns a stream of parsed terms of file
-      [fname]. Terms are parsed lazily. *)
-
-  val parse_term_string : string -> string -> Syntax.p_term Stream.t
-  (** [parse_term_string f s] returns a stream of parsed terms from string [s]
-      which comes from file [f] ([f] can be anything). *)
-
-  val parse_rwpatt_string : string -> string -> Syntax.p_rw_patt Stream.t
-  (** [parse_rwpatt_string f s] returns a stream of parsed rewrite pattern
-      specifications from string [s] which comes from file [f] ([f] can be
-      anything). *)
-
-  val parse_search_query_string :
-    string -> string -> SearchQuerySyntax.query Stream.t
-  (** [parse_search_query_string f s] returns a stream of parsed terms from
-      string [s] which comes from file [f] ([f] can be anything). *)
-
-  val parse_qid : string -> Core.Term.qident
-
-  val parse_from_lexbuf : Sedlexing.lexbuf -> Syntax.ast
-  (** [parse_from_lexbuf lexbuf] is the same as [parse_string] but with an
-      already created lexbuf *)
-
-  end
-= struct
-  include Aux(struct type token = LpLexer.token
-                     let get_token = LpLexer.token end)
-
-  let parse_from_lexbuf ~grammar_entry lexbuf =
-    stream_of_lexbuf ~grammar_entry ?fname:None lexbuf
-
-  let parse_term = parse ~grammar_entry:LpParser.term_alone
-  let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
-  let parse_rwpatt_string =
-    parse_string ~grammar_entry:LpParser.rw_patt_spec_alone
-  let parse_search_query_string =
-    parse_string ~grammar_entry:LpParser.search_query_alone
-  let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone
-
-  let parse_qid s =
-   let stream = parse_string ~grammar_entry:LpParser.qid_alone "LPSearch" s in
-   (Stream.next stream).elt
-
-  let parse = parse ~grammar_entry:LpParser.command
-  let parse_string = parse_string ~grammar_entry:LpParser.command
-  let parse_file = parse_file ~grammar_entry:LpParser.command
-
-  let parse_from_lexbuf = parse_from_lexbuf ~grammar_entry:LpParser.command
-
-end
-
-module Rocq :
-sig
-  val parse_search_query_string :
-    string -> string -> SearchQuerySyntax.query Stream.t
-  (** [parse_search_query_string f s] returns a stream of parsed terms from
-      string [s] which comes from file [f] ([f] can be anything). *)
-end
-= struct
-  include Aux(struct type token = RocqLexer.token
-                     let get_token = RocqLexer.token end)
-
-  let parse_string ~grammar_entry fname s =
-    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
-
-  let parse_search_query_string =
-    parse_string ~grammar_entry:RocqParser.search_query_alone
-end
+(* defined in OCaml >= 4.11 only *)
+let set_filename (lb:lexbuf) (fname:string): unit =
+  lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
 
 (** Parsing dk syntax. *)
 module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
 
-  let token : Lexing.lexbuf -> DkTokens.token =
-    let r = ref DkTokens.EOF in fun lb ->
-    Debug.(record_time Lexing (fun () -> r := DkLexer.token lb)); !r
+  open Lexing
 
-  let command :
-    (Lexing.lexbuf -> DkTokens.token) -> Lexing.lexbuf -> Syntax.p_command =
-    let r = ref (Pos.none (Syntax.P_open(false,[]))) in fun token lb ->
-    Debug.(record_time Parsing (fun () -> r := DkParser.line token lb)); !r
+  let parse_lexbuf (icopt:in_channel option)
+        (entry:lexbuf -> 'a) (lb:lexbuf) : 'a Stream.t =
+    let generator _ =
+      try Some(entry lb)
+      with
+      | End_of_file -> Option.iter close_in icopt; None
+      | DkParser.Error ->
+          let pos = Pos.locate (lb.lex_start_p, lb.lex_curr_p) in
+          parser_fatal pos "Unexpected token \"%s\"." (lexeme lb)
+    in
+    Stream.from generator
 
-  let stream_of_lexbuf :
-    ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
-    (* Input channel passed as parameter to be closed at the end of stream. *)
-    Syntax.p_command Stream.t =
-    fun ?inchan ?fname lb ->
-      let fn n =
-        lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = n}
-      in
-      Option.iter fn fname;
-        (*In OCaml >= 4.11: Lexing.set_filename lb fname;*)
-      let generator _ =
-        try Some (command token lb)
-        with
-        | End_of_file -> Option.iter close_in inchan; None
-        | DkParser.Error ->
-            let pos = Pos.locate (Lexing.(lb.lex_start_p, lb.lex_curr_p)) in
-            parser_fatal pos "Unexpected token \"%s\"." (Lexing.lexeme lb)
-      in
-      Stream.from generator
+  let parse_in_channel (entry:lexbuf -> 'a) (fname:string) (ic:in_channel)
+      : 'a Stream.t =
+    let lb = from_channel ic in
+    set_filename lb fname;
+    parse_lexbuf (Some ic) entry lb
 
-  let parse inchan =
-    try stream_of_lexbuf ~inchan (Lexing.from_channel inchan)
-    with e -> close_in inchan; raise e
+  let parse_file entry fname = parse_in_channel entry fname (open_in fname)
 
-  let parse_file fname =
-    let inchan = open_in fname in
-    stream_of_lexbuf ~inchan ~fname (Lexing.from_channel inchan)
+  let parse_string (entry: lexbuf -> 'a) (fname:string) (s:string)
+      : 'a Stream.t =
+    let lb = from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
 
-  let parse_string fname s = stream_of_lexbuf ~fname (Lexing.from_string s)
+  let command =
+    let r = ref (Pos.none (P_open(false,[]))) in
+    fun (lb:lexbuf): p_command ->
+    Debug.(record_time Parsing
+             (fun () -> r := DkParser.line DkLexer.token lb)); !r
 
-  let parse_from_lexbuf lexbuf = stream_of_lexbuf ?fname:None lexbuf
+  (* exported functions *)
+  let parse_string = parse_string command
+  let parse_in_channel = parse_in_channel command
+  let parse_file = parse_file command
+  let parse_lexbuf = parse_lexbuf None command
 end
 
-(* Include parser of new syntax so that functions are directly available.*)
+open LpLexer
+open Sedlexing
+
+module Aux(Lexer:
+  sig
+    val parsing :
+      (Sedlexing.lexbuf -> 'a) -> Sedlexing.lexbuf -> 'a
+  end)=
+struct
+
+  let handle_error (icopt: in_channel option)
+        (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
+    try Some(entry lb)
+    with
+    | End_of_file -> Option.iter close_in icopt; None
+    | SyntaxError{pos=None; _} -> assert false
+    | SyntaxError{pos=Some pos; elt} ->
+        parser_fatal pos "Syntax error. %s" elt
+
+  let parse_lexbuf (icopt: in_channel option)
+        (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
+    Stream.from (fun _ -> handle_error icopt entry lb)
+
+  let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
+      : 'a Stream.t =
+    let lb = Utf8.from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
+
+  let parse_in_channel (entry: lexbuf -> 'a) (fname:string) (ic: in_channel)
+      : 'a Stream.t =
+    let lb = Utf8.from_channel ic in
+    set_filename lb fname;
+    parse_lexbuf (Some ic) entry lb
+
+  let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
+    parse_in_channel entry fname (open_in fname)
+
+  let parse_entry_string (entry:lexbuf -> 'a) (lexpos:Lexing.position)
+        (s:string): 'a =
+    let lb = Utf8.from_string s in
+    set_position lb lexpos;
+    set_filename lb lexpos.pos_fname;
+    Stream.next (parse_lexbuf None (Lexer.parsing entry) lb)
+end
+
+(** Parsing lp syntax. *)
+module Lp :
+sig
+  include PARSER with type lexbuf := Sedlexing.lexbuf
+
+  val parse_term_string: Lexing.position -> string -> Syntax.p_term
+  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
+      [s] starts at position [p]. *)
+
+  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
+  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
+      string [s] assuming that [s] starts at position [p]. *)
+
+  val parse_search_string: Lexing.position -> string -> Syntax.search
+  (** [parse_search_string f s] parses a query from string [s] assuming
+      that [s] starts at position [p]. *)
+
+  end
+= struct
+
+
+  include Aux(struct let parsing = LpParser.new_parsing end)
+  (* exported functions *)
+  let parse_term_string = parse_entry_string LpParser.term
+  let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
+  let parse_search_string = parse_entry_string LpParser.search
+
+  let parse_in_channel = parse_in_channel LpParser.command
+  let parse_file = parse_file LpParser.command
+  let parse_string = parse_string LpParser.command
+  let parse_lexbuf = parse_lexbuf None LpParser.command
+
+end
+
 include Lp
+
+open Error
 
 (** [path_of_string s] converts the string [s] into a path. *)
 let path_of_string : string -> Path.t = fun s ->
-  let open LpLexer in
-  let lb = Sedlexing.Utf8.from_string s in
+  let lb = Utf8.from_string s in
   try
-    begin match token lb () with
+    begin match token lb with
       | UID s, _, _ -> [s]
       | QID p, _, _ -> List.rev p
-      | _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+      | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
-  with SyntaxError _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+  with SyntaxError _ ->
+    fatal_no_pos "Syntax error: \"%s\" is not a path." s
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
-  let open LpLexer in
-  let lb = Sedlexing.Utf8.from_string s in
+  let lb = Utf8.from_string s in
   try
-    begin match token lb () with
+    begin match token lb with
       | QID [], _, _ -> assert false
       | QID (s::p), _, _ -> (List.rev p, s)
-      | _ -> Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+      | _ ->
+          fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
   with SyntaxError _ ->
-    Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+    fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> ast = fun fname ->
   match Filename.check_suffix fname Library.lp_src_extension with
   | true  -> Lp.parse_file fname
   | false -> Dk.parse_file fname

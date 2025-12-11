@@ -285,20 +285,20 @@ and scope_head : ?find_sym:find_sym ->
         let sym =
           try Sign.find Sign.Ghost.sign s
           with Not_found ->
-            let s_typ = mk_Symb (Builtin.get ss pos "String") in
+            let s_typ = mk_Symb (Builtin.get ss pos [] "String") in
             Sign.add_symbol Sign.Ghost.sign Public Const Eager true
               {elt=s;pos} pos s_typ []
         in
         mk_Symb sym
       end
 
-  | (P_NLit s, _) ->
+  | (P_NLit(p,s), _) ->
       let neg, s =
         let neg = s.[0] = '-' in
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss pos s) in
+      let sym_of s = mk_Symb (Builtin.get ss pos p s) in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
@@ -631,9 +631,9 @@ let scope_rule :
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
   scope 0 M_Patt ss env t
 
-(** [scope_rw_patt ss env s] scopes the parser-level rewrite tactic
+(** [scope_rwpatt ss env s] scopes the parser-level rewrite tactic
     specification [s] into an actual rewrite specification. *)
-let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
+let scope_rwpatt : sig_state -> env -> p_rwpatt -> (term, binder) rwpatt =
   fun ss env s ->
   match s.elt with
   | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)
