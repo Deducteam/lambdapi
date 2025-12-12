@@ -30,14 +30,9 @@ let rec term oc t =
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
+  | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_NLit i ->
-      if !stt then
-        match QidMap.find_opt ([],i) !map_erased_qid with
-        | Some s -> string oc s
-        | None -> raw_ident oc i
-      else raw_ident oc i
   | P_Iden(qid,b) ->
       if b then char oc '@';
       if !stt then
@@ -114,11 +109,16 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> string oc "Import "; list path " " oc ps; string oc ".\n"
-  | P_require (true, ps) ->
-      string oc "Require Import "; list path " " oc ps; string oc ".\n"
-  | P_require (false, ps) ->
+  | P_open(true,ps) ->
+      string oc "Import "; list path " " oc ps; string oc ".\n"
+  | P_open(false,ps) ->
+      string oc "Export "; list path " " oc ps; string oc ".\n"
+  | P_require (None, ps) ->
       string oc "Require "; list path " " oc ps; string oc ".\n"
+  | P_require (Some true, ps) ->
+      string oc "Require Import "; list path " " oc ps; string oc ".\n"
+  | P_require (Some false, ps) ->
+      string oc "Require Export "; list path " " oc ps; string oc ".\n"
   | P_require_as (p,i) ->
     string oc "Module "; ident oc i; string oc " := "; path oc p;
     string oc ".\n"

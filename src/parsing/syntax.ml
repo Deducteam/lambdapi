@@ -66,7 +66,7 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of string (** Integer literal. *)
+  | P_NLit of Path.t * string (** Integer literal. *)
   | P_SLit of string (** String literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
@@ -189,7 +189,7 @@ end
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
-type ('term, 'binder) rw_patt =
+type ('term, 'binder) rwpatt =
   | Rw_Term           of 'term
   | Rw_InTerm         of 'term
   | Rw_InIdInTerm     of 'binder
@@ -197,7 +197,7 @@ type ('term, 'binder) rw_patt =
   | Rw_TermInIdInTerm of 'term * 'binder
   | Rw_TermAsIdInTerm of 'term * 'binder
 
-type p_rw_patt = (p_term, p_ident * p_term) rw_patt loc
+type p_rwpatt = (p_term, p_ident * p_term) rwpatt loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -205,6 +205,29 @@ type p_assertion =
   (** The given term should have the given type. *)
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
+
+(** Search queries. *)
+type side = Lhs | Rhs
+type relation = Exact | Inside
+type 'a where =
+ | Spine of 'a
+ | Conclusion of 'a
+ | Hypothesis of 'a
+type search_constr =
+ | QType of relation option where option
+ | QXhs  of relation option * side option
+type search_base =
+ | QName of string
+ | QSearch of p_term * (*generalize:*)bool * search_constr option
+type op =
+ | Intersect
+ | Union
+type filter =
+ | Path of string
+type search =
+ | QBase of search_base
+ | QOp of search * op * search
+ | QFilter of search * filter
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
@@ -228,11 +251,15 @@ type p_query_aux =
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-  | P_query_search of string
-  (** Runs a search query *) (* I use a string here to be parsed later
-  to avoid polluting LambdaPi code with index and retrieval code *)
+  | P_query_search of search
+  (** Runs a search query *)
 
 type p_query = p_query_aux loc
+
+type simp_flag =
+  | SimpAll
+  | SimpBetaOnly
+  | SimpSym of p_qident
 
 (** Parser-level representation of a tactic. *)
 type p_tactic_aux =
@@ -240,6 +267,7 @@ type p_tactic_aux =
   | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
   | P_tac_generalize of p_ident
@@ -251,14 +279,15 @@ type p_tactic_aux =
   | P_tac_refl
   | P_tac_remove of p_ident list
   | P_tac_repeat of p_tactic
-  | P_tac_rewrite of bool * p_rw_patt option * p_term
+  | P_tac_rewrite of bool * p_rwpatt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_set of p_ident * p_term
-  | P_tac_simpl of p_qident option
+  | P_tac_simpl of simp_flag
   | P_tac_solve
   | P_tac_sym
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
+
 and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
@@ -290,6 +319,10 @@ type p_modifier_aux =
 
 type p_modifier = p_modifier_aux loc
 
+(* ppx ? *)
+let eq_p_modifier { elt = m1; _} {elt = m2; _} =
+  m1 = m2
+
 let is_prop {elt; _} = match elt with P_prop _ -> true | _ -> false
 let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo _ -> true | _ -> false
@@ -308,10 +341,9 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require  of bool * p_path list
-    (* "require open" if the boolean is true *)
+  | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
-  | P_open of p_path list
+  | P_open of (*private?*)bool * p_path list
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
@@ -358,7 +390,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
       && Option.eq eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
-  | P_NLit s1, P_NLit s2
+  | P_NLit(p1,s1), P_NLit(p2,s2) -> p1 = p2 && s1 = s2
   | P_SLit s1, P_SLit s2 -> s1 = s2
   | _,_ -> false
 
@@ -374,7 +406,7 @@ let eq_p_inductive : p_inductive eq =
   fun {elt=(i1,t1,l1);_} {elt=(i2,t2,l2);_} ->
   List.eq eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
-let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
+let eq_p_rwpatt : p_rwpatt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
   | Rw_Term t1, Rw_Term t2
   | Rw_InTerm t1, Rw_InTerm t2 -> eq_p_term t1 t2
@@ -406,7 +438,15 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
+  | P_query_search q1, P_query_search q2 -> q1 = q2
   | _, _ -> false
+
+let eq_simp_flag : simp_flag eq = fun s1 s2 ->
+  match s1, s2 with
+  | SimpAll, SimpAll
+  | SimpBetaOnly, SimpBetaOnly -> true
+  | SimpSym q1, SimpSym q2 -> eq_p_qident q1 q2
+  | _ -> false
 
 let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
@@ -417,10 +457,10 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.eq (Option.eq eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
-      b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
+      b1 = b2 && Option.eq eq_p_rwpatt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
-  | P_tac_simpl q1, P_tac_simpl q2 -> Option.eq eq_p_qident q1 q2
+  | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
@@ -450,7 +490,7 @@ let eq_p_symbol : p_symbol eq = fun
   { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
     p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
     p_sym_def=p_sym_def2} ->
-  p_sym_mod1 = p_sym_mod2
+  List.eq eq_p_modifier p_sym_mod1 p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
   && List.eq eq_p_params p_sym_arg1 p_sym_arg2
   && Option.eq eq_p_term p_sym_typ1 p_sym_typ2
@@ -462,9 +502,8 @@ let eq_p_symbol : p_symbol eq = fun
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
-  | P_require(b1,l1), P_require(b2,l2) ->
-      b1 = b2 && List.eq eq_p_path l1 l2
-  | P_open l1, P_open l2 -> List.eq eq_p_path l1 l2
+  | P_require(b1,l1), P_require(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
+  | P_open(b1,l1), P_open(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
   | P_require_as(m1,i1), P_require_as(m2,i2) ->
       eq_p_path m1 m2 && eq_p_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
@@ -574,7 +613,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     fold_term (fold_term a l) r
   in
 
-  let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
+  let fold_rwpatt_vars : StrSet.t -> 'a -> p_rwpatt -> 'a = fun vs a p ->
     match p.elt with
     | Rw_Term t
     | Rw_InTerm t -> fold_term_vars vs a t
@@ -609,17 +648,18 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_eval t
     | P_tac_refine t
     | P_tac_apply t
+    | P_tac_change t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
     | P_tac_rewrite (_, Some p, t) ->
-        (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
+        (vs, fold_term_vars vs (fold_rwpatt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
     | P_tac_remove ids ->
         (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs ids, a)
     | P_tac_have(id,t)
     | P_tac_set(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
-    | P_tac_simpl (Some qid) -> (vs, f a qid)
-    | P_tac_simpl None
+    | P_tac_simpl (SimpSym qid) -> (vs, f a qid)
+    | P_tac_simpl _
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym

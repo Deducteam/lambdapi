@@ -76,13 +76,15 @@ A user-defined term can be either:
 * a term enclosed between square brackets ``[`` … ``]`` for explicitly
   giving the value of an argument declared as implicit
 
+.. String-builtin:
+
 * a string enclosed between double quotes if the following :ref:`builtin <builtin>` is defined:
 
 ::
 
    builtin "String" := …; // : TYPE
 
-* a (signed) integer if the following builtins are defined:
+* a (qualified) signed decimal number if the following builtins are in defined (in the module path used as qualification):
 
 ::
 
@@ -96,3 +98,30 @@ A user-defined term can be either:
    type 42;
 
 Subterms can be parenthesized to avoid ambiguities.
+
+Decimal notation
+----------------
+The system can also print the values of various types using a decimal notation by defining the following builtins:
+
+* Natural numbers in base 1 (Peano numbers):
+
+::
+   
+   builtin "nat_zero" ≔ ...; // : N
+   builtin "nat_succ" ≔ ...; // : N → N
+
+* Positive natural numbers in base 2:
+
+::
+   
+   builtin "pos_one" ≔ ...; // : P
+   builtin "pos_double" ≔ ...; // : P → P
+   builtin "pos_succ_double" ≔ ...; // : P → P
+
+* Integer numbers in base 2:
+
+::
+   
+   builtin "int_zero" ≔ ...; // : Z
+   builtin "int_positive" ≔ ...; // : P → Z
+   builtin "int_negative" ≔ ...; // : P → Z

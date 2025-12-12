@@ -151,7 +151,8 @@ let rec term : p_term pp = fun ppf t ->
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | (P_NLit(i)           , _    ) -> out ppf "%s" i
+    | (P_NLit([],i)        , _    ) -> out ppf "%s" i
+    | (P_NLit(p,i)         , _    ) -> out ppf "%a.%s" raw_path p i
     | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
@@ -200,7 +201,7 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = Ghost.sign.sign_path && s = id.Term.sym_name in
+  let is (p,s) id = p = Sign.Ghost.path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
       if is elt Unif_rule.cons then
@@ -226,7 +227,7 @@ let proof_end : p_proof_end pp = fun ppf pe ->
            | P_proof_admitted -> "admitted"
            | P_proof_abort -> "abort")
 
-let rw_patt : p_rw_patt pp = fun ppf p ->
+let rwpatt : p_rwpatt pp = fun ppf p ->
   match p.elt with
   | Rw_Term(t)               -> term ppf t
   | Rw_InTerm(t)             -> out ppf "in %a" term t
@@ -242,10 +243,41 @@ let assertion : p_assertion pp = fun ppf a ->
   | P_assert_typing (t, a) -> out ppf "@[%a@ : %a@]" term t term a
   | P_assert_conv (t, u)   -> out ppf "@[%a@ ≡ %a@]" term t term u
 
+let relation ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
+
+let where elt ppf = function
+  | Spine x -> out ppf "spine%a" elt x
+  | Conclusion x -> out ppf "concl%a" elt x
+  | Hypothesis x -> out ppf "hyp%a" elt x
+
+let search_constr ppf = function
+  | QType x -> out ppf "type%a" (Option.pp (where (Option.pp relation))) x
+  | QXhs(i,None) -> out ppf "rule%a" (Option.pp relation) i
+  | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp relation) i
+  | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp relation) i
+
+let generalize ppf b = if b then string ppf " generalize"
+
+let search_base ppf = function
+  | QName s -> out ppf "name %s" s
+  | QSearch(t,g,None) -> out ppf "anywhere%a%a" generalize g term t
+  | QSearch(t,g,Some c) ->
+      out ppf "%a%a%a" search_constr c generalize g term t
+
+let op ppf o = string ppf (match o with Union -> "; " | Intersect -> ", ")
+
+let filter ppf (Path s) = out ppf " | %s" s
+
+let rec search ppf = function
+  | QBase b -> search_base ppf b
+  | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
+  | QFilter(q,f) -> out ppf "%a%a" search q filter f
+
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
   | P_query_assert(false,a) -> out ppf "assert ⊢ %a" assertion a
+  | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
   | P_query_flag(s, b) ->
@@ -258,7 +290,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
-  | P_query_search s -> out ppf "search \"%s\"" s
+  | P_query_search q -> out ppf "search %a" search q
 
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
@@ -267,6 +299,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
@@ -281,11 +314,12 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_repeat t -> out ppf "repeat %a" tactic t
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
-      let pat ppf p = out ppf " .[%a]" rw_patt p in
+      let pat ppf p = out ppf " .[%a]" rwpatt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
   | P_tac_set (id, t) -> out ppf "set %a ≔ %a" ident id term t
-  | P_tac_simpl None -> out ppf "simplify"
-  | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
+  | P_tac_simpl SimpAll -> out ppf "simplify"
+  | P_tac_simpl SimpBetaOnly -> out ppf "simplify rule off"
+  | P_tac_simpl (SimpSym qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_try t -> out ppf "try %a" tactic t
@@ -325,10 +359,14 @@ let command : p_command pp = fun ppf { elt; _ } ->
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open ps -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(false,ps) -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(true,ps) -> out ppf "private open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
-  | P_require (b, ps) ->
-    out ppf "require%a %a" (pp_if b (unit " open")) () (List.pp path " ") ps
+  | P_require (None, ps) -> out ppf "require %a" (List.pp path " ") ps
+  | P_require (Some false, ps) ->
+      out ppf "require open %a" (List.pp path " ") ps
+  | P_require (Some true, ps) ->
+      out ppf "require private open %a" (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "@[require %a@ as %a@]" path p ident i
   | P_rules [] -> assert false (* not possible *)
   | P_rules (r :: rs) ->

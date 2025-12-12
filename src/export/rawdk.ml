@@ -25,7 +25,7 @@ let rec term : p_term pp = fun ppf t ->
   | P_Expl u -> out ppf "(%a)" term u
   | P_Type -> out ppf "Type"
   | P_Wild -> out ppf "_"
-  | P_NLit i -> string ppf i
+  | P_NLit _ -> fatal t.pos "Cannot translate integer literals."
   | P_SLit _ -> fatal t.pos "Cannot translate string literals."
   | P_Iden(qid,_) -> qident ppf qid
   | P_Arro(u,v) -> out ppf "%a -> %a" pterm u term v
@@ -199,7 +199,7 @@ let get_ac_typ :
 let command : p_command pp = fun ppf ({elt; pos} as c) ->
   match elt with
   | P_query q -> query ppf q
-  | P_require(false,ps) ->
+  | P_require(None,ps) ->
       List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.path elt) ps
   | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
@@ -240,7 +240,7 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_require_as _
   | P_notation _ (* FIXME: accept quantifier notations *)
   | P_opaque _
-  | P_require(true,_)
+  | P_require(Some _,_)
   | P_symbol{p_sym_prf=Some _; _}
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 

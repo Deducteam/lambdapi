@@ -5,12 +5,44 @@ open Timed
 open Common open Error open Pos
 open Term
 open Sig_state
+open Sign
 
-(** [get ss pos name] returns the symbol mapped to the builtin [name]. If the
-   symbol cannot be found then [Fatal] is raised. *)
-let get : sig_state -> popt -> string -> sym = fun ss pos name ->
-  try StrMap.find name ss.builtins with Not_found ->
-    fatal pos "Builtin symbol \"%s\" undefined." name
+(** [get ss pos path name] returns the symbol mapped to the builtin [name] in
+    [path] if any. If the symbol cannot be found then [Fatal] is raised. *)
+let get : sig_state -> popt -> Path.t -> string -> sym =
+  fun ss pos p s ->
+  match p with
+  | [] -> (* Symbol in scope. *)
+      begin
+        try StrMap.find s ss.builtins
+        with Not_found -> fatal pos "Unknown builtin %s." s
+      end
+  | [m] when StrMap.mem m ss.alias_path -> (* Aliased module path. *)
+      begin
+        (* The signature must be loaded (alias is mapped). *)
+        let sign =
+          try Path.Map.find (StrMap.find m ss.alias_path) !loaded
+          with _ -> assert false (* Should not happen. *)
+        in
+        (* Look for the symbol. *)
+        try StrMap.find s !(sign.sign_builtins) with Not_found ->
+          fatal pos "Unknown builtin %a.%s." Path.pp p s
+      end
+  | _  -> (* Fully-qualified symbol. *)
+      begin
+        (* Check that the signature was required (or is the current one). *)
+        if p <> ss.signature.sign_path then
+          if not (Path.Map.mem p !(ss.signature.sign_deps)) then
+            fatal pos "No module %a required." Path.pp p;
+        (* The signature must have been loaded. *)
+        let sign =
+          try Path.Map.find p !loaded
+          with Not_found -> assert false (* Should not happen. *)
+        in
+        (* Look for the symbol. *)
+        try StrMap.find s !(sign.sign_builtins) with Not_found ->
+          fatal pos "Unknown builtin %a.%s." Path.pp p s
+      end
 
 (** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to
    the builtin [name], and [None] otherwise. *)

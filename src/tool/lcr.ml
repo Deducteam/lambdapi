@@ -54,7 +54,7 @@ let is_definable : sym -> bool = fun s ->
 
 (** [rule_of_def s d] creates the rule [s --> d]. *)
 let rule_of_def : sym -> term -> rule = fun s rhs ->
-  {lhs=[]; rhs; arity=0; arities=[||]; vars_nb=0; xvars_nb=0;
+  {lhs=[]; names=[||]; rhs; arity=0; arities=[||]; vars_nb=0; xvars_nb=0;
    rule_pos=s.sym_pos}
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
@@ -327,8 +327,12 @@ let id_sym_rule : sym_rule -> rule_id = fun (_,r) ->
 
 (** [new_rule_id()] generates a new unique rule id. *)
 let new_rule_id : unit -> rule_id =
-  let open Stdlib in let n = ref 0 in fun () -> decr n;
-  {fname=None; start_line=(!n); start_col=0; end_line=0; end_col=0}
+  let open Stdlib in
+  let n = ref 0 in
+  fun () ->
+  decr n;
+  {fname=None; start_line=(!n); start_col=0; start_offset=0; end_line=0;
+   end_col=0; end_offset=0}
 
 (** [is_generated i] says if [i] is a generated rule id. *)
 let is_generated : rule_id -> bool = fun p -> p.start_line < 0
@@ -452,8 +456,8 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
   let rule_of_terms : term -> term -> sym_rule option = fun l rhs ->
     match get_args_len l with
     | Symb s, lhs, arity ->
-      let r = {lhs; rhs; arity; arities=[||]; vars_nb=0; xvars_nb=0;
-               rule_pos=Some (new_rule_id())} in
+      let r = {lhs; names=[||]; rhs; arity; arities=[||]; vars_nb=0;
+               xvars_nb=0; rule_pos=Some(new_rule_id())} in
       Some (s,r)
     | _ -> None
   in
@@ -534,14 +538,6 @@ let check_cp : cp_fun = fun pos _ l r p l_p _ g d s ->
   let t = apply_subs s' t in
   let r1 = apply_subs s' (apply_subs s r)
   and r2 = apply_subs s' (apply_subs s (replace l p d)) in
-  Console.out 2 "@[<v>Critical pair:@ \
-                 t ≔ %a@ \
-                 t ↪[] %a@   \
-                   with %a@ \
-                 t ↪%a %a@   \
-                   with %a@]"
-    term t term r1 rule_of_pair (l,r)
-    subterm_pos p term r2 rule_of_pair (g,d);
   if not (Eval.eq_modulo [] r1 r2) then
     wrn pos "@[<v>Unjoinable critical pair:@ \
              t ≔ %a@ \
@@ -609,8 +605,8 @@ let check_cps :
   iter_sym_rules (check_cps_subterms_eq pos) srs;
   (* Verification of CP*(R,S). *)
   check_cps_sign_with pos sign sym_map;
-  let f path str_map =
-    if path != Ghost.sign.sign_path && str_map <> StrMap.empty then
+  let f path d =
+    if path != Sign.Ghost.path && d.Sign.dep_symbols <> StrMap.empty then
       let sign =
         try Path.Map.find path !Sign.loaded with Not_found -> assert false
       in

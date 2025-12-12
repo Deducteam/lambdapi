@@ -99,6 +99,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("let" args "≔" sterm "in" sterm))
       (tactic ("apply" sterm)
               ("assume" sterm)
+              ("change" sterm)
+              ("eval" sterm)
               ("fail")
               ("focus" ident)
               ("generalize" ident)
@@ -113,6 +115,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("set" ident "≔" sterm)
               ("simplify")
               ("simplify" ident)
+              ("simplify" "rule" "off")
               ("solve")
               ("symmetry")
               ("try" tactic)
@@ -160,6 +163,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("opaque" symdec ";")
                ("private" "inductive" inddec ";")
                ("private" symdec ";")
+               ("private" "open" ident ";")
                ("protected" "inductive" inddec ";")
                ("protected" symdec ";")
                ("prover" ident)
@@ -196,6 +200,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     ;; tactics
     (`(:before . "apply") `(column . ,lambdapi-indent-basic))
     (`(:before . "assume") `(column . ,lambdapi-indent-basic))
+    (`(:before . "change") `(column . ,lambdapi-indent-basic))
+    (`(:before . "eval") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "generalize") `(column . ,lambdapi-indent-basic))
@@ -228,12 +234,14 @@ The default lexer is used because the syntax is primarily made of sexps."
 
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
     (`(:after . "begin") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "with" "coerce_rule" "unif_rule")) (* 2 lambdapi-indent-basic))
+    (`(:after . ,(or "rule" "with" "coerce_rule" "unif_rule"))
+     (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "apply" "assume" "fail" "focus" "generalize" "have"
-                     "induction" "refine" "reflexivity" "remove" "rewrite"
-                     "set" "simplify" "solve" "symmetry" "why3"))
+    (`(:after . ,(or "apply" "assume" "change" "eval" "fail" "focus"
+                     "generalize" "have" "induction" "refine" "reflexivity"
+                     "remove" "rewrite" "set" "simplify" "solve" "symmetry"
+                     "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel

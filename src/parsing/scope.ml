@@ -10,7 +10,7 @@ open Core open Term open Env open Sig_state open Print
 let term = Raw.term
 
 (** Logging function for term scoping. *)
-let log_scop = Logger.make 'o' "scop" "term scoping"
+let log_scop = Logger.make 'o' "scop" "scoping"
 let log_scop = log_scop.pp
 
 (** [find_qid ~find_sym prt prv ss env qid] returns a boxed term corresponding
@@ -283,23 +283,22 @@ and scope_head : ?find_sym:find_sym ->
       begin
         let s = "\""^s^"\"" in
         let sym =
-          match StrMap.find_opt s Timed.(!(Ghost.sign.sign_symbols)) with
-          | Some sym -> sym
-          | None ->
-              let str = mk_Symb (Builtin.get ss pos "String") in
-              Sign.add_symbol Ghost.sign Public Const Eager true
-                {elt=s;pos} pos str []
+          try Sign.find Sign.Ghost.sign s
+          with Not_found ->
+            let s_typ = mk_Symb (Builtin.get ss pos [] "String") in
+            Sign.add_symbol Sign.Ghost.sign Public Const Eager true
+              {elt=s;pos} pos s_typ []
         in
         mk_Symb sym
       end
 
-  | (P_NLit s, _) ->
+  | (P_NLit(p,s), _) ->
       let neg, s =
         let neg = s.[0] = '-' in
         let s = if neg then String.sub s 1 (String.length s - 1) else s in
         neg, s
       in
-      let sym_of s = mk_Symb (Builtin.get ss pos s) in
+      let sym_of s = mk_Symb (Builtin.get ss pos p s) in
       let sym = Array.map sym_of strint in
       let digit = function
         | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
@@ -586,7 +585,7 @@ let scope_rule :
     && ss.signature.sign_path <> sym.sym_path then
     fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
   (* Scope the LHS and get the reserved index for named pattern variables. *)
-  let (lhs, lhs_indices, lhs_arities, vars_nb) =
+  let (lhs, names, lhs_indices, lhs_arities, vars_nb) =
     let mode =
       M_LHS{ m_lhs_prv     = is_private sym
            ; m_lhs_indices = Hashtbl.create 7
@@ -599,7 +598,7 @@ let scope_rule :
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
       let lhs = snd (get_args lhs) in
-      (lhs, m_lhs_indices, m_lhs_arities, m_lhs_size)
+      (lhs, m_lhs_names, m_lhs_indices, m_lhs_arities, m_lhs_size)
     | _ -> assert false
   in
   (* Create the pattern variables that can be bound in the RHS. *)
@@ -614,17 +613,17 @@ let scope_rule :
            ; m_rhs_new_metas = new_problem() }
   in
   let rhs = scope ~find_sym 0 mode ss Env.empty p_rhs in
-  let arities =
-    let f i = try Hashtbl.find lhs_arities i with Not_found -> assert false in
-    Array.init vars_nb f
-  in
+  let f i = try Hashtbl.find lhs_arities i with Not_found -> assert false in
+  let arities = Array.init vars_nb f in
   let xvars_nb =
     match mode with
     | M_URHS{m_urhs_vars_nb; _} -> m_urhs_vars_nb - vars_nb
     | _ -> 0
   in
   let arity = List.length lhs in
-  let r = {lhs; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
+  let f i = try Hashtbl.find names i with Not_found -> string_of_int i in
+  let names = Array.init vars_nb f in
+  let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
   (sym,r)
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
@@ -632,9 +631,9 @@ let scope_rule :
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
   scope 0 M_Patt ss env t
 
-(** [scope_rw_patt ss env s] scopes the parser-level rewrite tactic
+(** [scope_rwpatt ss env s] scopes the parser-level rewrite tactic
     specification [s] into an actual rewrite specification. *)
-let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
+let scope_rwpatt : sig_state -> env -> p_rwpatt -> (term, binder) rwpatt =
   fun ss env s ->
   match s.elt with
   | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)

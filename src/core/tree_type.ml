@@ -18,7 +18,7 @@ module TC =
       | Vari of int
       (** A bound  variable identified by a ({e  branch}-wise) unique integer.
           These variables  are used with  a bidirectional map  (implemented as
-          two maps) to  a higher order ( variable. They  are also used
+          two maps) to  a higher order variable. They  are also used
           in the environment builder to refer  to the higher order variables a
           term may depend on. *)
       | Type
@@ -156,3 +156,6 @@ type 'a dtree = int Lazy.t * 'a tree Lazy.t
 
 (** [empty_dtree] is the empty decision tree. *)
 let empty_dtree : 'a dtree = (lazy 0, lazy Fail)
+
+(** [is_empty dt] tells whether [dt] is empty. *)
+let is_empty (dt:'a dtree) :bool = Lazy.force (snd dt) = Fail

@@ -2,6 +2,8 @@
 
 open Lplib open Base
 open Term
+open Common open Extra open Name
+open Print
 
 (** Type of an environment, used in scoping to associate names to
     corresponding variables and types. Note that it cannot be
@@ -17,9 +19,8 @@ type t = env
 (** [pp ppf env] prints the environment [env] on the formatter [ppf] (for
    debug). *)
 let pp : env pp =
-  let def ppf t = out ppf " ≔ %a" Print.term t in
-  let elt ppf (s, (_,a,t)) =
-    out ppf "%s: %a%a" s Print.term a (Option.pp def) t in
+  let def ppf t = out ppf " ≔ %a" term t in
+  let elt ppf (s, (_,a,t)) = out ppf "%s: %a%a" s term a (Option.pp def) t in
   Common.Debug.D.list elt
 
 (** [empty] is the empty environment. *)
@@ -65,8 +66,8 @@ let to_abst : env -> term -> term = fun env t ->
   in
   List.fold_left add_abst t env
 
-(** [vars env] extracts the array of the Bindlib variables in [env]. Note that
-    the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
+(** [vars env] extracts the array of variables in [env]. Note that the order
+    is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let vars : env -> var array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_,_)) -> x) env)
 
@@ -75,7 +76,7 @@ let appl : term -> env -> term = fun t env ->
   List.fold_right (fun (_,(x,_,_)) t -> mk_Appl (t, mk_Vari x)) env t
 
 (** [to_terms env] extracts the array of the variables in [env] and injects
-    them in [tbox]. This is the same as [Array.map _Vari (vars env)]. Note
+    them in [tbox]. This is the same as [Array.map mk_Vari (vars env)]. Note
     that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
 let to_terms : env -> term array = fun env ->
@@ -144,3 +145,17 @@ let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
              let env = add name xi a d env in
              build_env (i+1) env (subst b (mk_Vari xi)))
   in build_env 0 [] t
+
+(** [names env] returns the set of names in [env]. *)
+let names : env -> int StrMap.t =
+  let add_decl idmap (s,_) = add_name s idmap in
+  List.fold_left add_decl StrMap.empty
+
+(** [gen_valid_idopts env ids] generates a list of pairwise distinct
+    identifiers distinct from those of [env] to replace [ids]. *)
+let gen_valid_idopts (env:env) (ids: string list): Pos.strloc option list =
+  let f id (idopts, idmap) =
+    let id, idmap = get_safe_prefix id idmap in
+    Some(Pos.none id)::idopts, idmap
+  in
+  fst (List.fold_right f ids ([], names env))

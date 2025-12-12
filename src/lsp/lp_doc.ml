@@ -12,6 +12,7 @@
 
 open Common
 open Lplib
+open Handle
 
 module LSP = Lsp_base
 
@@ -24,7 +25,7 @@ type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
   (*; tactics : Proof.Tactic.t list*)
-  ; goals : (Pure.goal list * Pos.popt) list
+  ; goals : (Goal.info list * Pos.popt) list
   }
 
 (* Private. A doc is a list of nodes for now. The first element in
@@ -120,8 +121,20 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
-    let loc = option_default loc Command.(get_pos ast) in
-    nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
+    let cmd_loc, loc, diag, log = match cmd_loc, loc with
+    | Some l, Some Some l' ->
+        if l.fname = l'.fname then
+          (* if error in the same file, use the precise location *)
+          Some l', Some l', msg, Pos.popt_to_string (Some l') ^ msg
+        else
+          (* else, use the location of the command *)
+          cmd_loc, Some l', Pos.popt_to_string (Some l') ^ "\n" ^ msg
+            , Pos.popt_to_string (Some l') ^ "\n" ^ msg
+    (* Otherwise,
+      cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
+    | _, Some l' -> cmd_loc, l', msg, Pos.popt_to_string (l') ^ "\n" ^ msg
+    | _, None -> cmd_loc, cmd_loc, msg, msg in
+    nodes, st, (cmd_loc, 1, diag, None) :: dg, ((1, log), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
@@ -137,8 +150,10 @@ let new_doc ~uri ~version ~text =
           fname = Some(uri);
           start_line = 0;
           start_col  = 0;
+          start_offset  = 0;
           end_line = 0;
-          end_col = 0
+          end_col = 0;
+          end_offset  = 0
         } in
       (None, [(1, msg), Some(loc)])
   in
@@ -160,8 +175,10 @@ let dummy_loc =
     Pos.{ fname = None
         ; start_line = 1
         ; start_col = 1
+        ; start_offset = -1
         ; end_line = 2
         ; end_col = 2
+        ; end_offset = -1
         }
 
 let check_text ~doc =

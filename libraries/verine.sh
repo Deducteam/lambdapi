@@ -42,7 +42,7 @@ if [[ ! -d ${DIR} ]]; then
   rm -f ${DIR}/SEQ005_size7.dk
 
   # remove \#NAME commands
-  # replace every 0 by z to avoid problems with Bindlib ...
+  # replace every 0 by z because 0 is not a valid id
   sed -i -e '/^#NAME [a-zA-Z0-9_]\+./d' -e 's/0/z/g' ${DIR}/logic.dk
   for FILE in `ls ${DIR}/SEQ*.dk`; do
     sed -i -e 's/^#NAME [a-zA-Z0-9_]\+./#REQUIRE logic./' -e 's/0/z/g' ${FILE}

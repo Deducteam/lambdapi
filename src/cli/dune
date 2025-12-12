@@ -4,4 +4,5 @@
  (modes byte native)
  (modules :standard)
  (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle
-            lambdapi.export unix))
+            lambdapi.export unix)           
+)

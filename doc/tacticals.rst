@@ -14,21 +14,30 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
    builtin "admit" ≔ …; // : T
    builtin "and" ≔ …; // : T → T → T (stands for ";")
-   builtin "apply" ≔ …; // : Π [a], P a → T  
+   builtin "apply" ≔ …; // : Π [p], Prf p → T
+   builtin "assume" ≔ …; // : String → T
+   builtin "apply" ≔ …; // : Π [p], Prf p → T
    builtin "fail" ≔ …; // : T
+   builtin "generalize" ≔ …; // : Π [a], El a → T
+   builtin "have" ≔ …; // : String → Prop → T  
    builtin "induction" ≔ …; // : T
    builtin "orelse" ≔ …; // : T → T → T
-   builtin "refine" ≔ …; // : Π [a], P a → T  
+   builtin "refine" ≔ …; // : String → T
    builtin "reflexivity" ≔ …; // : T
+   builtin "remove" ≔ …; // : Π [a], El a → T
    builtin "repeat" ≔ …; // : T → T
-   builtin "rewrite" ≔ …; // : Π [a], P a → T  
+   builtin "rewrite" ≔ …; // : String → String → Π [p], Prf p → T
+   builtin "set" ≔ …; // : String → Π [a], El a → T
    builtin "simplify" ≔ …; // : T
+   builtin "simplify rule off" ≔ …; // : T
    builtin "solve" ≔ …; // : T
    builtin "symmetry" ≔ …; // : T
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
 
-An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/blob/tac/tests/OK/tactic.lp>`__:
+The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores.
+
+An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/Tactic.lp>`__:
 
 ::
 
@@ -47,7 +56,7 @@ An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/
    symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
    begin
      assume x y z t;
-     eval 2 * #rewrite addnA & #reflexivity
+     eval 2 * #rewrite "" "" addnA & #reflexivity
    end;
 
 .. _orelse:

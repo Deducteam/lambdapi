@@ -116,9 +116,7 @@ let set_encoding : string -> unit = fun f ->
   Array.iteri
     (fun i b ->
       if not b then
-        let pos =
-          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0}
-        in fatal pos "Builtin %s undefined." (name_of_index i))
+        fatal None(*FIXME*) "Builtin %s undefined." (name_of_index i))
     found
 
 (** Basic printing functions. We use Printf for efficiency reasons. *)

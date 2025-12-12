@@ -7,16 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Tacticals orelse and repeat.
+- Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+
+### Changed
+
+- `simplify` now fails if the goal cannot be simplified.
+- Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
+- Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
+
+## 3.0.0 (2025-07-16)
+
+### Added
+
+- Tactic `simplify rule off` to simplify the focused goal wrt β-reduction only.
+- Tacticals `orelse` and `repeat`.
+- Tactic `eval` which evaluates a term and interprets it as a tactic. This allows one to define tactics using rewriting.
+- Builtin `"String"` for string literals between double quotes.
+- Options `--header` and `--url` for the `websearch` command.
+- In search queries, replace the substring `"forall"` and `"->"` by `"Π"` and `"→"` respectively.
+- Websearch queries and responses are now recorded in the log.
+- Commands `debug` and `flag` with no argument to get the list of debug flags and the list of flags respectively.
+- Tactic `change`.
+- Modifier `private` for `open` command to not be exported.
 
 ### Changed
 
 - Replaced Bindlib by de Bruijn (Frédéric) and closures (Bruno). The performances are slightly better than with Bindlib, especially on rewriting intensive files (the new version is 3.7 times faster on `tests/OK/perf_rw_engine.lp`). Lambdapi is now 2 times faster than dkcheck on matita, and only 2 times slower than dkcheck on holide.
+- Several improvements to use the search engine:
+  * normalize queries in websearch/search
+  * pre-load a file in websearch (e.g. to declare implicit args)
+  * paginate the output in the generated webpage
+  * allow to declare rewriting rules (e.g. alignments) over defined and constant symbols
+  * improve error message for overloaded symbols
 - Tactic set x ≔ t: replace all subterms equal to t by x.
+- Enhance the formatting of the search results.
+- `require` and `open` are now recursive.
 
 ### Fixed
 
 - Notations on external symbols are now exported.
+- Make the websearch server listen on all the interfaces instead of localhost only.
 
 ## 2.6.0 (2025-01-25)
 
@@ -24,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add tactic `set`.
 - Decimal notation for integers.
+- add the `--db` option to the `index`, `search` and `websearch` commands
 
 ### Fixed
 

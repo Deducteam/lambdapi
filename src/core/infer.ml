@@ -42,7 +42,7 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
   in
   let (hd, args) = get_args t in
   if is_coercion hd then
-    let* args = List.map (reduce_coercions c) args |> List.sequence_opt in
+    let* args = List.sequence_opt (List.map (reduce_coercions c) args) in
     (* Try to reduce: if there's still a coercion, quit *)
     let reduct = Eval.whnf c (add_args hd args) in
     let hd, args = get_args reduct in
@@ -80,28 +80,29 @@ let rec reduce_coercions : ctxt -> term -> term option = fun c t ->
     [c] and problem [pb]. *)
 let rec coerce : problem -> ctxt -> term -> term -> term -> term * bool =
   fun pb c t a b ->
-  if Eval.pure_eq_modulo c a b then (t, false) else
-     match Coercion.apply a b t |> reduce_coercions c with
+  if Logger.log_enabled () then log "coerce %a\n       to %a" term a term b;
+  if Eval.pure_eq_modulo c a b then (t, false)
+  else
+     match reduce_coercions c (Coercion.apply a b t) with
      | None -> unif pb c a b; (t, false)
      | Some u ->
          if Logger.log_enabled () then
-           log "Coerced [%a : %a <: %a : %a]" term t term a term u term b;
-      (* Type check reduced again to replace holes *)
+           log "coerced [%a : %a <: %a : %a]" term t term a term u term b;
+         (* Type check reduced again to replace holes *)
          let u, _, _ = infer pb c u in
          (u, true)
 
 (** {1 Other rules} *)
 
-(** NOTE: functions {!val:type_enforce}, {!val:force} and {!val:infer}
+(** NOTE: functions {!val:check_sort}, {!val:check} and {!val:infer}
     return a boolean which is true iff the typechecked term has been
     modified. It allows to bypass reconstruction of some terms. *)
 
-(** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
-    term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
-    [s]. *)
-and type_enforce : problem -> ctxt -> term -> term * term * bool =
+(** [check_sort pb c a] returns a tuple [(a',s,b)] where [a'] refines [a]
+    and [s] is a sort (Type or Kind) such that [a'] is of type [s]. *)
+and check_sort : problem -> ctxt -> term -> term * term * bool =
  fun pb c a ->
-  if Logger.log_enabled () then log "Type enforce [%a]" term a;
+  if Logger.log_enabled () then log "check_sort %a" term a;
   let a, s, cui = infer pb c a in
   let sort =
     match unfold s with
@@ -115,12 +116,12 @@ and type_enforce : problem -> ctxt -> term -> term * term * bool =
   let a, cu = coerce pb c a s sort in
   (a, sort, cui || cu)
 
-(** [force pb c t a] returns a term [t'] such that [t'] has type [a],
+(** [check pb c t a] returns a term [t'] such that [t'] has type [a],
     and [t'] is the refinement of [t]. *)
-and force : problem -> ctxt -> term -> term -> term * bool =
+and check : problem -> ctxt -> term -> term -> term * bool =
  fun pb c te ty ->
  if Logger.log_enabled () then
-   log "Force [%a] of [%a]" term te term ty;
+   log "check that %a\n       is of type %a" term te term ty;
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
@@ -157,10 +158,11 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       let cu = Stdlib.ref false in
       let rec ref_esubst i range =
         (* Refine terms of the explicit substitution. *)
-        if i >= Array.length ts then range else
+        if i >= Array.length ts then range
+        else
           match unfold range with
           | Prod(ai, b) ->
-              let (tsi, cuf) = force pb c ts.(i) ai in
+              let (tsi, cuf) = check pb c ts.(i) ai in
               ts.(i) <- tsi;
               Stdlib.(cu := !cu || cuf);
               ref_esubst (i+1) (subst b ts.(i))
@@ -176,9 +178,9 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (t, range, Stdlib.(!cu))
   | LLet (t_ty, t, u) as top ->
       (* Check that [a] is a type, and refine it. *)
-      let t_ty, _, cu_t_ty = type_enforce pb c t_ty in
+      let t_ty, _, cu_t_ty = check_sort pb c t_ty in
       (* Check that [t] is of type [t_ty], and refine it *)
-      let t, cu_t = force pb c t t_ty in
+      let t, cu_t = check pb c t t_ty in
       (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
       let (x, u) = unbind u in
       let c = (x, t_ty, Some t)::c in
@@ -203,7 +205,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (top, top_ty, cu)
   | Abst (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom, cu_dom = force pb c dom mk_Type in
+      let dom, cu_dom = check pb c dom mk_Type in
       let (x, b) = unbind b in
       let c = (x,dom,None)::c in
       let b, range, cu_b = infer pb c b in
@@ -219,10 +221,10 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (top, top_ty, cu)
   | Prod (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom, cu_dom = force pb c dom mk_Type in
+      let dom, cu_dom = check pb c dom mk_Type in
       let (x, b) = unbind b in
       let c = (x,dom,None)::c in
-      let b, b_s, cu_b = type_enforce pb c b in
+      let b, b_s, cu_b = check_sort pb c b in
       let cu = cu_b || cu_dom in
       let top =
         if cu then
@@ -239,33 +241,33 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       in
       match Eval.whnf c t_ty with
       | Prod (dom, range) ->
-          if Logger.log_enabled () then
-            log "Appl-prod arg [%a]" term u;
-          let u, cu_u = force pb c u dom in
+          if Logger.log_enabled () then log "app-prod %a" term u;
+          let u, cu_u = check pb c u dom in
           return cu_u t u range
       | Meta (_, _) ->
+          if Logger.log_enabled () then log "app-meta %a" term u;
           let u, u_ty, cu_u = infer pb c u in
           let range = LibMeta.make_codomain pb c u_ty in
           unif pb c t_ty (mk_Prod (u_ty, range));
           return cu_u t u range
       | t_ty ->
+          if Logger.log_enabled () then log "app-default %a" term u;
           let domain = LibMeta.make pb c mk_Type in
           let range = LibMeta.make_codomain pb c domain in
           let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
-          if Logger.log_enabled () then
-            log "Appl-default arg [%a]" term u;
-          let u, cu_u = force pb c u domain in
+          let u, cu_u = check pb c u domain in
           return (cu_t' || cu_u) t u range )
 
 and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
-  if Logger.log_enabled () then log "Infer [%a]" term t;
+  if Logger.log_enabled () then log "infer the type of %a" term t;
   let t, t_ty, cu = infer_aux pb c t in
-  if Logger.log_enabled () then log "Inferred [%a:@ %a]" term t term t_ty;
+  if Logger.log_enabled () then
+    log "the inferred type of %a\n       is %a" term t term t_ty;
   (t, t_ty, cu)
 
 (** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
     abstraction [λ x, e]) in context [c], [c] is always extended, even if
-    binder [b] is constant. This is because during typechecking, the context
+    binder [b] is constant. This is because during type-checking, the context
     must contain all variables traversed to build appropriate meta-variables.
     Otherwise, the term [λ a: _, λ b: _, b] will be transformed to [λ _: ?1,
     λ b: ?2, b] whereas it should be [λ a: ?1.[], λ b: ?2.[a], b]. *)
@@ -277,19 +279,13 @@ let noexn :
   fun f p c arg -> try Some (f p c arg) with NotTypable -> None
 
 let infer_noexn pb c t : (term * term) option =
-  if Logger.log_enabled () then
-    log (Color.blu "Top infer %a%a") ctxt c term t;
   let infer pb c t = let (t,t_ty,_) = infer pb c t in (t, t_ty) in
   noexn infer pb c t
 
 let check_noexn pb c t a : term option =
-  if Logger.log_enabled () then
-    log (Color.blu "Top check %a") typing (c, t, a);
-  let force pb c (t, a) = fst (force pb c t a) in
-  noexn force pb c (t, a)
+  let check pb c (t, a) = fst (check pb c t a) in
+  noexn check pb c (t, a)
 
 let check_sort_noexn pb c t : (term * term) option =
-  if Logger.log_enabled () then
-    log (Color.blu "Top check sort %a%a") ctxt c term t;
-  let type_enforce pb c t = let (t, s, _) = type_enforce pb c t in (t, s) in
-  noexn type_enforce pb c t
+  let check_sort pb c t = let (t, s, _) = check_sort pb c t in (t, s) in
+  noexn check_sort pb c t

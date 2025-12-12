@@ -10,20 +10,30 @@ open Timed
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
-  | None -> fatal pos "%a is not typable." term t
+  | None ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "%a is not typable." term t
   | Some (t, a) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, a)
           else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to infer the type of %a." term t)
+            begin
+              let ids = Ctxt.names ctx in let term = term_in ids in
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to infer the type of %a." term t
+            end
         end
-      else fatal pos "%a is not typable." term t
+      else
+        let ids = Ctxt.names ctx in let term = term_in ids in
+        fatal pos "%a is not typable." term t
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
-  let die () = fatal pos "[%a] does not have type [%a]." term t term a in
+  let die () =
+    let ids = Ctxt.names ctx in let term = term_in ids in
+    fatal pos "[%a] does not have type [%a]." term t term a
+  in
   match Infer.check_noexn p ctx t a with
   | Some t ->
     if Unif.solve_noexn p then
@@ -38,16 +48,23 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
 let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
-  | None -> fatal pos "[%a] is not typable by a sort." term t
+  | None ->
+      let ids = Ctxt.names ctx in let term = term_in ids in
+      fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, s) else
-            (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-             fatal pos "Failed to check that [%a] is typable by a sort."
-               term s)
+            begin
+              let ids = Ctxt.names ctx in let term = term_in ids in
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to check that [%a] is typable by a sort."
+                term s
+            end
         end
-      else fatal pos "[%a] is not typable by a sort." term t
+      else
+        let ids = Ctxt.names ctx in let term = term_in ids in
+        fatal pos "[%a] is not typable by a sort." term t
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
@@ -62,32 +79,39 @@ let return : 'a pp -> 'a -> result = fun pp x ->
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps {elt;pos} ->
   match elt with
+  | P_query_debug(_,"") ->
+      let f (k,d) = Printf.sprintf "\n%c: %s" k d in
+      let s = String.concat "" (List.map f (Logger.log_summary())) in
+      return string ("debug flags:"^s)
   | P_query_debug(e,s) ->
       Logger.set_debug e s;
       Console.out 1 "debug %s%s" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->
       let i = try int_of_string i with Failure _ ->
-                fatal pos "Too big number (max is %d)" max_int in
-      if i < 0 then fatal pos "Negative number";
-      if Timed.(!Console.verbose) = 0 then
-        (Timed.(Console.verbose := i);
-         Console.out 1 "verbose %i" i)
-      else
-        (Console.out 1 "verbose %i" i;
-         Timed.(Console.verbose := i));
+                fatal pos "Too big number (max is %d)." max_int in
+      if i < 0 then fatal pos "Negative number.";
+      if !Console.verbose = 0 then
+        (Console.verbose := i; Console.out 1 "verbose %i" i)
+      else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
+  | P_query_flag("",_) ->
+      let f n _ l = n::l in
+      let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
+      let l = List.sort Stdlib.compare l in
+      let l = List.map (fun s -> "\""^s^"\"") l in
+      return string ("flags: "^String.concat ", " l)
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
-      Console.out 1 "flag %s %s" id (if b then "on" else "off");
+      Console.out 1 "flag \"%s\" %s" id (if b then "on" else "off");
       None
-  | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
+  | P_query_prover(s) -> Why3_tactic.default_prover := s; None
   | P_query_prover_timeout(n) ->
       let n = try int_of_string n with Failure _ ->
                 fatal pos "Too big number (max is %d)" max_int in
       if n < 0 then fatal pos "Negative number";
-      Timed.(Why3_tactic.timeout := n);
+      Why3_tactic.timeout := n;
       None
   | P_query_print(None) ->
       begin
@@ -97,12 +121,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       end
   | P_query_print(Some qid) ->
       let sym_info ppf s =
-        let open Timed in
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
         (* Function to print a notation *)
         let notation ppf s =
-          match !(s.sym_not) with
+          match !(s.sym_nota) with
           | NoNotation -> ()
           | n -> out ppf "notation %a %a;@." sym s (notation float) n
         in
@@ -119,8 +142,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let decl ppf s =
           out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
             expo s.sym_expo prop s.sym_prop
-            match_strat s.sym_mstrat sym s
-            prod (!(s.sym_type), s.sym_impl)
+            match_strat s.sym_mstrat sym s sym_type s
             def !(s.sym_def) notation s rules s
         in
         (* Function to print constructors and the induction principle if [qid]
@@ -129,11 +151,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           let open Sign in
           (* get the signature of [s] *)
           let sign =
-            try Path.Map.find s.sym_path Timed.(!loaded)
+            try Path.Map.find s.sym_path !loaded
             with Not_found -> assert false
           in
           try
-            let ind = SymMap.find s Timed.(!(sign.sign_ind)) in
+            let ind = SymMap.find s !(sign.sign_ind) in
             List.pp decl "" ppf ind.ind_cons;
             decl ppf ind.ind_prop
           with Not_found -> ()
@@ -145,9 +167,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_proofterm ->
       (match ps with
        | None -> fatal pos "Not in a proof"
-       | Some ps ->
-           match ps.proof_term with
-           | Some m -> return term (mk_Meta(m,[||]))
+       | Some pst ->
+           match pst.proof_term with
+           | Some m ->
+               let ids = Env.names (Proof.focus_env ps) in
+               return (term_in ids) (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
@@ -160,7 +184,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
-  | P_query_search s -> return string (Tool.Indexing.search_cmd_txt s)
+  | P_query_search q ->
+      let dbpath = Path.default_dbpath in
+      return string (Tool.Indexing.search_cmd_txt_query ss q ~dbpath)
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)
@@ -206,8 +232,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      return term (Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)))
+      let t = Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)) in
+      let ids = Env.names (Proof.focus_env ps) in
+      return (term_in ids) t
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      let t, _ = infer pt.pos p ctxt t in
-      return term (Eval.eval cfg ctxt t)
+      let t = Eval.eval cfg ctxt (fst (infer pt.pos p ctxt t)) in
+      let ids = Env.names (Proof.focus_env ps) in
+      return (term_in ids) t

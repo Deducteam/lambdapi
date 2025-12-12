@@ -105,7 +105,6 @@ opaque symbol eq_sym_other_2 : Π a x y, P (eq a x y) → P (eq a y x)
 ≔ begin
   assume a x y h;
   refine eqind a x y h (λ z, eq a y z) _;
-  simplify;
   refine refl a y
 end;
 
@@ -141,7 +140,6 @@ opaque symbol add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
   simplify;
   assume pn ih;
   rewrite ih;
-  simplify;
   refine refl nat (s (s (add pn m))) }
 end;
 

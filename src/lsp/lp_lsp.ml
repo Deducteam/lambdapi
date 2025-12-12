@@ -64,8 +64,10 @@ let do_check_text ofmt ~doc =
           fname = Some(doc.uri);
           start_line = 0;
           start_col  = 0;
+          start_offset  = 0;
           end_line = 0;
-          end_col = 0
+          end_col = 0;
+          end_offset  = 0;
         } in
       (doc, Lp_doc.mk_error ~doc loc msg)
   in
@@ -229,7 +231,7 @@ let get_node_at_pos doc line pos =
   List.find_opt (fun { ast; _ } ->
       let loc = Pure.Command.get_pos ast in
       let res = in_range ?loc (line,pos) in
-      let ls = Format.asprintf "%B l:%d p:%d / %a "
+      let ls = Format.asprintf "%B l:%d p:%d / %a"
                  res line pos Pos.pp loc in
       LIO.log_error "get_node_at_pos" ("call: "^ls);
       res
@@ -442,13 +444,11 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "symbol map" map_pp;
 
     let sym_found =
-      let open Timed in
-      let open Term in
       match StrMap.find_opt sym_target sym with
       | None -> msg_fail "hover_SymInfo" "Sym not found"
-      | Some sym -> !(sym.sym_type)
+      | Some sym -> sym
     in
-    let sym_type = Format.asprintf "%a" Core.Print.term sym_found in
+    let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
     let result : J.t =
       `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in

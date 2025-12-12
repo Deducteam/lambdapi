@@ -21,7 +21,7 @@ let name_of_sym s = (s.sym_path, s.sym_name)
      e.g. "pi x : T. x + x"  has as subterm "$x + $x"
 *)
 
-module Pure = struct
+module Index = struct
 
 type 'a index =
  | Leaf of 'a list
@@ -190,39 +190,39 @@ end
 module DB = struct
  (* fix codomain type *)
 
- type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+ type side = Parsing.Syntax.side = Lhs | Rhs
 
- type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+ type relation = Parsing.Syntax.relation = Exact | Inside
 
- type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
-  | Spine of 'inside
-  | Conclusion of 'inside
-  | Hypothesis of 'inside
- (* the "name" in the sym_name of rules is just the printed position of
-    the rule; the associated position is never None *)
+ type 'relation where = 'relation Parsing.Syntax.where =
+  | Spine of 'relation
+  | Conclusion of 'relation
+  | Hypothesis of 'relation
 
  type position =
   | Name
-  | Type of inside where
-  | Xhs  of inside * side
+  | Type of relation where
+  | Xhs  of relation * side
 
  type item = sym_name * Common.Pos.pos option
+ (* the "name" in the sym_name of rules is just the printed position of
+    the rule; the associated position is never None *)
 
  let pp_side fmt =
   function
    | Lhs -> Lplib.Base.out fmt "lhs"
    | Rhs -> Lplib.Base.out fmt "rhs"
 
- let pp_inside fmt =
+ let pp_relation fmt =
   function
     | Exact -> Lplib.Base.out fmt "as the exact"
     | Inside -> Lplib.Base.out fmt "inside the"
 
  let pp_where fmt =
   function
-   | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_inside ins
-   | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
-   | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
+   | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_relation ins
+   | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_relation ins
+   | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_relation ins
 
  module ItemSet =
   struct
@@ -254,7 +254,7 @@ module DB = struct
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
    (fun ppf position ->
-     Print.without_qualifying (fun () ->
+     Print.no_qualif (fun () ->
      match position with
       | _,_,Name ->
          Lplib.Base.out ppf "Name"
@@ -263,70 +263,71 @@ module DB = struct
           (escaper.run Print.term) term
           (if generalize then "generalized " else "")
           pp_where where
-      | generalize,term,Xhs (inside,side) ->
+      | generalize,term,Xhs (relation,side) ->
          Lplib.Base.out ppf "%a occurs %s %a %a"
           (escaper.run Print.term) term
           (if generalize then "generalized" else "")
-          pp_inside inside pp_side side))
+          pp_relation relation pp_side side))
    sep
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
-  ~lis:(lisb,lise) ~pres:(preb,pree) fmt l
+  ~lis:(lisb,lise) ~pres:(preb,pree)
+  ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
  =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
    Lplib.List.pp
     (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
-      lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
-      pos separator (generic_pp_of_position_list ~escaper ~sep) positions
-      separator preb
-      (Common.Pos.print_file_contents ~escape ~delimiters)
-      pos pree lise)
+     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%s%s@."
+       lisb (escaper.run Core.Print.path) p boldb n bolde
+       (popt_to_string ~print_dirname:false pos)
+       separator (generic_pp_of_position_list ~escaper ~sep) positions
+       separator preb codeb
+       (Common.Pos.print_file_contents ~escape ~delimiters)
+       pos codee pree lise)
     "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
-   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
+   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
+   ~code:("<code>","</code>")
 
  let pp_item_list =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
-   ~lis:("* ","") ~pres:("","")
+   ~lis:("* ","") ~pres:("","") ~bold:("","") ~code:("","")
 
- let pp_item_set fmt set = pp_item_list fmt (ItemSet.bindings set)
+ let pp_results_list fmt l = pp_item_list fmt l
 
- let html_of_item_set fmt set =
-  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.bindings set)
+ let html_of_results_list from fmt l =
+  Lplib.Base.out fmt "<ol start=\"%d\">%a</ol>" from html_of_item_list l
 
  (* disk persistence *)
 
- let dbpath =
-   match Sys.getenv_opt "HOME" with
-   | Some s -> s ^ "/.LPSearch.db"
-   | None -> ".LPSearch.db"
+ let the_dbpath : string ref = ref Path.default_dbpath
+
  let rwpaths = ref []
 
  let restore_from_disk () =
-  try Pure.restore_from ~filename:dbpath
+  try Index.restore_from ~filename:!the_dbpath
   with Sys_error msg ->
      Common.Error.wrn None "%s.\n\
       Type \"lambdapi index --help\" to learn how to create the index." msg ;
-     Pure.empty
+     Index.empty
 
- let db : (item * position list) Pure.db Lazy.t ref =
+ let db : (item * position list) Index.db Lazy.t ref =
    ref (lazy (restore_from_disk ()))
 
- let empty () = db := lazy Pure.empty
+ let empty () = db := lazy Index.empty
 
  let insert k v =
-   let db' = Pure.insert (Lazy.force !db) k v in
+   let db' = Index.insert (Lazy.force !db) k v in
    db := lazy db'
 
  let insert_name k v =
-   let db' = Pure.insert_name (Lazy.force !db) k v in
+   let db' = Index.insert_name (Lazy.force !db) k v in
    db := lazy db'
 
  let set_of_list ~generalize k l =
@@ -337,42 +338,40 @@ module DB = struct
 
  let search ~generalize k =
   set_of_list ~generalize k
-   (Pure.search ~generalize (Lazy.force !db) k)
+   (Index.search ~generalize (Lazy.force !db) k)
 
- let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
+ let dump ~dbpath () =
+  the_dbpath := dbpath;
+  Index.dump_to ~filename:dbpath (Lazy.force !db)
 
  let locate_name name =
   let k = Term.mk_Wild (* dummy, unused *) in
   set_of_list ~generalize:false k
-   (Pure.locate_name (Lazy.force !db) name)
+   (Index.locate_name (Lazy.force !db) name)
 
 end
 
-let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
+exception Overloaded of string * DB.answer DB.ItemSet.t
+
+let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
  let pos,mp =
   match mp with
     [] ->
      let res = DB.locate_name name in
      if DB.ItemSet.cardinal res > 1 then
-      Common.Error.fatal pos
-       "Overloaded symbol %s, search for \"name = %s\" to know how \
-        to disambiguate it"
-       name name ;
+       raise (Overloaded (name,res)) ;
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
        | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
        | Some _ -> assert false) (* locate only returns DB.Name*)
   | _::_ -> None,mp
  in
-  Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-   false (Common.Pos.make pos name) None Core.Term.mk_Type []
-
-let search_pterm ~generalize ~mok env pterm =
- let sig_state = Core.Sig_state.dummy in
- let env = ("V#", (new_var "V#", Term.mk_Type, None))::env in
- let query =
-  Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
- DB.search ~generalize query
+ try
+  Core.Sig_state.find_sym ~prt ~prv sig_state s
+ with
+  Common.Error.Fatal _ ->
+   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+    false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -424,6 +423,16 @@ let normalize typ =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
+
+let search_pterm ~generalize ~mok ss env pterm =
+ let env =
+  ("V#",(new_var "V#",Term.mk_Type,None))::env in
+ let query =
+  Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
+ Dream.log "QUERY before: %a" Core.Print.term query ;
+ let query = normalize query in
+ Dream.log "QUERY after: %a" Core.Print.term query ;
+ DB.search ~generalize query
 
 let rec is_flexible t =
  match Core.Term.unfold t with
@@ -497,8 +506,11 @@ let insert_rigid t v =
 let index_term_and_subterms ~is_spine t item =
  let tn = normalize t in
  (*
- Format.printf "%a : %a REWRITTEN TO %a@."
-  pp_item (item Exact) Core.Print.term t Core.Print.term tn ;
+ let pp_item ppf (((p,n),_ ), _) =
+   Lplib.Base.out ppf "%a.%s" Core.Print.path p n in
+ Format.printf "%a :(%a) REWRITTEN TO (%a)@."
+  pp_item (item (DB.Conclusion DB.Exact))
+  Core.Print.term t Core.Print.term tn ;
  *)
  let cmp (where1,t1) (where2,t2) =
   let res = compare where1 where2 in
@@ -516,14 +528,14 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
     | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = rule.rhs in
- let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
+ let get_relation = function | DB.Conclusion r -> r | _ -> assert false in
  let filename = Option.get rule_pos.fname in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
-  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Lhs)])) ;
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Lhs)])) ;
  index_term_and_subterms ~is_spine:false rhs
-  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Rhs)]))
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Rhs)]))
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -538,26 +550,31 @@ let index_sym sym =
  (* Rules *)
  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
 
-let index_sign ~rules:rwrules sign =
- DB.rwpaths := rwrules ;
+let load_rewriting_rules rwrules =
+ DB.rwpaths := rwrules
+
+let index_sign sign =
+ (*Console.set_flag "print_domains" true ;
+ Console.set_flag "print_implicits" true ;
+ Common.Logger.set_debug true "e" ;*)
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
- let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
+ let deps = Timed.(!(sign.Core.Sign.sign_deps)) in
  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
  Common.Path.Map.iter
-  (fun path rules ->
+  (fun path d ->
     Lplib.Extra.StrMap.iter
-     (fun name (rules,_) ->
-       let sym = Core.Sign.find_sym path name in
-       List.iter (index_rule sym) rules)
-     rules)
-  rules
+     (fun name sd ->
+       let sym = Core.Sign.find_qualified path name in
+       List.iter (index_rule sym) sd.Sign.rules)
+     d.Sign.dep_symbols)
+  deps
 
 (* let's flatten the interface *)
 include DB
 
 module QueryLanguage = struct
 
- open Parsing.SearchQuerySyntax
+ open Parsing.Syntax
 
  let match_opt p x =
   match p,x with
@@ -587,11 +604,11 @@ module QueryLanguage = struct
          | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
          | _ -> false) positions
 
- let answer_base_query ~mok env =
+ let answer_base_query ~mok ss env =
   function
    | QName s -> locate_name s
    | QSearch (patt,generalize,constr) ->
-      let res = search_pterm ~generalize ~mok env patt in
+      let res = search_pterm ~generalize ~mok ss env patt in
       (match constr with
         | None -> res
         | Some constr -> ItemSet.filter (filter_constr constr) res)
@@ -616,11 +633,11 @@ module QueryLanguage = struct
        Lplib.String.is_prefix p (string_of_path p') in
   ItemSet.filter f set
 
- let answer_query ~mok env =
+ let answer_query ~mok ss env =
   let rec aux =
    function
-    | QBase bq -> answer_base_query ~mok env bq
-    | QOpp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
+    | QBase bq -> answer_base_query ~mok ss env bq
+    | QOp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
     | QFilter (q,f) -> filter (aux q) f
   in
    aux
@@ -632,28 +649,67 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ~fail ~pp_results s =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag:(hb,he) q =
   try
-   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
-   let pq = Stream.next pstream in
    let mok _ = None in
-   let items = answer_query ~mok [] pq in
-   Format.asprintf "%a@." pp_results items
+   let items = ItemSet.bindings (answer_query ~mok ss [] q) in
+   let resultsno = List.length items in
+   let _,items = Lplib.List.cut items from in
+   let items,_ = Lplib.List.cut items how_many in
+   Format.asprintf "%sNumber of results: %d%s%a@."
+    hb resultsno he pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
    | Common.Error.Fatal(_,msg) ->
       fail (Format.asprintf "Error: %s@." msg)
+   | Overloaded(name,res) ->
+      fail (Format.asprintf
+       "Overloaded symbol %s. Please rewrite the query replacing %s \
+        with a fully qualified identifier among the following: %a"
+        name name pp_results (ItemSet.bindings res))
+   | Stack_overflow ->
+      fail
+       (Format.asprintf
+         "Error: too many results. Please refine your query.@." )
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html s =
-  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_item_set s
+  let search_cmd_txt_query ss ~dbpath q =
+  the_dbpath := dbpath;
+  search_cmd_gen ss ~from:0 ~how_many:999999
+   ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+   ~pp_results:pp_results_list ~tag:("","") q
 
- let search_cmd_txt s =
-  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set s
+ (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
+     ["forall"] with ["→"] and ["Π"] in the search query [s] *)
+  let transform_ascii_to_unicode : string -> string =
+    let arrow = Str.regexp_string " -> "
+    and forall = Str.regexp "\\bforall\\b" in
+    fun s -> Str.global_replace forall "Π" (Str.global_replace arrow " → " s)
+
+  (* unit tests *)
+  let _ =
+    assert (transform_ascii_to_unicode "a -> b" = "a → b");
+    assert (transform_ascii_to_unicode " forall x, y" = " Π x, y");
+    assert (transform_ascii_to_unicode "forall x, y" = "Π x, y");
+    assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
+    assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
+
+ let search_cmd_html ss ~from ~how_many ~dbpath s =
+  the_dbpath := dbpath;
+  search_cmd_gen ss ~from ~how_many
+   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:(html_of_results_list from)
+   ~tag:("<h1>","</h1")
+   (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
+      (transform_ascii_to_unicode s))
+
+ let search_cmd_txt ss ~dbpath s =
+   the_dbpath := dbpath;
+   search_cmd_txt_query ss ~dbpath
+     (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
+        (transform_ascii_to_unicode s))
 
 end
 

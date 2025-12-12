@@ -20,5 +20,4 @@ libraries/zenon_modulo
 *.png
 .DS_Store
 *.map
-TODO.*
 *.log

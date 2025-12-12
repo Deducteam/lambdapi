@@ -39,9 +39,9 @@ debug mode for some functionalities as follows:
    debug +ts;
    debug -s;
 
-Each functionality is represented by a single character. For instance,
-``i`` stands for type inference. To get the list of all debuggable
-functionalities, run the command ``lambdapi check --help``.
+Each functionality is represented by a single character. To get the
+list of all available flags, use the command ``debug`` with no
+argument.
 
 .. _flag:
 
@@ -50,7 +50,8 @@ functionalities, run the command ``lambdapi check --help``.
 
 Sets some flags ``on`` or ``off``, mainly for modifying the printing
 behavior. Only the flag ``"eta_equality"`` changes the behavior of the
-rewrite engine by reducing η-redexes.
+rewrite engine by reducing η-redexes. You can get the list of
+available flags by using the command ``flag`` with no argument.
 
 ::
 
@@ -58,7 +59,6 @@ rewrite engine by reducing η-redexes.
    flag "print_implicits" on; // default is off
    flag "print_contexts" on; // default is off
    flag "print_domains" on; // default is off
-   flag "print_meta_types" on; // default is off
    flag "print_meta_args" on; // default is off
 
 .. _print:
@@ -115,7 +115,7 @@ specification.
 
 ::
 
-  search "spine: (nat → nat) , hyp: bool";
+  search "spine >= (nat → nat) , hyp >= bool";
 
 .. _type:
 

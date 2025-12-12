@@ -120,8 +120,7 @@ and typ : term pp = fun ppf t ->
   | Vari _ -> assert false
   | Symb s -> type_sym ppf s
   | Patt(None,_,_) -> assert false
-  | Patt(Some i,_,[||]) -> typ ppf !type_of_pvar.(i)
-  | Patt(Some _,_,_) -> assert false
+  | Patt(Some i,_,_) -> typ ppf !type_of_pvar.(i)
   | Appl _ -> fatal_no_pos "Dependent type."
   | Abst _ -> fatal_no_pos "Dependent type."
   | Prod(a,b) ->
@@ -154,10 +153,9 @@ let add_pvars : sym -> rule -> unit = fun s r ->
     | Abst(a,b) ->
       begin
         match unfold a with
-        | Patt(Some i,_,[||]) ->
+        | Patt(Some i,_,_) ->
           let x,b = unbind b in
           mk_Abst(!type_of_pvar.(i), bind_var x (subst_patt b))
-        | Patt(Some _,_,_) -> assert false (*FIXME*)
         | _ -> assert false
       end
     | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
@@ -172,7 +170,7 @@ let add_pvars : sym -> rule -> unit = fun s r ->
   let ctx =
     Array.to_list (Array.mapi (fun i v -> v, !type_of_pvar.(i), None) var) in
   (* Infer the type of lhs in ctx. *)
-  (*Logger.set_debug true "+iu"; Console.set_flag "print_domaines" true;*)
+  (*Logger.set_debug true "+iu"; Console.set_flag "print_domains" true;*)
   match Infer.infer_noexn p ctx lhs with
   | None -> assert false
   | Some _ ->
@@ -208,7 +206,7 @@ let rules_of_sym : sym pp = fun ppf s ->
 
 (** Translate the rules of a dependency except if it is a ghost signature. *)
 let rules_of_sign : Sign.t pp = fun ppf sign ->
-  if sign != Ghost.sign then
+  if sign != Sign.Ghost.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
 
 (** [sign ppf s] translates the Lambdapi signature [s]. *)

@@ -6,6 +6,7 @@ open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
 open Parsing open Syntax open Scope
 open Proof
+open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
@@ -37,52 +38,102 @@ let _ =
   in
   register "nat_succ" expected_succ_type
 
-(** [handle_open ss p] handles the command [open p] with [ss] as the
-   signature state. On success, an updated signature state is returned. *)
-let handle_open : sig_state -> p_path -> sig_state =
-  fun ss {elt=p;pos} ->
+(** [rec_open record ss p] opens [p] and all its dependencies marked as
+    open. It assumes that [p] and all its dependencies are already
+    loaded. Records open modules if [record]. On success, an updated signature
+    state is returned. *)
+let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
+  fun record ss p ->
+  if Path.Set.mem p ss.open_paths then ss
+  else
+    begin
+      match Path.Map.find_opt p !loaded with
+      | None -> assert false
+      | Some sign ->
+          (* Recursively open the dependencies of [p] declared as open. *)
+          let f p d ss = if d.dep_open then rec_open record ss p else ss in
+          let ss = Path.Map.fold f !(sign.sign_deps) ss in
+          (* Record that [p] must be open if [record]. *)
+          if record then
+            begin
+              let f = function
+                | None -> assert false
+                | Some ({dep_open=false;_} as d) ->
+                    Some {d with dep_open=true}
+                | x -> x
+              in
+              let deps = ss.signature.sign_deps in
+              deps := Path.Map.update p f !deps
+            end;
+          (* Add symbols of [p] in scope. *)
+          open_sign ss sign
+    end
+
+let handle_open : bool -> sig_state -> p_path -> sig_state =
+  fun prv ss {elt=p;pos} ->
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-    fatal pos "Module aliases cannot be open."
+      fatal pos "Module aliases cannot be open."
   | _ ->
-  (* Check that [p] has been required. *)
-  if not (Path.Map.mem p !(ss.signature.sign_deps)) then
-    fatal pos "Module %a needs to be required first." path p;
-  (* Obtain the signature corresponding to [p]. *)
-  open_sign ss (Path.Map.find p !(Sign.loaded))
+      (* Check that [p] has been required. *)
+      match Path.Map.find_opt p !loaded with
+      | None -> fatal pos "Module \"%a\" needs to be required first." path p
+      | Some _ -> rec_open (not prv) ss p
 
-(** [handle_require b ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state and [compile] the
-   main compile function (passed as argument to avoid cyclic dependencies).
-   On success, an updated signature state is returned. *)
-let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
-  fun compile b ss {elt=p;pos} ->
-  (* Check that the module has not already been required. *)
-  if Path.Map.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module %a is already required." path p;
-  (* Compile required path (adds it to [Sign.loaded] among other things) *)
-  let new_sign = compile p in
-  (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps :=
-    Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
-  (* Add builtins. *)
-  let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
-  let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
-  let ss = {ss with builtins} in
-  if b then open_sign ss new_sign else ss
+(** [rec_require compile ss p] handles the command [require p] with [ss] as
+    signature state and [compile] as compilation function (passed as argument
+    to avoid cyclic dependencies). On success, an updated signature state is
+    returned. *)
+let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
+  fun compile ss p ->
+  if p = Sign.Ghost.path then ss
+  else
+    let deps = ss.signature.sign_deps in
+    if Path.Map.mem p !deps then ss
+    else
+      begin
+        (* Compile [p] (this adds it to [Sign.loaded]). *)
+        let sign = compile p in
+        (* Recurse on the dependencies of [p]. *)
+        let f p _ ss = rec_require compile ss p in
+        let ss = Path.Map.fold f !(sign.sign_deps) ss in
+        (* Add builtins of [p] in [ss]. *)
+        let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+        let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
+        let ss = {ss with builtins} in
+        (* Add [p] in dependencies. *)
+        let dep = {dep_symbols=StrMap.empty; dep_open=false} in
+        deps := Path.Map.add p dep !deps;
+        ss
+      end
 
-(** [handle_require_as compile ss p id] handles the command
-    [require p as id] with [ss] as the signature state and [compile] the main
-    compilation function passed as argument to avoid cyclic dependencies. On
-    success, an updated signature state is returned. *)
-let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
-  sig_state =
-  fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
-  let ss = handle_require compile false ss mp in
-  let alias_path = StrMap.add id p ss.alias_path in
-  let path_alias = Path.Map.add p id ss.path_alias in
-  {ss with alias_path; path_alias}
+(** [handle_require_as compile ss p id] handles the command [require p as id]
+    with [ss] as the signature state and [compile] as compilation function
+    (passed as argument to avoid cyclic dependencies). On success, an updated
+    signature state is returned. *)
+let handle_require_as :
+      compiler -> sig_state -> p_path -> p_ident -> sig_state =
+  fun compile ss {elt=p;_} {elt=id;_} ->
+  if Path.Map.mem p !(ss.signature.sign_deps) then ss
+  else
+    begin
+      let ss = rec_require compile ss p in
+      let alias_path = StrMap.add id p ss.alias_path in
+      let path_alias = Path.Map.add p id ss.path_alias in
+      {ss with alias_path; path_alias}
+    end
+
+(** [handle_require compile bo ss p] handles the command [require p] with
+    [compile] as compilation function (passed as argument to avoid cyclic
+    dependencies), [bo=Some(true)] if the command is [require private open p],
+    [bo=Some(false)] if the command is [require open p], and [ss] as signature
+    state. On success, an updated signature state is returned. *)
+let handle_require compile bo ss {elt=p;_} =
+  let ss = rec_require compile ss p in
+  match bo with
+  | Some prv -> rec_open (not prv) ss p
+  | None -> ss
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
@@ -152,7 +203,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     fatal pos "We have %a : %a." uid name term typ
   end;
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
+  Console.out 2 (Color.gre "symbol %a : %a") uid name term typ;
   let r =
    Sig_state.add_symbol ss expo prop mstrat false id declpos typ impl None in
   sig_state := fst r; r
@@ -195,10 +246,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     s.sym_opaq := true;
     (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
-  | P_require(b,ps) ->
-      (List.fold_left (handle_require compile b) ss ps, None, None)
+  | P_require(bo,ps) ->
+      (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
+  | P_open(b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
@@ -225,7 +276,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add rules in the signature. *)
       SymMap.iter (Sign.add_rules ss.signature) map;
       if !Console.verbose >= 2 then
-        List.iter (Console.out 2 (Color.red "rule %a") sym_rule)
+        List.iter (Console.out 2 (Color.gre "rule %a") sym_rule)
           (List.rev srs);
       (* Update critical pair positions. *)
       sign.Sign.sign_cp_pos :=
@@ -239,7 +290,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           fatal pos "Builtin \"%s\" already mapped to %a" n sym s
         | _ ->
           Builtin.check ss pos n s;
-          Console.out 2 "builtin \"%s\" ≔ %a" n sym s;
+          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
           (Sig_state.add_builtin ss n s, None, None)
       end
   | P_notation(qid,n) ->
@@ -250,7 +301,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
         | _ -> assert false
-      and real = Tactic.count_products [] !(s.sym_type) in
+      and real = LibTerm.count_products Eval.whnf [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Check that the notation is compatible with the theory. *)
@@ -279,7 +330,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | _ -> assert false
       in
       let n = float_notation_from_string_notation n in
-      Console.out 2 "notation %a %a" sym s (notation float) n;
+      Console.out 2 (Color.gre "notation %a %a") sym s (notation float) n;
       Sign.add_notation ss.signature s n;
       (ss, None, None)
   | P_unif_rule(h) ->
@@ -287,13 +338,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let r = scope_rule true ss h in
       Sign.add_rule ss.signature r;
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 "unif_rule %a" sym_rule r;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
       Sign.add_rule ss.signature r;
       Tree.update_dtree Coercion.coerce [];
-      Console.out 2 "coercion %a" sym_rule r;
+      Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -361,7 +412,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         if Sign.mem ss.signature rec_name then
           fatal pos "Symbol %a already exists." uid rec_name;
         let (ss, rec_sym) =
-          Console.out 2 (Color.red "symbol %a : %a")
+          Console.out 2 (Color.gre "symbol %a : %a")
             uid rec_name term rec_typ;
           (* Recursors are declared after the types and constructors. *)
           let pos = after (pos_end pos) in
@@ -382,7 +433,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let r = scope_rule false ss pr in
         let r = Tool.Sr.check_rule pos r in
         Sign.add_rule ss.signature r;
-        Console.out 2 (Color.red "rule %a") sym_rule r
+        Console.out 2 (Color.gre "rule %a") sym_rule r
       in
       no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
       List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
@@ -507,7 +558,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
@@ -527,13 +578,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =
-        let proof_goals = Proof.add_goals_of_problem p [] in
+        let proof_goals = add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
           let m = LibMeta.fresh p a 0 in
@@ -575,8 +626,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   with
   | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "Error on command.@.%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.@.%s" m
+  | Fatal(None         ,m)      -> fatal pos "%s" m
+  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

@@ -20,19 +20,82 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg s =
- Config.init cfg;
- let run () = out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt s) in
- Error.handle_exceptions run
+let sig_state_of_require =
+ function
+   None -> Core.Sig_state.dummy
+ | Some req ->
+    (* Search for a package from the current working directory. *)
+    Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+    Core.Sig_state.of_sign
+     (Compile.compile (Parsing.Parser.path_of_string req))
 
-let websearch_cmd cfg port =
+let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
  let run () =
-  Tool.Websearch.start ~port () in
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ss s ~dbpath) in
  Error.handle_exceptions run
 
-let index_cmd cfg add_only rules files =
+let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
+ Config.init cfg;
+ let run () =
+  Tool.Indexing.load_rewriting_rules rules ;
+  let ss = sig_state_of_require require in
+  let header = match header_file with
+    | None ->
+      "
+      <style>
+      .snippet {
+        border: 1px solid grey;
+        color: red;
+        padding: 0 3px 0 3px;
+        line-height: 1.6;
+      }</style>
+      <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
+      Search Engine</h1>
+    <div id=\"descriptionSection\" style=\"display: %%HIDE_DESCRIPTION%%\">
+    <p>
+        The <b>search</b> button answers the query. Read the <a href=
+        \"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
+        query language specification</a> to learn about the query language.
+        <br>The query language also uses the <a
+        href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
+        Lambdapi terms syntax</a>.<br> with the possibility to use,
+        for commodity,
+        \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
+        (results are displayed with the Unicode symbols
+        \"Π\" and \"→\" though).
+        In particular, the following constructors can come handy for
+        writing queries:<br>
+    </p>
+    <ul>
+        <li>an anonymous function<span class=\"snippet\">λ (x:A) y z,t</span>
+        mapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
+        </span> and <span class=\"snippet\">z</span> (of type <span class=\"
+        snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
+        class=\"snippet\">t</span>.</li>
+        <li>a dependent product
+          <span class=\"snippet\">forall (x:A) y z,T</span>
+        </li>
+        <li>a non-dependent product <span class=\"snippet\">A -> T</span>
+         (syntactic sugar for <span class=\"snippet\">forall x:A,T</span> when
+          <span class=\"snippet\">x</span> does not occur in <span class=
+          \"snippet\">T</span>)</li>
+    </ul>
+    </div>
+      "
+    | Some file -> Lplib.String.string_of_file file in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  let path_in_url = match path_in_url with
+  | None -> ""
+  | Some s -> s in
+  Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url () in
+ Error.handle_exceptions run
+
+let index_cmd cfg add_only rules files dbpath_opt =
  Config.init cfg;
  let run () =
   if not add_only then Tool.Indexing.empty ();
@@ -42,9 +105,11 @@ let index_cmd cfg add_only rules files =
   let handle file =
    Console.reset_default ();
    Time.restore time;
-   Tool.Indexing.index_sign ~rules (no_wrn Compile.compile_file file) in
+   Tool.Indexing.load_rewriting_rules rules;
+   Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
-  Tool.Indexing.dump () in
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  Tool.Indexing.dump ~dbpath () in
  Error.handle_exceptions run
 
 end
@@ -164,7 +229,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)
-        try StrMap.find sym Timed.(!(Ghost.sign.sign_symbols))
+        try Sign.find Sign.Ghost.sign sym
         with Not_found -> fatal_no_pos "Unknown ghost symbol %s." sym
       else
         try Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none (mp, sym))
@@ -424,23 +489,46 @@ let rules_arg : string list CLT.t =
      multiple times to fetch rules from multiple files." in
   Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
 
+let require_arg : string option CLT.t =
+  let doc =
+    "LP file to be required before starting the search engine." in
+  Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
+
+let custom_dbpath : string option CLT.t =
+  let doc =
+    "Path to the search DB file." in
+  Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
+
+let path_in_url : string option CLT.t =
+  let doc =
+    "The path in the URL accepted by the server." in
+  Arg.(value & opt (some string) None & info ["url"] ~docv:"String" ~doc)
+
+let header_file_arg : string option CLT.t =
+  let doc =
+    "html file holding the header of the web page of the server." in
+  Arg.(value & opt (some string) None &
+    info ["header"] ~docv:"PATH" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
-   add_only_arg $ rules_arg $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
+   $ add_only_arg $ rules_arg $ files $ custom_dbpath)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
-   $ query_as_arg)
+   $ rules_arg $ require_arg $ query_as_arg $ custom_dbpath)
 
 let websearch_cmd =
  let doc =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
+   $ rules_arg $ port_arg $ require_arg $ header_file_arg $
+   custom_dbpath $ path_in_url)
 
 let _ =
   let t0 = Sys.time () in

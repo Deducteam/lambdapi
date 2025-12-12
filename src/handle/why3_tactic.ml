@@ -5,10 +5,10 @@ open Timed
 open Common open Error
 open Core open Term open Print
 open Fol
-open Proof
+open Goal
 
 (** Logging function for external prover calling with Why3. *)
-let log = Logger.make 'y' "why3" "why3 provers"
+let log = Logger.make 'y' "why3" "why3 tactic"
 let log = log.pp
 
 (** [default_prover] contains the name of the current prover. Note that it can
@@ -428,7 +428,7 @@ let handle :
   fun ss pos prover_name
       ({goal_meta = _; goal_hyps = hyps; goal_type = t} as gt) ->
   let g = Typ gt in
-  if Logger.log_enabled() then log "%a%a" Goal.hyps g Goal.pp g;
+  if Logger.log_enabled() then log "%a" Goal.pp g;
   (* Encode the goal in Why3. *)
   let tsk = translate_goal ss pos hyps t in
   (* Get the name of the prover. *)

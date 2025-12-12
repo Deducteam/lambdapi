@@ -15,4 +15,4 @@ val timeout : int ref
 (** [handle ss pos ps prover_name gt] runs the Why3 prover corresponding to
     [prover_name] (if given or a default one otherwise) on the goal type [gt],
     and fails if no proof is found. *)
-val handle: Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> unit
+val handle: Sig_state.t -> Pos.popt -> string option -> Goal.goal_typ -> unit

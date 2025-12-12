@@ -31,12 +31,8 @@ let rec term oc t =
   | P_Expl _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_NLit i ->
-      if !stt then
-        match QidMap.find_opt ([],i) !map_erased_qid with
-        | Some s -> string oc s
-        | None -> raw_ident oc i
-      else raw_ident oc i
+  | P_NLit _ -> wrn t.pos "TODO"; assert false
+  | P_SLit _ -> wrn t.pos "TODO"; assert false
   | P_Iden(qid,b) ->
       if b then char oc '@';
       if !stt then
@@ -118,10 +114,14 @@ let openings = ref []
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> List.iter (open_mod oc) ps
-  | P_require (b, ps) ->
+  | P_open(_,ps) -> List.iter (open_mod oc) ps
+  | P_require(b,ps) ->
       List.iter (req_mod oc) ps;
-      if b then openings := List.rev_append ps !openings
+      begin
+        match b with
+        | Some true -> openings := List.rev_append ps !openings
+        | _ -> () (*FIXME?*)
+      end
   | P_require_as _ -> wrn pos "Command not translated."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
@@ -168,9 +168,13 @@ let handle_requires s =
   let rec handle_next_elt() =
     let x = Stream.next s in
     match x.elt with
-    | P_require (b, ps) ->
+    | P_require(b, ps) ->
         List.iter (req_mod stdout) ps;
-        if b then openings := List.rev_append ps !openings;
+        begin
+          match b with
+          | Some true -> openings := List.rev_append ps !openings;
+          | _ -> ()
+        end;
         handle_next_elt()
     | _ -> Some x
   in

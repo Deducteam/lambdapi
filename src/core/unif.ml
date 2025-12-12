@@ -1,6 +1,6 @@
 (** Solving unification constraints. *)
 
-open Lplib open Color
+open Lplib
 open Timed
 open Common open Error open Debug
 open Term
@@ -10,6 +10,24 @@ open Print
 (** Logging function for unification. *)
 let log = Logger.make 'u' "unif" "unification"
 let log = log.pp
+
+(** To indicate whether error messages should be generated. *)
+let print_error = Stdlib.ref true
+
+(** Exception raised when a constraint is not solvable. *)
+exception Unsolvable
+
+(** [error t1 t2]
+@raise Unsolvable. *)
+let error : ctxt -> term -> term -> 'a = fun c t1 t2 ->
+  if Stdlib.(!print_error) then
+    begin
+      let ids = Ctxt.names c in
+      let term = term_in ids in
+      fatal_msg "\n%a\nis not unifiable with\n%a.\n" term t1 term t2
+    end;
+  if Logger.log_enabled() then log "Unsolvable";
+  raise Unsolvable
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
    to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
@@ -34,7 +52,7 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let b = bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
   (* result *)
   let r = mk_Prod (a, b) in
-  if Logger.log_enabled () then log (red "%a ≔ %a") meta m term r;
+  if Logger.log_enabled () then log (Color.gre "%a ≔ %a") meta m term r;
   LibMeta.set p m (bind_mvar vs r)
 
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
@@ -53,13 +71,12 @@ let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
 
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
-  if Logger.log_enabled () then log (mag "add %a") constr c;
+  if Logger.log_enabled () then log (Color.mag "add constraint %a") constr c;
   p := {!p with to_solve = c::!p.to_solve}
 
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
-let try_unif_rules : problem -> ctxt -> term -> term -> bool =
-  fun p c s t ->
+let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
   if Logger.log_enabled () then log "check unif_rules";
   let exception No_match in
   let open Unif_rule in
@@ -77,16 +94,19 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
       match Infer.infer_noexn p c t, Infer.infer_noexn p c u with
       | Some (t, a), Some(u, b) ->
           add_constr p (c,t,u); add_constr p (c,a,b); (c,t,u)
-      | t', u' ->
-          (* Error reporting *)
-          Error.fatal_msg "@[A unification rule generated the \
+      | t', u' -> (* Error reporting *)
+          if Stdlib.(!print_error) then
+            begin
+              fatal_msg "@[A unification rule generated the \
                            ill-typed unification problem@ [%a].@]"
-            Print.constr (c, t, u);
-          if t' = None then
-            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
-          if u' = None then
-            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
-          Error.fatal_no_pos "Untypable unification problem."
+                Print.constr (c, t, u);
+              if t' = None then
+                fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
+              if u' = None then
+                fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
+              fatal_msg "Untypable unification problem."
+            end;
+          raise Unsolvable
     in
     let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
     if Logger.log_enabled () then log "rewrites to: %a" constrs cs;
@@ -111,7 +131,7 @@ let instantiation :
     | None -> None
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
-        else let u = Eval.simplify c (sym_to_var map u) in
+        else let u = Eval.snf_beta (sym_to_var map u) in
           Some ((*Logger.set_debug_in false 'm'*) (bind_mvar vs) u)
 
 (** Checking type or not during meta instanciation. *)
@@ -126,20 +146,21 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   match instantiation c m ts u with
   | Some b when is_closed_mbinder b ->
       let do_instantiate p =
-        if Logger.log_enabled () then log (red "%a ≔ %a") meta m term u;
+        if Logger.log_enabled () then log (Color.gre "%a ≔ %a") meta m term u;
         LibMeta.set p m b;
         p := {!p with recompute = true}; true
       in
       if Stdlib.(!do_type_check) then
         begin
-          if Logger.log_enabled () then log "check typing";
+          if Logger.log_enabled () then log (Color.blu "check typing");
           let typ_mts =
             match type_app c !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
           if Infer.check_noexn p c u typ_mts <> None then do_instantiate p
-          else (if Logger.log_enabled () then log "typing failed"; false)
+          else (if Logger.log_enabled() then log (Color.red "typing failed");
+                false)
         end
       else do_instantiate p
   | i ->
@@ -225,7 +246,7 @@ let imitate_inj :
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
     in
-    if Logger.log_enabled () then log (red "%a ≔ %a") meta m term t;
+    if Logger.log_enabled () then log (Color.gre "%a ≔ %a") meta m term t;
     LibMeta.set p m (bind_mvar vars t); true
   with Cannot_imitate | Invalid_argument _ -> false
 
@@ -290,7 +311,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let u1 = mk_Meta (m1, Env.to_terms env') in
     let xu1 = mk_Abst (a, bind_var x u1) in
     let v = bind_mvar (Env.vars env) xu1 in
-    if Logger.log_enabled () then log (red "%a ≔ %a") meta m term xu1;
+    if Logger.log_enabled () then log (Color.gre "%a ≔ %a") meta m term xu1;
     LibMeta.set p m v
 
 (** [inverse_opt s ts v] returns [Some(t, inverse s v)] if [ts=[t]], [s] is
@@ -304,16 +325,6 @@ let inverse_opt : sym -> term list -> term -> (term * term) option =
     | _ -> raise Not_found
   with Not_found -> if Logger.log_enabled () then log "failed"; None
 
-(** Exception raised when a constraint is not solvable. *)
-exception Unsolvable
-
-(** [error t1 t2]
-@raise Unsolvable. *)
-let error : term -> term -> 'a = fun t1 t2 ->
-  fatal_msg "@[<hov>%a and %a are not unifiable.@]@."
-    (D.bracket term) t1 (D.bracket term) t2;
-  raise Unsolvable
-
 (** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
@@ -324,7 +335,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
   | _ ->
       if not (try_unif_rules p c t1 t2) then
         match unfold t2 with
-        | Prod _ when is_constant s -> error t1 t2
+        | Prod _ when is_constant s -> error c t1 t2
         | _ ->
             if Logger.log_enabled () then log "move to unsolved";
             p := {!p with unsolved = (c, t1, t2)::!p.unsolved}
@@ -338,10 +349,10 @@ let sym_sym_whnf :
   if s1 == s2 then
     if is_injective s1 then
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
     else add_to_unsolved p c t1 t2
   else
-    if is_constant s1 && is_constant s2 then error t1 t2
+    if is_constant s1 && is_constant s2 then error c t1 t2
     else match inverse_opt s1 ts1 t2 with
       | Some (t, u) -> add_constr p (c,t,u)
       | None -> inverse p c t2 s2 ts2 t1
@@ -367,7 +378,7 @@ let solve : problem -> unit = fun p ->
   (* We first try without normalizing wrt user-defined rules. *)
   let tags = [`NoRw; `NoExpand] in
   let t1 = Eval.whnf ~tags c t1 and t2 = Eval.whnf ~tags c t2 in
-  if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
+  if Logger.log_enabled () then log "solve %a" constr (c,t1,t2);
   if Eval.pure_eq_modulo ~tags c t1 t2 then
     (if Logger.log_enabled () then log "equivalent terms")
   else
@@ -388,23 +399,23 @@ let solve : problem -> unit = fun p ->
 
   | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
   | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
   | Prod _, (Type|Kind|Vari _)
   | Vari _, (Type|Kind|Vari _|Prod _)
-    -> error t1 t2
+    -> error c t1 t2
 
   | ((Vari _|Abst _|Prod _), Symb s
     | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
-    error t1 t2
+    error c t1 t2
 
   | Symb s1, Symb s2
        when s1 == s2 && is_injective s1 && List.same_length ts1 ts2 ->
       decompose p c ts1 ts2
   | Symb s1, Symb s2
-       when s1 != s2 && is_constant s1 && is_constant s2 -> error t1 t2
+       when s1 != s2 && is_constant s1 && is_constant s2 -> error c t1 t2
 
   (*TODO try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
@@ -427,7 +438,7 @@ let solve : problem -> unit = fun p ->
   (* We normalize wrt user-defined rules and try again. *)
   if Logger.log_enabled () then log "whnf";
   let t1 = Eval.whnf c t1 and t2 = Eval.whnf c t2 in
-  if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
+  if Logger.log_enabled () then log "solve %a" constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
@@ -445,18 +456,18 @@ let solve : problem -> unit = fun p ->
 
   | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
-      else error t1 t2
+      else error c t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
   | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
   | Prod _, (Type|Kind|Vari _|Abst _)
   | Vari _, (Type|Kind|Vari _|Prod _)
   | Abst _, (Type|Kind|Prod _)
-    -> error t1 t2
+    -> error c t1 t2
 
   | ((Vari _|Abst _|Prod _), Symb s
   | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
-    error t1 t2
+    error c t1 t2
 
   | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2
 
@@ -501,13 +512,15 @@ let solve : problem -> unit = fun p ->
    contain constraints that could not be simplified. Metavariable
    instantiations are type-checked only if the optional argument [~type_check]
    is [true] (default). *)
-let solve_noexn : ?type_check:bool -> problem -> bool =
-  fun ?(type_check=true) p ->
+let solve_noexn : ?print:bool -> ?type_check:bool -> problem -> bool =
+  fun ?(print=true) ?(type_check=true) p ->
   Stdlib.(do_type_check := type_check);
-  if Logger.log_enabled () then
-    log_hndl (Color.blu "solve_noexn %a") problem p;
-  try time_of "solve" (fun () -> solve p; true) with Unsolvable -> false
+  Stdlib.(print_error := print);
+  try time_of log "solve" (fun () -> solve p; true) with Unsolvable -> false
 
 let solve_noexn =
-  let open Stdlib in let r = ref false in fun ?type_check p ->
-  Debug.(record_time Solving (fun () -> r := solve_noexn ?type_check p)); !r
+  let open Stdlib in
+  let r = ref false in
+  fun ?print ?type_check p ->
+  Debug.(record_time Solving
+           (fun () -> r := solve_noexn ?print ?type_check p)); !r

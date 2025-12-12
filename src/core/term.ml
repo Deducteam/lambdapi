@@ -171,7 +171,7 @@ and sym =
   ; sym_type  : term Timed.ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
-  ; sym_not   : float notation Timed.ref (** Notation. *)
+  ; sym_nota  : float notation Timed.ref (** Notation. *)
   ; sym_def   : term option Timed.ref (** Definition with ≔. *)
   ; sym_opaq  : bool Timed.ref (** Opacity. *)
   ; sym_rules : rule list Timed.ref (** Rewriting rules. *)
@@ -212,6 +212,7 @@ and sym =
     the rule applies. More explanations are given below. *)
  and rule =
   { lhs      : term list (** Left hand side (LHS). *)
+  ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
@@ -259,7 +260,6 @@ and meta =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
-
 let binder_name : binder -> string = fun (bi,_,_) -> bi.binder_name
 let mbinder_names : mbinder -> string array = fun (bi,_,_) -> bi.mbinder_name
 
@@ -289,7 +289,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   let open Timed in
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
+   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_nota = ref NoNotation;
    sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
@@ -343,7 +343,7 @@ let mk_left_comb : sym -> term -> term list -> term = fun s ->
   List.fold_left (mk_bin s)
 
 (** [mk_right_comb s ts t] builds a right comb of applications of [s] to
-   [ts@[p]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
+   [ts@[t]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
    t3)]. *)
 let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
@@ -358,9 +358,9 @@ let rec term : term pp = fun ppf t ->
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
   | Prod(a,(n,b,e)) ->
-      out ppf "(Π %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(Π %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
   | Abst(a,(n,b,e)) ->
-      out ppf "(λ %s: %a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(λ %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
@@ -368,7 +368,7 @@ let rec term : term pp = fun ppf t ->
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) Timed.(!r)
   | LLet(a,t,(n,b,e)) ->
-      out ppf "let %s : %a ≔ %a in %a#(%a)"
+      out ppf "let %s:%a ≔ %a in %a#(%a)"
         n.binder_name term a term t clos_env e term b
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
@@ -572,13 +572,14 @@ let _ =
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match unfold t with Abst(_) -> true | _ -> false
+(** [is_abst t] returns [true] iff [t] is of the form [Abst _]. *)
+let is_abst t = match unfold t with Abst _ -> true | _ -> false
 
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  (match unfold t with Prod(_) -> true | _ -> false)
+(** [is_prod t] returns [true] iff [t] is of the form [Prod _]. *)
+let is_prod t = match unfold t with Prod _ -> true | _ -> false
+
+(** [is_tref t] returns [true] iff [t] is of the form [TRef _]. *)
+let is_TRef t = match unfold t with TRef _ -> true | _ -> false
 
 (** [iter_atoms db f g t] applies f to every occurrence of a variable in t,
     g to every occurrence of a symbol, and db to every occurrence of a
@@ -877,7 +878,7 @@ let add_args : term -> term list -> term = fun t ts ->
     List.fold_left (fun t u -> mk_Appl(t,u)) t ts
   | _ -> List.fold_left (fun t u -> Appl(t,u)) t ts
 
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+(** [add_args_map t f ts] is equivalent to [add_args t (List.map f ts)] but
    more efficient. *)
 let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
   match get_args t with
