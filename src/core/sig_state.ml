@@ -107,9 +107,9 @@ type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
 (** [find_sym ~prt ~prv b ss qid] returns the symbol corresponding to the
     possibly qualified identifier [qid], or raises [Fatal]. The boolean [b]
     indicates if the error message should mention variables when [qid] is
-    unqualified. [~prt] indicates whether {!constructor:Term.expo.Protec}
+    unqualified. [~prt] indicates whether [Term.expo.Protec]
     symbols from other modules are allowed. [~prv] indicates whether
-    {!constructor:Term.expo.Privat} symbols are allowed. *)
+    [Term.expo.Privat] symbols are allowed. *)
 let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
   let s =
     match mp with

@@ -34,7 +34,7 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 .. _fail:
 
 ``change``
----------
+----------
 
 ``change t`` replaces the current goal ``u`` by ``t``, if ``t ≡ u``.
 
