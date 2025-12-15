@@ -119,14 +119,14 @@ let current_token() : token = let (t,_,_) = !the_current_token in t
 
 let current_pos() : position * position =
   let (_,p1,p2) = !the_current_token in (p1,p2)
-
+(*
 let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
   let t = !the_current_token in
   let reset() = the_current_token := t in
   the_current_token := LpLexer.token lb;
   try let r = entry lb in begin reset(); r end
   with e -> begin reset(); raise e end
-
+ *)
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
   else

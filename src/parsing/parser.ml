@@ -92,10 +92,27 @@ open Sedlexing
 
 module Aux(Lexer:
   sig
-    val parsing :
-      (Sedlexing.lexbuf -> 'a) -> Sedlexing.lexbuf -> 'a
+  type token
+  val the_current_token : (token * position * position) ref
+  val get_token : Sedlexing.lexbuf -> unit
+    -> token * Lexing.position * Lexing.position
+  (* val parsing :
+    (Sedlexing.lexbuf -> 'a) -> Sedlexing.lexbuf -> 'a *)
   end)=
 struct
+
+(* let current_token() : Lexer.token = let (t,_,_) =
+    !Lexer.the_current_token in t *)
+
+let current_pos() : position * position =
+  let (_,p1,p2) = !Lexer.the_current_token in (p1,p2)
+
+let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
+  let t = !Lexer.the_current_token in
+  let reset() = Lexer.the_current_token := t in
+  Lexer.the_current_token := Lexer.get_token lb ();
+  try let r = entry lb in begin reset(); r end
+  with e -> begin reset(); raise e end
 
   let handle_error (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
@@ -130,7 +147,7 @@ struct
     let lb = Utf8.from_string s in
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
-    Stream.next (parse_lexbuf None (Lexer.parsing entry) lb)
+    Stream.next (parse_lexbuf None (new_parsing entry) lb)
 end
 
 (** Parsing lp syntax. *)
@@ -153,8 +170,12 @@ sig
   end
 = struct
 
-
-  include Aux(struct let parsing = LpParser.new_parsing end)
+  include Aux(struct
+  type token = LpLexer.token
+  let the_current_token = LpParser.the_current_token
+  let get_token x _ = LpLexer.token x
+    (* parsing = LpParser.new_parsing *)
+  end)
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
   let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
@@ -166,6 +187,24 @@ sig
   let parse_lexbuf = parse_lexbuf None LpParser.command
 
 end
+
+(* module Rocq :
+sig
+  val parse_search_string :
+     Lexing.position -> string -> Syntax.search
+  (** [parse_search_query_string f s] returns a stream of parsed terms from
+      string [s] which comes from file [f] ([f] can be anything). *)
+end
+= struct
+  include Aux(struct let parsing = RocqLexer.)
+
+  let parse_string ~grammar_entry fname s =
+    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+
+  let parse_search_query_string =
+    parse_string ~grammar_entry:RocqParser.search_query_alone
+end *)
+
 
 include Lp
 
