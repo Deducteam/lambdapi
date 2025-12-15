@@ -188,22 +188,30 @@ sig
 
 end
 
-(* module Rocq :
+module Rocq :
 sig
   val parse_search_string :
      Lexing.position -> string -> Syntax.search
+     (* TODO update the next comment *)
   (** [parse_search_query_string f s] returns a stream of parsed terms from
       string [s] which comes from file [f] ([f] can be anything). *)
 end
 = struct
-  include Aux(struct let parsing = RocqLexer.)
 
-  let parse_string ~grammar_entry fname s =
-    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+  include Aux(struct
+  type token = LpLexer.token
+  let the_current_token = LpParser.the_current_token
+  let get_token x _ = LpLexer.token x
+    (* parsing = LpParser.new_parsing *)
+  end)
+  (* exported functions *)
 
-  let parse_search_query_string =
-    parse_string ~grammar_entry:RocqParser.search_query_alone
-end *)
+  let parse_search_string = parse_entry_string LpParser.search
+
+  (* let parse_search_string =
+    parse_entry_string LpParser.search *)
+    (* parse_string ~grammar_entry:RocqParser.search_query_alone *)
+end
 
 
 include Lp
