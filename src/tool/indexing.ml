@@ -883,9 +883,12 @@ module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many
   ~(fail:?err_desc:string -> string -> string)
-  ~pp_results ~tag:(hb,he) fmt q =
+  ~pp_results ~tag:(hb,he) q fmt s =
   try
    let mok _ = None in
+   let q = match q with
+   | None -> Parsing.Parser.Lp.parse_search_string (lexing_opt None) s
+   | Some q -> q in
    let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
@@ -913,11 +916,18 @@ module UserLevelQueries = struct
       Lplib.Base.out fmt "%s"
        (fail (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
+  let search_cmd_txt_string ss ~dbpath s =
+  Stdlib.(the_dbpath := dbpath);
+  Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
+   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
+   ~pp_results:pp_results_list ~tag:("","") None) s
+
   let search_cmd_txt_query ss ~dbpath q =
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
-   ~pp_results:pp_results_list ~tag:("","")) q
+   ~pp_results:pp_results_list ~tag:("","") (Some q)) ""
+
 
  (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
      ["forall"] with ["→"] and ["Π"] in the search query [s] *)
@@ -943,15 +953,14 @@ module UserLevelQueries = struct
    )
       ~pp_results:(html_of_results_list from)
       ~tag:("<h1>","</h1")
-      )(Parsing.Parser.Lp.parse_search_string (lexing_opt None)
-      s)
+      None)
+      s
 
  let search_cmd_txt ss ~dbpath (fmt:Format.formatter) s =
   Stdlib.(the_dbpath := dbpath);
   Lplib.Base.string fmt
-    (search_cmd_txt_query ss ~dbpath
-      (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
-      (transform_ascii_to_unicode s)))
+    (search_cmd_txt_string ss ~dbpath
+      (transform_ascii_to_unicode s))
 end
 
 (* let's flatten the interface *)
