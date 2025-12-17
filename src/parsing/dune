@@ -8,7 +8,7 @@
 
 ; (menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
 
-(menhir (flags --explain --external-tokens RocqLexer) (modules rocqParser))
+; (menhir (flags --explain --external-tokens RocqLexer) (modules rocqParser))
 
 (ocamllex dkLexer)
 

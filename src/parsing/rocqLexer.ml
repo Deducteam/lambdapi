@@ -1,16 +1,16 @@
-(** Lexer for Rocq syntax, using Sedlex, a Utf8 lexer generator. *)
+(** Lexer for Lambdapi syntax, using Sedlex, a Utf8 lexer generator. *)
 
 open Lplib
 open Sedlexing
 open Common open Pos
 
-let remove_first : Sedlexing.lexbuf -> string = fun lb ->
+let remove_first : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
 
-let remove_last : Sedlexing.lexbuf -> string = fun lb ->
+let remove_last : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
 
-let remove_ends : Sedlexing.lexbuf -> string = fun lb ->
+let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
 exception SyntaxError of strloc
@@ -18,10 +18,10 @@ exception SyntaxError of strloc
 let syntax_error : Lexing.position * Lexing.position -> string -> 'a =
   fun pos msg -> raise (SyntaxError (Pos.make_pos pos msg))
 
-let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
-  syntax_error (Sedlexing.lexing_positions lb) msg
+let fail : lexbuf -> string -> 'a = fun lb msg ->
+  syntax_error (lexing_positions lb) msg
 
-let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
+let invalid_character : lexbuf -> 'a = fun lb ->
   fail lb "Invalid character"
 
 (** Tokens. *)
@@ -30,16 +30,78 @@ type token =
   | EOF
 
   (* keywords in alphabetical order *)
+  | ABORT
+  | ADMIT
+  | ADMITTED
+  | APPLY
+  | AS
+  | ASSERT of bool (* true for "assertnot" *)
+  | ASSOCIATIVE
+  | ASSUME
+  | BEGIN
+  | BUILTIN
+  | CHANGE
+  | COERCE_RULE
+  | COMMUTATIVE
+  | COMPUTE
+  | CONSTANT
+  | DEBUG
+  | END
+  | EVAL
+  | FAIL
+  | FLAG
   | GENERALIZE
+  | HAVE
   | IN
+  | INDUCTION
+  | INDUCTIVE
+  | INFIX
+  | INJECTIVE
   | LET
+  | NOTATION
+  | OPAQUE
+  | OPEN
+  | ORELSE
+  | POSTFIX
+  | PREFIX
+  | PRINT
+  | PRIVATE
+  | PROOFTERM
+  | PROTECTED
+  | PROVER
+  | PROVER_TIMEOUT
+  | QUANTIFIER
+  | REFINE
+  | REFLEXIVITY
+  | REMOVE
+  | REPEAT
+  | REQUIRE
+  | REWRITE
   | RULE
+  | SEARCH
+  | SEQUENTIAL
+  | SET
+  | SIMPLIFY
+  | SOLVE
+  | SYMBOL
+  | SYMMETRY
+  | TRY
   | TYPE_QUERY
   | TYPE_TERM
+  | UNIF_RULE
+  | VERBOSE
+  | WHY3
+  | WITH
 
   (* other tokens *)
+  | DEBUG_FLAGS of (bool * string)
+      (* Tuple constructor (with parens) required by Menhir. *)
   | INT of string
+  | QINT of Path.t * string
+  | FLOAT of string
+  | SIDE of Pratter.associativity
   | STRINGLIT of string
+  | SWITCH of bool
 
   (* symbols *)
   | ARROW
@@ -48,17 +110,18 @@ type token =
   | COMMA
   | COLON
   | DOT
-  | EXISTS
-  | FORALL
-  | FUN
+  | EQUIV
+  | HOOK_ARROW
   | LAMBDA
+  | L_CU_BRACKET
   | L_PAREN
   | L_SQ_BRACKET
   | PI
+  | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
-  | THICKARROW
+  | TURNSTILE
   | UNDERSCORE
   | VBAR
 
@@ -111,9 +174,9 @@ let is_regid : string -> bool = fun s ->
 
 (** Unqualified escaped identifiers are any non-empty sequence of characters
     (except "|}") between "{|" and "|}". *)
-let notbars = [%sedlex.regexp? Star (Compl '|')]
+let nobars = [%sedlex.regexp? Star (Compl '|')]
 let escid = [%sedlex.regexp?
-    "{|", notbars, '|', Star ('|' | Compl (Chars "|}"), notbars, '|'), '}']
+    "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
@@ -139,43 +202,102 @@ let rec token lb =
   | "/*" -> comment token 0 lb
 
   (* keywords *)
-  | "exists" -> EXISTS  (* in Coq *)
-  | "forall" -> FORALL  (* in Coq *)
-  | "fun" -> FUN  (* in Coq *)
+  | "abort" -> ABORT
+  | "admit" -> ADMIT
+  | "admitted" -> ADMITTED
+  | "apply" -> APPLY
+  | "as" -> AS
+  | "assert" -> ASSERT false
+  | "assertnot" -> ASSERT true
+  | "associative" -> ASSOCIATIVE
+  | "assume" -> ASSUME
+  | "begin" -> BEGIN
+  | "builtin" -> BUILTIN
+  | "change" -> CHANGE
+  | "coerce_rule" -> COERCE_RULE
+  | "commutative" -> COMMUTATIVE
+  | "compute" -> COMPUTE
+  | "constant" -> CONSTANT
+  | "debug" -> DEBUG
+  | "end" -> END
+  | "eval" -> EVAL
+  | "fail" -> FAIL
+  | "flag" -> FLAG
   | "generalize" -> GENERALIZE
+  | "have" -> HAVE
   | "in" -> IN
+  | "induction" -> INDUCTION
+  | "inductive" -> INDUCTIVE
+  | "infix" -> INFIX
+  | "injective" -> INJECTIVE
+  | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
+  | "notation" -> NOTATION
+  | "off" -> SWITCH(false)
+  | "on" -> SWITCH(true)
+  | "opaque" -> OPAQUE
+  | "open" -> OPEN
+  | "orelse" -> ORELSE
+  | "postfix" -> POSTFIX
+  | "prefix" -> PREFIX
+  | "print" -> PRINT
+  | "private" -> PRIVATE
+  | "proofterm" -> PROOFTERM
+  | "protected" -> PROTECTED
+  | "prover" -> PROVER
+  | "prover_timeout" -> PROVER_TIMEOUT
+  | "quantifier" -> QUANTIFIER
+  | "refine" -> REFINE
+  | "reflexivity" -> REFLEXIVITY
+  | "remove" -> REMOVE
+  | "repeat" -> REPEAT
+  | "require" -> REQUIRE
+  | "rewrite" -> REWRITE
+  | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
+  | "search" -> SEARCH
+  | "sequential" -> SEQUENTIAL
+  | "set" -> SET
+  | "simplify" -> SIMPLIFY
+  | "solve" -> SOLVE
+  | "symbol" -> SYMBOL
+  | "symmetry" -> SYMMETRY
+  | "try" -> TRY
   | "type" -> TYPE_QUERY
   | "TYPE" -> TYPE_TERM
+  | "unif_rule" -> UNIF_RULE
+  | "verbose" -> VERBOSE
+  | "why3" -> WHY3
+  | "with" -> WITH
 
   (* other tokens *)
+  | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
+  | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | int -> INT(Utf8.lexeme lb)
+  | float -> FLOAT(Utf8.lexeme lb)
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
-  | 0x2192 (* → *) -> ARROW  (* not in Coq! *)
-  | "->" -> ARROW  (* in Coq *)
-  | "=>" -> THICKARROW  (* in Coq *)
+  | 0x2192 (* → *) -> ARROW
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
   | '.' -> DOT
-  | 0x03bb (* λ *) -> LAMBDA  (* not in Coq! *)
+  | 0x2261 (* ≡ *) -> EQUIV
+  | 0x21aa (* ↪ *) -> HOOK_ARROW
+  | 0x03bb (* λ *) -> LAMBDA
+  | '{' -> L_CU_BRACKET
   | '(' -> L_PAREN
   | '[' -> L_SQ_BRACKET
   | 0x03a0 (* Π *) -> PI
+  | '}' -> R_CU_BRACKET
   | ')' -> R_PAREN
   | ']' -> R_SQ_BRACKET
   | ';' -> SEMICOLON
+  | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
   | '_' -> UNDERSCORE
-
-  (* rocq identifiers *)
-  | "\\/" -> UID("∨")
-  | "/\\" -> UID("∧")
-  | "~" -> UID("¬")
 
   (* identifiers *)
   | regid -> UID(Utf8.lexeme lb)
@@ -199,6 +321,7 @@ and qid expl ids lb =
   match%sedlex lb with
   | oneline_comment -> qid expl ids lb
   | "/*" -> comment (qid expl ids) 0 lb
+  | int -> QINT(List.rev ids, Utf8.lexeme lb)
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
   | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
   | regid ->
@@ -207,9 +330,7 @@ and qid expl ids lb =
   | escid ->
     if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
     else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
-  | _ ->
-    fail lb ("Invalid identifier: \""
-             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
+  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
 
 and comment next i lb =
   match%sedlex lb with
@@ -219,19 +340,19 @@ and comment next i lb =
   | any -> comment next i lb
   | _ -> invalid_character lb
 
-(** [token buf] is a lexing function on buffer [buf] that can be passed to
-    a parser. *)
-let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
-  fun lb () -> try with_tokenizer token lb () with
-  | Sedlexing.MalFormed -> fail lb "Not Utf8 encoded file"
-  | Sedlexing.InvalidCodepoint k ->
+(** [token lb] is a lexing function on [lb] that can be passed to a parser. *)
+let token : lexbuf -> token * Lexing.position * Lexing.position =
+  fun lb -> try Sedlexing.with_tokenizer token lb () with
+  | MalFormed -> fail lb "Not Utf8 encoded file"
+  | InvalidCodepoint k ->
       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
 let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
 
 let token =
-  let r = ref dummy_token in fun lb () ->
-  Debug.(record_time Lexing (fun () -> r := token lb ())); !r
+  let r = ref dummy_token in fun lb ->
+  Debug.(record_time Lexing (fun () -> r := token lb)); !r
+
 
 let the_current_token :
   (token * Lexing.position * Lexing.position) Stdlib.ref =
