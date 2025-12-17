@@ -2,7 +2,7 @@ open Lplib
 open Common open Pos open Logger
 open Syntax
 open Core
-open LpLexer
+open RocqLexer
 open Lexing
 open Sedlexing
 
@@ -12,90 +12,31 @@ let log = LpParser.log
 
 let string_of_token = function
   | EOF -> "end of file"
-  | ABORT -> "abort"
-  | ADMIT -> "admit"
-  | ADMITTED -> "admitted"
-  | APPLY -> "apply"
   | ARROW -> "→"
-  | AS -> "as"
-  | ASSERT _ -> "assert or assertnot"
   | ASSIGN -> "≔"
-  | ASSOCIATIVE -> "associative"
-  | ASSUME -> "assume"
   | BACKQUOTE -> "`"
-  | BEGIN -> "begin"
-  | BUILTIN -> "builtin"
-  | CHANGE -> "change"
-  | COERCE_RULE -> "coerce_rule"
   | COLON -> ":"
   | COMMA -> ","
-  | COMMUTATIVE -> "commutative"
-  | COMPUTE -> "compute"
-  | CONSTANT -> "constant"
-  | DEBUG -> "debug"
-  | DEBUG_FLAGS _ -> "debug flags"
   | DOT -> "."
-  | END -> "end"
-  | EQUIV -> "≡"
-  | EVAL -> "eval"
-  | FAIL -> "fail"
-  | FLAG -> "flag"
-  | FLOAT _ -> "float"
   | GENERALIZE -> "generalize"
-  | HAVE -> "have"
-  | HOOK_ARROW -> "↪"
+  | EXISTS -> "exists"
+  | FORALL -> "forall"
+  | FUN -> "fun"
+  | THICKARROW -> "=>"
   | IN -> "in"
-  | INDUCTION -> "induction"
-  | INDUCTIVE -> "inductive"
-  | INFIX -> "infix"
-  | INJECTIVE -> "injective"
   | INT _ -> "integer"
   | LAMBDA -> "λ"
   | LET -> "let"
-  | L_CU_BRACKET -> "{"
   | L_PAREN -> "("
   | L_SQ_BRACKET -> "["
-  | NOTATION -> "notation"
-  | OPAQUE -> "opaque"
-  | OPEN -> "open"
-  | ORELSE -> "orelse"
   | PI -> "Π"
-  | POSTFIX -> "postfix"
-  | PREFIX -> "prefix"
-  | PRINT -> "print"
-  | PRIVATE -> "private"
-  | PROOFTERM -> "proofterm"
-  | PROTECTED -> "protected"
-  | PROVER -> "prover"
-  | PROVER_TIMEOUT -> "prover_timeout"
   | QID _ -> "qualified identifier"
   | QID_EXPL _ -> "@-prefixed qualified identifier"
-  | QINT _ -> "qualified integer"
-  | QUANTIFIER -> "quantifier"
-  | REFINE -> "refine"
-  | REFLEXIVITY -> "reflexivity"
-  | REMOVE -> "remove"
-  | REPEAT -> "repeat"
-  | REQUIRE -> "require"
-  | REWRITE -> "rewrite"
   | RULE -> "rule"
-  | R_CU_BRACKET -> "}"
   | R_PAREN -> ")"
   | R_SQ_BRACKET -> "]"
-  | SEARCH -> "search"
-  | SEQUENTIAL -> "sequential"
   | SEMICOLON -> ";"
-  | SET -> "set"
-  | SIDE _ -> "left or right"
-  | SIMPLIFY -> "simplify"
-  | SOLVE -> "solve"
   | STRINGLIT _ -> "string literal"
-  | SWITCH false -> "off"
-  | SWITCH true -> "on or off"
-  | SYMBOL -> "symbol"
-  | SYMMETRY -> "symmetry"
-  | TRY -> "try"
-  | TURNSTILE -> "⊢"
   | TYPE_QUERY -> "type"
   | TYPE_TERM -> "TYPE"
   | UID _ -> "non-qualified identifier"
@@ -103,11 +44,7 @@ let string_of_token = function
   | UID_META _ -> "?-prefixed metavariable number"
   | UID_PATT _ -> "$-prefixed non-qualified identifier"
   | UNDERSCORE -> "_"
-  | UNIF_RULE -> "unif_rule"
   | VBAR -> "|"
-  | VERBOSE -> "verbose"
-  | WHY3 -> "why3"
-  | WITH -> "with"
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -138,7 +75,7 @@ let expected (msg:string) (tokens:token list): 'a =
         ^".")
 
 let consume_token (lb:lexbuf) : unit =
-  the_current_token := LpLexer.token lb;
+  the_current_token := RocqLexer.token lb;
   if log_enabled() then
     let (t,p1,p2) = !the_current_token in
     let p = locate (p1,p2) in
@@ -210,13 +147,6 @@ let consume_STRINGLIT (lb:lexbuf): string =
   | _ ->
       expected "" [STRINGLIT""]
 
-let consume_SWITCH (lb:lexbuf): bool =
-  match current_token() with
-  | SWITCH b ->
-      consume_token lb;
-      b
-  | _ ->
-      expected "" [SWITCH true]
 
 let consume_INT (lb:lexbuf): string =
   match current_token() with
@@ -226,13 +156,6 @@ let consume_INT (lb:lexbuf): string =
   | _ ->
       expected "" [INT""]
 
-let consume_DEBUG_FLAGS (lb:lexbuf): bool * string =
-  match current_token() with
-  | DEBUG_FLAGS(b,s) ->
-      consume_token lb;
-      b,s
-  | _ ->
-      expected "" [DEBUG_FLAGS(true,"")]
 
 let qid (lb:lexbuf): (string list * string) loc =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -294,16 +217,6 @@ let int (lb:lexbuf): string =
   | _ ->
       expected "integer" [INT""]
 
-let float_or_int (lb:lexbuf): string =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | INT s
-  | FLOAT s ->
-      consume_token lb;
-      s
-  | _ ->
-      expected "integer or float" [INT"";FLOAT""]
-
 let path (lb:lexbuf): string list loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
@@ -317,29 +230,7 @@ let path (lb:lexbuf): string list loc =
   | _ ->
       expected "" [QID[]]
 
-let qid_or_rule (lb:lexbuf): (string list * string) loc =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | UID s ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 ([], s)
-  | QID p ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      qid_of_path pos1 p
-  | UNIF_RULE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Unif_rule.equiv.sym_name)
-  | COERCE_RULE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Coercion.coerce.sym_name)
-  | _ ->
-      expected "" [UID"";QID[];UNIF_RULE;COERCE_RULE]
-
-let term_id (lb:lexbuf): p_term =
+let rec term_id (lb:lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   | UID _
@@ -354,769 +245,6 @@ let term_id (lb:lexbuf): p_term =
       expected "" [UID"";QID[];UID_EXPL"";QID_EXPL[]]
 
 (* commands *)
-
-let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | SIDE _
-  | ASSOCIATIVE
-  | COMMUTATIVE
-  | CONSTANT
-  | INJECTIVE
-  | SEQUENTIAL
-  | PRIVATE
-  | OPAQUE
-  | PROTECTED ->
-      assert (p_sym_mod = []);
-      let pos1 = current_pos() in
-      command pos1 (nelist modifier lb) lb
-  (* qid *)
-  | UID _
-  | QID _ ->
-      begin
-        match p_sym_mod with
-        | [{elt=P_opaq;_}] ->
-            let i = qid lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_opaque i)
-        | [] ->
-            expected "command keyword missing" []
-        | {elt=P_opaq;_}::{pos;_}::_ ->
-            expected "an opaque command must be followed by an identifier" []
-        | _ ->
-            expected "" [SYMBOL]
-      end
-  | REQUIRE ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | OPEN ->
-            consume_token lb;
-            let ps = nelist path lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_require(Some false,ps))
-        | PRIVATE ->
-            consume_token lb;
-            begin
-              match current_token() with
-              | OPEN -> consume_token lb
-              | _ -> expected "" [OPEN]
-            end;
-            let ps = nelist path lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_require(Some true,ps))
-        | _ ->
-            let ps = nelist path lb in
-            begin
-              match current_token() with
-              | AS ->
-                  let p =
-                    match ps with
-                    | [p] -> p
-                    | _ -> expected "a single module before \"as\"" []
-                  in
-                  consume_token lb;
-                  let i = uid lb in
-                  extend_pos (*__FUNCTION__*) pos1 (P_require_as(p,i))
-              | _ ->
-                  extend_pos (*__FUNCTION__*) pos1 (P_require(None,ps))
-            end
-      end
-  | OPEN ->
-      let prv =
-        match p_sym_mod with
-        | [] -> false
-        | {elt=P_expo Term.Privat;_}::_ -> true
-        | _ -> expected "" [SYMBOL]
-      in
-      let pos1 = current_pos() in
-      consume_token lb;
-      let l = list path lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_open(prv,l))
-  | SYMBOL ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let p_sym_nam = uid lb in
-      let p_sym_arg = list params lb in
-      begin
-        match current_token() with
-        | COLON ->
-            consume_token lb;
-            let p_sym_typ = Some(term lb) in
-            begin
-              match current_token() with
-              | BEGIN ->
-                  consume_token lb;
-                  let p_sym_prf = Some (proof lb) in
-                  let p_sym_def = false in
-                  let sym =
-                    {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
-                     p_sym_trm=None; p_sym_def; p_sym_prf}
-                  in extend_pos (*__FUNCTION__*) pos1 (P_symbol(sym))
-              | ASSIGN ->
-                  consume_token lb;
-                  let p_sym_trm, p_sym_prf = term_proof lb in
-                  let p_sym_def = true in
-                  let sym =
-                    {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
-                     p_sym_trm; p_sym_def; p_sym_prf}
-                  in extend_pos (*__FUNCTION__*) pos1 (P_symbol(sym))
-              | SEMICOLON ->
-                  let p_sym_trm = None in
-                  let p_sym_def = false in
-                  let p_sym_prf = None in
-                  let sym =
-                    {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
-                     p_sym_trm; p_sym_def; p_sym_prf}
-                  in extend_pos (*__FUNCTION__*) pos1 (P_symbol(sym))
-              | _ ->
-                  expected "" [BEGIN;ASSIGN]
-            end
-        | ASSIGN ->
-            consume_token lb;
-            let p_sym_trm, p_sym_prf = term_proof lb in
-            let p_sym_def = true in
-            let p_sym_typ = None in
-            let sym =
-              {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
-               p_sym_trm; p_sym_def; p_sym_prf}
-            in extend_pos (*__FUNCTION__*) pos1 (P_symbol(sym))
-        | _ ->
-            expected "" [COLON;ASSIGN]
-      end
-  | L_PAREN
-  | L_SQ_BRACKET ->
-      let pos1 = current_pos() in
-      let xs = nelist params lb in
-      consume INDUCTIVE lb;
-      let i = inductive lb in
-      let is = list (prefix WITH inductive) lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_inductive(p_sym_mod,xs,i::is))
-  | INDUCTIVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let i = inductive lb in
-      let is = list (prefix WITH inductive) lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_inductive(p_sym_mod,[],i::is))
-  | RULE ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      let r = rule lb in
-      let rs = list (prefix WITH rule) lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_rules(r::rs))
-  | UNIF_RULE ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      let e = equation lb in
-      consume HOOK_ARROW lb;
-      consume L_SQ_BRACKET lb;
-      let eq1 = equation lb in
-      let eqs = list (prefix SEMICOLON equation) lb in
-      let es = eq1::eqs in
-      consume R_SQ_BRACKET lb;
-      (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Sign.Ghost.path Unif_rule.cons.sym_name in
-      let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
-      let lhs = mk_equiv e in
-      let es = List.rev_map mk_equiv es in
-      let (en, es) = List.(hd es, tl es) in
-      let cat e es = P.appl (P.appl cons e) es in
-      let rhs = List.fold_right cat es en in
-      let r = extend_pos (*__FUNCTION__*) pos1 (lhs, rhs) in
-      extend_pos (*__FUNCTION__*) pos1 (P_unif_rule(r))
-  | COERCE_RULE ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      let r = rule lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_coercion r)
-  | BUILTIN ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | STRINGLIT s ->
-            consume_token lb;
-            consume ASSIGN lb;
-            let i = qid lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_builtin(s,i))
-        | _ ->
-            expected "" [STRINGLIT""]
-      end
-  | NOTATION ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      consume_token lb;
-      let i = qid lb in
-      let n = notation lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_notation(i,n))
-  | _ ->
-      if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
-      let pos1 = current_pos() in
-      let q = query lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query(q))
-
-and inductive (lb:lexbuf): p_inductive =
-  let pos0 = current_pos() in
-  let i = uid lb in
-  let pos1 = current_pos() in
-  let ps = list params lb in
-  consume COLON lb;
-  let t = term lb in
-  let pos2 = current_pos() in
-  let t = make_prod (fst pos1) ps t (snd pos2) in
-  consume ASSIGN lb;
-  begin
-    match current_token() with
-    | UID _ ->
-        let c = constructor lb in
-        let cs = list (prefix VBAR constructor) lb in
-        let l = c::cs in
-        extend_pos (*__FUNCTION__*) pos0 (i,t,l)
-    | VBAR ->
-        let l = list (prefix VBAR constructor) lb in
-        extend_pos (*__FUNCTION__*) pos0 (i,t,l)
-    | SEMICOLON ->
-        let l = [] in
-        extend_pos (*__FUNCTION__*) pos0 (i,t,l)
-    | _ ->
-        expected "identifier" []
-    end
-
-and constructor (lb:lexbuf): p_ident * p_term =
-  let i = uid lb in
-  let pos1 = current_pos() in
-  let ps = list params lb in
-  consume COLON lb;
-  let t = term lb in
-  i, make_prod (fst pos1) ps t (snd (current_pos()))
-
-and modifier (lb:lexbuf): p_modifier =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | SIDE d ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | ASSOCIATIVE ->
-            consume_token lb;
-            extend_pos (*__FUNCTION__*) pos1
-              (P_prop (Term.Assoc((d = Pratter.Left))))
-        | _ ->
-            expected "" [ASSOCIATIVE]
-      end
-  | ASSOCIATIVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_prop (Term.Assoc false))
-  | COMMUTATIVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_prop Term.Commu)
-  | CONSTANT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_prop Term.Const)
-  | INJECTIVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_prop Term.Injec)
-  | OPAQUE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 P_opaq
-  | SEQUENTIAL ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_mstrat Term.Sequen)
-  | _ ->
-      exposition lb
-
-and exposition (lb:lexbuf): p_modifier =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | PRIVATE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_expo Term.Privat)
-  | PROTECTED ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 (P_expo Term.Protec)
-  | _ ->
-      expected "" [PRIVATE;PROTECTED]
-
-and notation (lb:lexbuf): string Term.notation =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | INFIX ->
-      consume_token lb;
-      begin
-        match current_token() with
-        | SIDE d ->
-            consume_token lb;
-            let p = float_or_int lb in
-            Term.Infix(d, p)
-        | _ ->
-            let p = float_or_int lb in
-            Term.Infix(Pratter.Neither, p)
-      end
-  | POSTFIX ->
-      consume_token lb;
-      let p = float_or_int lb in
-      Term.Postfix p
-  | PREFIX ->
-      consume_token lb;
-      let p = float_or_int lb in
-      Term.Prefix p
-  | QUANTIFIER ->
-      consume_token lb;
-      Term.Quant
-  | _ ->
-      expected "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
-
-and rule (lb:lexbuf): (p_term * p_term) loc =
-  if log_enabled() then log "%s" __FUNCTION__;
-  let pos1 = current_pos() in
-  let l = term lb in
-  consume HOOK_ARROW lb;
-  let r = term lb in
-  extend_pos (*__FUNCTION__*) pos1 (l, r)
-
-and equation (lb:lexbuf): p_term * p_term =
-  if log_enabled() then log "%s" __FUNCTION__;
-  let l = term lb in
-  consume EQUIV lb;
-  let r = term lb in
-  (l, r)
-
-(* queries *)
-
-and query (lb:lexbuf): p_query =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | ASSERT b ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let ps = list params lb in
-      consume TURNSTILE lb;
-      let t = term lb in
-      begin
-        match current_token() with
-        | COLON ->
-            consume_token lb;
-            let a = term lb in
-            let pos2 = current_pos() in
-            let t = make_abst (snd pos1) ps t (fst pos2) in
-            let a = make_prod (snd pos1) ps a (fst pos2) in
-            extend_pos (*__FUNCTION__*) pos1
-              (P_query_assert(b, P_assert_typing(t,a)))
-        | EQUIV ->
-            consume_token lb;
-            let u = term lb in
-            let pos2 = current_pos() in
-            let t = make_abst (snd pos1) ps t (fst pos2) in
-            let u = make_abst (snd pos1) ps u (fst pos2) in
-            extend_pos (*__FUNCTION__*) pos1
-              (P_query_assert(b, P_assert_conv(t, u)))
-        | _ ->
-            expected "" [COLON;EQUIV]
-      end
-  | COMPUTE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1
-        (P_query_normalize(t, {strategy=SNF; steps=None}))
-  | PRINT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | SEMICOLON ->
-            extend_pos (*__FUNCTION__*) pos1 (P_query_print None)
-        | _ ->
-            let i = qid_or_rule lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_query_print (Some i))
-      end
-  | PROOFTERM ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      extend_pos (*__FUNCTION__*) pos1 P_query_proofterm
-  | DEBUG ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | SEMICOLON ->
-            extend_pos (*__FUNCTION__*) pos1 (P_query_debug(true,""))
-        | _ ->
-            let b,s = consume_DEBUG_FLAGS lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_query_debug(b,s))
-      end
-  | FLAG ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let s = consume_STRINGLIT lb in
-      let b = consume_SWITCH lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
-  | PROVER ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let s = consume_STRINGLIT lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_prover(s))
-  | PROVER_TIMEOUT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let n = consume_INT lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_prover_timeout n)
-  | VERBOSE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let n = consume_INT lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_verbose n)
-  | TYPE_QUERY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1
-        (P_query_infer(t, {strategy=NONE; steps=None}))
-  | SEARCH ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let q = search lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_search q)
-  | _ ->
-      expected "query" []
-
-and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | BEGIN ->
-      consume_token lb;
-      let p = proof lb in
-      None, Some p
-  | _ ->
-      let t = term lb in
-      begin
-        match current_token() with
-        | BEGIN ->
-            consume_token lb;
-            let p = proof lb in
-            Some t, Some p
-        | _ ->
-            Some t, None
-      end
-
-(* proofs *)
-
-and proof (lb:lexbuf): p_proof * p_proof_end =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | L_CU_BRACKET ->
-      let l = nelist subproof lb in
-      if current_token() = SEMICOLON then consume_token lb;
-      let pe = proof_end lb in
-      l, pe
-  (*queries*)
-  | ASSERT _
-  | COMPUTE
-  | DEBUG
-  | FLAG
-  | PRINT
-  | PROOFTERM
-  | PROVER
-  | PROVER_TIMEOUT
-  | SEARCH
-  | TYPE_QUERY
-  | VERBOSE
-  (*tactics*)
-  | ADMIT
-  | APPLY
-  | ASSUME
-  | CHANGE
-  | EVAL
-  | FAIL
-  | GENERALIZE
-  | HAVE
-  | INDUCTION
-  | ORELSE
-  | REFINE
-  | REFLEXIVITY
-  | REMOVE
-  | REPEAT
-  | REWRITE
-  | SET
-  | SIMPLIFY
-  | SOLVE
-  | SYMMETRY
-  | TRY
-  | WHY3 ->
-      let l = steps lb in
-      let pe = proof_end lb in
-      [l], pe
-  | END
-  | ABORT
-  | ADMITTED ->
-      let pe = proof_end lb in
-      [], pe
-  | _ ->
-      expected "subproof, tactic or query" []
-
-and subproof (lb:lexbuf): p_proofstep list =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | L_CU_BRACKET ->
-      consume_token lb;
-      let l = steps lb in
-      consume R_CU_BRACKET lb;
-      l
-  | _ ->
-      expected "" [L_CU_BRACKET]
-
-and steps (lb:lexbuf): p_proofstep list =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  (*queries*)
-  | ASSERT _
-  | COMPUTE
-  | DEBUG
-  | FLAG
-  | PRINT
-  | PROOFTERM
-  | PROVER
-  | PROVER_TIMEOUT
-  | SEARCH
-  | TYPE_QUERY
-  | VERBOSE
-  (*tactics*)
-  | ADMIT
-  | APPLY
-  | ASSUME
-  | CHANGE
-  | EVAL
-  | FAIL
-  | GENERALIZE
-  | HAVE
-  | INDUCTION
-  | ORELSE
-  | REFINE
-  | REFLEXIVITY
-  | REMOVE
-  | REPEAT
-  | REWRITE
-  | SET
-  | SIMPLIFY
-  | SOLVE
-  | SYMMETRY
-  | TRY
-  | WHY3 ->
-      let a = step lb in
-      let acc = list (prefix SEMICOLON step) lb in
-      if current_token() = SEMICOLON then consume_token lb;
-      a::acc
-  | END
-  | ABORT
-  | ADMITTED ->
-      []
-  | _ ->
-      expected "tactic or query" []
-
-and step (lb:lexbuf): p_proofstep =
-  if log_enabled() then log "%s" __FUNCTION__;
-  let t = tactic lb in
-  let l = list subproof lb in
-  Tactic(t, l)
-
-and proof_end (lb:lexbuf): p_proof_end =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  | ABORT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 Syntax.P_proof_abort
-  | ADMITTED ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 Syntax.P_proof_admitted
-  | END ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 Syntax.P_proof_end
-  | _ ->
-      expected "" [ABORT;ADMITTED;END]
-
-and tactic (lb:lexbuf): p_tactic =
-  if log_enabled() then log "%s" __FUNCTION__;
-  match current_token() with
-  (*queries*)
-  | ASSERT _
-  | COMPUTE
-  | DEBUG
-  | FLAG
-  | PRINT
-  | PROOFTERM
-  | PROVER
-  | PROVER_TIMEOUT
-  | SEARCH
-  | TYPE_QUERY
-  | VERBOSE ->
-      let pos1 = current_pos() in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_query (query lb))
-  | ADMIT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_admit
-  | APPLY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_apply t)
-  | ASSUME ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let xs = nelist param lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_assume xs)
-  | CHANGE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_change t)
-  | EVAL ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_eval t)
-  | FAIL ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_fail
-  | GENERALIZE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let i = uid lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_generalize i)
-  | HAVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let i = uid lb in
-      consume COLON lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_have(i,t))
-  | INDUCTION ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_induction
-  | ORELSE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t1 = tactic lb in
-      let t2 = tactic lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_orelse(t1,t2))
-  | REFINE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_refine t)
-  | REFLEXIVITY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_refl
-  | REMOVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let xs = nelist uid lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_remove xs)
-  | REPEAT ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = tactic lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_repeat t)
-  | REWRITE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | SIDE d ->
-            consume_token lb;
-            begin
-              match current_token() with
-              | DOT ->
-                  consume_token lb;
-                  let p = rwpatt_bracket lb in
-                  let t = term lb in
-                  let b = d <> Pratter.Left in
-                  extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(b,Some p,t))
-              | _ ->
-                  let t = term lb in
-                  let b = d <> Pratter.Left in
-                  extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(b,None,t))
-            end
-        | DOT ->
-            consume_token lb;
-            let p = rwpatt_bracket lb in
-            let t = term lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(true,Some p,t))
-        | _ ->
-            let t = term lb in
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_rewrite(true,None,t))
-      end
-  | SET ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let i = uid lb in
-      consume ASSIGN lb;
-      let t = term lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_set(i,t))
-  | SIMPLIFY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | UID _
-        | QID _ ->
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_simpl(SimpSym(qid lb)))
-        | RULE ->
-            consume_token lb;
-            begin
-              match current_token() with
-              | SWITCH false ->
-                  consume_token lb;
-                  extend_pos (*__FUNCTION__*) pos1 (P_tac_simpl SimpBetaOnly)
-              | _ -> expected "" [SWITCH false]
-            end
-        | _ ->
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_simpl SimpAll)
-      end
-  | SOLVE ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_solve
-  | SYMMETRY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_sym
-  | TRY ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      let t = tactic lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_tac_try t)
-  | WHY3 ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      begin
-        match current_token() with
-        | STRINGLIT s ->
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_why3 (Some s))
-        | _ ->
-            make_pos pos1 (P_tac_why3 None)
-      end
-  | _ ->
-      expected "tactic" []
 
 and rwpatt_content (lb:lexbuf): p_rwpatt =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1138,7 +266,7 @@ and rwpatt_content (lb:lexbuf): p_rwpatt =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
-  | QINT _
+  (* | QINT _ *)
   | STRINGLIT _ ->
       let pos1 = current_pos() in
       let t1 = term lb in
@@ -1158,20 +286,6 @@ and rwpatt_content (lb:lexbuf): p_rwpatt =
               | _ ->
                   let x = ident_of_term pos1 t1 in
                   extend_pos (*__FUNCTION__*) pos1 (Rw_IdInTerm(x,t2))
-            end
-        | AS ->
-            consume_token lb;
-            let t2 = term lb in
-            begin
-              match current_token() with
-              | IN ->
-                  consume_token lb;
-                  let t3 = term lb in
-                  let x = ident_of_term pos1 t2 in
-                  extend_pos (*__FUNCTION__*) pos1
-                    (Rw_TermAsIdInTerm(t1,(x,t3)))
-              | _ ->
-                  expected "" [IN]
             end
         | _ ->
             extend_pos (*__FUNCTION__*) pos1 (Rw_Term(t1))
@@ -1254,11 +368,37 @@ and params (lb:lexbuf): p_params =
       let x = param lb in
       [x], None, false
 
+and fun_param_list (lb:lexbuf) =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | L_PAREN ->
+      consume_token lb;
+      let ps = nelist param lb in
+      begin
+        match current_token() with
+        | COLON ->
+            consume_token lb;
+            let typ = term lb in
+            consume R_PAREN lb;
+            ps, Some typ, false
+        | R_PAREN ->
+            consume_token lb;
+            ps, None, false
+        | _ ->
+            expected "" [COLON;R_PAREN]
+      end
+  | _ ->
+      let x = param lb in
+      [x], None, false
+
 and term (lb:lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
   (* bterm *)
   | BACKQUOTE
+  | EXISTS
+  | FORALL
+  | FUN
   | PI
   | LAMBDA
   | LET ->
@@ -1275,7 +415,6 @@ and term (lb:lexbuf): p_term =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
-  | QINT _
   | STRINGLIT _ ->
       let pos1 = current_pos() in
       let h = aterm lb in
@@ -1298,7 +437,6 @@ and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
   | L_PAREN
   | L_SQ_BRACKET
   | INT _
-  | QINT _
   | STRINGLIT _ ->
       let u = aterm lb in
       app pos1 (extend_pos (*__FUNCTION__*) pos1 (P_Appl(t,u))) lb
@@ -1327,7 +465,23 @@ and bterm (lb:lexbuf): p_term =
       let b = binder lb in
       let b = extend_pos (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b)) in
       extend_pos (*__FUNCTION__*) pos1 (P_Appl(q, b))
+  | EXISTS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let b = rocqbinder lb COMMA in
+          let f = fun bin res ->
+            extend_pos pos1 (P_Appl(
+              extend_pos pos1 (P_Iden(extend_pos pos1 ([],"∃"), false)),
+              extend_pos pos1 (P_Abst([bin], res)))) in
+       (List.fold_right f (fst b) (snd b))
+  | FORALL ->
+    (* { make_pos $sloc (P_Prod(fst b, snd b)) }  *)
+      let pos1 = current_pos() in
+      consume_token lb;
+      let b = rocqbinder lb COMMA in
+      extend_pos (*__FUNCTION__*) pos1 (P_Prod(fst b, snd b))
   | PI ->
+    (* { make_pos $sloc (P_Prod(fst b, snd b)) }  *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = binder lb in
@@ -1336,6 +490,11 @@ and bterm (lb:lexbuf): p_term =
       let pos1 = current_pos() in
       consume_token lb;
       let b = binder lb in
+      extend_pos (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b))
+  | FUN ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let b = rocqbinder lb THICKARROW in
       extend_pos (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b))
   | LET ->
       let pos1 = current_pos() in
@@ -1422,10 +581,6 @@ and aterm (lb:lexbuf): p_term =
         let pos1 = current_pos() in
         consume_token lb;
         make_pos pos1 (P_NLit([],n))
-    | QINT(p,n) ->
-        let pos1 = current_pos() in
-        consume_token lb;
-        make_pos pos1 (P_NLit(p,n))
     | STRINGLIT s ->
         let pos1 = current_pos() in
         consume_token lb;
@@ -1505,6 +660,56 @@ and binder (lb:lexbuf): p_params list * p_term =
       end
   | _ ->
       expected "" [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET]
+
+and rocqbinder (lb:lexbuf) terminator : p_params list * p_term =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | UID _
+  | UNDERSCORE ->
+      let s = param lb in
+      begin
+        match current_token() with
+        | UID _
+        | UNDERSCORE
+        | L_PAREN ->
+            let ps = list params lb in
+            consume terminator lb;
+            let p = [s], None, false in
+            p::ps, term lb
+        | COLON ->
+            consume_token lb;
+            let a = term lb in
+            consume terminator lb;
+            let p = [s], Some a, false in
+            [p], term lb
+        (* | terminator *)
+        | _ ->
+            if current_token() = terminator then
+                begin
+                    consume_token lb;
+                    let p = [s], None, false in
+                    [p], term lb
+                end
+            else
+            expected "parameter list"
+              [UID"";UNDERSCORE;L_PAREN;terminator]
+      end
+  | L_PAREN ->
+      let ps = nelist params lb in
+      begin
+        match current_token() with
+        | _ ->
+            if current_token() = terminator then
+                begin
+                    consume_token lb;
+                    ps, term lb
+                end
+            else
+            expected "" [terminator]
+      end
+  | _ ->
+      expected "" [UID"";UNDERSCORE;L_PAREN;]
+
 
 (* search *)
 
@@ -1637,7 +842,8 @@ and ssearch (lb:lexbuf): search =
       cq
 
 and search (lb:lexbuf): search =
-  if log_enabled() then log "%s" __FUNCTION__;
+  (*  expected "prbolem " []*)
+   if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
   let qids = list (prefix VBAR qid) lb in
   let path_of_qid qid =
@@ -1646,13 +852,3 @@ and search (lb:lexbuf): search =
     else Format.asprintf "%a.%a" Print.path p Print.uid n
   in
   List.fold_left (fun x qid -> QFilter(x,Path(path_of_qid qid))) q qids
-
-let command (lb:lexbuf): p_command =
-  if log_enabled() then log "------------------- start reading command";
-  consume_token lb;
-  if current_token() = EOF then raise End_of_file
-  else
-    let c = command (Lexing.dummy_pos,Lexing.dummy_pos) [] lb in
-    match current_token() with
-    | SEMICOLON -> c
-    | _ -> expected "" [SEMICOLON]

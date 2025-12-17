@@ -887,7 +887,7 @@ module UserLevelQueries = struct
   try
    let mok _ = None in
    let q = match q with
-   | None -> Parsing.Parser.Lp.parse_search_string (lexing_opt None) s
+   | None -> Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s
    | Some q -> q in
    let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in

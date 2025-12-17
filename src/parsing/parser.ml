@@ -119,7 +119,9 @@ let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
+    | RocqLexer.SyntaxError{pos=None; _}
     | SyntaxError{pos=None; _} -> assert false
+    | RocqLexer.SyntaxError{pos=Some pos; elt}
     | SyntaxError{pos=Some pos; elt} ->
         parser_fatal pos "Syntax error. %s" elt
 
@@ -200,7 +202,7 @@ end
 
   include Aux(struct
   type token = RocqLexer.token
-  let the_current_token = RocqLexer.the_current_token
+  let the_current_token = RocqParser.the_current_token
   let get_token x _ = RocqLexer.token x
   end)
   (* exported functions *)
@@ -234,8 +236,11 @@ let path_of_string : string -> Path.t = fun s ->
       | QID p, _, _ -> List.rev p
       | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
-  with SyntaxError _ ->
-    fatal_no_pos "Syntax error: \"%s\" is not a path." s
+  with
+      SyntaxError _
+    | RocqLexer.SyntaxError _ ->
+      fatal_no_pos "Syntax error: \"%s\" is not a path." s
+
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
@@ -247,8 +252,10 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
       | _ ->
           fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
-  with SyntaxError _ ->
-    fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
+  with
+    | RocqLexer.SyntaxError _
+    | SyntaxError _ ->
+      fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
