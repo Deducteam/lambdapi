@@ -227,6 +227,14 @@ let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
   | Sedlexing.InvalidCodepoint k ->
       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
+let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
+
 let token =
-  let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->
+  let r = ref dummy_token in fun lb () ->
   Debug.(record_time Lexing (fun () -> r := token lb ())); !r
+
+let the_current_token :
+  (token * Lexing.position * Lexing.position) Stdlib.ref =
+    Stdlib.ref dummy_token
+
+let current_token() : token = let (t,_,_) = !the_current_token in t

@@ -199,14 +199,18 @@ end
 = struct
 
   include Aux(struct
-  type token = LpLexer.token
-  let the_current_token = LpParser.the_current_token
-  let get_token x _ = LpLexer.token x
-    (* parsing = LpParser.new_parsing *)
+  type token = RocqLexer.token
+  let the_current_token = RocqLexer.the_current_token
+  let get_token x _ = RocqLexer.token x ()
   end)
   (* exported functions *)
 
-  let parse_search_string = parse_entry_string LpParser.search
+  let parse =
+        MenhirLib.Convert.Simplified.traditional2revised
+         RocqParser.search_query_alone
+  let token lb = RocqLexer.token lb
+  let parse_lexbuf lb = parse (token lb)
+  let parse_search_string pos s = parse_entry_string parse_lexbuf pos s
 
   (* let parse_search_string =
     parse_entry_string LpParser.search *)
