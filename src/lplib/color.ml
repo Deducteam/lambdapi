@@ -75,6 +75,8 @@ let blu fmt = colorize Blu fmt
 let mag fmt = colorize Mag fmt
 let cya fmt = colorize Cya fmt
 
+let default (fmt:('a, 'b, 'c, 'd, 'e, 'f) format6) = fmt
+
 (** [g_or_r cond fmt] colors the format [fmt] in green if [cond] is [true] and
     in red otherwise. *)
 let g_or_r cond = if cond then gre else red
