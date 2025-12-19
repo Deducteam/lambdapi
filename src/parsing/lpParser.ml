@@ -1632,7 +1632,7 @@ and ssearch (lb:lexbuf): search =
   let cq = csearch lb in
   match current_token() with
   | SEMICOLON ->
-      let cqs = list (prefix SEMICOLON csearch) lb in
+      let cqs = list (csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
