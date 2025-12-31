@@ -284,15 +284,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
-          Builtin.check ss pos n s;
-          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-          (Sig_state.add_builtin ss n s, None, None)
-      end
+      Builtin.check ss pos n s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
