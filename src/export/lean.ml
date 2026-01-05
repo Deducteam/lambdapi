@@ -1,11 +1,11 @@
-(** Translate the parser-level AST to Coq.
+(** Translate the parser-level AST to Lean.
 
 There are two modes:
 
-- raw_coq mode (option -o raw_coq): translation of the AST as it is
-  (lambdapi-calculus is a subset system of coq if we ignore rules)
+- raw_lean mode (option -o raw_lean): translation of the AST as it is
+  (lambdapi-calculus is a subset system of lean if we ignore rules)
 
-- stt_coq mode (option -o stt_coq): translation of the AST as an encoding in
+- stt_lean mode (option -o stt_lean): translation of the AST as an encoding in
   simple type theory.
 
   The encoding can be specified through a lambdapi file (option --encoding).
@@ -29,10 +29,10 @@ let rec term oc t =
   | P_Meta _ -> wrn t.pos "TODO"; assert false
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
-  | P_SLit _ -> wrn t.pos "TODO"; assert false
-  | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
+  | P_NLit _ -> wrn t.pos "TODO"; assert false
+  | P_SLit _ -> wrn t.pos "TODO"; assert false
   | P_Iden(qid,b) ->
       if b then char oc '@';
       if !stt then
@@ -71,7 +71,7 @@ and arrow oc u v = paren oc u; string oc " -> "; term oc v
 and abst oc xs u =
   string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
 and prod oc xs u =
-  string oc "forall"; params_list_in_abs oc xs; string oc ", "; term oc u
+  string oc "∀"; params_list_in_abs oc xs; string oc ", "; term oc u
 
 and paren oc t =
   let default() = char oc '('; term oc t; char oc ')' in
@@ -107,21 +107,22 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
+let req_mod oc p = string oc "import "; path oc p; string oc "\n"
+let open_mod oc p = string oc "open "; path oc p; string oc "\n"
+
+let openings = ref []
+
 let command oc {elt; pos} =
   begin match elt with
-  | P_open(true,ps) ->
-      string oc "Import "; list path " " oc ps; string oc ".\n"
-  | P_open(false,ps) ->
-      string oc "Export "; list path " " oc ps; string oc ".\n"
-  | P_require (None, ps) ->
-      string oc "Require "; list path " " oc ps; string oc ".\n"
-  | P_require (Some true, ps) ->
-      string oc "Require Import "; list path " " oc ps; string oc ".\n"
-  | P_require (Some false, ps) ->
-      string oc "Require Export "; list path " " oc ps; string oc ".\n"
-  | P_require_as (p,i) ->
-    string oc "Module "; ident oc i; string oc " := "; path oc p;
-    string oc ".\n"
+  | P_open(_,ps) -> List.iter (open_mod oc) ps
+  | P_require(b,ps) ->
+      List.iter (req_mod oc) ps;
+      begin
+        match b with
+        | Some true -> openings := List.rev_append ps !openings
+        | _ -> () (*FIXME?*)
+      end
+  | P_require_as _ -> wrn pos "Command not translated."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
@@ -140,23 +141,22 @@ let command oc {elt; pos} =
             (* If they have a type, opaque or private defined symbols are
                translated as Lemma's so that their definition is loaded in
                memory only when it is necessary. *)
-            string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
-            string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed.\n"
+            string oc "theorem "; ident oc p_sym_nam;
+            params_list oc p_sym_arg; string oc " : "; term oc a;
+            string oc " := "; term oc t; string oc "\n"
           | true, Some t, _, _ ->
-            string oc "Definition "; ident oc p_sym_nam;
+            if List.exists is_opaq p_sym_mod then string oc "opaque "
+            else string oc "noncomputable def ";
+            ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t;
-            if List.exists is_opaq p_sym_mod then
-              (string oc ".\nOpaque "; ident oc p_sym_nam);
-            string oc ".\n"
+            string oc " := "; term oc t; string oc "\n"
           | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc ".\n"
+            string oc "axiom "; ident oc p_sym_nam; string oc " : ";
+            term oc t; string oc "\n"
           | false, _, _, Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
-            params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc ".\n"
+            string oc "axiom "; ident oc p_sym_nam;
+            string oc " : ∀"; params_list oc p_sym_arg; string oc ", ";
+            term oc t; string oc "\n"
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."
@@ -164,12 +164,32 @@ let command oc {elt; pos} =
 
 let commands oc = Stream.iter (command oc)
 
-(** Set Coq required file. *)
+let handle_requires s =
+  let rec handle_next_elt() =
+    let x = Stream.next s in
+    match x.elt with
+    | P_require(b, ps) ->
+        List.iter (req_mod stdout) ps;
+        begin
+          match b with
+          | Some true -> openings := List.rev_append ps !openings;
+          | _ -> ()
+        end;
+        handle_next_elt()
+    | _ -> Some x
+  in
+  try handle_next_elt() with Stream.Failure -> None
 
-let print : ast -> unit = fun s ->
+let print : string -> ast -> unit = fun file s ->
   let oc = stdout in
-  begin match !require with
-  | Some f -> string oc ("Require Import "^f^".\n")
+  Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
+  match handle_requires s with
   | None -> ()
-  end;
+  | Some c ->
+  Option.iter (fun s -> string oc ("open "^s^"\n")) !require;
+  List.iter (open_mod oc) (List.rev !openings);
+  string oc "\nnamespace ";
+  string oc (Filename.chop_extension file);
+  string oc "\n\n";
+  command oc c;
   commands oc s
