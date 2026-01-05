@@ -20,73 +20,42 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let sig_state_of_require =
- function
-   None -> Core.Sig_state.dummy
- | Some req ->
-    (* Search for a package from the current working directory. *)
-    Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
-    Core.Sig_state.of_sign
-     (Compile.compile (Parsing.Parser.path_of_string req))
+let sig_state_of_require l =
+ (* Search for a package from the current working directory. *)
+ Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+ List.fold_left
+  (fun ss req ->
+    Handle.Command.handle Compile.compile ss
+     (Pos.none
+      (Parsing.Syntax.P_require
+        (Some false, [Pos.none (Parsing.Parser.path_of_string req)]))))
+  Core.Sig_state.dummy l
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
+  Tool.Indexing.force_meta_rules_loading () ;
   let ss = sig_state_of_require require in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
-  out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ss s ~dbpath) in
+  out Format.std_formatter "%a@."
+   (Tool.Indexing.search_cmd_txt ss ~dbpath) s in
  Error.handle_exceptions run
 
 let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
  Config.init cfg;
  let run () =
   Tool.Indexing.load_rewriting_rules rules ;
+  Tool.Indexing.force_meta_rules_loading () ;
   let ss = sig_state_of_require require in
   let header = match header_file with
     | None ->
-      "
-      <style>
-      .snippet {
-        border: 1px solid grey;
-        color: red;
-        padding: 0 3px 0 3px;
-        line-height: 1.6;
-      }</style>
-      <h1><a href=\"https://github.com/Deducteam/lambdapi\">LambdaPi</a>
-      Search Engine</h1>
-    <div id=\"descriptionSection\" style=\"display: %%HIDE_DESCRIPTION%%\">
-    <p>
-        The <b>search</b> button answers the query. Read the <a href=
-        \"https://lambdapi.readthedocs.io/en/latest/query_language.html\">
-        query language specification</a> to learn about the query language.
-        <br>The query language also uses the <a
-        href=\"https://lambdapi.readthedocs.io/en/latest/terms.html\">
-        Lambdapi terms syntax</a>.<br> with the possibility to use,
-        for commodity,
-        \"forall\" and \"->\"  instead of \"Π\" and \"→\" respectively
-        (results are displayed with the Unicode symbols
-        \"Π\" and \"→\" though).
-        In particular, the following constructors can come handy for
-        writing queries:<br>
-    </p>
-    <ul>
-        <li>an anonymous function<span class=\"snippet\">λ (x:A) y z,t</span>
-        mapping <span class=\"snippet\">x</span>, <span class=\"snippet\">y
-        </span> and <span class=\"snippet\">z</span> (of type <span class=\"
-        snippet\">A</span> for <span class=\"snippet\">x</span>) to <span
-        class=\"snippet\">t</span>.</li>
-        <li>a dependent product
-          <span class=\"snippet\">forall (x:A) y z,T</span>
-        </li>
-        <li>a non-dependent product <span class=\"snippet\">A -> T</span>
-         (syntactic sugar for <span class=\"snippet\">forall x:A,T</span> when
-          <span class=\"snippet\">x</span> does not occur in <span class=
-          \"snippet\">T</span>)</li>
-    </ul>
-    </div>
-      "
+      let themes_locations : string list =
+        Ressources.Mysites.Sites.server_resources in
+      let file = match themes_locations with
+        | [] -> assert false
+        | x :: _ -> x in
+       Lplib.String.string_of_file (file ^ "/default/description.html")
     | Some file -> Lplib.String.string_of_file file in
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
   let path_in_url = match path_in_url with
@@ -95,7 +64,7 @@ let websearch_cmd cfg rules port require header_file dbpath_opt path_in_url =
   Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url () in
  Error.handle_exceptions run
 
-let index_cmd cfg add_only rules files dbpath_opt =
+let index_cmd cfg add_only rules files source dbpath_opt =
  Config.init cfg;
  let run () =
   if not add_only then Tool.Indexing.empty ();
@@ -104,10 +73,19 @@ let index_cmd cfg add_only rules files dbpath_opt =
   let time = Time.save () in
   let handle file =
    Console.reset_default ();
-   Time.restore time;
+   Tool.Indexing.preserving_index Time.restore time;
    Tool.Indexing.load_rewriting_rules rules;
    Tool.Indexing.index_sign (no_wrn Compile.compile_file file) in
   List.iter handle files;
+  Option.iter Tool.Indexing.parse_source_map source;
+  let dbpath = Option.get Path.default_dbpath dbpath_opt in
+  Tool.Indexing.dump ~dbpath () in
+ Error.handle_exceptions run
+
+let deindex_cmd cfg path dbpath_opt =
+ Config.init cfg;
+ let run () =
+  Tool.Indexing.deindex_path path ;
   let dbpath = Option.get Path.default_dbpath dbpath_opt in
   Tool.Indexing.dump ~dbpath () in
  Error.handle_exceptions run
@@ -201,7 +179,10 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
 (** Running the LSP server. *)
 let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  let run _ = Config.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  let run _ =
+   Config.init cfg;
+   Common.Console.lsp_mod := true ;
+   Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Error.handle_exceptions run
 
 (** Printing a decision tree. *)
@@ -274,7 +255,7 @@ let qident : qident CLT.t =
   let qident : qident Arg.conv =
     let parse (s: string): (qident, [>`Msg of string]) result =
       try Ok(Parser.qident_of_string s)
-      with Fatal(_,s) -> Error(`Msg(s))
+      with Fatal(_,s,_) -> Error(`Msg(s))
     in
     let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)
@@ -473,20 +454,30 @@ let rules_arg : string list CLT.t =
      multiple times to fetch rules from multiple files." in
   Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
 
-let require_arg : string option CLT.t =
+let require_arg : string list CLT.t =
   let doc =
-    "LP file to be required before starting the search engine." in
-  Arg.(value & opt (some string) None & info ["require"] ~docv:"PATH" ~doc)
+    "LP files to be required before starting the search engine." in
+  Arg.(value & opt_all string [] & info ["require"] ~docv:"PATH" ~doc)
 
 let custom_dbpath : string option CLT.t =
   let doc =
     "Path to the search DB file." in
   Arg.(value & opt (some string) None & info ["db"] ~docv:"PATH" ~doc)
 
+let source_file : string option CLT.t =
+  let doc =
+    "Path to the mapping to additional sources." in
+  Arg.(value & opt (some string) None & info ["sources"] ~docv:"PATH" ~doc)
+
 let path_in_url : string option CLT.t =
   let doc =
     "The path in the URL accepted by the server." in
   Arg.(value & opt (some string) None & info ["url"] ~docv:"String" ~doc)
+
+let path_prefix : string CLT.t =
+  let doc =
+    "The prefix path of the constants to de-index." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
 
 let header_file_arg : string option CLT.t =
   let doc =
@@ -498,7 +489,14 @@ let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
-   $ add_only_arg $ rules_arg $ files $ custom_dbpath)
+   $ add_only_arg $ rules_arg $ files $ source_file $ custom_dbpath)
+
+let deindex_cmd =
+ let doc =
+  "De-index all constants whose path is a suffix of the given path." in
+ Cmd.v (Cmd.info "deindex" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.deindex_cmd $ Config.full
+   $ path_prefix $ custom_dbpath)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
@@ -522,7 +520,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; websearch_cmd ]
+    ; index_cmd ; deindex_cmd ; search_cmd ; websearch_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

@@ -11,6 +11,7 @@ The available commands are:
 
 * ``check``: check the correctness of input files.
 * ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
+* ``deindex``: remove constants from the search index given a prefix path
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
 * ``index``: create an index of symbols and rules of input files.
@@ -44,7 +45,7 @@ The ``index`` command generates the file ``~/.LPSearch.db`` if ``$HOME`` is defi
 
 **Remark on search:**
 
-The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. It is also possible to normalize terms in the query wrt some rules by using ``--rules`` options. It is advised to use the same set of rules previously used during indexing. It is also possible to pass via ``--require`` a file to be required and opened before performing the query, e.g. to specify implicit arguments for symbols. See :doc:`query_language` for the specification of the query language.
+The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. It is also possible to normalize terms in the query wrt some rules by using ``--rules`` options. It is advised to use the same set of rules previously used during indexing. It is also possible to pass via ``--require`` files to be required and opened before performing the query, e.g. to specify implicit arguments for symbols. See :doc:`query_language` for the specification of the query language.
 
 **Common flags:**
 
@@ -87,6 +88,14 @@ decision-tree
 -------------
 
 * ``--ghost`` print the decision tree of a ghost symbol. Ghost symbols are symbols used internally that cannot be used in the concrete syntax.
+
+deindex
+-------
+
+* ``--path``: indicates the prefix of symbols paths to be removed from the index.
+  The path must be dot (`.`) and is not checked for well formness (i.e. A.B matches A.BC).
+  For instance, `lambdapi deindex --path tests.OK.natural`` removes from the index all the symbols
+  whose path starts with `tests.OK.natural` like `tests.OK.natural.N`.
 
 export
 ------
@@ -174,6 +183,9 @@ index
 
 * ``--db <FILE.db>`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
+* ``--source`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones).
+  These sources will also be displayed by the websearch engine when showing the results.
+
 install/uninstall
 -----------------
 
@@ -191,7 +203,7 @@ search
 
 * ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the query using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
 
-* ``--require <FILE.lp>`` requires and open ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+* ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
 
 * ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
