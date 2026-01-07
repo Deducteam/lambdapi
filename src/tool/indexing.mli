@@ -1,6 +1,8 @@
 open Core open Sig_state
 open Parsing open Syntax
 
+val the_dbpath : string ref
+
 (* indexing *)
 val empty : unit -> unit
 val load_rewriting_rules: string list -> unit
