@@ -83,6 +83,7 @@ let rec compile_with :
          we need to explicitly update the decision tree of their symbols
          because it is not done in linking which normally follows loading. *)
       Ghost.iter (fun s -> Tree.update_dtree s []);
+      if Stdlib.(!Common.Console.lsp_mod) then Tool.Indexing.index_sign sign ;
       sign
     end
 
