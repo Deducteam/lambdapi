@@ -51,6 +51,7 @@ type command_result =
   | Cmd_OK    of state * string option
   (** Command is done. *)
   | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
+    * string option
   (** Enter proof mode (positions are for statement and qed). *)
   | Cmd_Error of Pos.popt option * string
   (** Error report. *)
@@ -90,3 +91,5 @@ val get_symbols : state -> Term.sym Extra.StrMap.t
     "time" for the [initial_state] function. This is only useful to initialise
     or reinitialise the pure interface. *)
 val set_initial_time : unit -> unit
+
+val name_of_proof : proof_state -> string
