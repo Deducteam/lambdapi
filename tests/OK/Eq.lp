@@ -7,13 +7,16 @@ constant symbol = [a] : τ a → τ a → Prop;
 notation = infix 10;
 
 constant symbol eq_refl [a] (x:τ a) : π (x = x);
-constant symbol ind_eq [a] [x y:τ a] : π (x = y) → Π p, π (p y) → π (p x);
+
+symbol ind_eq [a] [x y:τ a] : π (x = y) → Π p, π (p y) → π (p x);
 
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ eq_refl;
 builtin "eqind" ≔ ind_eq;
 
-symbol ≠ [a] (x y : τ a) ≔ ¬ (x = y); notation ≠ infix 10; // \neq
+symbol ≠ [a] (x y : τ a) ≔ ¬ (x = y);
+
+notation ≠ infix 10; // \neq
 
 opaque symbol feq [a b] (f:τ a → τ b) [x x':τ a] : π(x = x') → π(f x = f x') ≔
 begin
