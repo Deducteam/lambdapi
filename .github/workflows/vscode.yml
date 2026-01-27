@@ -27,7 +27,7 @@ jobs:
             echo "triggerPublishAndUpload=False" >> $GITHUB_OUTPUT
           fi
       - name: checking out lambdapi repo ...
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
@@ -50,7 +50,7 @@ jobs:
           
       - name: upload vscode extension
         if: ${{ steps.set_triggerPublishAndUpload.outputs.triggerPublishAndUpload == 'True' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with: 
           name: assets-for-download
           path: editors/vscode/extensionFolder
