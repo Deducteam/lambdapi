@@ -294,6 +294,10 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let is_lem x = is_opaq x || is_priv x
 
+let is_clashing_name name =
+  let name = try StrMap.find name !rmap with Not_found -> name
+  in is_existing_rocq_id name
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(true,ps) ->
@@ -309,8 +313,8 @@ let command oc {elt; pos} =
   | P_require_as (p,i) ->
       string oc "Module "; ident oc i; string oc " := "; path oc p;
       string oc ".\n"
-  | P_symbol sym when StrSet.mem sym.p_sym_nam.elt !erase -> ()
-  | P_symbol sym when is_existing_rocq_id sym.p_sym_nam.elt ->
+  | P_symbol {p_sym_nam={elt=name ; _} ; _} when StrSet.mem name !erase -> ()
+  | P_symbol {p_sym_nam={elt=name ; _} ; _} when is_clashing_name name ->
       wrn pos "Name clash between mapping and preexisting definition."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
