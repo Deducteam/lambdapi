@@ -331,8 +331,8 @@ let command oc {elt; pos} =
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are
-              translated as Lemma's so that their definition is loaded in
-              memory only when it is necessary. *)
+               translated as Lemma's so that their definition is loaded in
+               memory only when it is necessary. *)
             string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
             string oc " : "; term oc a; string oc ".\nProof. exact (";
             term oc t; string oc "). Qed.\n"
