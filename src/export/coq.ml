@@ -79,6 +79,9 @@ let set_renaming : string -> unit = fun f ->
   in
   Stream.iter consume (Parser.parse_file f)
 
+(** true if id is in the image of !rmap *)
+let is_existing_rocq_id id = StrMap.exists (fun _ id' -> id == id') !rmap
+
 (** Set symbols whose declarations have to be erased. *)
 
 let erase = ref StrSet.empty
@@ -154,7 +157,8 @@ let list elt sep oc xs =
 (** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found -> s
+  try StrMap.find s !rmap with Not_found ->
+    if is_existing_rocq_id s then s ^ "__alt__" else s
 
 let raw_ident oc s = string oc (translate_ident s)
 
@@ -290,6 +294,10 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let is_lem x = is_opaq x || is_priv x
 
+let is_clashing_name name =
+  let name = try StrMap.find name !rmap with Not_found -> name
+  in is_existing_rocq_id name
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(true,ps) ->
@@ -305,10 +313,12 @@ let command oc {elt; pos} =
   | P_require_as (p,i) ->
     string oc "Module "; ident oc i; string oc " := "; path oc p;
     string oc ".\n"
+  | P_symbol {p_sym_nam={elt=name ; _} ; _} when StrSet.mem name !erase -> ()
+  | P_symbol {p_sym_nam={elt=name ; _} ; _} when is_clashing_name name ->
+      wrn pos "Name clash between mapping and preexisting definition."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (StrSet.mem p_sym_nam.elt !erase) then
         let p_sym_arg =
           if !stt then
             let pos = None in
