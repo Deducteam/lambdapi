@@ -79,6 +79,9 @@ let set_renaming : string -> unit = fun f ->
   in
   Stream.iter consume (Parser.parse_file f)
 
+(** true if id is in the image of !rmap *)
+let is_existing_rocq_id id = StrMap.exists (fun _ id' -> id == id') !rmap
+
 (** Set symbols whose declarations have to be erased. *)
 
 let erase = ref StrSet.empty
@@ -154,7 +157,8 @@ let list elt sep oc xs =
 (** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found -> s
+  try StrMap.find s !rmap with Not_found ->
+    if is_existing_rocq_id s then s ^ "__alt__" else s
 
 let raw_ident oc s = string oc (translate_ident s)
 
@@ -303,45 +307,47 @@ let command oc {elt; pos} =
   | P_require (Some false, ps) ->
       string oc "Require Export "; list path " " oc ps; string oc ".\n"
   | P_require_as (p,i) ->
-    string oc "Module "; ident oc i; string oc " := "; path oc p;
-    string oc ".\n"
+      string oc "Module "; ident oc i; string oc " := "; path oc p;
+      string oc ".\n"
+  | P_symbol sym when StrSet.mem sym.p_sym_nam.elt !erase -> ()
+  | P_symbol sym when is_existing_rocq_id sym.p_sym_nam.elt ->
+      wrn pos "Name clash between mapping and preexisting definition."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (StrSet.mem p_sym_nam.elt !erase) then
-        let p_sym_arg =
-          if !stt then
-            let pos = None in
-            (* Parameters with no type are assumed to be of type [Set]. *)
-            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
-            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
-              p_sym_arg
-          else p_sym_arg
-        in
-        begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
-          | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
-            (* If they have a type, opaque or private defined symbols are
-               translated as Lemma's so that their definition is loaded in
-               memory only when it is necessary. *)
-            string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
-            string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed.\n"
-          | true, Some t, _, _ ->
-            string oc "Definition "; ident oc p_sym_nam;
-            params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t;
-            if List.exists is_opaq p_sym_mod then
-              (string oc ".\nOpaque "; ident oc p_sym_nam);
-            string oc ".\n"
-          | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc ".\n"
-          | false, _, _, Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
-            params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc ".\n"
-          | _ -> wrn pos "Command not translated."
-        end
+      let p_sym_arg =
+        if !stt then
+          let pos = None in
+          (* Parameters with no type are assumed to be of type [Set]. *)
+          let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+          List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
+            p_sym_arg
+        else p_sym_arg
+      in
+      begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+        | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
+          (* If they have a type, opaque or private defined symbols are
+             translated as Lemma's so that their definition is loaded in
+             memory only when it is necessary. *)
+          string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
+          string oc " : "; term oc a; string oc ".\nProof. exact (";
+          term oc t; string oc "). Qed.\n"
+        | true, Some t, _, _ ->
+          string oc "Definition "; ident oc p_sym_nam;
+          params_list oc p_sym_arg; typopt oc p_sym_typ;
+          string oc " := "; term oc t;
+          if List.exists is_opaq p_sym_mod then
+            (string oc ".\nOpaque "; ident oc p_sym_nam);
+          string oc ".\n"
+        | false, _, [], Some t ->
+          string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
+          term oc t; string oc ".\n"
+        | false, _, _, Some t ->
+          string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
+          params_list oc p_sym_arg; string oc ", "; term oc t;
+          string oc ".\n"
+        | _ -> wrn pos "Command not translated."
+      end
   | _ -> wrn pos "Command not translated."
   end
 
