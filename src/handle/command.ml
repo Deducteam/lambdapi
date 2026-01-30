@@ -535,7 +535,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let pdata_proof, pe, qres =
         match p_sym_prf with
         | None -> [], Pos.make (Pos.pos_end pos) P_proof_end, None
-        | Some (ts, pe) -> ts, pe, Some (fun () -> "end of proof")
+        | Some (ts, pe) -> ts, pe, Some (fun () -> "OK")
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
