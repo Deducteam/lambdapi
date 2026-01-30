@@ -30,9 +30,7 @@ Short-cuts
 * ``C-c C-r``: refresh window layout
 * ``C-c C-k``: shutdown LSP server
 * ``C-c C-r``: reconnect LSP server
-* ``C-c C-v`` : activate short diagnostics (underline only the first 3 characters of a diagnostic position)
-* ``C-c C-k`` : deactivate short diagnostics (underline the entire diagnostic position)
-  (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
+* ``C-c C-v`` : toggle short diagnostics (underline only the first 3 characters of a diagnostic position or the entire diagnostic position)
 
 * Click on a symbol to discover its type in the bottom line
 
