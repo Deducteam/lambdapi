@@ -922,7 +922,8 @@ and steps (lb:lexbuf): p_proofstep list =
       a::acc
   | END
   | ABORT
-  | ADMITTED ->
+  | ADMITTED
+  | R_CU_BRACKET ->
       []
   | _ ->
       expected "tactic or query" []
