@@ -189,9 +189,9 @@ let valid_extensions : string list =
   [lp_src_extension; dk_src_extension; obj_extension]
 
 (** [path_of_file escape fname] computes the module path that corresponds to
-   the filename [fname]. [escape] converts irregular path elements into
-   escaped identifiers if needed.
-@raise [Fatal] if [fname] doesn't have a valid extension. *)
+    the filename [fname]. [escape] converts irregular path elements into
+    escaped identifiers if needed. Raises [Fatal] if [fname] doesn't have a
+    valid extension. *)
 let path_of_file : (string -> string) -> string -> Path.t =
   fun escape fname ->
   (* Sanity check: source file extension. *)

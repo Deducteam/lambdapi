@@ -125,19 +125,20 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
-    let cmd_loc, loc = match cmd_loc, loc with
+    let cmd_loc, loc, diag, log = match cmd_loc, loc with
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
           (* if error in the same file, use the precise location *)
-          Some l', Some l'
+          Some l', Some l', msg, Pos.popt_to_string (Some l') ^ msg
         else
           (* else, use the location of the command *)
-          cmd_loc, Some l'
+          cmd_loc, Some l', Pos.popt_to_string (Some l') ^ "\n" ^ msg
+            , Pos.popt_to_string (Some l') ^ "\n" ^ msg
     (* Otherwise,
       cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
-    | _, Some l' -> cmd_loc, l'
-    | _, None -> cmd_loc, cmd_loc in
-    nodes, st, (cmd_loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
+    | _, Some l' -> cmd_loc, l', msg, Pos.popt_to_string (l') ^ "\n" ^ msg
+    | _, None -> cmd_loc, cmd_loc, msg, msg in
+    nodes, st, (cmd_loc, 1, diag, None) :: dg, ((1, log), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =

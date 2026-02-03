@@ -5,9 +5,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+
 ### Changed
 
 - `simplify` now fails if the goal cannot be simplified.
+- Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
+- Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
 
 ## 3.0.0 (2025-07-16)
 

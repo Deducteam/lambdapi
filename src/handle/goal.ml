@@ -80,16 +80,16 @@ let simpl : (ctxt -> term -> term) -> goal -> goal = fun f g ->
 let typ_or_def idmap ppf (ty,def) =
   let term = term_in idmap in
   match def with
-  | None -> out ppf "%a" term (Eval.snf_beta ty)
-  | Some u -> out ppf "≔ %a" term u
+  | None -> out ppf ": %a" term (Eval.snf_beta ty)
+  | Some u -> out ppf " ≔ %a" term u
 
 (** [ctxt_elt idmap ppf x] prints in [ppf] the context element [x]. *)
 let ctxt_elt idmap ppf (v,ty,def) =
-  out ppf "%a: %a" var v (typ_or_def idmap) (ty,def)
+  out ppf "%a%a" var v (typ_or_def idmap) (ty,def)
 
 (** [env_elt idmap ppf x] prints in [ppf] the environment element [x]. *)
 let env_elt idmap ppf (s,(_,ty,def)) =
-  out ppf "%a: %a" uid s (typ_or_def idmap) (ty,def)
+  out ppf "%a%a" uid s (typ_or_def idmap) (ty,def)
 
 (** [hyps ppf g] prints on [ppf] the beta-normal forms of the hypotheses of
     the goal [g]. *)

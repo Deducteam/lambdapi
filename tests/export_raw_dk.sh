@@ -52,7 +52,7 @@ do
         # "as"
         729);;
         # "notation"
-        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|991|706|1101|1190b|1190c|1120|1247);;
+        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|991|706|1101|1190b|1190c|1120|1247|decimal);;
         # "quantifier"
         683|650|573|565|430);;
         # nested module name
@@ -60,7 +60,7 @@ do
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod);;
         # "inductive"
         strictly_positive_*|inductive|989|904|830|341);;
         # underscore in query

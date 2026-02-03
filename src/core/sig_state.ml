@@ -107,16 +107,16 @@ type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
 (** [find_sym ~prt ~prv b ss qid] returns the symbol corresponding to the
     possibly qualified identifier [qid], or raises [Fatal]. The boolean [b]
     indicates if the error message should mention variables when [qid] is
-    unqualified. [~prt] indicates whether {!constructor:Term.expo.Protec}
+    unqualified. [~prt] indicates whether [Term.expo.Protec]
     symbols from other modules are allowed. [~prv] indicates whether
-    {!constructor:Term.expo.Privat} symbols are allowed. *)
+    [Term.expo.Privat] symbols are allowed. *)
 let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
   let s =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
           try StrMap.find s ss.in_scope
-          with Not_found -> fatal pos "Unknown object %s." s
+          with Not_found -> fatal pos "Unknown symbol %s." s
         end
     | [m] when StrMap.mem m ss.alias_path -> (* Aliased module path. *)
         begin
@@ -134,7 +134,7 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
           (* Check that the signature was required (or is the current one). *)
           if mp <> ss.signature.sign_path then
             if not (Path.Map.mem mp !(ss.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
+              fatal pos "No module %a required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded

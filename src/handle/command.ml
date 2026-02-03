@@ -124,10 +124,11 @@ let handle_require_as :
       {ss with alias_path; path_alias}
     end
 
-(** [handle_require compile bo ss p] handles the command [require p as id]
-    with [ss] as signature state and [compile] as compilation function (passed
-    as argument to avoid cyclic dependencies). On success, an updated
-    signature state is returned. *)
+(** [handle_require compile bo ss p] handles the command [require p] with
+    [compile] as compilation function (passed as argument to avoid cyclic
+    dependencies), [bo=Some(true)] if the command is [require private open p],
+    [bo=Some(false)] if the command is [require open p], and [ss] as signature
+    state. On success, an updated signature state is returned. *)
 let handle_require compile bo ss {elt=p;_} =
   let ss = rec_require compile ss p in
   match bo with
@@ -283,15 +284,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
-          Builtin.check ss pos n s;
-          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-          (Sig_state.add_builtin ss n s, None, None)
-      end
+      Builtin.check ss pos n s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
@@ -625,8 +620,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   with
   | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "Error on command.@.%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.@.%s" m
+  | Fatal(None         ,m)      -> fatal pos "%s" m
+  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

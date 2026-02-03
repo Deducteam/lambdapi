@@ -211,14 +211,9 @@ let rec term oc t =
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
+  | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_NLit i ->
-      if !stt then
-        match QidMap.find_opt ([],i) !map_erased_qid_coq with
-        | Some s -> string oc s
-        | None -> raw_ident oc i
-      else raw_ident oc i
   | P_Iden(qid,b) ->
       if b then char oc '@';
       if !stt then

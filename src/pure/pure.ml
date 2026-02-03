@@ -175,7 +175,7 @@ let handle_command : state -> Command.t -> command_result =
         let qres = get_diag_msg cmd in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos, qres)
   with Fatal(Some p,m) ->
-    Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+    Cmd_Error(Some p, m)
 
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
   fun (_, ss, ps, finalize, prv, sym_pos) tac n ->
@@ -190,7 +190,7 @@ let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
   try Cmd_OK((Time.save (), finalize ss ps), None)
   with Fatal(Some p,m) ->
-    Cmd_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+    Cmd_Error(Some p, m)
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
@@ -380,7 +380,7 @@ end = struct
   let loc pa = Sedlexing.lexing_position_curr pa
 
   let parse pa =
-    let p = Parser.parse_from_lexbuf pa in
+    let p = Parser.parse_lexbuf pa in
     parse_command p
 end
 
