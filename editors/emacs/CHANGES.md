@@ -13,4 +13,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Show the error at the end of file if any. That was not working because navigation stopped at the location of last command and not further (see issue #1111)
 - Irrelevant diagnostics (e.g. the one on the semicolon ending a symbol command) are removed.
-- More relevant messages are associated to diagnostics instead of just `OK` messages.

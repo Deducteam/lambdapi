@@ -31,7 +31,6 @@ Short-cuts
 * ``C-c C-k``: shutdown LSP server
 * ``C-c C-r``: reconnect LSP server
 * ``C-c C-v`` : toggle short diagnostics (underline only the first 3 characters of a diagnostic position or the entire diagnostic position)
-
 * Click on a symbol to discover its type in the bottom line
 
 As always with emacs, if you were to be dissatisfied with these

@@ -101,9 +101,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc, qres) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof =
-      (thm_loc, 4, "OK", Some start_goals)
-      :: dg_proof in
+    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof, logs =

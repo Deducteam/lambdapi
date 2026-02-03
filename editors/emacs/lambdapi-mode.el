@@ -123,7 +123,6 @@
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
-  (define-key lambdapi-mode-map (kbd "C-c C-d") #'deactivate-short-diagnostics)
   (define-key lambdapi-mode-map (kbd "C-c C-v") #'toggle-short-diagnostics)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
@@ -173,7 +172,6 @@
 )
   (apply orig-fun (list server method uri aPath_string e diagnostics))
 )
-
 
 ;;;###autoload
 (defun activate-short-diagnostics ()
