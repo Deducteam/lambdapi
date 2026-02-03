@@ -98,7 +98,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     let nodes = { ast; exec = true; goals = [] } :: nodes in
     let ok_diag = cmd_loc, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
-  | Cmd_Proof (pst, tlist, thm_loc, qed_loc, qres) ->
+  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
     let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
@@ -106,7 +106,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof, logs =
       match end_proof pst with
-      | Cmd_OK (st, _qres)   ->
+      | Cmd_OK (st, qres)   ->
         let dg_proof = match qres with
         | None -> dg_proof
         | Some x ->  let pg = qed_loc, 4, x, None in pg :: dg_proof
