@@ -4,5 +4,5 @@
  (modules :standard)
  (inline_tests (deps tests/foo.lp tests/lambdapi.pkg))
  (preprocess (pps ppx_inline_test))
- (libraries camlp-streams lambdapi.handle lambdapi.core)
+ (libraries camlp-streams lambdapi.handle lambdapi.core lambdapi.tool)
  (flags -w +3))

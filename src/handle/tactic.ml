@@ -668,12 +668,12 @@ let rec handle :
   | P_tac_try tactic ->
       begin
         try handle ss sym_pos prv ps tactic
-        with Fatal(_, _s) -> ps
+        with Fatal(_, _s, _) -> ps
       end
   | P_tac_orelse(t1,t2) ->
       begin
         try handle ss sym_pos prv ps t1
-        with Fatal(_, _s) -> handle ss sym_pos prv ps t2
+        with Fatal(_, _s, _) -> handle ss sym_pos prv ps t2
       end
   | P_tac_repeat t ->
       begin
@@ -682,7 +682,7 @@ let rec handle :
           let ps = handle ss sym_pos prv ps t in
           if List.length ps.proof_goals < nb_goals then ps
           else handle ss sym_pos prv ps tac
-        with Fatal(_, _s) -> ps
+        with Fatal(_, _s, _) -> ps
       end
   | P_tac_and(t1,t2) ->
       let ps = handle ss sym_pos prv ps t1 in

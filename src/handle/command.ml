@@ -619,9 +619,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     ss
   with
   | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
+  | Fatal(Some(Some(_)),_, _) as e -> raise e
+  | Fatal(None         ,m, _)      -> fatal pos "%s" m
+  | Fatal(Some(None)   ,m, _)      -> fatal pos "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

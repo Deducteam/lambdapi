@@ -224,6 +224,7 @@ type op =
  | Union
 type filter =
  | Path of string
+ | RegExp of Str.regexp
 type search =
  | QBase of search_base
  | QOp of search * op * search

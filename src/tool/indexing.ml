@@ -1,9 +1,39 @@
 open Core open Term
 open Common open Pos
+open Timed
+
+let lsp_input = Stdlib.ref ("","")
 
 type sym_name = Common.Path.t * string
 
+let string_of_path x = Format.asprintf "%a" Common.Path.pp x
+let string_of_sym_name (p,n) = string_of_path p ^ "." ^ n
+
+let is_path_prefix patt p =
+ Lplib.String.is_prefix patt (string_of_path p)
+
+let re_matches_sym_name re sym_name =
+ try
+  ignore (Str.search_forward re (string_of_sym_name sym_name) 0) ;
+  true
+ with Not_found -> false
+
 let name_of_sym s = (s.sym_path, s.sym_name)
+
+(* Tail recursive implementation of List.append for
+   OCaml < 5.1 *)
+let (@) l1 l2 = List.rev_append (List.rev l1) l2
+
+let dump_to ~filename i =
+ let ch = open_out_bin filename in
+ Marshal.to_channel ch i [] ;
+ close_out ch
+
+let restore_from ~filename =
+  let ch = open_in_bin filename in
+  let i = Marshal.from_channel ch in
+  close_in ch ;
+  i
 
 (* discrimination tree *)
 (* substitution trees would be best *)
@@ -63,7 +93,13 @@ let rec node_of_stack t s v =
     (* Let-ins are expanded during indexing *)
     node_of_stack (subst bind bod) s v
  | Meta _ -> assert false
- | Plac _ -> assert false (* not for meta-closed terms *)
+ | Plac _ ->
+    (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+       that is NOT instantiated; the rule is meant to open a proof
+       obligation.
+
+       Tentative implementation: a placeholder is seen as a variable *)
+    IRigid(IVar, index_of_stack s v)
  | Wild -> assert false (* used only by tactics and reduction *)
  | TRef _  -> assert false (* destroyed by unfold *)
  | Bvar _ -> assert false
@@ -87,7 +123,14 @@ let rec match_rigid r term =
  | IAbst, Abst(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
  | IProd, Prod(t1,bind) -> let _, t2 = unbind bind in [t1;t2]
  | _, LLet (_typ, bod, bind) -> match_rigid r (subst bind bod)
- | _, (Meta _ | Plac _ | Wild | TRef _) -> assert false
+ | IVar, Plac _ ->
+    (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+       that is NOT instantiated; the rule is meant to open a proof
+       obligation.
+
+       Tentative implementation: a placeholder is seen as a variable *)
+    []
+ | _, (Meta _ | Wild | TRef _) -> assert false
  | _, _ -> raise NoMatch
 
 (* match anything with a flexible term *)
@@ -145,6 +188,38 @@ let insert_name (namemap,index) name v =
    | Some l -> l in
  Lplib.Extra.StrMap.add name (v::vs) namemap, index
 
+let rec remove_index ~what =
+ function
+  | Leaf l ->
+     let l' = List.filter what l in
+     (match l' with
+       | [] -> Choice []
+       | _::_ -> Leaf l')
+  | Choice l ->
+     Choice (List.filter_map (remove_node ~what) l)
+
+and remove_node ~what =
+ function
+  | IHOLE i ->
+     (match remove_index ~what i with
+       | Choice [] -> None
+       | i' -> Some (IHOLE i'))
+  | IRigid (r,i) ->
+     (match remove_index ~what i with
+       | Choice [] -> None
+       | i' -> Some (IRigid (r,i')))
+
+let remove_from_name_index ~what i =
+ Lplib.Extra.StrMap.filter_map
+  (fun _ l ->
+    let f x = if what x then Some x else None in
+    match List.filter_map f l with
+     | [] -> None
+     | l' -> Some l') i
+
+let remove ~what (dbname, index) =
+ remove_from_name_index ~what dbname, remove_index ~what index
+
 let rec search_index ~generalize index stack =
  match index,stack with
  | Leaf vs, [] -> vs
@@ -173,17 +248,6 @@ let search ~generalize (_,index) term =
 
 let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
-
-let dump_to ~filename i =
- let ch = open_out_bin filename in
- Marshal.to_channel ch i [] ;
- close_out ch
-
-let restore_from ~filename =
-  let ch = open_in_bin filename in
-  let i = Marshal.from_channel ch in
-  close_in ch ;
-  i
 
 end
 
@@ -238,7 +302,110 @@ module DB = struct
         m) empty l
   end
 
+ module Sym_nameMap =
+   Map.Make(struct type t = sym_name let compare = compare end)
+
  type answer = ((*generalized:*)bool * term * position) list
+
+ (* disk persistence *)
+
+ let the_dbpath : string Stdlib.ref = Stdlib.ref Path.default_dbpath
+
+ let rwpaths = Stdlib.ref []
+
+ let restore_from_disk () =
+  try restore_from ~filename:Stdlib.(!the_dbpath)
+  with Sys_error msg ->
+     Common.Error.wrn None "%s.\n\
+      Type \"lambdapi index --help\" to learn how to create the index." msg ;
+     Sym_nameMap.empty, Index.empty
+
+ (* The persistent database *)
+ let db :
+  ((string * string * int * int) Sym_nameMap.t *
+   (item * position list) Index.db) Lazy.t ref =
+   ref (lazy (restore_from_disk ()))
+
+ let preserving_index f x =
+   let saved_db = !db in
+   let res = f x in
+   db := saved_db ;
+   res
+
+ let empty () = db := lazy (Sym_nameMap.empty,Index.empty)
+
+ let insert k v =
+   let sidx,idx = Lazy.force !db in
+   let db' = sidx, Index.insert idx k v in
+   db := lazy db'
+
+ let insert_name k v =
+   let sidx,idx = Lazy.force !db in
+   let db' = sidx, Index.insert_name idx k v in
+   db := lazy db'
+
+ let remove path =
+   let sidx,idx = Lazy.force !db in
+   let keep sym_path = not (is_path_prefix path sym_path) in
+   let idx =
+     Index.remove
+      ~what:(fun (((sym_path,_),_),_) -> keep sym_path ) idx in
+   let sidx =
+    Sym_nameMap.filter (fun (sym_path,_) _ -> keep sym_path) sidx in
+   db := lazy (sidx,idx)
+
+ let set_of_list ~generalize k l =
+  (* rev_map is used because it is tail recursive *)
+  ItemSet.of_list
+   (List.rev_map
+     (fun (i,pos) ->
+       i, List.map (fun x -> generalize,k,x) pos) l)
+
+ let search ~generalize k =
+  set_of_list ~generalize k
+   (Index.search ~generalize (snd (Lazy.force !db)) k)
+
+ let dump ~dbpath () =
+  dump_to ~filename:dbpath (Lazy.force !db)
+
+ let locate_name name =
+  let k = Term.mk_Wild (* dummy, unused *) in
+  set_of_list ~generalize:false k
+   (Index.locate_name (snd (Lazy.force !db)) name)
+
+ let parse_source_map filename =
+  let sidx,idx = Lazy.force !db in
+  let sidx = ref sidx in
+  let ch = open_in filename in
+  (try
+   while true do
+     let line = input_line ch in
+     match String.split_on_char ' ' line with
+      | [fname; start_line; end_line; sourceid; lpid] ->
+          let rec sym_name_of =
+           function
+             | [] -> assert false
+             | [name] -> [],name
+             | hd::tl -> let path,name = sym_name_of tl in hd::path,name in
+          let lpid = sym_name_of (String.split_on_char '.' lpid) in
+          let start_line = int_of_string start_line in
+          let end_line = int_of_string end_line in
+          sidx :=
+           Sym_nameMap.add lpid (sourceid,fname,start_line,end_line) !sidx
+      | _ ->
+         raise
+          (Common.Error.Fatal
+            (None,"wrong file format for source map file", ""))
+   done ;
+  with
+   | Failure _ as exn ->
+      close_in ch;
+      raise
+       (Common.Error.Fatal(None,"wrong file format for source map file: " ^
+         Printexc.to_string exn, ""))
+   | End_of_file -> close_in ch) ;
+  db := lazy (!sidx,idx)
+
 
  type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
 
@@ -250,6 +417,18 @@ module DB = struct
      let res = Dream.html_escape (Format.asprintf "%a" pp x) in
      Format.pp_print_string fmt res
   }
+
+ let source_infos_of_sym_name sym_name =
+  match Sym_nameMap.find_opt sym_name (fst (Lazy.force !db)) with
+   | None -> None, None
+   | Some (sourceid, fname, start_line, end_line) ->
+      let start_col = 0 in
+      let end_col = -1 in (* to the end of line *)
+      (* FIX ME *)
+      let start_offset, end_offset = 0, 0 in
+      Some sourceid,
+       Some { fname=Some fname; start_line; start_col; end_line;
+              end_col; start_offset; end_offset }
 
  let generic_pp_of_position_list ~escaper ~sep =
   Lplib.List.pp
@@ -270,108 +449,128 @@ module DB = struct
           pp_relation relation pp_side side))
    sep
 
+ (* given a filename/URI it returns the stream of lines
+    and a function to close the resources *)
+ let parse_file fname =
+  if String.starts_with ~prefix:"file:///" fname then
+   (assert (fst Stdlib.(!lsp_input) = fname) ;
+   let text = snd Stdlib.(!lsp_input) in
+   let lines = ref (String.split_on_char '\n' text) in
+   (fun () ->
+     match !lines with
+      | [] -> raise End_of_file
+      | he::tl -> lines := tl ; he),
+   (fun () -> ()))
+  else
+   let ch = open_in fname in
+   (fun () -> input_line ch), (fun () -> close_in ch)
+
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
   ~lis:(lisb,lise) ~pres:(preb,pree)
-  ~bold:(boldb,bolde) ~code:(codeb,codee) fmt l
- =
+  ~bold:(boldb,bolde) ~code:(codeb,codee) ?(colorizer=Lplib.Color.default)
+  fmt l =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
   else
-   Lplib.List.pp
-    (fun ppf (((p,n),pos),(positions : answer)) ->
-     Lplib.Base.out ppf "%s%a.%s%s%s@%s%s%a%s%s%s%a%s%s%s@."
-       lisb (escaper.run Core.Print.path) p boldb n bolde
-       (popt_to_string ~print_dirname:false pos)
-       separator (generic_pp_of_position_list ~escaper ~sep) positions
-       separator preb codeb
-       (Common.Pos.print_file_contents ~escape ~delimiters)
-       pos codee pree lise)
+    Lplib.List.pp (fun ppf (((p,n) as sym_name,pos),(positions : answer)) ->
+      let sourceid,sourcepos = source_infos_of_sym_name sym_name in
+      (* let n_pp = (Lplib.Color.red "%s") n in *)
+      Lplib.Base.out ppf
+      ("%s%a.%s"
+      ^^
+      (colorizer "%s")
+      ^^ "%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s%s@.")
+      lisb (escaper.run Core.Print.path) p boldb n bolde
+      (popt_to_string ~print_dirname:false pos)
+      separator (generic_pp_of_position_list ~escaper ~sep) positions
+      separator preb codeb
+      (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
+      ~complain_if_location_unknown:true) pos
+      separator
+      (fun ppf opt ->
+        match opt with
+        | None -> Lplib.Base.string ppf ""
+        | Some sourceid ->
+          Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
+          separator
+          (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
+          ~complain_if_location_unknown:false) sourcepos
+          codee pree lise separator)
     "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
-   ~code:("<code>","</code>")
+   ~code:("<code>","</code>") ~colorizer: Lplib.Color.default
 
- let pp_item_list =
+ let pp_item_list fmt l =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
-   ~lis:("* ","") ~pres:("","") ~bold:("","") ~code:("","")
+   ~lis:("* ","") ~pres:("","")
+   ~bold:("","")
+    ~code:("","")
+    ~colorizer:
+      (if Stdlib.(!Common.Console.lsp_mod) || Unix.isatty Unix.stdout then
+        Lplib.Color.red
+      else
+        Lplib.Color.default)
+    fmt l
 
  let pp_results_list fmt l = pp_item_list fmt l
 
  let html_of_results_list from fmt l =
   Lplib.Base.out fmt "<ol start=\"%d\">%a</ol>" from html_of_item_list l
 
- (* disk persistence *)
-
- let the_dbpath : string ref = ref Path.default_dbpath
-
- let rwpaths = ref []
-
- let restore_from_disk () =
-  try Index.restore_from ~filename:!the_dbpath
-  with Sys_error msg ->
-     Common.Error.wrn None "%s.\n\
-      Type \"lambdapi index --help\" to learn how to create the index." msg ;
-     Index.empty
-
- let db : (item * position list) Index.db Lazy.t ref =
-   ref (lazy (restore_from_disk ()))
-
- let empty () = db := lazy Index.empty
-
- let insert k v =
-   let db' = Index.insert (Lazy.force !db) k v in
-   db := lazy db'
-
- let insert_name k v =
-   let db' = Index.insert_name (Lazy.force !db) k v in
-   db := lazy db'
-
- let set_of_list ~generalize k l =
-  ItemSet.of_list
-   (List.map
-     (fun (i,pos) ->
-       i, List.map (fun x -> generalize,k,x) pos) l)
-
- let search ~generalize k =
-  set_of_list ~generalize k
-   (Index.search ~generalize (Lazy.force !db) k)
-
- let dump ~dbpath () =
-  the_dbpath := dbpath;
-  Index.dump_to ~filename:dbpath (Lazy.force !db)
-
- let locate_name name =
-  let k = Term.mk_Wild (* dummy, unused *) in
-  set_of_list ~generalize:false k
-   (Index.locate_name (Lazy.force !db) name)
-
 end
 
 exception Overloaded of string * DB.answer DB.ItemSet.t
 
+let normalize_fun = ref (fun _ -> assert false)
+
+let mk_bogus_sym mp name pos =
+ Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+  false (Common.Pos.make pos name) None Core.Term.mk_Type []
+
+let elim_duplicates_up_to_normalization res =
+ let resl = DB.ItemSet.bindings res in
+ let norm =
+  List.map
+   (fun ((((mp,name),sympos),l) as inp) ->
+     let s = mk_bogus_sym mp name sympos in
+     match !normalize_fun (Core.Term.mk_Symb s) with
+     | Symb {sym_path ; sym_name ; _} ->
+        (((sym_path,sym_name),sympos), l)
+     | _ -> inp) resl in
+ let res = List.sort (fun ((x,_),_) ((y,_),_) -> compare x y) norm in
+ let res =
+  let rec uniq =
+   function
+    | [] | [_] as l -> l
+    | ((x,_),_)::(((y,_),_)::_ as l) when x=y -> uniq l
+    | i::l -> i::uniq l in
+   uniq res in
+ DB.ItemSet.of_list res
+
 let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
- let pos,mp =
-  match mp with
-    [] ->
-     let res = DB.locate_name name in
-     if DB.ItemSet.cardinal res > 1 then
-       raise (Overloaded (name,res)) ;
-     (match DB.ItemSet.choose_opt res with
-       | None -> Common.Error.fatal pos "Unknown symbol %s." name
-       | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
-       | Some _ -> assert false) (* locate only returns DB.Name*)
-  | _::_ -> None,mp
- in
  try
   Core.Sig_state.find_sym ~prt ~prv sig_state s
  with
   Common.Error.Fatal _ ->
-   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-    false (Common.Pos.make pos name) None Core.Term.mk_Type []
+   let pos,mp,name =
+    match mp with
+      [] ->
+       let res_orig = DB.locate_name name in
+       let res = elim_duplicates_up_to_normalization res_orig in
+       if DB.ItemSet.cardinal res > 1 then
+         raise (Overloaded (name,res_orig)) ;
+       (match DB.ItemSet.choose_opt res with
+         | None -> Common.Error.fatal pos "Unknown symbol %s." name
+         | Some (((mp,name),sympos),[_,_,DB.Name]) -> sympos,mp,name
+         | Some _ -> assert false) (* locate only returns DB.Name*)
+    | _::_ -> None,mp,name
+   in
+    mk_bogus_sym mp name pos
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -403,7 +602,7 @@ let load_meta_rules () =
      match elt with
        Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
      | _ -> ())
-   cmdstream) !DB.rwpaths ;
+   cmdstream) Stdlib.(!DB.rwpaths) ;
  let rules = List.rev !rules in
  let handle_rule map r =
    let (s,r) = check_rule r in
@@ -418,20 +617,25 @@ let load_meta_rules () =
 
 let meta_rules = lazy (load_meta_rules ())
 
+let force_meta_rules_loading () = ignore (Lazy.force meta_rules)
+
 let normalize typ =
  let dtree sym =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
 
+let _ = normalize_fun := normalize
+
 let search_pterm ~generalize ~mok ss env pterm =
  let env =
   ("V#",(new_var "V#",Term.mk_Type,None))::env in
+ Dream.log "QUERY before scoping: %a@." Parsing.Pretty.term pterm ;
  let query =
   Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
- Dream.log "QUERY before: %a" Core.Print.term query ;
+ Dream.log "QUERY before normalize: %a" Core.Print.term query ;
  let query = normalize query in
- Dream.log "QUERY after: %a" Core.Print.term query ;
+ Dream.log "QUERY to be executed: %a" Core.Print.term query ;
  DB.search ~generalize query
 
 let rec is_flexible t =
@@ -440,7 +644,14 @@ let rec is_flexible t =
   | Appl(t,_) -> is_flexible t
   | LLet(_,_,b) -> let _, t = unbind b in is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
-  | Meta _ | Plac _ | Wild | TRef _ | Bvar _ -> assert false
+  | Plac _ ->
+     (* this may happen in a rewriting rule that uses a _ in the r.h.s.
+        that is NOT instantiated; the rule is meant to open a proof
+        obligation
+
+       Tentative implementation: a placeholder is seen as a variable *)
+     false
+  | Meta _ | Wild | TRef _ | Bvar _ -> assert false
 
 let enter =
  DB.(function
@@ -470,6 +681,7 @@ let subterms_to_index ~is_spine t =
   | Vari _
   | Type
   | Kind
+  | Plac _
   | Symb _ -> []
   | Abst(t,b) ->
      let _, t2 = unbind b in
@@ -494,7 +706,7 @@ let subterms_to_index ~is_spine t =
      let _, t3 = unbind b in
      aux ~where:(enter where) t1 @ aux ~where:(enter where) t2 @
       aux ~where:(enter where) t3
-  | Meta _ | Plac _ | Wild | TRef _ -> assert false
+  | Meta _ | Wild | TRef _ -> assert false
  in aux ~where:(if is_spine then Spine Exact else Conclusion Exact) t
 
 let insert_rigid t v =
@@ -530,6 +742,12 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rhs = rule.rhs in
  let get_relation = function | DB.Conclusion r -> r | _ -> assert false in
  let filename = Option.get rule_pos.fname in
+ let filename =
+   if String.starts_with ~prefix:"file:///" filename then
+    let n = String.length "file://" in
+    String.sub filename n (String.length filename - n)
+   else
+    filename in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
@@ -537,9 +755,19 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  index_term_and_subterms ~is_spine:false rhs
   (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Rhs)]))
 
+let _ =
+ Stdlib.(Core.Sign.add_rules_callback :=
+   fun sym rules -> List.iter (index_rule sym) rules)
+
 let index_sym sym =
  let qname = name_of_sym sym in
  (* Name *)
+ if List.exists (fun ((sn,_),_) -> sn=qname)
+     (DB.ItemSet.bindings (DB.locate_name (snd qname)))
+  then
+   raise
+    (Common.Error.Fatal
+      (None,string_of_sym_name qname ^ " already indexed", ""));
  DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
@@ -550,8 +778,10 @@ let index_sym sym =
  (* Rules *)
  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
 
+let _ = Stdlib.(Core.Sign.add_symbol_callback := index_sym)
+
 let load_rewriting_rules rwrules =
- DB.rwpaths := rwrules
+ Stdlib.(DB.rwpaths := rwrules)
 
 let index_sign sign =
  (*Console.set_flag "print_domains" true ;
@@ -568,6 +798,8 @@ let index_sign sign =
        List.iter (index_rule sym) sd.Sign.rules)
      d.Sign.dep_symbols)
   deps
+
+let deindex_path path = DB.remove path
 
 (* let's flatten the interface *)
 include DB
@@ -592,17 +824,18 @@ module QueryLanguage = struct
       | _, _ -> false
 
  let filter_constr constr _ positions =
-  match constr with
-   | QType wherep ->
-      List.exists
-       (function
-         | _,_,Type where -> match_where wherep where
-         | _ -> false) positions
-   | QXhs (insp,sidep) ->
-      List.exists
-       (function
-         | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
-         | _ -> false) positions
+  Option.map (fun x -> [x])
+   (match constr with
+    | QType wherep ->
+       List.find_opt
+        (function
+          | _,_,Type where -> match_where wherep where
+          | _ -> false) positions
+    | QXhs (insp,sidep) ->
+       List.find_opt
+        (function
+          | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
+          | _ -> false) positions)
 
  let answer_base_query ~mok ss env =
   function
@@ -611,7 +844,7 @@ module QueryLanguage = struct
       let res = search_pterm ~generalize ~mok ss env patt in
       (match constr with
         | None -> res
-        | Some constr -> ItemSet.filter (filter_constr constr) res)
+        | Some constr -> ItemSet.filter_map (filter_constr constr) res)
 
  let perform_op =
   function
@@ -626,12 +859,11 @@ module QueryLanguage = struct
         (fun _ positions1 positions2 -> Some (positions1 @ positions2))
 
  let filter set f =
-  let f ((p',_),_) _ =
+  let g ((p',_ as name),_) _ =
    match f with
-   | Path p ->
-      let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
-       Lplib.String.is_prefix p (string_of_path p') in
-  ItemSet.filter f set
+    | Path p -> is_path_prefix p p'
+    | RegExp re -> re_matches_sym_name re name in
+  ItemSet.filter g set
 
  let answer_query ~mok ss env =
   let rec aux =
@@ -649,37 +881,53 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag:(hb,he) q =
+ let search_cmd_gen ss ~from ~how_many
+  ~(fail:?err_desc:string -> string -> string)
+  ~pp_results ~tag:(hb,he) q fmt s =
   try
    let mok _ = None in
+   let q = match q with
+   | None -> Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s
+   | Some q -> q in
    let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "%sNumber of results: %d%s%a@."
+   Lplib.Base.out fmt "%sNumber of results: %d%s@.%a@."
     hb resultsno he pp_results items
   with
    | Stream.Failure ->
-      fail (Format.asprintf "Syntax error: a query was expected")
-   | Common.Error.Fatal(_,msg) ->
-      fail (Format.asprintf "Error: %s@." msg)
+      Lplib.Base.out fmt "%s"
+       (fail (Format.asprintf "Syntax error: a query was expected@."))
+   | Common.Error.Fatal(_,msg, _) ->
+      Lplib.Base.out fmt "%s" (fail (Format.asprintf "Error: %s@." msg))
    | Overloaded(name,res) ->
-      fail (Format.asprintf
+      Lplib.Base.out fmt "%s" (fail (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
-        with a fully qualified identifier among the following: %a"
-        name name pp_results (ItemSet.bindings res))
+        with a fully qualified identifier among the following:@."
+        name name)
+        ~err_desc:(Format.asprintf "%a@." pp_results (ItemSet.bindings res))
+        )
    | Stack_overflow ->
-      fail
+      Lplib.Base.out fmt "%s" (fail
        (Format.asprintf
-         "Error: too many results. Please refine your query.@." )
+         "Error: too many results. Please refine your query.@." ))
    | exn ->
-      fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
+      Lplib.Base.out fmt "%s"
+       (fail (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
+
+  let search_cmd_txt_string ss ~dbpath s =
+  Stdlib.(the_dbpath := dbpath);
+  Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
+   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
+   ~pp_results:pp_results_list ~tag:("","") None) s
 
   let search_cmd_txt_query ss ~dbpath q =
-  the_dbpath := dbpath;
-  search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_results_list ~tag:("","") q
+  Stdlib.(the_dbpath := dbpath);
+  Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
+   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
+   ~pp_results:pp_results_list ~tag:("","") (Some q)) ""
+
 
  (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
      ["forall"] with ["→"] and ["Π"] in the search query [s] *)
@@ -696,21 +944,23 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
- let search_cmd_html ss ~from ~how_many ~dbpath s =
-  the_dbpath := dbpath;
-  search_cmd_gen ss ~from ~how_many
-   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:(html_of_results_list from)
-   ~tag:("<h1>","</h1")
-   (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
+ let search_cmd_html ss ~from ~how_many s ~dbpath =
+  Stdlib.(the_dbpath := dbpath);
+    Format.asprintf "%a"
+    (search_cmd_gen ss ~from ~how_many
+      ~fail:(fun ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
+          ^ (Option.value err_desc ~default:"")
+   )
+      ~pp_results:(html_of_results_list from)
+      ~tag:("<h1>","</h1")
+      None)
+      s
+
+ let search_cmd_txt ss ~dbpath (fmt:Format.formatter) s =
+  Stdlib.(the_dbpath := dbpath);
+  Lplib.Base.string fmt
+    (search_cmd_txt_string ss ~dbpath
       (transform_ascii_to_unicode s))
-
- let search_cmd_txt ss ~dbpath s =
-   the_dbpath := dbpath;
-   search_cmd_txt_query ss ~dbpath
-     (Parsing.Parser.Lp.parse_search_string (lexing_opt None)
-        (transform_ascii_to_unicode s))
-
 end
 
 (* let's flatten the interface *)

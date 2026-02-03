@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- CLI command `deindex` to remove constants from the index.
+- Indexing of symbols from current development (as well as currently required files) and their deindexing when files are closed are now automatically supported.
+- Added filtering of search results using regular expressions.
+- Added support for basic Rocq syntax for writing search queries (fun, forall, exists, /\ and ~).
+- Allow the `--require` flag to be used multiple times with the `search` and `websearch` commands.
+- Ambiguity due to overloaded symbols is now solved by normalisation.
+- Added streaming of results in command line search.
+- Supporting `Plac` in rewriting rules.
+- Fixed Stack_overflow exception due large number of search results.
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
 
 ### Changed
