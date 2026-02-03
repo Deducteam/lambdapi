@@ -7,6 +7,8 @@
 
 (require 'highlight)
 (require 'cl-lib)
+(require 'eglot)
+(require 'lambdapi-layout)
 
 (defconst lambdapi-terminators '(";" "begin" "{")
   "List of terminators for electric terminator mode.")

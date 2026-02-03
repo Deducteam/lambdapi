@@ -38,6 +38,8 @@
         (modify-syntax-entry ?\; ". 23" syn-table)
         syn-table))
 
+(setq short-diags-enabled nil)
+
 ;; Keywords (legacy syntax)
 (defconst lambdapi-legacy-font-lock-keywords
   (list
@@ -121,6 +123,7 @@
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
+  (define-key lambdapi-mode-map (kbd "C-c C-v") #'toggle-short-diagnostics)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
@@ -151,6 +154,49 @@
 (defgroup lambdapi nil
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
+
+;; preprocesses (typically, shortens positions of) diagnostics before passing them to Eglot for display
+(defun pre-process-diagnostics  (orig-fun server method uri aPath_string e diagnostics)
+(dotimes (i (length diagnostics))
+  (let* (
+        (aDiagnostic (aref diagnostics i))
+        (range (plist-get aDiagnostic :range))
+        (end (plist-get range :end))
+        (end_character (plist-get end :character))
+        (start (plist-get range :start))
+        (start_character (plist-get start :character))
+        (start_line (plist-get start :line)))
+  (setq end (plist-put end :character (min end_character (+ 3 start_character))))
+  (setq end (plist-put end :line start_line)) 
+  )  
+)
+  (apply orig-fun (list server method uri aPath_string e diagnostics))
+)
+
+;;;###autoload
+(defun activate-short-diagnostics ()
+  (interactive)
+  (advice-add 'eglot-handle-notification :around #'pre-process-diagnostics)
+  (setq short-diags-enabled t)
+  (message "Lambdapi: diagnostic shortning enabled.")
+)
+
+;;;###autoload
+(defun deactivate-short-diagnostics ()
+  (interactive)
+  (advice-remove 'eglot-handle-notification #'pre-process-diagnostics)
+  (setq short-diags-enabled nil)
+  (message "Lambdapi: diagnostic shortning disabled.")
+)
+
+;;;###autoload
+(defun toggle-short-diagnostics ()
+  (interactive)
+  (if short-diags-enabled
+      (deactivate-short-diagnostics)
+    (activate-short-diagnostics)
+  )
+)
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
@@ -208,6 +254,8 @@
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
+
+(activate-short-diagnostics)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here

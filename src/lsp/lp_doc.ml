@@ -82,6 +82,7 @@ let get_goals dg_proof =
         let goals = (goals @ [[], loc]) in get_goals_aux goals s
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
+
 let process_cmd _file (nodes,st,dg,logs) ast =
   let open Pure in
   (* let open Timed in *)
@@ -106,10 +107,12 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, qres)   ->
-        let qres = match qres with None -> "OK" | Some x -> x in
-        let pg = qed_loc, 4, qres, None in
+        let dg_proof = match qres with
+        | None -> dg_proof
+        | Some x ->  let pg = qed_loc, 4, x, None in pg :: dg_proof
+      in
         let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
-        st, pg :: dg_proof, logs
+        st, dg_proof, logs
       | Cmd_Error(_loc,msg) ->
         let pg = qed_loc, 1, msg, None in
         st, pg :: dg_proof, ((1, msg), qed_loc) :: logs
