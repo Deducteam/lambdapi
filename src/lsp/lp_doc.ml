@@ -151,10 +151,10 @@ let new_doc ~uri ~version ~text =
       let loc : Pos.pos =
         {
           fname = Some(uri);
-          start_line = 0;
+          start_line = 1;
           start_col  = 0;
           start_offset  = 0;
-          end_line = 0;
+          end_line = 1;
           end_col = 0;
           end_offset  = 0
         } in

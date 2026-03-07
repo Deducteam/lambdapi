@@ -36,8 +36,10 @@ let mk_range (p : Pos.pos) : J.t =
   let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
     p
   in
-  `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
-          "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
+  `Assoc ["start", `Assoc ["line", `Int (max 0 (line1 - 1));
+                            "character", `Int (max 0 col1)];
+          "end",   `Assoc ["line", `Int (max 0 (line2 - 1));
+                            "character", `Int (max 0 col2)]]
 
 let json_of_goal (hyps, concl) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in

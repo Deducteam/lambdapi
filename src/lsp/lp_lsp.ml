@@ -62,10 +62,10 @@ let do_check_text ofmt ~doc =
       let loc : Pos.pos =
         {
           fname = Some(doc.uri);
-          start_line = 0;
+          start_line = 1;
           start_col  = 0;
           start_offset  = 0;
-          end_line = 0;
+          end_line = 1;
           end_col = 0;
           end_offset  = 0;
         } in
@@ -133,7 +133,7 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
 
 let mk_definfo file pos =
   `Assoc [
-      "uri", `String file
+      "uri", `String ("file://" ^ file)
     ; "range", LSP.mk_range pos
         ]
 
