@@ -9,16 +9,16 @@ not match any buffer used by user")
 (defun lambdapi--apply-window-layout (tree)
   "Applies the window configuration given by the argument tree,
 it is either a list (split-side ratio child1-tree child2-tree)
-or a leaf which is a buffer or a string with buffer's name.
+or a leaf which is a buffer or a string with buffe\'s name.
 
-It is meant to be called by `lambdapi-refresh-window-layout'
-which also replaces buffers with name `lambdapi--temp-buffer-name'
+It is meant to be called by `lambdapi-refresh-window-layout`
+which also replaces buffers with name `lambdapi--temp-buffer-name`
 with the current buffer.
 
 Example:
 
 (lambdapi--apply-window-layout
-               '(h 0.6 \"proofs\" (v 0.3 \"goals\" \"logs\")))
+               `(h 0.6 \"proofs\" (v 0.3 \"goals\" \"logs\")))
 
 will produce
 
