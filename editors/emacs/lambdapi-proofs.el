@@ -47,7 +47,7 @@ no errors."
                       (eglot--lsp-position-to-point lsp-pos))
                     lsp-positions))
            (first-error (1+ (point-max))))
-      (mapcar (lambda (pos) (setq first-error (min first-error pos)))
+      (mapc (lambda (pos) (setq first-error (min first-error pos)))
               points)
       (if (> first-error (point-max)) nil first-error))))
 
