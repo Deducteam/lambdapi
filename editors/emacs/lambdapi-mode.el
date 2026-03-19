@@ -4,7 +4,7 @@
 
 ;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Version: 1.1.0
+;; Version: 21
 ;; SPDX-License-Identifier: CECILL-2.1
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages

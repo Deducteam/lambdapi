@@ -70,13 +70,12 @@ no errors."
 
 (defun lp-format-string-hyps-goal (goal)
   "Return the string associated to the hypotheses of single typing goal GOAL."
-  (let ((tog (plist-get goal :typeofgoal)))
     (let ((hs (plist-get goal :hyps)))
       (mapcar (lambda (hyp)
                 (let ((name (plist-get hyp :hname))
                       (type (plist-get hyp :htype)))
                   (format "%s: %s\n" name type)))
-              hs))))
+              hs)))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofpos)
   "Return the string associated to a GOAL."
