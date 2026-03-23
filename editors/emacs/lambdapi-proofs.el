@@ -166,7 +166,7 @@ This works for both graphical and text displays."
         ;;; remove whitespace at end of buffer
         (goto-char (point-max))
         (while (member (char-before) '(?  ?\C-j ?\C-i))
-          (delete-backward-char 1))))
+          (delete-char -1))))
     (let ((logwin (get-buffer-window logbuf)))
       (if logwin
           (with-selected-window logwin
