@@ -118,7 +118,7 @@ This works for both graphical and text displays."
                  (hypsstr (lp-format-string-hyps-goal fstgoal))
                  ;; map each goal to formatted goal string
                  (goalsstr (cl-mapcar
-                            `(lambda (goal goalNo)
+                            #'(lambda (goal goalNo)
                                (lp-format-string-goal
                                 goal))
                             goals
