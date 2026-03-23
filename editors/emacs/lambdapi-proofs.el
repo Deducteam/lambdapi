@@ -118,12 +118,11 @@ This works for both graphical and text displays."
                  (hypsstr (lp-format-string-hyps-goal fstgoal))
                  ;; map each goal to formatted goal string
                  (goalsstr (cl-mapcar
-                            #'(lambda (goal goalNo)
+                            #'(lambda (goal)
                                (lp-format-string-goal
                                 goal))
                             goals
-                            (cl-loop for x below (length goals)
-                                     collect x))))
+                            )))
             (remove-overlays)
             (erase-buffer)
             (goto-char (point-max))
