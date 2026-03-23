@@ -111,7 +111,6 @@ This works for both graphical and text displays."
 (defun lp-display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
   (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (proofbuf (plist-get proof-line-position :buffer))
         (proofpos (plist-get proof-line-position :pos)))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
