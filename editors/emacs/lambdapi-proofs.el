@@ -77,7 +77,7 @@ no errors."
                   (format "%s: %s\n" name type)))
               hs)))
 
-(defun lp-format-string-goal (goal goalNo proofbuf proofpos)
+(defun lp-format-string-goal (goal)
   "Return the string associated to a GOAL."
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ")
@@ -122,7 +122,7 @@ This works for both graphical and text displays."
                  (goalsstr (cl-mapcar
                             `(lambda (goal goalNo)
                                (lp-format-string-goal
-                                goal goalNo ,proofbuf ,proofpos))
+                                goal))
                             goals
                             (cl-loop for x below (length goals)
                                      collect x))))
