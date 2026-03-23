@@ -110,7 +110,9 @@ This works for both graphical and text displays."
 
 (defun lp-display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
-  (let ((goalsbuf (get-buffer-create "*Goals*")))
+  (let (
+    (saved-point (point))
+    (goalsbuf (get-buffer-create "*Goals*")))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
       (if (> (length goals) 0)
@@ -127,7 +129,6 @@ This works for both graphical and text displays."
             (erase-buffer)
             (goto-char (point-max))
             (mapc 'insert hypsstr)
-            (setq saved-point (point))
             (mapc (lambda (gstr)
                     (lp--draw-horizontal-line)
                     (insert gstr))
