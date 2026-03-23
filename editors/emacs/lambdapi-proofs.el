@@ -264,7 +264,7 @@ This works for both graphical and text displays."
             (lp--in-comment-p))
           (progn
             (skip-syntax-forward ".")
-            (let ((comment-type (nth 7 (syntax-ppss))))
+            (
               (goto-char (nth 8 (syntax-ppss)))
               (forward-comment 1)
               (skip-syntax-backward "> ")
