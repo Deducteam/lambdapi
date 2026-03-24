@@ -372,7 +372,7 @@ and (point-max) if there is no next command to display the last error in logs"
               (eglot--signal-textDocument/didChange)
               (lp-prove-till (point)))))))
 
-(defun lp--after-change-function (beg end len)
+(defun lp--after-change-function (beg)
   (if (<= beg (plist-get proof-line-position :pos))
       (save-excursion
         (eglot--signal-textDocument/didChange)
