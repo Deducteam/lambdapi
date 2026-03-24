@@ -264,11 +264,10 @@ This works for both graphical and text displays."
             (lp--in-comment-p))
           (progn
             (skip-syntax-forward ".")
-            (
-              (goto-char (nth 8 (syntax-ppss)))
-              (forward-comment 1)
-              (skip-syntax-backward "> ")
-              (lp-prove-till (1- (point)))))
+            (goto-char (nth 8 (syntax-ppss)))
+            (forward-comment 1)
+            (skip-syntax-backward "> ")
+            (lp-prove-till (1- (point))))
         (let ((line-empty ; line empty or is a single line comment
                (save-excursion
                  (beginning-of-line)
