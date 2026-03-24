@@ -2,6 +2,9 @@
 ;; SPDX-License-Identifier: CECILL-2.1
 ;;; Commentary:
 ;;; Code:
+
+(defvar lp-window-layout nil)
+
 (defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc" ; any random name will work
   "Buffer name for used by `lambdapi-refresh-window-layout'. Must
 not match any buffer used by user")
@@ -57,7 +60,7 @@ will produce
   (interactive)
   (let ((curbuf (current-buffer)))
     (delete-other-windows)
-    (lambdapi--apply-window-layout lambdapi-window-layout)
+    (lambdapi--apply-window-layout lp-window-layout)
     (dolist (win (get-buffer-window-list lambdapi--temp-buffer-name))
       (with-selected-window win
         (switch-to-buffer curbuf t t)))
@@ -83,7 +86,7 @@ will produce
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time
   :set (lambda (_option newval)
-         (setq lambdapi-window-layout newval)
+         (setq lp-window-layout newval)
          (lambdapi-refresh-window-layout))
   :type '(radio (sexp :tag "Layout 0"
 		      :format "%t\n"
