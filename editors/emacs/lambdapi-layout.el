@@ -82,7 +82,7 @@ will produce
   "Window layout of LambdaPi."
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time
-  :set (lambda (option newval)
+  :set (lambda (_option newval)
          (setq lambdapi-window-layout newval)
          (lambdapi-refresh-window-layout))
   :type '(radio (sexp :tag "Layout 0"
