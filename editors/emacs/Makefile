@@ -23,7 +23,7 @@ $(NAME)-$(VERSION).tar: $(SRC)
 	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
 
 lambdapi-mode-pkg.el: lambdapi-mode.el
-	$(eval binding := ';;; lambdapi-mode.el --- A major mode for editing Lambdapi source code -*- lexical-binding: t; -*-')
+	$(eval binding := ';;; lambdapi-mode.el --- A major mode for editing Lambdapi source code -*- lexical-binding: t; -*-\n;; Local Variables:\n;; byte-compile-warnings: (not obsolete)\n;; End:')
 	$(eval description := "A major mode for editing Lambdapi source code.")
 	$(eval requirements := $(shell grep ";; Package-Requires: " lambdapi-mode.el | sed 's/"/\\"/g' | cut -d' ' -f5-))
 	@echo $(binding) >> $@
