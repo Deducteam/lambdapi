@@ -10,6 +10,9 @@
 (require 'eglot)
 (require 'lambdapi-layout)
 
+(defvar lp-npos 0
+  "saved position.")
+
 (defconst lambdapi-terminators '(";" "begin" "{")
   "List of terminators for electric terminator mode.")
 
@@ -47,7 +50,7 @@ no errors."
                       (eglot--lsp-position-to-point lsp-pos))
                     lsp-positions))
            (first-error (1+ (point-max))))
-      (mapcar (lambda (pos) (setq first-error (min first-error pos)))
+      (mapc (lambda (pos) (setq first-error (min first-error pos)))
               points)
       (if (> first-error (point-max)) nil first-error))))
 
@@ -70,15 +73,14 @@ no errors."
 
 (defun lp-format-string-hyps-goal (goal)
   "Return the string associated to the hypotheses of single typing goal GOAL."
-  (let ((tog (plist-get goal :typeofgoal)))
     (let ((hs (plist-get goal :hyps)))
       (mapcar (lambda (hyp)
                 (let ((name (plist-get hyp :hname))
                       (type (plist-get hyp :htype)))
                   (format "%s: %s\n" name type)))
-              hs))))
+              hs)))
 
-(defun lp-format-string-goal (goal goalNo proofbuf proofpos)
+(defun lp-format-string-goal (goal)
   "Return the string associated to a GOAL."
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ")
@@ -111,9 +113,9 @@ This works for both graphical and text displays."
 
 (defun lp-display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
-  (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (proofbuf (plist-get proof-line-position :buffer))
-        (proofpos (plist-get proof-line-position :pos)))
+  (let (
+    (saved-point (point))
+    (goalsbuf (get-buffer-create "*Goals*")))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
       (if (> (length goals) 0)
@@ -121,17 +123,15 @@ This works for both graphical and text displays."
                  (hypsstr (lp-format-string-hyps-goal fstgoal))
                  ;; map each goal to formatted goal string
                  (goalsstr (cl-mapcar
-                            `(lambda (goal goalNo)
+                            #'(lambda (goal)
                                (lp-format-string-goal
-                                goal goalNo ,proofbuf ,proofpos))
+                                goal))
                             goals
-                            (cl-loop for x below (length goals)
-                                     collect x))))
+                            )))
             (remove-overlays)
             (erase-buffer)
             (goto-char (point-max))
             (mapc 'insert hypsstr)
-            (setq saved-point (point))
             (mapc (lambda (gstr)
                     (lp--draw-horizontal-line)
                     (insert gstr))
@@ -169,7 +169,7 @@ This works for both graphical and text displays."
         ;;; remove whitespace at end of buffer
         (goto-char (point-max))
         (while (member (char-before) '(?  ?\C-j ?\C-i))
-          (delete-backward-char 1))))
+          (delete-char -1))))
     (let ((logwin (get-buffer-window logbuf)))
       (if logwin
           (with-selected-window logwin
@@ -267,11 +267,10 @@ This works for both graphical and text displays."
             (lp--in-comment-p))
           (progn
             (skip-syntax-forward ".")
-            (let ((comment-type (nth 7 (syntax-ppss))))
-              (goto-char (nth 8 (syntax-ppss)))
-              (forward-comment 1)
-              (skip-syntax-backward "> ")
-              (lp-prove-till (1- (point)))))
+            (goto-char (nth 8 (syntax-ppss)))
+            (forward-comment 1)
+            (skip-syntax-backward "> ")
+            (lp-prove-till (1- (point))))
         (let ((line-empty ; line empty or is a single line comment
                (save-excursion
                  (beginning-of-line)
@@ -344,19 +343,19 @@ and 0 if there is no previous command."
 (defun lp--next-command-pos (&optional pos)
   "Return the position of the next command's terminator
 and (point-max) if there is no next command to display the last error in logs"
-  (setq npos (1+ (or pos (point))))
+  (setq lp-npos (1+ (or pos (point))))
   (save-excursion
     (let ((term-regex
            (mapconcat
             (lambda (s) (format "\\(%s\\)" s))
             lambdapi-terminators "\\|")))
-      (goto-char npos)
+      (goto-char lp-npos)
       (while
           (progn
-            (setq npos (re-search-forward term-regex nil t))
-            (and npos (lp--in-comment-p npos)))
-        (goto-char npos))
-      (if npos (max (point-min) (1- npos)) (point-max)))))
+            (setq lp-npos (re-search-forward term-regex nil t))
+            (and lp-npos (lp--in-comment-p lp-npos)))
+        (goto-char lp-npos))
+      (if lp-npos (max (point-min) (1- lp-npos)) (point-max)))))
 
 (defun lp--post-self-insert-function ()
   (save-excursion
@@ -373,7 +372,7 @@ and (point-max) if there is no next command to display the last error in logs"
               (eglot--signal-textDocument/didChange)
               (lp-prove-till (point)))))))
 
-(defun lp--after-change-function (beg end len)
+(defun lp--after-change-function (beg)
   (if (<= beg (plist-get proof-line-position :pos))
       (save-excursion
         (eglot--signal-textDocument/didChange)
