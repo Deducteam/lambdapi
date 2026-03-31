@@ -9,5 +9,7 @@
  (name core)
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
+ (inline_tests)
+ (preprocess (pps ppx_inline_test))
  (modules :standard)
- (libraries lambdapi.common lambdapi.lplib pratter why3 unix))
+ (libraries yojson lambdapi.common lambdapi.lplib pratter why3 unix))

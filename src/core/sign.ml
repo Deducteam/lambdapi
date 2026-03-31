@@ -4,6 +4,7 @@ open Lplib open Extra
 open Common open Error open Pos
 open Timed
 open Term
+module J = Yojson.Basic
 
 (** Data associated to inductive types. *)
 type ind_data =
@@ -249,6 +250,12 @@ let strip_private : t -> unit = fun sign ->
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols)
 
+let toJson sign =
+  `Assoc [
+    "version", `String Version.version;
+    "sign_path", `List (List.map (fun s -> `String s) sign.sign_path)
+  ]
+
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
   (* [Unix.fork] is used to safely [unlink] and write an object file, while
@@ -256,7 +263,10 @@ let write : t -> string -> unit = fun sign fname ->
      process. *)
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
-         unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
+         unlink sign;
+         let sign_json = toJson sign in
+         J.to_channel oc sign_json;
+         (* Marshal.to_channel oc sign [Marshal.Closures]; *)
          close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
   | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
 
@@ -272,11 +282,24 @@ let read : string -> t = fun fname ->
   let ic = open_in fname in
   let sign =
     try
-      let sign = Marshal.from_channel ic in
+      let json_sign = J.from_channel ic in
+      let version =
+        json_sign
+        |> J.Util.member "version"
+        |> J.Util.to_string in
+      if version <> Version.version then
+        raise (Failure ("Version " ^ version ^ " found but " ^ Version.version ^ "expected (current)"));
+      let sign_path =
+        json_sign
+        |> J.Util.member "sign_path"
+        |> J.Util.to_list
+        |> List.map J.Util.to_string in
+      let sign = create (sign_path) in
+      (* let sign = Marshal.from_channel ic in *)
       close_in ic; sign
-    with Failure _ ->
+    with Failure msg ->
       close_in ic;
-      fatal_no_pos "File \"%s\" is incompatible with current binary." fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary. %s" fname msg
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   unsafe_reset sign.sign_symbols;
@@ -432,3 +455,19 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
+
+let dump =
+  { 
+    sign_symbols  = ref StrMap.empty
+  ; sign_path     = ["/tmp/test_sign_read_write.lpo"]
+  ; sign_deps     = ref Path.Map.empty
+  ; sign_builtins = ref StrMap.empty
+  ; sign_ind      = ref SymMap.empty
+  ; sign_cp_pos   = ref SymMap.empty }
+
+let%test "rev" =
+  let sign = dump in
+  write sign "/tmp/test_sign_read_write.lpo";
+  let r_sign = read "/tmp/test_sign_read_write.lpo" in
+  false &&
+   sign.sign_path = r_sign.sign_path
