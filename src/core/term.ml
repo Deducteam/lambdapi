@@ -28,7 +28,7 @@ type expo =
   | Public (** Visible and usable everywhere. *)
   | Protec (** Visible everywhere but usable in LHS arguments only. *)
   | Privat (** Not visible and thus not usable. *)
-
+[@@deriving yojson]
 (** Symbol properties. *)
 type prop =
   | Defin (** Definable. *)
@@ -989,3 +989,68 @@ module Raw = struct
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
+
+type sym_serializable =
+  { ser_sym_expo  : expo
+  (* ; sym_path  : Path.t *)
+  (* ; sym_name  : string *)
+  (* ; sym_type  : term Timed.ref *)
+  (* ; sym_impl  : bool list *)
+  (* ; sym_prop  : prop *)
+  (* ; sym_nota  : float notation Timed.ref *)
+  (* ; sym_def   : term option Timed.ref *)
+  (* ; sym_opaq  : bool Timed.ref *)
+  (* ; sym_rules : rule list Timed.ref *)
+  (* ; sym_mstrat: match_strat *)
+  (* ; sym_dtree : dtree Timed.ref *)
+  (* ; sym_pos   : Pos.popt *)
+  (* ; sym_decl_pos : Pos.popt *)
+  } [@@deriving yojson]
+
+  let to_sym_serializable s =
+  {
+    ser_sym_expo = s.sym_expo
+  }
+  let of_sym_serializable s =
+  {
+    sym_expo = s.ser_sym_expo
+    ; sym_path   = []
+    ; sym_name   = ""
+    ; sym_type   = Timed.ref Type
+    ; sym_impl   = []
+    ; sym_prop   = Defin
+    ; sym_nota   = Timed.ref NoNotation
+    ; sym_def    = Timed.ref None
+    ; sym_opaq   = Timed.ref true
+    ; sym_rules  = Timed.ref []
+    ; sym_mstrat = Sequen
+    ; sym_dtree  = Timed.ref Tree_type.empty_dtree
+    ; sym_pos    = None
+    ; sym_decl_pos  = None
+  }
+
+  let sym_to_yojson s =
+    sym_serializable_to_yojson (to_sym_serializable s)
+
+  let sym_of_yojson j =
+    match (sym_serializable_of_yojson j) with
+    | Ok j -> Ok (of_sym_serializable j)
+    | Error s -> Error s
+
+let sym_dump =
+  {
+      sym_expo      = Privat
+    ; sym_path      = []
+    ; sym_name      = ""
+    ; sym_type      = Timed.ref Type
+    ; sym_impl      = []
+    ; sym_prop      = Defin
+    ; sym_nota      = Timed.ref NoNotation
+    ; sym_def       = Timed.ref None
+    ; sym_opaq      = Timed.ref true
+    ; sym_rules     = Timed.ref []
+    ; sym_mstrat    = Sequen
+    ; sym_dtree     = Timed.ref Tree_type.empty_dtree
+    ; sym_pos       = None
+    ; sym_decl_pos  = None
+  }

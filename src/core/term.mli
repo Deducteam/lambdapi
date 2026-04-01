@@ -465,3 +465,24 @@ module Raw : sig
   val term : term pp
   val ctxt : ctxt pp
 end
+
+type sym_serializable =
+  { ser_sym_expo  : expo
+  (* ; sym_path  : Path.t *)
+  (* ; sym_name  : string *)
+  (* ; sym_type  : term Timed.ref *)
+  (* ; sym_impl  : bool list *)
+  (* ; sym_prop  : prop *)
+  (* ; sym_nota  : float notation Timed.ref *)
+  (* ; sym_def   : term option Timed.ref *)
+  (* ; sym_opaq  : bool Timed.ref *)
+  (* ; sym_rules : rule list Timed.ref *)
+  (* ; sym_mstrat: match_strat *)
+  (* ; sym_dtree : dtree Timed.ref *)
+  (* ; sym_pos   : Pos.popt *)
+  (* ; sym_decl_pos : Pos.popt *)
+  }
+
+val sym_dump : sym
+val sym_to_yojson : sym -> Yojson.Safe.t
+val sym_of_yojson : Yojson.Safe.t -> (sym, string) result

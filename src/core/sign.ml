@@ -250,10 +250,15 @@ let strip_private : t -> unit = fun sign ->
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols)
 
-let toJson sign =
+let toJson sign : Yojson.Safe.t =
+  let rules_assoc =
+    StrMap.bindings (Timed.(!)sign.sign_symbols)
+    |> List.map (fun (k, v) -> (k, sym_to_yojson v))
+  in
   `Assoc [
-    "version", `String Version.version;
-    "sign_path", `List (List.map (fun s -> `String s) sign.sign_path)
+      "version" , `String Version.version
+    ; "sign_path"   , `List (List.map (fun s -> `String s) sign.sign_path)
+    ; ("sign_symbols", `Assoc rules_assoc)
   ]
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
@@ -265,7 +270,8 @@ let write : t -> string -> unit = fun sign fname ->
   | 0 -> let oc = open_out fname in
          unlink sign;
          let sign_json = toJson sign in
-         J.to_channel oc sign_json;
+         let _pp = Yojson.Safe.pretty_to_string sign_json in
+         Yojson.Safe.to_channel oc sign_json;
          (* Marshal.to_channel oc sign [Marshal.Closures]; *)
          close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
   | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
@@ -282,19 +288,39 @@ let read : string -> t = fun fname ->
   let ic = open_in fname in
   let sign =
     try
-      let json_sign = J.from_channel ic in
+      let json_sign = Yojson.Safe.from_channel ic in
       let version =
         json_sign
-        |> J.Util.member "version"
-        |> J.Util.to_string in
+        |> Yojson.Safe.Util.member "version"
+        |> Yojson.Safe.Util.to_string in
       if version <> Version.version then
         raise (Failure ("Version " ^ version ^ " found but " ^ Version.version ^ "expected (current)"));
       let sign_path =
         json_sign
-        |> J.Util.member "sign_path"
-        |> J.Util.to_list
-        |> List.map J.Util.to_string in
-      let sign = create (sign_path) in
+        |> Yojson.Safe.Util.member "sign_path"
+        |> Yojson.Safe.Util.to_list
+        |> List.map Yojson.Safe.Util.to_string in
+
+      let sign_symbols =
+        json_sign
+        |> Yojson.Safe.Util.member "sign_symbols"
+  |> Yojson.Safe.Util.to_assoc
+  |> List.fold_left (fun acc (k, v) ->
+       match sym_of_yojson v with
+       | Ok sym -> StrMap.add k sym acc
+       | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
+     ) StrMap.empty
+       in
+
+
+      
+       
+       let sign = create (sign_path) in
+       let sign = {sign with sign_symbols = Timed.ref sign_symbols} in
+
+      
+  (* READ sign_symbols and update sign *)
+
       (* let sign = Marshal.from_channel ic in *)
       close_in ic; sign
     with Failure msg ->
@@ -467,7 +493,14 @@ let dump =
 
 let%test "rev" =
   let sign = dump in
+  let symbols = Timed.(!) sign.sign_symbols in
+  let symbols = StrMap.add "" sym_dump symbols in
+  let sign = {sign with sign_symbols = Timed.ref symbols} in
   write sign "/tmp/test_sign_read_write.lpo";
   let r_sign = read "/tmp/test_sign_read_write.lpo" in
-  false &&
-   sign.sign_path = r_sign.sign_path
+  (* false && *)
+   sign.sign_path = r_sign.sign_path &&
+   (StrMap.equal (fun a b -> (Sym.compare a b) = 0)
+    (Timed.(!)(sign.sign_symbols))
+    (Timed.(!)(r_sign.sign_symbols))
+     ) (*FIX ME : Sym.compare does not seem to compare the entire structure *)
