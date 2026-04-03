@@ -119,14 +119,14 @@ let current_token() : token = let (t,_,_) = !the_current_token in t
 
 let current_pos() : position * position =
   let (_,p1,p2) = !the_current_token in (p1,p2)
-
+(*
 let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
   let t = !the_current_token in
   let reset() = the_current_token := t in
   the_current_token := LpLexer.token lb;
   try let r = entry lb in begin reset(); r end
   with e -> begin reset(); raise e end
-
+ *)
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
   else
@@ -1571,30 +1571,45 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
+    begin
+        consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
+    end
   | UID "concl" ->
+    begin
+        consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
+    end
   | UID "hyp" ->
+    begin
+        consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
+    end
   | UID "lhs" ->
+    begin
+        consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
+    end
   | UID "rhs" ->
+    begin
+        consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
+    end
   | L_PAREN ->
       consume_token lb;
       let q = search lb in
@@ -1618,7 +1633,7 @@ and ssearch (lb:lexbuf): search =
   let cq = csearch lb in
   match current_token() with
   | SEMICOLON ->
-      let cqs = list (prefix SEMICOLON csearch) lb in
+      let cqs = list (csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
