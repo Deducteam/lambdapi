@@ -505,12 +505,12 @@ let%test "rev" =
    (StrMap.equal
     (fun a b -> 
       (Sym.compare a b) = 0
-      )
-      (* Should compare : 
-        a.sym_name = b.sym_name
+      (* Should compare :  *)
+        (* a.sym_name = b.sym_name
         && a.sym_expo = b.sym_expo
         && (Path.compare a.sym_path b.sym_path = 0)
-        ) *)
+        && (a.sym_name = b.sym_name) *)
+    )
     (Timed.(!)(sign.sign_symbols))
     (Timed.(!)(r_sign.sign_symbols))
      )

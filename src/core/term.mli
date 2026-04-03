@@ -469,18 +469,18 @@ end
 type sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
-  (* ; sym_name  : string *)
-  (* ; sym_type  : term Timed.ref *)
-  (* ; sym_impl  : bool list *)
-  (* ; sym_prop  : prop *)
-  (* ; sym_nota  : float notation Timed.ref *)
-  (* ; sym_def   : term option Timed.ref *)
-  (* ; sym_opaq  : bool Timed.ref *)
-  (* ; sym_rules : rule list Timed.ref *)
-  (* ; sym_mstrat: match_strat *)
-  (* ; sym_dtree : dtree Timed.ref *)
-  (* ; sym_pos   : Pos.popt *)
-  (* ; sym_decl_pos : Pos.popt *)
+  ; ser_sym_name  : string
+  (* ; ser_sym_type  : term Timed.ref *)
+  (* ; ser_sym_impl  : bool list *)
+  (* ; ser_sym_prop  : prop *)
+  (* ; ser_sym_nota  : float notation Timed.ref *)
+  (* ; ser_sym_def   : term option Timed.ref *)
+  (* ; ser_sym_opaq  : bool Timed.ref *)
+  (* ; ser_sym_rules : rule list Timed.ref *)
+  (* ; ser_sym_mstrat: match_strat *)
+  (* ; ser_sym_dtree : dtree Timed.ref *)
+  (* ; ser_sym_pos   : Pos.popt *)
+  (* ; ser_sym_decl_pos : Pos.popt *)
   }
 
 val sym_dump : sym
