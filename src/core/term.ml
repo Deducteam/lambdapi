@@ -992,7 +992,7 @@ end
 
 type sym_serializable =
   { ser_sym_expo  : expo
-  (* ; sym_path  : Path.t *)
+  ; ser_sym_path  : Path.t
   (* ; sym_name  : string *)
   (* ; sym_type  : term Timed.ref *)
   (* ; sym_impl  : bool list *)
@@ -1010,23 +1010,24 @@ type sym_serializable =
   let to_sym_serializable s =
   {
     ser_sym_expo = s.sym_expo
+    ; ser_sym_path = s.sym_path
   }
   let of_sym_serializable s =
   {
     sym_expo = s.ser_sym_expo
-    ; sym_path   = []
-    ; sym_name   = ""
-    ; sym_type   = Timed.ref Type
-    ; sym_impl   = []
-    ; sym_prop   = Defin
-    ; sym_nota   = Timed.ref NoNotation
-    ; sym_def    = Timed.ref None
-    ; sym_opaq   = Timed.ref true
-    ; sym_rules  = Timed.ref []
-    ; sym_mstrat = Sequen
-    ; sym_dtree  = Timed.ref Tree_type.empty_dtree
-    ; sym_pos    = None
-    ; sym_decl_pos  = None
+    ; sym_path   = s.ser_sym_path
+    ; sym_name   = "" (*FIX ME*)
+    ; sym_type   = Timed.ref Type (*FIX ME*)
+    ; sym_impl   = [] (*FIX ME*)
+    ; sym_prop   = Defin  (*FIX ME*)
+    ; sym_nota   = Timed.ref NoNotation (*FIX ME*)
+    ; sym_def    = Timed.ref None (*FIX ME*)
+    ; sym_opaq   = Timed.ref true (*FIX ME*)
+    ; sym_rules  = Timed.ref [] (*FIX ME*)
+    ; sym_mstrat = Sequen (*FIX ME*)
+    ; sym_dtree  = Timed.ref Tree_type.empty_dtree  (*FIX ME*)
+    ; sym_pos    = None (*FIX ME*)
+    ; sym_decl_pos  = None  (*FIX ME*)
   }
 
   let sym_to_yojson s =

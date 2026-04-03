@@ -468,7 +468,7 @@ end
 
 type sym_serializable =
   { ser_sym_expo  : expo
-  (* ; sym_path  : Path.t *)
+  ; ser_sym_path  : Path.t
   (* ; sym_name  : string *)
   (* ; sym_type  : term Timed.ref *)
   (* ; sym_impl  : bool list *)

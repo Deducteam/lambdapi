@@ -5,7 +5,7 @@ open Lplib open Base
 module Path =
   struct
     (** Representation of a module name (roughly, a file path). *)
-    type t = string list
+    type t = string list [@@deriving yojson]
 
     (** [pp ppf p] prints path [p] on the formatter [ppf]. Remark: to be used
        in Common only as it does not escape identifiers that need to be

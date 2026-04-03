@@ -304,17 +304,13 @@ let read : string -> t = fun fname ->
       let sign_symbols =
         json_sign
         |> Yojson.Safe.Util.member "sign_symbols"
-  |> Yojson.Safe.Util.to_assoc
-  |> List.fold_left (fun acc (k, v) ->
+        |> Yojson.Safe.Util.to_assoc
+        |> List.fold_left (fun acc (k, v) ->
        match sym_of_yojson v with
        | Ok sym -> StrMap.add k sym acc
        | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
      ) StrMap.empty
        in
-
-
-      
-       
        let sign = create (sign_path) in
        let sign = {sign with sign_symbols = Timed.ref sign_symbols} in
 
@@ -494,13 +490,27 @@ let dump =
 let%test "rev" =
   let sign = dump in
   let symbols = Timed.(!) sign.sign_symbols in
-  let symbols = StrMap.add "" sym_dump symbols in
+  let symbols = StrMap.add ""
+    {
+      sym_dump 
+    with
+      sym_path = ["rep"; "file"]
+    }
+    symbols in
   let sign = {sign with sign_symbols = Timed.ref symbols} in
-  write sign "/tmp/test_sign_read_write.lpo";
-  let r_sign = read "/tmp/test_sign_read_write.lpo" in
-  (* false && *)
-   sign.sign_path = r_sign.sign_path &&
-   (StrMap.equal (fun a b -> (Sym.compare a b) = 0)
+  write sign "/tmp/test_sign_read_write.json";
+  let r_sign = read "/tmp/test_sign_read_write.json" in
+
+  sign.sign_path = r_sign.sign_path &&  
+   (StrMap.equal
+    (fun a b -> 
+      (Sym.compare a b) = 0
+      )
+      (* Should compare : 
+        a.sym_name = b.sym_name
+        && a.sym_expo = b.sym_expo
+        && (Path.compare a.sym_path b.sym_path = 0)
+        ) *)
     (Timed.(!)(sign.sign_symbols))
     (Timed.(!)(r_sign.sign_symbols))
-     ) (*FIX ME : Sym.compare does not seem to compare the entire structure *)
+     )
