@@ -501,8 +501,8 @@ and sym_serializable =
   ; ser_sym_path  : Path.t
   ; ser_sym_name  : string
   ; ser_sym_type  : term_serializable
-  (* ; ser_sym_impl  : bool list *)
-  (* ; ser_sym_prop  : prop *)
+  ; ser_sym_impl  : bool list
+  ; ser_sym_prop  : prop
   (* ; ser_sym_nota  : float notation Timed.ref *)
   (* ; ser_sym_def   : term option Timed.ref *)
   (* ; ser_sym_opaq  : bool Timed.ref *)

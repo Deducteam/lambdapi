@@ -37,6 +37,7 @@ type prop =
   | Commu (** Commutative. *)
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
+  [@@deriving yojson]
 
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool} [@@deriving yojson]
@@ -1007,8 +1008,8 @@ and sym_serializable =
   ; ser_sym_path  : Path.t
   ; ser_sym_name  : string
   ; ser_sym_type  : term_serializable
-  (* ; ser_sym_impl  : bool list *)
-  (* ; ser_sym_prop  : prop *)
+  ; ser_sym_impl  : bool list
+  ; ser_sym_prop  : prop
   (* ; ser_sym_nota  : float notation Timed.ref *)
   (* ; ser_sym_def   : term option Timed.ref *)
   (* ; ser_sym_opaq  : bool Timed.ref *)
@@ -1055,6 +1056,8 @@ and to_sym_serializable s =
     ; ser_sym_path = s.sym_path
     ; ser_sym_name = s.sym_name
     ; ser_sym_type = (to_term_serializable (Timed.(!) s.sym_type))
+    ; ser_sym_impl = s.sym_impl
+    ; ser_sym_prop = s.sym_prop
   }
 let rec of_term_serializable t = match t with
   | Ser_Vari x          -> Vari x
@@ -1090,8 +1093,8 @@ and of_sym_serializable s =
     ; sym_path   = s.ser_sym_path
     ; sym_name   = s.ser_sym_name
     ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type)
-    ; sym_impl   = [] (*FIX ME*)
-    ; sym_prop   = Defin  (*FIX ME*)
+    ; sym_impl   = s.ser_sym_impl
+    ; sym_prop   = s.ser_sym_prop
     ; sym_nota   = Timed.ref NoNotation (*FIX ME*)
     ; sym_def    = Timed.ref None (*FIX ME*)
     ; sym_opaq   = Timed.ref true (*FIX ME*)
