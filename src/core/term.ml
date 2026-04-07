@@ -1013,6 +1013,17 @@ and meta_serializable =
 
 and mbinder_serializable = mbinder_info * term_serializable * term_serializable array [@@deriving yojson]
 
+and rule_serializable =
+  { ser_lhs      : term_serializable list
+  ; ser_names    : string array
+  ; ser_rhs      : term_serializable
+  ; ser_arity    : int
+  ; ser_arities  : int array
+  ; ser_vars_nb  : int
+  ; ser_xvars_nb : int
+  ; ser_rule_pos : Pos.popt
+  }[@@deriving yojson]
+
 and sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
@@ -1021,9 +1032,9 @@ and sym_serializable =
   ; ser_sym_impl  : bool list
   ; ser_sym_prop  : prop
   ; ser_sym_nota  : float notation (*Timed.ref*)
-  (* ; ser_sym_def   : term option Timed.ref *)
-  (* ; ser_sym_opaq  : bool Timed.ref *)
-  (* ; ser_sym_rules : rule list Timed.ref *)
+  ; ser_sym_def   : term_serializable option (*Timed.ref*)
+  ; ser_sym_opaq  : bool (*Timed.ref*)
+  ; ser_sym_rules : rule_serializable list (* Timed.ref *)
   (* ; ser_sym_mstrat: match_strat *)
   (* ; ser_sym_dtree : dtree Timed.ref *)
   (* ; ser_sym_pos   : Pos.popt *)
@@ -1067,6 +1078,21 @@ and to_sym_serializable s =
     ; ser_sym_impl = s.sym_impl
     ; ser_sym_prop = s.sym_prop
     ; ser_sym_nota = Timed.(!)s.sym_nota
+    ; ser_sym_def  = Option.map to_term_serializable (Timed.(!) s.sym_def)
+    ; ser_sym_opaq = Timed.(!)s.sym_opaq
+    ; ser_sym_rules = List.map to_rule_serializable (Timed.(!)s.sym_rules)
+  }
+
+and to_rule_serializable (r : rule) : rule_serializable =
+  {
+    ser_lhs      = List.map to_term_serializable r.lhs;
+    ser_names    = r.names;
+    ser_rhs      = to_term_serializable r.rhs;
+    ser_arity    = r.arity;
+    ser_arities  = r.arities;
+    ser_vars_nb  = r.vars_nb;
+    ser_xvars_nb = r.xvars_nb;
+    ser_rule_pos = r.rule_pos;
   }
 let rec of_term_serializable t = match t with
   | Ser_Vari x          -> Vari x
@@ -1095,7 +1121,6 @@ and of_meta_serializable t =
 and of_mbinder_serializable (x, y ,z) =
   (x, of_term_serializable y, Array.map of_term_serializable z)
 
-
 and of_sym_serializable s =
   {
     sym_expo = s.ser_sym_expo
@@ -1104,14 +1129,26 @@ and of_sym_serializable s =
     ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type)
     ; sym_impl   = s.ser_sym_impl
     ; sym_prop   = s.ser_sym_prop
-    ; sym_nota   = Timed.ref s.ser_sym_nota (*FIX ME*)
-    ; sym_def    = Timed.ref None (*FIX ME*)
-    ; sym_opaq   = Timed.ref true (*FIX ME*)
-    ; sym_rules  = Timed.ref [] (*FIX ME*)
+    ; sym_nota   = Timed.ref s.ser_sym_nota
+    ; sym_def    = Timed.ref (Option.map of_term_serializable s.ser_sym_def)
+    ; sym_opaq   = Timed.ref s.ser_sym_opaq
+    ; sym_rules  = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
     ; sym_mstrat = Sequen (*FIX ME*)
     ; sym_dtree  = Timed.ref Tree_type.empty_dtree  (*FIX ME*)
     ; sym_pos    = None (*FIX ME*)
     ; sym_decl_pos  = None  (*FIX ME*)
+  }
+
+  and of_rule_serializable (r : rule_serializable) : rule =
+  {
+    lhs      = List.map of_term_serializable r.ser_lhs;
+    names    = r.ser_names;
+    rhs      = of_term_serializable r.ser_rhs;
+    arity    = r.ser_arity;
+    arities  = r.ser_arities;
+    vars_nb  = r.ser_vars_nb;
+    xvars_nb = r.ser_xvars_nb;
+    rule_pos = r.ser_rule_pos;
   }
 
   let sym_to_yojson s =

@@ -496,6 +496,17 @@ and meta_serializable =
 
 and mbinder_serializable = mbinder_info * term_serializable * term_serializable array
 
+and rule_serializable =
+  { ser_lhs      : term_serializable list
+  ; ser_names    : string array
+  ; ser_rhs      : term_serializable
+  ; ser_arity    : int
+  ; ser_arities  : int array
+  ; ser_vars_nb  : int
+  ; ser_xvars_nb : int
+  ; ser_rule_pos : Pos.popt
+  }
+  
 and sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
@@ -504,9 +515,9 @@ and sym_serializable =
   ; ser_sym_impl  : bool list
   ; ser_sym_prop  : prop
   ; ser_sym_nota  : float notation (*Timed.ref*)
-  (* ; ser_sym_def   : term option Timed.ref *)
-  (* ; ser_sym_opaq  : bool Timed.ref *)
-  (* ; ser_sym_rules : rule list Timed.ref *)
+  ; ser_sym_def   : term_serializable option (* Timed.ref *)
+  ; ser_sym_opaq  : bool (* Timed.ref *)
+  ; ser_sym_rules : rule_serializable list (* Timed.ref*)
   (* ; ser_sym_mstrat: match_strat *)
   (* ; ser_sym_dtree : dtree Timed.ref *)
   (* ; ser_sym_pos   : Pos.popt *)
