@@ -466,11 +466,41 @@ module Raw : sig
   val ctxt : ctxt pp
 end
 
-type sym_serializable =
+
+type term_serializable =
+  | Ser_Vari of var
+  | Ser_Bvar of bvar
+  | Ser_Type
+  | Ser_Kind
+  | Ser_Symb of sym_serializable
+  | Ser_Prod of term_serializable * binder_serializable
+  | Ser_Abst of term_serializable * binder_serializable
+  | Ser_Appl of term_serializable * term_serializable
+  | Ser_Meta of meta_serializable * term_serializable array
+  | Ser_Patt of int option * string * term_serializable array
+  | Ser_Wild
+  | Ser_Plac of bool
+  | Ser_TRef of term_serializable option
+  | Ser_LLet of term_serializable * term_serializable * binder_serializable
+
+and mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
+
+and binder_info = {binder_name : string; binder_bound : bool}
+and binder_serializable = binder_info * term_serializable * term_serializable array
+
+and meta_serializable =
+  { ser_meta_key   : int
+  ; ser_meta_type  : term_serializable  (**Timed.ref. *)
+  ; ser_meta_arity : int 
+  ; ser_meta_value : mbinder_serializable option (**  Timed.ref. *) }
+
+and mbinder_serializable = mbinder_info * term_serializable * term_serializable array
+
+and sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
   ; ser_sym_name  : string
-  (* ; ser_sym_type  : term Timed.ref *)
+  ; ser_sym_type  : term_serializable
   (* ; ser_sym_impl  : bool list *)
   (* ; ser_sym_prop  : prop *)
   (* ; ser_sym_nota  : float notation Timed.ref *)

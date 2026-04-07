@@ -40,7 +40,7 @@ type prop =
 
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool} [@@deriving yojson]
-type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array} [@@deriving yojson]
+type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
 
 let pr_bound = D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")
 
@@ -135,7 +135,40 @@ type term =
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
+(* and term_serializable = string
+  | Ser_Vari of var
+  | Ser_Bvar of bvar
+  | Ser_Type
+  | Ser_Kind
+  | Ser_Symb of sym
+  | Ser_Prod of term_serializable * binder_serializable
+  | Ser_Abst of term_serializable * binder_serializable
+  | Ser_Appl of term_serializable * term_serializable
+  | Ser_Meta of meta * term_serializable array
+  | Ser_Patt of int option * string * term_serializable array
+  | Ser_Wild
+  | Ser_Plac of bool
+  | Ser_TRef of term_serializable option
+  | Ser_LLet of term_serializable * term_serializable * binder_serializable
+[@@deriving yojson] *)
+
+(** Type for binders, implemented as closures. The bound variables of a
+    closure term always refer either to a variable bound by the parent binder
+    or to a slot in the closure environment of the parent binder. No direct
+    reference to variables bound by an ancestor binder!
+
+    In a binder [(bi,u,e)] of arity [n], [Bvar(InSub i)] occurring in the
+    closure term [u] (with [i < n]) refers to the bound variable at position
+    [i] in the given substitution (e.g. argument [vs] of msubst), and
+    [Bvar(InEnv i)] refers to the term [e.(i)]
+
+    For instance, the term [λx. λy. x y] is represented as
+    [Abst(_,(_,Abst(_,(_,Appl(Bvar(InSub 0)|Bvar(InEnv 0)),
+                       [|Bvar(InSub 0)|])),
+             [||]))]
+ *)
 and binder = binder_info * term * term array
+(* and binder_serializable = binder_info * term_serializable * term_serializable [@@deriving yojson] *)
 and mbinder = mbinder_info * term * term array
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
@@ -974,39 +1007,49 @@ module Raw = struct
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
+(* 
+let rec to_term_serializable t = match t with
+  | Vari x          -> Ser_Vari x
+  | Bvar x          -> Ser_Bvar x
+  | Type            -> Ser_Type
+  | Kind            -> Ser_Kind
+  | Symb x          -> Ser_Symb x
+  | Prod (x, y)     -> Ser_Prod (to_term_serializable x, to_binder_serializable y)
+  | Abst (x, y)     -> Ser_Abst (to_term_serializable x, to_binder_serializable y)
+  | Appl (x, y)     -> Ser_Appl (to_term_serializable x, to_term_serializable y)
+  | Meta (x, y)     -> Ser_Meta (x, Array.map to_term_serializable y)
+  | Patt (x, y, z)  -> Ser_Patt (x, y, Array.map to_term_serializable z)
+  | Wild            -> Ser_Wild
+  | Plac x          -> Ser_Plac x
+  | TRef x          -> Ser_TRef (Option.map to_term_serializable (Timed.(!) x) )
+  (* | TRef x          -> Ser_TRef (match Timed.(!) x with None -> None | Some x -> Some (to_term_serializable x)) *)
+  | LLet (x, y, z)  -> Ser_LLet (to_term_serializable x, to_term_serializable y, to_binder_serializable z)
+and to_binder_serializable (x, y, z) =
+  (x, to_term_serializable y, Array.map to_term_serializable z)
+let rec of_term_serializable t = match t with
+  | Ser_Vari x          -> Vari x
+  | Ser_Bvar x          -> Bvar x
+  | Ser_Type            -> Type  
+  | Ser_Kind            -> Kind  
+  | Ser_Symb x          -> Symb x
+  | Ser_Prod (x, y)     -> Prod (of_term_serializable x, of_binder_serializable y)
+  | Ser_Abst (x, y)     -> Abst (of_term_serializable x, of_binder_serializable y)
+  | Ser_Appl (x, y)     -> Appl (of_term_serializable x, of_term_serializable y)
+  | Ser_Meta (x, y)     -> Meta (x, Array.map of_term_serializable y)
+  | Ser_Patt (x, y, z)  -> Patt (x, y, Array.map of_term_serializable z)
+  | Ser_Wild            -> Wild  
+  | Ser_Plac x          -> Plac x
+  | Ser_TRef x          -> TRef (Timed.ref  (Option.map of_term_serializable x))
+  | Ser_LLet (x, y, z)  -> LLet (of_term_serializable x, of_term_serializable y, of_binder_serializable z)
+and of_binder_serializable (x, y, z) =
+  (x, of_term_serializable y, Array.map of_term_serializable z)
+ *)
 
-type term_serializable =
-  | Ser_Vari of var
-  | Ser_Bvar of bvar
-  | Ser_Type
-  | Ser_Kind
-  | Ser_Symb of sym_serializable
-  | Ser_Prod of term_serializable * binder_serializable
-  | Ser_Abst of term_serializable * binder_serializable
-  | Ser_Appl of term_serializable * term_serializable
-  | Ser_Meta of meta_serializable * term_serializable array
-  | Ser_Patt of int option * string * term_serializable array
-  | Ser_Wild
-  | Ser_Plac of bool
-  | Ser_TRef of term_serializable option
-  | Ser_LLet of term_serializable * term_serializable * binder_serializable
-  [@@deriving yojson]
-
-and binder_serializable = binder_info * term_serializable * term_serializable array [@@deriving yojson]
-
-and meta_serializable =
-  { ser_meta_key   : int
-  ; ser_meta_type  : term_serializable  (**Timed.ref. *)
-  ; ser_meta_arity : int 
-  ; ser_meta_value : mbinder_serializable option (**  Timed.ref. *) } [@@deriving yojson]
-
-and mbinder_serializable = mbinder_info * term_serializable * term_serializable array [@@deriving yojson]
-
-and sym_serializable =
+type sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
   ; ser_sym_name  : string
-  ; ser_sym_type  : term_serializable
+  (* ; ser_sym_type  : term_serializable *)
   (* ; ser_sym_impl  : bool list *)
   (* ; ser_sym_prop  : prop *)
   (* ; ser_sym_nota  : float notation Timed.ref *)
@@ -1019,77 +1062,20 @@ and sym_serializable =
   (* ; ser_sym_decl_pos : Pos.popt *)
   } [@@deriving yojson]
 
-let rec to_term_serializable t = match t with
-  | Vari x          -> Ser_Vari x
-  | Bvar x          -> Ser_Bvar x
-  | Type            -> Ser_Type
-  | Kind            -> Ser_Kind
-  | Symb x          -> Ser_Symb (to_sym_serializable x)
-  | Prod (x, y)     -> Ser_Prod (to_term_serializable x, to_binder_serializable y)
-  | Abst (x, y)     -> Ser_Abst (to_term_serializable x, to_binder_serializable y)
-  | Appl (x, y)     -> Ser_Appl (to_term_serializable x, to_term_serializable y)
-  | Meta (x, y)     -> Ser_Meta ((to_meta_serializable x), Array.map to_term_serializable y)
-  | Patt (x, y, z)  -> Ser_Patt (x, y, Array.map to_term_serializable z)
-  | Wild            -> Ser_Wild
-  | Plac x          -> Ser_Plac x
-  | TRef x          -> Ser_TRef (Option.map to_term_serializable (Timed.(!) x) )
-  (* | TRef x          -> Ser_TRef (match Timed.(!) x with None -> None | Some x -> Some (to_term_serializable x)) *)
-  | LLet (x, y, z)  -> Ser_LLet (to_term_serializable x, to_term_serializable y, to_binder_serializable z)
-and to_binder_serializable (x, y, z) =
-  (x, to_term_serializable y, Array.map to_term_serializable z)
-
-and to_meta_serializable t =
-  { ser_meta_key   = t.meta_key
-  ; ser_meta_type  = to_term_serializable (Timed.(!) t.meta_type)
-  ; ser_meta_arity = t.meta_arity
-  ; ser_meta_value = (Option.map to_mbinder_serializable (Timed.(!)t.meta_value))}
-
-and to_mbinder_serializable (x, y ,z) =
-  (x, to_term_serializable y, Array.map to_term_serializable z)
-
-
-
-and to_sym_serializable s =
+  let to_sym_serializable s =
   {
     ser_sym_expo = s.sym_expo
     ; ser_sym_path = s.sym_path
     ; ser_sym_name = s.sym_name
-    ; ser_sym_type = (to_term_serializable (Timed.(!) s.sym_type))
+    (* ; ser_sym_type = (to_term_serializable (Timed.(!) s.sym_type)) *)
   }
-let rec of_term_serializable t = match t with
-  | Ser_Vari x          -> Vari x
-  | Ser_Bvar x          -> Bvar x
-  | Ser_Type            -> Type  
-  | Ser_Kind            -> Kind  
-  | Ser_Symb x          -> Symb (of_sym_serializable x)
-  | Ser_Prod (x, y)     -> Prod (of_term_serializable x, of_binder_serializable y)
-  | Ser_Abst (x, y)     -> Abst (of_term_serializable x, of_binder_serializable y)
-  | Ser_Appl (x, y)     -> Appl (of_term_serializable x, of_term_serializable y)
-  | Ser_Meta (x, y)     -> Meta ((of_meta_serializable x), Array.map of_term_serializable y)
-  | Ser_Patt (x, y, z)  -> Patt (x, y, Array.map of_term_serializable z)
-  | Ser_Wild            -> Wild  
-  | Ser_Plac x          -> Plac x
-  | Ser_TRef x          -> TRef (Timed.ref  (Option.map of_term_serializable x))
-  | Ser_LLet (x, y, z)  -> LLet (of_term_serializable x, of_term_serializable y, of_binder_serializable z)
-and of_binder_serializable (x, y, z) =
-  (x, of_term_serializable y, Array.map of_term_serializable z)
-
-and of_meta_serializable t =
-  { meta_key   = t.ser_meta_key
-  ; meta_type  = Timed.ref (of_term_serializable t.ser_meta_type) 
-  ; meta_arity = t.ser_meta_arity
-  ; meta_value = Timed.ref (Option.map of_mbinder_serializable t.ser_meta_value)}
-
-and of_mbinder_serializable (x, y ,z) =
-  (x, of_term_serializable y, Array.map of_term_serializable z)
-
-
-and of_sym_serializable s =
+  let of_sym_serializable s =
   {
     sym_expo = s.ser_sym_expo
     ; sym_path   = s.ser_sym_path
     ; sym_name   = s.ser_sym_name
-    ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type)
+    ; sym_type   = Timed.ref Type
+    (* ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type) *)
     ; sym_impl   = [] (*FIX ME*)
     ; sym_prop   = Defin  (*FIX ME*)
     ; sym_nota   = Timed.ref NoNotation (*FIX ME*)
