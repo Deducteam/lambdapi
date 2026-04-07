@@ -89,12 +89,22 @@ type bvar = InSub of int | InEnv of int [@@deriving yojson]
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
+let associativity_to_yojson = function
+  | Pratter.Left -> `String "Left"
+  | Right -> `String "Right"
+  | Neither -> `String "Neither"
+
+let associativity_of_yojson = function
+  | `String "Left" -> Ok Pratter.Left
+  | `String "Right" -> Ok Right
+  | `String "Neither" -> Ok Neither
+  | _ -> Error "associativity_of_yojson"
 (** Notations. *)
 type 'a notation =
   | NoNotation
   | Prefix of 'a
   | Postfix of 'a
-  | Infix of Pratter.associativity * 'a
+  | Infix of (Pratter.associativity [@to_yojson associativity_to_yojson] [@of_yojson associativity_of_yojson]) * 'a
   | Zero
   | Succ of 'a notation (* NoNotation, Prefix or Postfix only *)
   | Quant
@@ -104,7 +114,7 @@ type 'a notation =
   | IntZero
   | IntPos
   | IntNeg
-
+  [@@deriving yojson]
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -1010,7 +1020,7 @@ and sym_serializable =
   ; ser_sym_type  : term_serializable
   ; ser_sym_impl  : bool list
   ; ser_sym_prop  : prop
-  (* ; ser_sym_nota  : float notation Timed.ref *)
+  ; ser_sym_nota  : float notation (*Timed.ref*)
   (* ; ser_sym_def   : term option Timed.ref *)
   (* ; ser_sym_opaq  : bool Timed.ref *)
   (* ; ser_sym_rules : rule list Timed.ref *)
@@ -1048,8 +1058,6 @@ and to_meta_serializable t =
 and to_mbinder_serializable (x, y ,z) =
   (x, to_term_serializable y, Array.map to_term_serializable z)
 
-
-
 and to_sym_serializable s =
   {
     ser_sym_expo = s.sym_expo
@@ -1058,6 +1066,7 @@ and to_sym_serializable s =
     ; ser_sym_type = (to_term_serializable (Timed.(!) s.sym_type))
     ; ser_sym_impl = s.sym_impl
     ; ser_sym_prop = s.sym_prop
+    ; ser_sym_nota = Timed.(!)s.sym_nota
   }
 let rec of_term_serializable t = match t with
   | Ser_Vari x          -> Vari x
@@ -1095,7 +1104,7 @@ and of_sym_serializable s =
     ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type)
     ; sym_impl   = s.ser_sym_impl
     ; sym_prop   = s.ser_sym_prop
-    ; sym_nota   = Timed.ref NoNotation (*FIX ME*)
+    ; sym_nota   = Timed.ref s.ser_sym_nota (*FIX ME*)
     ; sym_def    = Timed.ref None (*FIX ME*)
     ; sym_opaq   = Timed.ref true (*FIX ME*)
     ; sym_rules  = Timed.ref [] (*FIX ME*)
