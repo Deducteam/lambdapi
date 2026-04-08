@@ -22,6 +22,7 @@ type match_strat =
   | Eager
   (** Any rule that filters a term can be applied (even if a rule defined
       earlier filters the term as well). This is the default. *)
+  [@@deriving yojson]
 
 (** Specify the visibility and usability of symbols outside their module. *)
 type expo =
@@ -1035,7 +1036,7 @@ and sym_serializable =
   ; ser_sym_def   : term_serializable option (*Timed.ref*)
   ; ser_sym_opaq  : bool (*Timed.ref*)
   ; ser_sym_rules : rule_serializable list (* Timed.ref *)
-  (* ; ser_sym_mstrat: match_strat *)
+  ; ser_sym_mstrat: match_strat
   (* ; ser_sym_dtree : dtree Timed.ref *)
   (* ; ser_sym_pos   : Pos.popt *)
   (* ; ser_sym_decl_pos : Pos.popt *)
@@ -1081,6 +1082,7 @@ and to_sym_serializable s =
     ; ser_sym_def  = Option.map to_term_serializable (Timed.(!) s.sym_def)
     ; ser_sym_opaq = Timed.(!)s.sym_opaq
     ; ser_sym_rules = List.map to_rule_serializable (Timed.(!)s.sym_rules)
+    ; ser_sym_mstrat = s.sym_mstrat
   }
 
 and to_rule_serializable (r : rule) : rule_serializable =
@@ -1133,7 +1135,7 @@ and of_sym_serializable s =
     ; sym_def    = Timed.ref (Option.map of_term_serializable s.ser_sym_def)
     ; sym_opaq   = Timed.ref s.ser_sym_opaq
     ; sym_rules  = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
-    ; sym_mstrat = Sequen (*FIX ME*)
+    ; sym_mstrat = s.ser_sym_mstrat
     ; sym_dtree  = Timed.ref Tree_type.empty_dtree  (*FIX ME*)
     ; sym_pos    = None (*FIX ME*)
     ; sym_decl_pos  = None  (*FIX ME*)

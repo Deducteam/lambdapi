@@ -506,7 +506,7 @@ and rule_serializable =
   ; ser_xvars_nb : int
   ; ser_rule_pos : Pos.popt
   }
-  
+
 and sym_serializable =
   { ser_sym_expo  : expo
   ; ser_sym_path  : Path.t
@@ -518,7 +518,7 @@ and sym_serializable =
   ; ser_sym_def   : term_serializable option (* Timed.ref *)
   ; ser_sym_opaq  : bool (* Timed.ref *)
   ; ser_sym_rules : rule_serializable list (* Timed.ref*)
-  (* ; ser_sym_mstrat: match_strat *)
+  ; ser_sym_mstrat: match_strat
   (* ; ser_sym_dtree : dtree Timed.ref *)
   (* ; ser_sym_pos   : Pos.popt *)
   (* ; ser_sym_decl_pos : Pos.popt *)
