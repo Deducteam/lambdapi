@@ -1040,8 +1040,8 @@ and sym_serializable =
   ; ser_sym_rules : rule_serializable list (* Timed.ref *)
   ; ser_sym_mstrat: match_strat
   ; ser_sym_dtree : dtree_serializable (* Timed.ref *)
-  (* ; ser_sym_pos   : Pos.popt *)
-  (* ; ser_sym_decl_pos : Pos.popt *)
+  ; ser_sym_pos   : Pos.popt
+  ; ser_sym_decl_pos : Pos.popt
   } [@@deriving yojson]
 
 let rec to_term_serializable t = match t with
@@ -1076,18 +1076,20 @@ and to_mbinder_serializable (x, y ,z) =
 
 and to_sym_serializable s =
   {
-    ser_sym_expo      = s.sym_expo
-    ; ser_sym_path    = s.sym_path
-    ; ser_sym_name    = s.sym_name
-    ; ser_sym_type    = (to_term_serializable (Timed.(!) s.sym_type))
-    ; ser_sym_impl    = s.sym_impl
-    ; ser_sym_prop    = s.sym_prop
-    ; ser_sym_nota    = Timed.(!)s.sym_nota
-    ; ser_sym_def     = Option.map to_term_serializable (Timed.(!) s.sym_def)
-    ; ser_sym_opaq    = Timed.(!)s.sym_opaq
-    ; ser_sym_rules   = List.map to_rule_serializable (Timed.(!)s.sym_rules)
-    ; ser_sym_mstrat  = s.sym_mstrat
-    ; ser_sym_dtree   = to_dtree_serializable (Timed.(!)s.sym_dtree)
+    ser_sym_expo        = s.sym_expo
+    ; ser_sym_path      = s.sym_path
+    ; ser_sym_name      = s.sym_name
+    ; ser_sym_type      = (to_term_serializable (Timed.(!) s.sym_type))
+    ; ser_sym_impl      = s.sym_impl
+    ; ser_sym_prop      = s.sym_prop
+    ; ser_sym_nota      = Timed.(!)s.sym_nota
+    ; ser_sym_def       = Option.map to_term_serializable (Timed.(!) s.sym_def)
+    ; ser_sym_opaq      = Timed.(!)s.sym_opaq
+    ; ser_sym_rules     = List.map to_rule_serializable (Timed.(!)s.sym_rules)
+    ; ser_sym_mstrat    = s.sym_mstrat
+    ; ser_sym_dtree     = to_dtree_serializable (Timed.(!)s.sym_dtree)
+    ; ser_sym_pos       = s.sym_pos
+    ; ser_sym_decl_pos  = s.sym_decl_pos
   }
 
 and to_rule_serializable (r : rule) : rule_serializable =
@@ -1134,19 +1136,19 @@ and of_mbinder_serializable (x, y ,z) =
 and of_sym_serializable s =
   {
     sym_expo = s.ser_sym_expo
-    ; sym_path   = s.ser_sym_path
-    ; sym_name   = s.ser_sym_name
-    ; sym_type   = Timed.ref (of_term_serializable s.ser_sym_type)
-    ; sym_impl   = s.ser_sym_impl
-    ; sym_prop   = s.ser_sym_prop
-    ; sym_nota   = Timed.ref s.ser_sym_nota
-    ; sym_def    = Timed.ref (Option.map of_term_serializable s.ser_sym_def)
-    ; sym_opaq   = Timed.ref s.ser_sym_opaq
-    ; sym_rules  = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
-    ; sym_mstrat = s.ser_sym_mstrat
-    ; sym_dtree  = Timed.ref (of_dtree_serializable s.ser_sym_dtree)
-    ; sym_pos    = None (*FIX ME*)
-    ; sym_decl_pos  = None  (*FIX ME*)
+    ; sym_path      = s.ser_sym_path
+    ; sym_name      = s.ser_sym_name
+    ; sym_type      = Timed.ref (of_term_serializable s.ser_sym_type)
+    ; sym_impl      = s.ser_sym_impl
+    ; sym_prop      = s.ser_sym_prop
+    ; sym_nota      = Timed.ref s.ser_sym_nota
+    ; sym_def       = Timed.ref (Option.map of_term_serializable s.ser_sym_def)
+    ; sym_opaq      = Timed.ref s.ser_sym_opaq
+    ; sym_rules     = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
+    ; sym_mstrat    = s.ser_sym_mstrat
+    ; sym_dtree     = Timed.ref (of_dtree_serializable s.ser_sym_dtree)
+    ; sym_pos       = s.ser_sym_pos
+    ; sym_decl_pos  = s.ser_sym_decl_pos
   }
 
   and of_rule_serializable (r : rule_serializable) : rule =
@@ -1174,14 +1176,31 @@ and of_sym_serializable s =
     ; sym_path      = []
     ; sym_name      = ""
     ; sym_type      = Timed.ref Type
-    ; sym_impl      = []
+    ; sym_impl      = [true; false]
     ; sym_prop      = Defin
     ; sym_nota      = Timed.ref NoNotation
-    ; sym_def       = Timed.ref None
+    ; sym_def       = Timed.ref(Some Type)
     ; sym_opaq      = Timed.ref true
     ; sym_rules     = Timed.ref []
     ; sym_mstrat    = Sequen
     ; sym_dtree     = Timed.ref Tree_type.empty_dtree
-    ; sym_pos       = None
-    ; sym_decl_pos  = None
+    ; sym_pos       = 
+          Some { fname      = Some "file" 
+          ; start_line      = 0
+          ; start_col       = 0
+          ; start_offset    = 0
+          ; end_line        = 1
+          ; end_col         = 1
+          ; end_offset      = 1
+          }
+    ; sym_decl_pos  =
+          Some { fname      = Some "Another/file" 
+          ; start_line      = 2
+          ; start_col       = 2
+          ; start_offset    = 2
+          ; end_line        = 15
+          ; end_col         = 15
+          ; end_offset      = 15
+          }
+
   }

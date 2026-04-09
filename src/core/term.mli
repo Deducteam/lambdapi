@@ -520,8 +520,8 @@ and sym_serializable =
   ; ser_sym_rules : rule_serializable list (* Timed.ref*)
   ; ser_sym_mstrat: match_strat
   ; ser_sym_dtree : dtree_serializable
-  (* ; ser_sym_pos   : Pos.popt *)
-  (* ; ser_sym_decl_pos : Pos.popt *)
+  ; ser_sym_pos   : Pos.popt
+  ; ser_sym_decl_pos : Pos.popt
   }
 
 and dtree_serializable = rule_serializable Tree_type.dtree_serializable

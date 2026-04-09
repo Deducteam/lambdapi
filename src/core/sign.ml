@@ -478,17 +478,8 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
   in
   List.concat (minimize [] deps)
 
-let dump =
-  { 
-    sign_symbols  = ref StrMap.empty
-  ; sign_path     = ["/tmp/test_sign_read_write.lpo"]
-  ; sign_deps     = ref Path.Map.empty
-  ; sign_builtins = ref StrMap.empty
-  ; sign_ind      = ref SymMap.empty
-  ; sign_cp_pos   = ref SymMap.empty }
-
 let%test "rev" =
-  let sign = dump in
+  let sign = Ghost.sign in
   let symbols = Timed.(!) sign.sign_symbols in
   let symbols = StrMap.add ""
     {
@@ -506,8 +497,7 @@ let%test "rev" =
     (fun a b -> 
       (Sym.compare a b) = 0
       (* Should compare :  *)
-        (* a.sym_name = b.sym_name
-        && a.sym_expo = b.sym_expo
+        (*  a.sym_expo = b.sym_expo
         && (Path.compare a.sym_path b.sym_path = 0)
         && (a.sym_name = b.sym_name) *)
     )
