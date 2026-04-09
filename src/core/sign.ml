@@ -303,12 +303,18 @@ let toJson sign : Yojson.Safe.t =
   in
   let dep_data_assoc =
     Path.Map.bindings (Timed.(!) sign.sign_deps)
-    |>List.map (fun (k, v) -> (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v)) in
+    |>List.map (fun (k, v) -> (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v))
+  in
+  let sign_builtins =
+    StrMap.bindings (Timed.(!)sign.sign_builtins)
+    |> List.map (fun (k, v) -> (k, sym_to_yojson v))
+  in
   `Assoc [
       "version" , `String Version.version
     ; "sign_path"   , `List (List.map (fun s -> `String s) sign.sign_path)
     ; ("sign_symbols", `Assoc rules_assoc)
     ; ("sign_deps", `Assoc dep_data_assoc)
+    ; ("sign_builtins", `Assoc sign_builtins)
   ]
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
@@ -562,6 +568,7 @@ let%test "rev" =
   let sign = {sign
       with sign_symbols = Timed.ref symbols
     ; sign_deps         = Timed.ref (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
+    ; sign_builtins     = Timed.ref symbols
     } in
   write sign "/tmp/test_sign_read_write.json";
   let r_sign = read "/tmp/test_sign_read_write.json" in
