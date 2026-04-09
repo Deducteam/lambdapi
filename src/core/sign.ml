@@ -35,9 +35,8 @@ type sym_data =
              aux [] lst
          | _ -> Error "rules: expected list"]
   ; nota : float notation option }[@@deriving yojson]
-  
 
-let strmap_to_yojson to_elt (m : 'a StrMap.t) : Yojson.Safe.t =
+  let strmap_to_yojson to_elt (m : 'a StrMap.t) : Yojson.Safe.t =
   `List (
     StrMap.bindings m
     |> List.map (fun (k, v) ->
@@ -76,7 +75,7 @@ type dep_data =
 type t =
   { sign_symbols  : sym StrMap.t ref            (*OK*)
   ; sign_path     : Path.t                      (*OK*)
-  ; sign_deps     : dep_data Path.Map.t ref     
+  ; sign_deps     : dep_data Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
@@ -303,7 +302,8 @@ let toJson sign : Yojson.Safe.t =
   in
   let dep_data_assoc =
     Path.Map.bindings (Timed.(!) sign.sign_deps)
-    |>List.map (fun (k, v) -> (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v))
+    |>List.map (fun (k, v) ->
+      (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v))
   in
   let sign_builtins =
     StrMap.bindings (Timed.(!)sign.sign_builtins)
@@ -350,7 +350,9 @@ let read : string -> t = fun fname ->
         |> Yojson.Safe.Util.member "version"
         |> Yojson.Safe.Util.to_string in
       if version <> Version.version then
-        raise (Failure ("Version " ^ version ^ " found but " ^ Version.version ^ "expected (current)"));
+        raise (Failure
+          ("Version " ^ version ^ " found but " ^
+          Version.version ^ "expected (current)"));
       let sign_path =
         json_sign
         |> Yojson.Safe.Util.member "sign_path"
@@ -370,14 +372,14 @@ let read : string -> t = fun fname ->
        let sign = create (sign_path) in
        let sign = {sign with sign_symbols = Timed.ref sign_symbols} in
 
-      
   (* READ sign_symbols and update sign *)
 
       (* let sign = Marshal.from_channel ic in *)
       close_in ic; sign
     with Failure msg ->
       close_in ic;
-      fatal_no_pos "File \"%s\" is incompatible with current binary. %s" fname msg
+      fatal_no_pos
+        "File \"%s\" is incompatible with current binary. %s" fname msg
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   unsafe_reset sign.sign_symbols;
@@ -535,7 +537,7 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
   List.concat (minimize [] deps)
 
 let%test "rev" =
-  let rule =  
+  let rule =
     {lhs     = [Term.dump_term]
   ; names    = [|"rule1"|]
   ; rhs      = Term.dump_term
@@ -543,7 +545,7 @@ let%test "rev" =
   ; arities  = [|1; 2|]
   ; vars_nb  = 5
   ; xvars_nb = 9
-  ; rule_pos = Some { fname      = Some "file" 
+  ; rule_pos = Some { fname      = Some "file"
           ; start_line      = 0
           ; start_col       = 0
           ; start_offset    = 0
@@ -560,22 +562,23 @@ let%test "rev" =
   let symbols = Timed.(!) sign.sign_symbols in
   let symbols = StrMap.add ""
     {
-      sym_dump 
+      sym_dump
     with
       sym_path = ["rep"; "file"]
     }
     symbols in
   let sign = {sign
       with sign_symbols = Timed.ref symbols
-    ; sign_deps         = Timed.ref (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
+    ; sign_deps         = Timed.ref
+            (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
     ; sign_builtins     = Timed.ref symbols
     } in
   write sign "/tmp/test_sign_read_write.json";
   let r_sign = read "/tmp/test_sign_read_write.json" in
 
-  sign.sign_path = r_sign.sign_path &&  
+  sign.sign_path = r_sign.sign_path &&
    (StrMap.equal
-    (fun a b -> 
+    (fun a b ->
       (Sym.compare a b) = 0
       (* Should compare :  *)
         (*  a.sym_expo = b.sym_expo

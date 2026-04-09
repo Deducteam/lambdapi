@@ -217,8 +217,9 @@ let rec to_tree_serializable (f : 'a -> 'b) (t : 'a tree)
             Option.map (to_tree_serializable f) default
         }
 
-let rec of_tree_serializable (f : 'a -> 'a_serializable) (t : 'a tree_serializable)
-  : 'a_serializabe tree =
+let rec of_tree_serializable
+    (f : 'a -> 'a_serializable) (t : 'a tree_serializable)
+    : 'a_serializabe tree =
   match t with
   | Fail_s -> Fail
 
@@ -261,15 +262,17 @@ type 'a dtree_serializable =
   int * 'a tree_serializable
 [@@deriving yojson]
 
-let to_dtree_serializable ((f : 'a -> 'a_serialisable))((n_lazy, t_lazy) : 'a dtree)
-  : 'a_serialisable dtree_serializable =
+let to_dtree_serializable
+    ((f : 'a -> 'a_serialisable))((n_lazy, t_lazy) : 'a dtree)
+    : 'a_serialisable dtree_serializable =
   let n = Lazy.force n_lazy in
   let t = Lazy.force t_lazy in
   ( n
   , to_tree_serializable f t
   )
-let of_dtree_serializable ((f : 'a_serialisable -> 'a))((n, t) : 'a_serialisable dtree_serializable)
-  : 'a dtree =
+let of_dtree_serializable ((f : 'a_serialisable -> 'a))
+    ((n, t) :'a_serialisable dtree_serializable)
+    : 'a dtree =
   ( lazy n
   , lazy (of_tree_serializable f t)
   )

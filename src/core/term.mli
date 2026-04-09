@@ -153,7 +153,7 @@ and rule =
   ; vars_nb  : int (** Number of variables in [lhs]. *)
   ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
   ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
-    
+
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
     list of arguments is given in [lhs],  but the head symbol itself is
@@ -487,15 +487,17 @@ type term_serializable =
 and mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
 
 and binder_info = {binder_name : string; binder_bound : bool}
-and binder_serializable = binder_info * term_serializable * term_serializable array
+and binder_serializable =
+        binder_info * term_serializable * term_serializable array
 
 and meta_serializable =
   { ser_meta_key   : int
   ; ser_meta_type  : term_serializable  (**Timed.ref. *)
-  ; ser_meta_arity : int 
+  ; ser_meta_arity : int
   ; ser_meta_value : mbinder_serializable option (**  Timed.ref. *) }
 
-and mbinder_serializable = mbinder_info * term_serializable * term_serializable array
+and mbinder_serializable =
+        mbinder_info * term_serializable * term_serializable array
 
 and rule_serializable =
   { ser_lhs      : term_serializable list
