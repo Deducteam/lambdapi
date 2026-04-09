@@ -1170,6 +1170,8 @@ and of_sym_serializable s =
     match (sym_serializable_of_yojson j) with
     | Ok j -> Ok (of_sym_serializable j)
     | Error s -> Error s
+
+  let dump_term = Type
   let sym_dump =
   {
       sym_expo      = Privat

@@ -14,23 +14,69 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
-(** Rules and notation added to an external symbol. *)
 type sym_data =
   { rules : rule list
-  ; nota : float notation option }
+  [@to_yojson fun l ->
+         `List (List.map
+           (fun r -> rule_serializable_to_yojson (to_rule_serializable r))
+           l)]
+      [@of_yojson fun j ->
+         match j with
+         | `List lst ->
+             let rec aux acc = function
+               | [] -> Ok (List.rev acc)
+               | x :: xs ->
+                   begin match rule_serializable_of_yojson x with
+                   | Ok r_ser ->
+                       aux (of_rule_serializable r_ser :: acc) xs
+                   | Error e -> Error e
+                   end
+             in
+             aux [] lst
+         | _ -> Error "rules: expected list"]
+  ; nota : float notation option }[@@deriving yojson]
+  
+
+let strmap_to_yojson to_elt (m : 'a StrMap.t) : Yojson.Safe.t =
+  `List (
+    StrMap.bindings m
+    |> List.map (fun (k, v) ->
+         `List [`String k; to_elt v])
+  )
+
+let strmap_of_yojson of_elt (json : Yojson.Safe.t)
+  : ('a StrMap.t, string) result =
+  match json with
+  | `List lst ->
+      let rec aux acc = function
+        | [] -> Ok acc
+        | `List [`String k; v_json] :: tl ->
+            begin match of_elt v_json with
+            | Ok v -> aux (StrMap.add k v acc) tl
+            | Error e -> Error e
+            end
+        | _ -> Error "StrMap.of_yojson: invalid entry"
+      in
+      aux StrMap.empty lst
+  | _ -> Error "StrMap.of_yojson: expected list"
 
 (** Data associated to a dependency. *)
 type dep_data =
   { dep_symbols : sym_data StrMap.t
+      [@to_yojson fun m ->
+         strmap_to_yojson sym_data_to_yojson m]
+      [@of_yojson fun j ->
+         strmap_of_yojson sym_data_of_yojson j]
   ; dep_open : bool }
+  [@@deriving yojson]
 
 (** Representation of a signature, that is, what is introduced by a
     module/file. Signatures must be created with the functions [create] or
     [read] below only.*)
 type t =
-  { sign_symbols  : sym StrMap.t ref
-  ; sign_path     : Path.t
-  ; sign_deps     : dep_data Path.Map.t ref
+  { sign_symbols  : sym StrMap.t ref            (*OK*)
+  ; sign_path     : Path.t                      (*OK*)
+  ; sign_deps     : dep_data Path.Map.t ref     
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
@@ -255,10 +301,14 @@ let toJson sign : Yojson.Safe.t =
     StrMap.bindings (Timed.(!)sign.sign_symbols)
     |> List.map (fun (k, v) -> (k, sym_to_yojson v))
   in
+  let dep_data_assoc =
+    Path.Map.bindings (Timed.(!) sign.sign_deps)
+    |>List.map (fun (k, v) -> (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v)) in
   `Assoc [
       "version" , `String Version.version
     ; "sign_path"   , `List (List.map (fun s -> `String s) sign.sign_path)
     ; ("sign_symbols", `Assoc rules_assoc)
+    ; ("sign_deps", `Assoc dep_data_assoc)
   ]
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
@@ -479,6 +529,27 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
   List.concat (minimize [] deps)
 
 let%test "rev" =
+  let rule =  
+    {lhs     = [Term.dump_term]
+  ; names    = [|"rule1"|]
+  ; rhs      = Term.dump_term
+  ; arity    = 0
+  ; arities  = [|1; 2|]
+  ; vars_nb  = 5
+  ; xvars_nb = 9
+  ; rule_pos = Some { fname      = Some "file" 
+          ; start_line      = 0
+          ; start_col       = 0
+          ; start_offset    = 0
+          ; end_line        = 1
+          ; end_col         = 1
+          ; end_offset      = 1
+          }
+  } in
+  let sym_data = {rules=[rule]; nota=None} in
+  let dep_data = {dep_symbols = (StrMap. add "key1" sym_data StrMap.empty)
+    ; dep_open   = true
+  } in
   let sign = Ghost.sign in
   let symbols = Timed.(!) sign.sign_symbols in
   let symbols = StrMap.add ""
@@ -488,7 +559,10 @@ let%test "rev" =
       sym_path = ["rep"; "file"]
     }
     symbols in
-  let sign = {sign with sign_symbols = Timed.ref symbols} in
+  let sign = {sign
+      with sign_symbols = Timed.ref symbols
+    ; sign_deps         = Timed.ref (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
+    } in
   write sign "/tmp/test_sign_read_write.json";
   let r_sign = read "/tmp/test_sign_read_write.json" in
 

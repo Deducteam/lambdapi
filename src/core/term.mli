@@ -64,6 +64,7 @@ type 'a notation =
   | IntZero
   | IntPos
   | IntNeg
+    [@@deriving yojson]
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -152,7 +153,7 @@ and rule =
   ; vars_nb  : int (** Number of variables in [lhs]. *)
   ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
   ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
-
+    
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
     list of arguments is given in [lhs],  but the head symbol itself is
@@ -505,7 +506,7 @@ and rule_serializable =
   ; ser_vars_nb  : int
   ; ser_xvars_nb : int
   ; ser_rule_pos : Pos.popt
-  }
+  } [@@deriving yojson]
 
 and sym_serializable =
   { ser_sym_expo  : expo
@@ -530,3 +531,7 @@ and dtree_serializable = rule_serializable Tree_type.dtree_serializable
 val sym_dump : sym
 val sym_to_yojson : sym -> Yojson.Safe.t
 val sym_of_yojson : Yojson.Safe.t -> (sym, string) result
+
+val to_rule_serializable : rule -> rule_serializable
+val of_rule_serializable : rule_serializable -> rule
+val dump_term : term
