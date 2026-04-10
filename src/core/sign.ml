@@ -75,7 +75,7 @@ type dep_data =
 type t =
   { sign_symbols  : sym StrMap.t ref            (*OK*)
   ; sign_path     : Path.t                      (*OK*)
-  ; sign_deps     : dep_data Path.Map.t ref
+  ; sign_deps     : dep_data Path.Map.t ref     (*OK*)
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
@@ -382,18 +382,26 @@ let read : string -> t = fun fname ->
           | Error e -> failwith ("Erreur sur " ^ s ^ ": " ^ e)
           )
           Path.Map.empty
-          (* (fun acc (_, _v) ->
-          (* match dep_data_of_yojson v with
-          | Ok d -> Path.Map.add "k" d acc
-          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e) *)
-          ) Path.Map.empty *)
-
       in
+
+      let sign_builtins =
+        json_sign
+        |> Yojson.Safe.Util.member "sign_builtins"
+        |> Yojson.Safe.Util.to_assoc
+        |> List.fold_left
+          (fun acc (k, v) ->
+          match sym_of_yojson v with
+          | Ok sym -> StrMap.add k sym acc
+          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
+          ) StrMap.empty
+      in
+
 
       let sign = create (sign_path) in
       let sign =
         {sign with sign_symbols = Timed.ref sign_symbols
-        ; sign_deps = Timed.ref sign_deps } in
+        ; sign_deps = Timed.ref sign_deps
+        ; sign_builtins = Timed.ref sign_builtins } in
 
   (* READ sign_symbols and update sign *)
 
