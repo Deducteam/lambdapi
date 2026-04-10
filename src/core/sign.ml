@@ -363,14 +363,37 @@ let read : string -> t = fun fname ->
         json_sign
         |> Yojson.Safe.Util.member "sign_symbols"
         |> Yojson.Safe.Util.to_assoc
-        |> List.fold_left (fun acc (k, v) ->
-       match sym_of_yojson v with
-       | Ok sym -> StrMap.add k sym acc
-       | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
-     ) StrMap.empty
-       in
-       let sign = create (sign_path) in
-       let sign = {sign with sign_symbols = Timed.ref sign_symbols} in
+        |> List.fold_left
+          (fun acc (k, v) ->
+          match sym_of_yojson v with
+          | Ok sym -> StrMap.add k sym acc
+          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
+          ) StrMap.empty
+      in
+
+      let sign_deps =
+        json_sign
+        |> Yojson.Safe.Util.member "sign_deps"
+        |> Yojson.Safe.Util.to_assoc
+        |> List.fold_left (fun acc (s,j) ->
+          let p = Path.Path.make s in
+          match dep_data_of_yojson j with
+          | Ok dep_data -> Path.Map.add p dep_data acc
+          | Error e -> failwith ("Erreur sur " ^ s ^ ": " ^ e)
+          )
+          Path.Map.empty
+          (* (fun acc (_, _v) ->
+          (* match dep_data_of_yojson v with
+          | Ok d -> Path.Map.add "k" d acc
+          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e) *)
+          ) Path.Map.empty *)
+
+      in
+
+      let sign = create (sign_path) in
+      let sign =
+        {sign with sign_symbols = Timed.ref sign_symbols
+        ; sign_deps = Timed.ref sign_deps } in
 
   (* READ sign_symbols and update sign *)
 

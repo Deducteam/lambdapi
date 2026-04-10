@@ -15,6 +15,12 @@ module Path =
     (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare
 
+    let make (s : string) : t =
+      if s = "" then []
+      else
+        s
+        |> String.split_on_char '.'
+        |> List.filter (fun x -> x <> "")
   end
 
 include Path
