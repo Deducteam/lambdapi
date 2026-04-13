@@ -59,6 +59,64 @@ let strmap_of_yojson of_elt (json : Yojson.Safe.t)
       aux StrMap.empty lst
   | _ -> Error "StrMap.of_yojson: expected list"
 
+let pathmap_to_yojson to_elt (m : 'a Path.Map.t) : Yojson.Safe.t =
+   `List (
+    Path.Map.bindings m
+      |> List.map (fun (k, v) ->
+        `List [`String (Format.asprintf "%a" Path.Path.pp k); to_elt v]
+   ))
+
+let pathmap_of_yojson of_elt json =
+  match json with
+  | `List lst ->
+    let rec aux acc l =
+      match l with
+      | [] -> Ok acc
+      | `List [`String k; v_json] :: lt ->
+        begin match of_elt v_json with
+        | Ok v ->
+          aux (Path.Map.add (Path.Path.make k) v acc) lt
+        | Error e -> Error e
+        end
+      | _ -> Error "pas list"
+    in
+    aux Path.Map.empty lst
+  | _ -> Error "pathmap_of_yojson: expected list"
+
+
+let symmap_to_yojson to_elt (m : 'a SymMap.t) : Yojson.Safe.t =
+  `List (
+    SymMap.bindings m
+    |> List.map (fun (k, v) ->
+         `List [ sym_to_yojson k; to_elt v ])
+  )
+
+let symmap_of_yojson of_elt (json : Yojson.Safe.t)
+  : ('a SymMap.t, string) result =
+  match json with
+  | `List lst ->
+      let rec aux acc = function
+        | [] -> Ok acc
+        | `List [k_json; v_json] :: tl ->
+            begin match (sym_of_yojson k_json), of_elt v_json with
+            | Ok k, Ok v ->
+                aux (SymMap.add k v acc) tl
+            | Error e, _ -> Error e
+            | _, Error e -> Error e
+            end
+        | _ -> Error "SymMap.of_yojson: invalid entry"
+      in
+      aux SymMap.empty lst
+  | _ -> Error "SymMap.of_yojson: expected list"
+
+(* module Symdata_StrMap_serializable = struct
+include StrMap
+let strMap_serializable_to_yojson m =
+  strmap_to_yojson sym_data_to_yojson m
+let strMap_serializable_to_yojson m =
+  strmap_of_yojson sym_data_of_yojson m
+end *)
+
 (** Data associated to a dependency. *)
 type dep_data =
   { dep_symbols : sym_data StrMap.t
@@ -69,6 +127,50 @@ type dep_data =
   ; dep_open : bool }
   [@@deriving yojson]
 
+type t_serializable =
+  { ser_sign_symbols  : sym_serializable StrMap.t
+        [@to_yojson fun m ->
+         strmap_to_yojson sym_serializable_to_yojson m]
+        [@of_yojson fun j ->
+         strmap_of_yojson sym_serializable_of_yojson j]
+  ; ser_sign_path     : Path.t
+  ; ser_sign_deps     : dep_data Path.Map.t
+        [@to_yojson fun m ->
+         pathmap_to_yojson dep_data_to_yojson m]
+        [@of_yojson fun m ->
+         pathmap_of_yojson dep_data_of_yojson m]
+  ; ser_sign_builtins : sym_serializable StrMap.t
+        [@to_yojson fun m ->
+         strmap_to_yojson sym_serializable_to_yojson m]
+        [@of_yojson fun j ->
+         strmap_of_yojson sym_serializable_of_yojson j]
+  (* ; ser_sign_ind      : ind_data SymMap.t *)
+  ; ser_sign_cp_pos   : cp_pos list SymMap.t
+        [@to_yojson fun m ->
+          symmap_to_yojson (fun lst ->
+            `List (List.map (fun elt -> cp_pos_to_yojson elt) lst)
+            ) m
+         ]
+        [@of_yojson fun json ->
+            symmap_of_yojson
+              (fun j ->
+                match j with
+                | `List lst ->
+                  let rec aux acc = function
+                    | [] -> Ok (List.rev acc)
+                    | x :: xs ->
+                      (match cp_pos_of_yojson x with
+                      | Ok v -> aux (v :: acc) xs
+                      | Error e -> Error e)
+                  in
+                  aux [] lst
+                | _ -> Error "Expected list for cp_pos list"
+              )
+              json
+          ]
+  }
+  [@@deriving yojson]
+
 (** Representation of a signature, that is, what is introduced by a
     module/file. Signatures must be created with the functions [create] or
     [read] below only.*)
@@ -76,9 +178,12 @@ type t =
   { sign_symbols  : sym StrMap.t ref            (*OK*)
   ; sign_path     : Path.t                      (*OK*)
   ; sign_deps     : dep_data Path.Map.t ref     (*OK*)
-  ; sign_builtins : sym StrMap.t ref
+  ; sign_builtins : sym StrMap.t ref            (*OK*)
   ; sign_ind      : ind_data SymMap.t ref
-  ; sign_cp_pos   : cp_pos list SymMap.t ref }
+  ; sign_cp_pos   : cp_pos list SymMap.t ref
+  }
+  (* [@@deriving yojson] *)
+
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool = fun sign name ->

@@ -263,6 +263,75 @@ and meta =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option Timed.ref (** Definition. *) }
 
+
+type term_serializable =
+  | Ser_Vari of var
+  | Ser_Bvar of bvar
+  | Ser_Type
+  | Ser_Kind
+  | Ser_Symb of sym_serializable
+  | Ser_Prod of term_serializable * binder_serializable
+  | Ser_Abst of term_serializable * binder_serializable
+  | Ser_Appl of term_serializable * term_serializable
+  | Ser_Meta of meta_serializable * term_serializable array
+  | Ser_Patt of int option * string * term_serializable array
+  | Ser_Wild
+  | Ser_Plac of bool
+  | Ser_TRef of term_serializable option
+  | Ser_LLet of term_serializable * term_serializable * binder_serializable
+  [@@deriving yojson]
+
+and binder_serializable =
+    binder_info
+  * term_serializable
+  * term_serializable array
+  [@@deriving yojson]
+
+and meta_serializable =
+  { ser_meta_key   : int
+  ; ser_meta_type  : term_serializable
+  ; ser_meta_arity : int
+  ; ser_meta_value : mbinder_serializable option
+  } [@@deriving yojson]
+
+and mbinder_serializable =
+    mbinder_info
+  * term_serializable
+  * term_serializable array
+  [@@deriving yojson]
+
+and rule_serializable =
+  { ser_lhs      : term_serializable list
+  ; ser_names    : string array
+  ; ser_rhs      : term_serializable
+  ; ser_arity    : int
+  ; ser_arities  : int array
+  ; ser_vars_nb  : int
+  ; ser_xvars_nb : int
+  ; ser_rule_pos : Pos.popt
+  }[@@deriving yojson]
+
+and dtree_serializable =
+  rule_serializable Tree_type.dtree_serializable [@@deriving yojson]
+
+and sym_serializable =
+  { ser_sym_expo  : expo
+  ; ser_sym_path  : Path.t
+  ; ser_sym_name  : string
+  ; ser_sym_type  : term_serializable
+  ; ser_sym_impl  : bool list
+  ; ser_sym_prop  : prop
+  ; ser_sym_nota  : float notation (*Timed.ref*)
+  ; ser_sym_def   : term_serializable option (*Timed.ref*)
+  ; ser_sym_opaq  : bool (*Timed.ref*)
+  ; ser_sym_rules : rule_serializable list (* Timed.ref *)
+  ; ser_sym_mstrat: match_strat
+  ; ser_sym_dtree : dtree_serializable (* Timed.ref *)
+  ; ser_sym_pos   : Pos.popt
+  ; ser_sym_decl_pos : Pos.popt
+  } [@@deriving yojson]
+
+
 let binder_name : binder -> string = fun (bi,_,_) -> bi.binder_name
 let mbinder_names : mbinder -> string array = fun (bi,_,_) -> bi.mbinder_name
 
@@ -942,123 +1011,11 @@ type sym_rule = sym * rule
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
-(** Positions in terms in reverse order. The i-th argument of a constructor
-   has position i-1. *)
-type subterm_pos = int list
 
-let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
 
-(** Type of critical pair positions (pos,l,r,p,l_p). *)
-type cp_pos = Pos.popt * term * term * subterm_pos * term
 
-(** Typing context associating a variable to a type and possibly a
-    definition. The typing environment [x1:A1,..,xn:An] is represented by the
-    list [xn:An;..;x1:A1] in reverse order (last added variable comes
-    first). *)
-type ctxt = (var * term * term option) list
 
-let decl ppf (v,a,d) =
-  out ppf "%a: %a" var v term a;
-  match d with
-  | None -> ()
-  | Some d -> out ppf " ≔ %a" term d
 
-let ctxt : ctxt pp = fun ppf c -> List.pp decl ", " ppf (List.rev c)
-
-(** Type of unification constraints. *)
-type constr = ctxt * term * term
-
-(** Representation of unification problems. *)
-type problem_aux =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *)
-  ; metas : MetaSet.t
-  (** Set of unsolved metas. *) }
-
-type problem = problem_aux Timed.ref
-
-(** Create a new empty problem. *)
-let new_problem : unit -> problem = fun () ->
-  Timed.ref
-    {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
-
-(** Printing functions for debug. *)
-module Raw = struct
-  let sym = sym let _ = sym
-  let term = term let _ = term
-  let ctxt = ctxt let _ = ctxt
-end
-
-type term_serializable =
-  | Ser_Vari of var
-  | Ser_Bvar of bvar
-  | Ser_Type
-  | Ser_Kind
-  | Ser_Symb of sym_serializable
-  | Ser_Prod of term_serializable * binder_serializable
-  | Ser_Abst of term_serializable * binder_serializable
-  | Ser_Appl of term_serializable * term_serializable
-  | Ser_Meta of meta_serializable * term_serializable array
-  | Ser_Patt of int option * string * term_serializable array
-  | Ser_Wild
-  | Ser_Plac of bool
-  | Ser_TRef of term_serializable option
-  | Ser_LLet of term_serializable * term_serializable * binder_serializable
-  [@@deriving yojson]
-
-and binder_serializable =
-    binder_info
-  * term_serializable
-  * term_serializable array
-  [@@deriving yojson]
-
-and meta_serializable =
-  { ser_meta_key   : int
-  ; ser_meta_type  : term_serializable
-  ; ser_meta_arity : int
-  ; ser_meta_value : mbinder_serializable option
-  } [@@deriving yojson]
-
-and mbinder_serializable =
-    mbinder_info
-  * term_serializable
-  * term_serializable array
-  [@@deriving yojson]
-
-and rule_serializable =
-  { ser_lhs      : term_serializable list
-  ; ser_names    : string array
-  ; ser_rhs      : term_serializable
-  ; ser_arity    : int
-  ; ser_arities  : int array
-  ; ser_vars_nb  : int
-  ; ser_xvars_nb : int
-  ; ser_rule_pos : Pos.popt
-  }[@@deriving yojson]
-
-and dtree_serializable =
-  rule_serializable Tree_type.dtree_serializable [@@deriving yojson]
-
-and sym_serializable =
-  { ser_sym_expo  : expo
-  ; ser_sym_path  : Path.t
-  ; ser_sym_name  : string
-  ; ser_sym_type  : term_serializable
-  ; ser_sym_impl  : bool list
-  ; ser_sym_prop  : prop
-  ; ser_sym_nota  : float notation (*Timed.ref*)
-  ; ser_sym_def   : term_serializable option (*Timed.ref*)
-  ; ser_sym_opaq  : bool (*Timed.ref*)
-  ; ser_sym_rules : rule_serializable list (* Timed.ref *)
-  ; ser_sym_mstrat: match_strat
-  ; ser_sym_dtree : dtree_serializable (* Timed.ref *)
-  ; ser_sym_pos   : Pos.popt
-  ; ser_sym_decl_pos : Pos.popt
-  } [@@deriving yojson]
 
 let rec to_term_serializable t = match t with
   | Vari x         -> Ser_Vari x
@@ -1199,10 +1156,93 @@ and of_sym_serializable s =
   let sym_to_yojson s =
     sym_serializable_to_yojson (to_sym_serializable s)
 
-  let sym_of_yojson j =
+  and sym_of_yojson j =
     match (sym_serializable_of_yojson j) with
     | Ok j -> Ok (of_sym_serializable j)
     | Error s -> Error s
+
+  and term_to_yojson t = term_serializable_to_yojson (to_term_serializable t)
+  and term_of_yojson (t : Yojson.Safe.t) : (term, string) result =
+  match term_serializable_of_yojson t with
+  | Ok t_ser ->
+      Ok (of_term_serializable t_ser)
+  | Error e ->
+      Error e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+  [@@deriving yojson]
+
+let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
+
+(** Type of critical pair positions (pos,l,r,p,l_p). *)
+type cp_pos = Pos.popt * term * term * subterm_pos * term
+  [@@deriving yojson]
+
+(** Typing context associating a variable to a type and possibly a
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
+type ctxt = (var * term * term option) list
+
+let decl ppf (v,a,d) =
+  out ppf "%a: %a" var v term a;
+  match d with
+  | None -> ()
+  | Some d -> out ppf " ≔ %a" term d
+
+let ctxt : ctxt pp = fun ppf c -> List.pp decl ", " ppf (List.rev c)
+
+(** Type of unification constraints. *)
+type constr = ctxt * term * term
+
+(** Representation of unification problems. *)
+type problem_aux =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *)
+  ; metas : MetaSet.t
+  (** Set of unsolved metas. *) }
+
+type problem = problem_aux Timed.ref
+
+(** Create a new empty problem. *)
+let new_problem : unit -> problem = fun () ->
+  Timed.ref
+    {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
+
+(** Printing functions for debug. *)
+module Raw = struct
+  let sym = sym let _ = sym
+  let term = term let _ = term
+  let ctxt = ctxt let _ = ctxt
+end
 
   let dump_term = Type
   let sym_dump =

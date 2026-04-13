@@ -448,11 +448,13 @@ val new_problem : unit -> problem
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
+    (* [@@deriving yojson] *)
 
 val subterm_pos : subterm_pos pp
 
 (** Type of critical pair positions (pos,l,r,p,l_p). *)
-type cp_pos = Pos.popt * term * term * subterm_pos * term
+type cp_pos = Pos.popt * term * term * subterm_pos * term [@@deriving yojson]
+    (* [@@deriving yojson] *)
 
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule
@@ -534,6 +536,13 @@ val sym_dump : sym
 val sym_to_yojson : sym -> Yojson.Safe.t
 val sym_of_yojson : Yojson.Safe.t -> (sym, string) result
 
+val to_sym_serializable : sym -> sym_serializable
+val of_sym_serializable : sym_serializable -> sym
+
 val to_rule_serializable : rule -> rule_serializable
 val of_rule_serializable : rule_serializable -> rule
+
+val term_to_yojson : term -> Yojson.Safe.t
+val term_of_yojson : Yojson.Safe.t -> (term, string) result
+
 val dump_term : term
