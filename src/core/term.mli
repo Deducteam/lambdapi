@@ -472,18 +472,13 @@ end
 
 type term_serializable =
   | Ser_Vari of var
-  | Ser_Bvar of bvar
   | Ser_Type
   | Ser_Kind
   | Ser_Symb of sym_serializable
   | Ser_Prod of term_serializable * binder_serializable
   | Ser_Abst of term_serializable * binder_serializable
   | Ser_Appl of term_serializable * term_serializable
-  | Ser_Meta of meta_serializable * term_serializable array
   | Ser_Patt of int option * string * term_serializable array
-  | Ser_Wild
-  | Ser_Plac of bool
-  | Ser_TRef of term_serializable option
   | Ser_LLet of term_serializable * term_serializable * binder_serializable
 
 and mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}

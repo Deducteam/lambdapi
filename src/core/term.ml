@@ -266,18 +266,13 @@ and meta =
 
 type term_serializable =
   | Ser_Vari of var
-  | Ser_Bvar of bvar
   | Ser_Type
   | Ser_Kind
   | Ser_Symb of sym_serializable
   | Ser_Prod of term_serializable * binder_serializable
   | Ser_Abst of term_serializable * binder_serializable
   | Ser_Appl of term_serializable * term_serializable
-  | Ser_Meta of meta_serializable * term_serializable array
   | Ser_Patt of int option * string * term_serializable array
-  | Ser_Wild
-  | Ser_Plac of bool
-  | Ser_TRef of term_serializable option
   | Ser_LLet of term_serializable * term_serializable * binder_serializable
   [@@deriving yojson]
 
@@ -1019,7 +1014,6 @@ let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
 let rec to_term_serializable t = match t with
   | Vari x         -> Ser_Vari x
-  | Bvar x         -> Ser_Bvar x
   | Type           -> Ser_Type
   | Kind           -> Ser_Kind
   | Symb x         -> Ser_Symb (to_sym_serializable x)
@@ -1029,29 +1023,15 @@ let rec to_term_serializable t = match t with
                       (to_term_serializable x, to_binder_serializable y)
   | Appl (x, y)    ->Ser_Appl
                       (to_term_serializable x, to_term_serializable y)
-  | Meta (x, y)    ->Ser_Meta
-                  ((to_meta_serializable x), Array.map to_term_serializable y)
   | Patt (x, y, z) -> Ser_Patt (x, y, Array.map to_term_serializable z)
-  | Wild           -> Ser_Wild
-  | Plac x         -> Ser_Plac x
-  | TRef x         -> Ser_TRef (Option.map to_term_serializable (Timed.(!) x))
   | LLet (x, y, z) -> Ser_LLet (to_term_serializable x
                                 , to_term_serializable y
                                 , to_binder_serializable z)
+  | _              -> assert false
 
 and to_dtree_serializable d =
     Tree_type.to_dtree_serializable (fun x -> to_rule_serializable x) d
 and to_binder_serializable (x, y, z) =
-  (x, to_term_serializable y, Array.map to_term_serializable z)
-
-and to_meta_serializable t =
-  { ser_meta_key   = t.meta_key
-  ; ser_meta_type  = to_term_serializable (Timed.(!) t.meta_type)
-  ; ser_meta_arity = t.meta_arity
-  ; ser_meta_value =
-      (Option.map to_mbinder_serializable (Timed.(!)t.meta_value))}
-
-and to_mbinder_serializable (x, y ,z) =
   (x, to_term_serializable y, Array.map to_term_serializable z)
 
 and to_sym_serializable s =
@@ -1085,23 +1065,16 @@ and to_rule_serializable (r : rule) : rule_serializable =
   }
 let rec of_term_serializable t = match t with
   | Ser_Vari x          -> Vari x
-  | Ser_Bvar x          -> Bvar x
   | Ser_Type            -> Type
   | Ser_Kind            -> Kind
   | Ser_Symb x          -> Symb (of_sym_serializable x)
   | Ser_Prod (x, y)     -> Prod
-                            (of_term_serializable x, of_binder_serializable y)
+  (of_term_serializable x, of_binder_serializable y)
   | Ser_Abst (x, y)     -> Abst
-                            (of_term_serializable x, of_binder_serializable y)
+  (of_term_serializable x, of_binder_serializable y)
   | Ser_Appl (x, y)     -> Appl
-                            (of_term_serializable x, of_term_serializable y)
-  | Ser_Meta (x, y)     -> Meta
-                            ((of_meta_serializable x)
-                            , Array.map of_term_serializable y)
+  (of_term_serializable x, of_term_serializable y)
   | Ser_Patt (x, y, z)  -> Patt (x, y, Array.map of_term_serializable z)
-  | Ser_Wild            -> Wild
-  | Ser_Plac x          -> Plac x
-  | Ser_TRef x          -> TRef(Timed.ref (Option.map of_term_serializable x))
   | Ser_LLet (x, y, z)  -> LLet
                             (of_term_serializable x
                             , of_term_serializable y
@@ -1111,16 +1084,6 @@ and of_dtree_serializable d =
   Tree_type.of_dtree_serializable of_rule_serializable d
 
 and of_binder_serializable (x, y, z) =
-  (x, of_term_serializable y, Array.map of_term_serializable z)
-
-and of_meta_serializable t =
-  { meta_key   = t.ser_meta_key
-  ; meta_type  = Timed.ref (of_term_serializable t.ser_meta_type)
-  ; meta_arity = t.ser_meta_arity
-  ; meta_value =
-    Timed.ref (Option.map of_mbinder_serializable t.ser_meta_value)}
-
-and of_mbinder_serializable (x, y ,z) =
   (x, of_term_serializable y, Array.map of_term_serializable z)
 
 and of_sym_serializable s =
