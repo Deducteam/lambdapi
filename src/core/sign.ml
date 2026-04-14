@@ -224,7 +224,7 @@ type dep_data =
   [@@deriving yojson]
 
 
-let to_yojson_with_version (t : t) (version : string) =
+let to_yojson_with_version (t : t) (version : string) : Yojson.Safe.t =
   match to_yojson t with
   | `Assoc fields ->
     `Assoc (("version", `String version) :: fields)
@@ -462,28 +462,6 @@ let strip_private : t -> unit = fun sign ->
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols)
 
-let toJson sign : Yojson.Safe.t =
-  let rules_assoc =
-    StrMap.bindings (Timed.(!)sign.sign_symbols)
-    |> List.map (fun (k, v) -> (k, sym_to_yojson v))
-  in
-  let dep_data_assoc =
-    Path.Map.bindings (Timed.(!) sign.sign_deps)
-    |>List.map (fun (k, v) ->
-      (Format.asprintf "%a" Path.Path.pp k, dep_data_to_yojson v))
-  in
-  let sign_builtins =
-    StrMap.bindings (Timed.(!)sign.sign_builtins)
-    |> List.map (fun (k, v) -> (k, sym_to_yojson v))
-  in
-  `Assoc [
-      "version" , `String Version.version
-    ; "sign_path"   , `List (List.map (fun s -> `String s) sign.sign_path)
-    ; ("sign_symbols", `Assoc rules_assoc)
-    ; ("sign_deps", `Assoc dep_data_assoc)
-    ; ("sign_builtins", `Assoc sign_builtins)
-  ]
-
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
   (* [Unix.fork] is used to safely [unlink] and write an object file, while
@@ -492,7 +470,7 @@ let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign;
-         let sign_json = to_yojson sign in
+         let sign_json = to_yojson_with_version sign Version.version  in
          let _pp = Yojson.Safe.pretty_to_string sign_json in
          Yojson.Safe.to_channel oc sign_json;
          (* Marshal.to_channel oc sign [Marshal.Closures]; *)
@@ -512,7 +490,7 @@ let read : string -> t = fun fname ->
   let sign =
     try
       let json_sign = Yojson.Safe.from_channel ic in
-      let sign = of_yojson json_sign in
+      let sign = of_yojson_with_version json_sign in
 
   (* READ sign_symbols and update sign *)
 
