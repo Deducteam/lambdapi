@@ -321,7 +321,6 @@ and sym_serializable =
   ; ser_sym_opaq  : bool (*Timed.ref*)
   ; ser_sym_rules : rule_serializable list (* Timed.ref *)
   ; ser_sym_mstrat: match_strat
-  ; ser_sym_dtree : dtree_serializable (* Timed.ref *)
   ; ser_sym_pos   : Pos.popt
   ; ser_sym_decl_pos : Pos.popt
   } [@@deriving yojson]
@@ -1029,8 +1028,6 @@ let rec to_term_serializable t = match t with
                                 , to_binder_serializable z)
   | _              -> assert false
 
-and to_dtree_serializable d =
-    Tree_type.to_dtree_serializable (fun x -> to_rule_serializable x) d
 and to_binder_serializable (x, y, z) =
   (x, to_term_serializable y, Array.map to_term_serializable z)
 
@@ -1047,7 +1044,6 @@ and to_sym_serializable s =
     ; ser_sym_opaq     = Timed.(!)s.sym_opaq
     ; ser_sym_rules    = List.map to_rule_serializable (Timed.(!)s.sym_rules)
     ; ser_sym_mstrat   = s.sym_mstrat
-    ; ser_sym_dtree    = to_dtree_serializable (Timed.(!)s.sym_dtree)
     ; ser_sym_pos      = s.sym_pos
     ; ser_sym_decl_pos = s.sym_decl_pos
   }
@@ -1080,9 +1076,6 @@ let rec of_term_serializable t = match t with
                             , of_term_serializable y
                             , of_binder_serializable z)
 
-and of_dtree_serializable d =
-  Tree_type.of_dtree_serializable of_rule_serializable d
-
 and of_binder_serializable (x, y, z) =
   (x, of_term_serializable y, Array.map of_term_serializable z)
 
@@ -1099,7 +1092,7 @@ and of_sym_serializable s =
     ; sym_opaq     = Timed.ref s.ser_sym_opaq
     ; sym_rules    = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
     ; sym_mstrat   = s.ser_sym_mstrat
-    ; sym_dtree    = Timed.ref (of_dtree_serializable s.ser_sym_dtree)
+    ; sym_dtree    = Timed.ref (Tree_type.empty_dtree)
     ; sym_pos      = s.ser_sym_pos
     ; sym_decl_pos = s.ser_sym_decl_pos
   }
