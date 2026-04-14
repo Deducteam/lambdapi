@@ -9,10 +9,31 @@ module J = Yojson.Basic
 (** Data associated to inductive types. *)
 type ind_data =
   { ind_cons : sym list (** Constructors. *)
+        [@to_yojson fun m -> `List (List.map sym_to_yojson m)]
+      [@of_yojson fun j ->
+        match j with
+        |`List l ->
+          let rec aux acc l =
+            begin match l with
+            | [] -> Ok acc
+            | el :: lt -> begin match sym_of_yojson el with
+            | Ok x -> aux (x :: acc) lt
+            | Error e -> Error e
+          end
+            end
+          in
+          aux [] l
+        |_ -> Error "Expected list of sym_json"
+          ]
   ; ind_prop : sym      (** Induction principle. *)
+        [@to_yojson fun m ->
+          sym_to_yojson m]
+      [@of_yojson fun j ->
+          sym_of_yojson j]
   ; ind_nb_params : int (** Number of parameters. *)
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
+  [@@deriving yojson]
 
 type sym_data =
   { rules : rule list
@@ -127,32 +148,61 @@ type dep_data =
   ; dep_open : bool }
   [@@deriving yojson]
 
-type t_serializable =
-  { ser_sign_symbols  : sym_serializable StrMap.t
+(** Representation of a signature, that is, what is introduced by a
+    module/file. Signatures must be created with the functions [create] or
+    [read] below only.*)
+(* type t =
+  { sign_symbols  : sym StrMap.t ref            (*OK*)
+  ; sign_path     : Path.t                      (*OK*)
+  ; sign_deps     : dep_data Path.Map.t ref     (*OK*)
+  ; sign_builtins : sym StrMap.t ref            (*OK*)
+  ; sign_ind      : ind_data SymMap.t ref
+  ; sign_cp_pos   : cp_pos list SymMap.t ref
+  } *)
+
+  type t =
+  { sign_symbols  : sym StrMap.t ref
         [@to_yojson fun m ->
-         strmap_to_yojson sym_serializable_to_yojson m]
+         strmap_to_yojson sym_to_yojson (Timed.(!)m)]
         [@of_yojson fun j ->
-         strmap_of_yojson sym_serializable_of_yojson j]
-  ; ser_sign_path     : Path.t
-  ; ser_sign_deps     : dep_data Path.Map.t
+         match (strmap_of_yojson sym_of_yojson j) with
+          |Ok x -> Ok (Timed.ref x)
+          | Error e -> Error e
+         ]
+  ; sign_path     : Path.t
+  ; sign_deps     : dep_data Path.Map.t ref
         [@to_yojson fun m ->
-         pathmap_to_yojson dep_data_to_yojson m]
+         pathmap_to_yojson dep_data_to_yojson (Timed.(!)m)]
         [@of_yojson fun m ->
-         pathmap_of_yojson dep_data_of_yojson m]
-  ; ser_sign_builtins : sym_serializable StrMap.t
+          match pathmap_of_yojson dep_data_of_yojson m with
+          | Ok x -> Ok (ref x)
+          | Error e -> Error e ]
+  ; sign_builtins : sym StrMap.t ref
         [@to_yojson fun m ->
-         strmap_to_yojson sym_serializable_to_yojson m]
+         strmap_to_yojson sym_to_yojson !m]
         [@of_yojson fun j ->
-         strmap_of_yojson sym_serializable_of_yojson j]
-  (* ; ser_sign_ind      : ind_data SymMap.t *)
-  ; ser_sign_cp_pos   : cp_pos list SymMap.t
+         match strmap_of_yojson sym_of_yojson j with
+          | Ok x -> Ok (ref x)
+          | Error e -> Error e ]
+  ; sign_ind      : ind_data SymMap.t ref
+        [@to_yojson fun m ->
+          symmap_to_yojson ind_data_to_yojson !m
+         ]
+        [@of_yojson fun json ->
+            match symmap_of_yojson
+              (ind_data_of_yojson
+              ) json with
+          | Ok x -> Ok (ref x)
+          | Error e -> Error e
+          ]
+  ; sign_cp_pos   : cp_pos list SymMap.t ref
         [@to_yojson fun m ->
           symmap_to_yojson (fun lst ->
             `List (List.map (fun elt -> cp_pos_to_yojson elt) lst)
-            ) m
+            ) !m
          ]
         [@of_yojson fun json ->
-            symmap_of_yojson
+            match symmap_of_yojson
               (fun j ->
                 match j with
                 | `List lst ->
@@ -166,24 +216,36 @@ type t_serializable =
                   aux [] lst
                 | _ -> Error "Expected list for cp_pos list"
               )
-              json
+              json with
+          | Ok x -> Ok (ref x)
+          | Error e -> Error e
           ]
   }
   [@@deriving yojson]
 
-(** Representation of a signature, that is, what is introduced by a
-    module/file. Signatures must be created with the functions [create] or
-    [read] below only.*)
-type t =
-  { sign_symbols  : sym StrMap.t ref            (*OK*)
-  ; sign_path     : Path.t                      (*OK*)
-  ; sign_deps     : dep_data Path.Map.t ref     (*OK*)
-  ; sign_builtins : sym StrMap.t ref            (*OK*)
-  ; sign_ind      : ind_data SymMap.t ref
-  ; sign_cp_pos   : cp_pos list SymMap.t ref
-  }
-  (* [@@deriving yojson] *)
 
+let to_yojson_with_version (t : t) (version : string) =
+  match to_yojson t with
+  | `Assoc fields ->
+    `Assoc (("version", `String version) :: fields)
+  | _ -> assert false
+
+let of_yojson_with_version json =
+  let version =
+    json
+    |> Yojson.Safe.Util.member "version"
+    |> Yojson.Safe.Util.to_string in
+
+  if version <> Version.version then
+        raise (Failure
+          ("Version " ^ version ^ " found but in lpo file but" ^
+          Version.version ^ "expected (current)"));
+
+    match json with
+    |`Assoc fields ->
+      of_yojson (`Assoc (List.remove_assoc "version" fields))
+    |_ -> raise (Failure "Unknown po format.
+                Field version missing or corrupted file")
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool = fun sign name ->
@@ -430,7 +492,7 @@ let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign;
-         let sign_json = toJson sign in
+         let sign_json = to_yojson sign in
          let _pp = Yojson.Safe.pretty_to_string sign_json in
          Yojson.Safe.to_channel oc sign_json;
          (* Marshal.to_channel oc sign [Marshal.Closures]; *)
@@ -450,68 +512,15 @@ let read : string -> t = fun fname ->
   let sign =
     try
       let json_sign = Yojson.Safe.from_channel ic in
-      let version =
-        json_sign
-        |> Yojson.Safe.Util.member "version"
-        |> Yojson.Safe.Util.to_string in
-      if version <> Version.version then
-        raise (Failure
-          ("Version " ^ version ^ " found but " ^
-          Version.version ^ "expected (current)"));
-      let sign_path =
-        json_sign
-        |> Yojson.Safe.Util.member "sign_path"
-        |> Yojson.Safe.Util.to_list
-        |> List.map Yojson.Safe.Util.to_string in
-
-      let sign_symbols =
-        json_sign
-        |> Yojson.Safe.Util.member "sign_symbols"
-        |> Yojson.Safe.Util.to_assoc
-        |> List.fold_left
-          (fun acc (k, v) ->
-          match sym_of_yojson v with
-          | Ok sym -> StrMap.add k sym acc
-          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
-          ) StrMap.empty
-      in
-
-      let sign_deps =
-        json_sign
-        |> Yojson.Safe.Util.member "sign_deps"
-        |> Yojson.Safe.Util.to_assoc
-        |> List.fold_left (fun acc (s,j) ->
-          let p = Path.Path.make s in
-          match dep_data_of_yojson j with
-          | Ok dep_data -> Path.Map.add p dep_data acc
-          | Error e -> failwith ("Erreur sur " ^ s ^ ": " ^ e)
-          )
-          Path.Map.empty
-      in
-
-      let sign_builtins =
-        json_sign
-        |> Yojson.Safe.Util.member "sign_builtins"
-        |> Yojson.Safe.Util.to_assoc
-        |> List.fold_left
-          (fun acc (k, v) ->
-          match sym_of_yojson v with
-          | Ok sym -> StrMap.add k sym acc
-          | Error e -> failwith ("Erreur sur " ^ k ^ ": " ^ e)
-          ) StrMap.empty
-      in
-
-
-      let sign = create (sign_path) in
-      let sign =
-        {sign with sign_symbols = Timed.ref sign_symbols
-        ; sign_deps = Timed.ref sign_deps
-        ; sign_builtins = Timed.ref sign_builtins } in
+      let sign = of_yojson json_sign in
 
   (* READ sign_symbols and update sign *)
 
       (* let sign = Marshal.from_channel ic in *)
-      close_in ic; sign
+      close_in ic;
+      match sign with
+      | Ok sign -> sign
+      | Error e -> raise (Failure e)
     with Failure msg ->
       close_in ic;
       fatal_no_pos
