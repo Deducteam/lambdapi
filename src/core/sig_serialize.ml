@@ -77,6 +77,33 @@ let of_sign_serializable (s:t) : Sign.t =
   }
 
 
+let to_yojson_with_version (t : Sign.t) (version : string) : Yojson.Safe.t =
+  match to_yojson (to_sign_serializable t) with
+  | `Assoc fields ->
+    `Assoc (("version", `String version) :: fields)
+  | _ -> assert false
+
+let of_yojson_with_version json =
+  let version =
+    json
+    |> Yojson.Safe.Util.member "version"
+    |> Yojson.Safe.Util.to_string in
+
+  if version <> Version.version then
+        raise (Failure
+          ("Version " ^ version ^ " found but in lpo file but" ^
+          Version.version ^ "expected (current)"));
+
+    match json with
+    |`Assoc fields ->
+        begin match of_yojson (`Assoc (List.remove_assoc "version" fields))
+        with
+        | Ok s -> Ok (of_sign_serializable s)
+        | Error e -> Error e
+      end
+    |_ -> raise (Failure "Unknown po format.
+                Field version missing or corrupted file")
+
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : Sign.t -> string -> unit = fun sign fname ->

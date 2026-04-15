@@ -151,101 +151,14 @@ type dep_data =
 (** Representation of a signature, that is, what is introduced by a
     module/file. Signatures must be created with the functions [create] or
     [read] below only.*)
-(* type t =
-  { sign_symbols  : sym StrMap.t ref            (*OK*)
-  ; sign_path     : Path.t                      (*OK*)
-  ; sign_deps     : dep_data Path.Map.t ref     (*OK*)
-  ; sign_builtins : sym StrMap.t ref            (*OK*)
-  ; sign_ind      : ind_data SymMap.t ref
-  ; sign_cp_pos   : cp_pos list SymMap.t ref
-  } *)
-
-  type t =
+type t =
   { sign_symbols  : sym StrMap.t ref
-        [@to_yojson fun m ->
-         strmap_to_yojson sym_to_yojson (Timed.(!)m)]
-        [@of_yojson fun j ->
-         match (strmap_of_yojson sym_of_yojson j) with
-          |Ok x -> Ok (Timed.ref x)
-          | Error e -> Error e
-         ]
   ; sign_path     : Path.t
   ; sign_deps     : dep_data Path.Map.t ref
-        [@to_yojson fun m ->
-         pathmap_to_yojson dep_data_to_yojson (Timed.(!)m)]
-        [@of_yojson fun m ->
-          match pathmap_of_yojson dep_data_of_yojson m with
-          | Ok x -> Ok (ref x)
-          | Error e -> Error e ]
   ; sign_builtins : sym StrMap.t ref
-        [@to_yojson fun m ->
-         strmap_to_yojson sym_to_yojson !m]
-        [@of_yojson fun j ->
-         match strmap_of_yojson sym_of_yojson j with
-          | Ok x -> Ok (ref x)
-          | Error e -> Error e ]
   ; sign_ind      : ind_data SymMap.t ref
-        [@to_yojson fun m ->
-          symmap_to_yojson ind_data_to_yojson !m
-         ]
-        [@of_yojson fun json ->
-            match symmap_of_yojson
-              (ind_data_of_yojson
-              ) json with
-          | Ok x -> Ok (ref x)
-          | Error e -> Error e
-          ]
   ; sign_cp_pos   : cp_pos list SymMap.t ref
-        [@to_yojson fun m ->
-          symmap_to_yojson (fun lst ->
-            `List (List.map (fun elt -> cp_pos_to_yojson elt) lst)
-            ) !m
-         ]
-        [@of_yojson fun json ->
-            match symmap_of_yojson
-              (fun j ->
-                match j with
-                | `List lst ->
-                  let rec aux acc = function
-                    | [] -> Ok (List.rev acc)
-                    | x :: xs ->
-                      (match cp_pos_of_yojson x with
-                      | Ok v -> aux (v :: acc) xs
-                      | Error e -> Error e)
-                  in
-                  aux [] lst
-                | _ -> Error "Expected list for cp_pos list"
-              )
-              json with
-          | Ok x -> Ok (ref x)
-          | Error e -> Error e
-          ]
   }
-  [@@deriving yojson]
-
-
-let to_yojson_with_version (t : t) (version : string) : Yojson.Safe.t =
-  match to_yojson t with
-  | `Assoc fields ->
-    `Assoc (("version", `String version) :: fields)
-  | _ -> assert false
-
-let of_yojson_with_version json =
-  let version =
-    json
-    |> Yojson.Safe.Util.member "version"
-    |> Yojson.Safe.Util.to_string in
-
-  if version <> Version.version then
-        raise (Failure
-          ("Version " ^ version ^ " found but in lpo file but" ^
-          Version.version ^ "expected (current)"));
-
-    match json with
-    |`Assoc fields ->
-      of_yojson (`Assoc (List.remove_assoc "version" fields))
-    |_ -> raise (Failure "Unknown po format.
-                Field version missing or corrupted file")
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool = fun sign name ->
