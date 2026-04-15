@@ -6,7 +6,100 @@ open Error
 open Timed
 
 
-  type t =
+type ind_data =
+  { ind_cons : sym list (** Constructors. *)
+        [@to_yojson fun m -> `List (List.map sym_to_yojson m)]
+      [@of_yojson fun j ->
+        match j with
+        |`List l ->
+          let rec aux acc l =
+            begin match l with
+            | [] -> Ok acc
+            | el :: lt -> begin match sym_of_yojson el with
+            | Ok x -> aux (x :: acc) lt
+            | Error e -> Error e
+          end
+            end
+          in
+          aux [] l
+        |_ -> Error "Expected list of sym_json"
+          ]
+  ; ind_prop : sym      (** Induction principle. *)
+        [@to_yojson fun m ->
+          sym_to_yojson m]
+      [@of_yojson fun j ->
+          sym_of_yojson j]
+  ; ind_nb_params : int (** Number of parameters. *)
+  ; ind_nb_types : int  (** Number of mutually defined types. *)
+  ; ind_nb_cons : int   (** Number of constructors. *) }
+  [@@deriving yojson]
+
+type sym_data =
+  { rules : rule list
+  [@to_yojson fun l ->
+         `List (List.map
+           (fun r -> rule_serializable_to_yojson (to_rule_serializable r))
+           l)]
+      [@of_yojson fun j ->
+         match j with
+         | `List lst ->
+             let rec aux acc = function
+               | [] -> Ok (List.rev acc)
+               | x :: xs ->
+                   begin match rule_serializable_of_yojson x with
+                   | Ok r_ser ->
+                       aux (of_rule_serializable r_ser :: acc) xs
+                   | Error e -> Error e
+                   end
+             in
+             aux [] lst
+         | _ -> Error "rules: expected list"]
+  ; nota : float notation option }[@@deriving yojson]
+
+type dep_data =
+  { dep_symbols : sym_data StrMap.t
+      [@to_yojson fun m ->
+         strmap_to_yojson sym_data_to_yojson m]
+      [@of_yojson fun j ->
+         strmap_of_yojson sym_data_of_yojson j]
+  ; dep_open : bool }
+  [@@deriving yojson]
+
+let to_ind_data_serializable (i : Sign.ind_data) : ind_data =
+  { ind_cons      = i.ind_cons
+  ; ind_prop      = i.ind_prop
+  ; ind_nb_params = i.ind_nb_params
+  ; ind_nb_types  = i.ind_nb_types
+  ; ind_nb_cons   = i.ind_nb_cons
+  }
+
+let of_ind_data_serializable (i : ind_data) : Sign.ind_data =
+  { ind_cons      = i.ind_cons
+  ; ind_prop      = i.ind_prop
+  ; ind_nb_params = i.ind_nb_params
+  ; ind_nb_types  = i.ind_nb_types
+  ; ind_nb_cons   = i.ind_nb_cons
+  }
+
+let to_sym_data_serializable (s : Sign.sym_data) : sym_data =
+  { rules = s.rules
+  ; nota  = s.nota}
+
+  let of_sym_data_serializable (s : sym_data) : Sign.sym_data =
+  { rules = s.rules
+  ; nota  = s.nota}
+
+let to_dep_data_serializable (d:Sign.dep_data) : dep_data =
+  {   dep_symbols = StrMap.map to_sym_data_serializable d.dep_symbols
+    ; dep_open  = d.dep_open
+  }
+
+let of_dep_data_serializable (d:dep_data) : Sign.dep_data =
+  {   dep_symbols = StrMap.map of_sym_data_serializable d.dep_symbols
+    ; dep_open  = d.dep_open
+  }
+
+type t =
   { sign_symbols  : sym StrMap.t
         [@to_yojson fun m ->
          strmap_to_yojson sym_to_yojson m]
@@ -61,18 +154,24 @@ open Timed
 let to_sign_serializable (s:Sign.t) : t =
   { sign_symbols  = Timed.(!)s.sign_symbols
   ; sign_path     = s.sign_path
-  ; sign_deps     = Timed.(!)s.sign_deps
+  ; sign_deps     = (Path.Map.map
+                      (fun d -> to_dep_data_serializable d)
+                      (Timed.(!)s.sign_deps))
   ; sign_builtins = Timed.(!)s.sign_builtins
-  ; sign_ind      = Timed.(!)s.sign_ind
+  ; sign_ind      = (SymMap.map
+                      (fun c -> to_ind_data_serializable c)
+                      (Timed.(!)(s.sign_ind)))
   ; sign_cp_pos   = Timed.(!)s.sign_cp_pos
   }
 
 let of_sign_serializable (s:t) : Sign.t =
   { sign_symbols  = Timed.ref s.sign_symbols
   ; sign_path     = s.sign_path
-  ; sign_deps     = Timed.ref s.sign_deps
+  ; sign_deps     = Timed.ref (Path.Map.map
+                      (fun d -> of_dep_data_serializable d) (s.sign_deps))
   ; sign_builtins = Timed.ref s.sign_builtins
-  ; sign_ind      = Timed.ref s.sign_ind
+  ; sign_ind      = Timed.ref (SymMap.map
+                      (fun c -> of_ind_data_serializable c) s.sign_ind)
   ; sign_cp_pos   = Timed.ref s.sign_cp_pos
   }
 
@@ -188,12 +287,14 @@ let read : string -> Sign.t = fun fname ->
   in
   StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
-  let f _ {dep_symbols=sm; _} =
-    StrMap.iter (fun _ sd -> List.iter reset_rule sd.rules) sm in
+  let f _ ({dep_symbols=sm; _}:Sign.dep_data) =
+    StrMap.iter
+    (fun _ (sd:Sign.sym_data) -> List.iter reset_rule sd.rules)
+    sm in
   Path.Map.iter f !(sign.sign_deps);
-  let reset_ind i =
+  let reset_ind (i:Sign.ind_data) =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
-  let f s i = shallow_reset_sym s; reset_ind i in
+  let f s (i : Sign.ind_data) = shallow_reset_sym s; reset_ind i in
   SymMap.iter f !(sign.sign_ind);
   let reset_cp_pos (_,l,r,_,l_p) =
     reset_term l; reset_term r; reset_term l_p in
@@ -224,8 +325,9 @@ let%test "rev" =
           ; end_offset      = 1
           }
   } in
-  let sym_data = {rules=[rule]; nota=None} in
-  let dep_data = {dep_symbols = (StrMap. add "key1" sym_data StrMap.empty)
+  let sym_data:Sign.sym_data = {rules=[rule]; nota=None} in
+  let dep_data:Sign.dep_data =
+    {dep_symbols = (StrMap. add "key1" sym_data StrMap.empty)
     ; dep_open   = true
   } in
   let sign = Ghost.sign in

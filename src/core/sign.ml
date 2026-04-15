@@ -9,54 +9,14 @@ module J = Yojson.Basic
 (** Data associated to inductive types. *)
 type ind_data =
   { ind_cons : sym list (** Constructors. *)
-        [@to_yojson fun m -> `List (List.map sym_to_yojson m)]
-      [@of_yojson fun j ->
-        match j with
-        |`List l ->
-          let rec aux acc l =
-            begin match l with
-            | [] -> Ok acc
-            | el :: lt -> begin match sym_of_yojson el with
-            | Ok x -> aux (x :: acc) lt
-            | Error e -> Error e
-          end
-            end
-          in
-          aux [] l
-        |_ -> Error "Expected list of sym_json"
-          ]
   ; ind_prop : sym      (** Induction principle. *)
-        [@to_yojson fun m ->
-          sym_to_yojson m]
-      [@of_yojson fun j ->
-          sym_of_yojson j]
   ; ind_nb_params : int (** Number of parameters. *)
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
-  [@@deriving yojson]
 
 type sym_data =
   { rules : rule list
-  [@to_yojson fun l ->
-         `List (List.map
-           (fun r -> rule_serializable_to_yojson (to_rule_serializable r))
-           l)]
-      [@of_yojson fun j ->
-         match j with
-         | `List lst ->
-             let rec aux acc = function
-               | [] -> Ok (List.rev acc)
-               | x :: xs ->
-                   begin match rule_serializable_of_yojson x with
-                   | Ok r_ser ->
-                       aux (of_rule_serializable r_ser :: acc) xs
-                   | Error e -> Error e
-                   end
-             in
-             aux [] lst
-         | _ -> Error "rules: expected list"]
-  ; nota : float notation option }[@@deriving yojson]
-
+  ; nota : float notation option }
   let strmap_to_yojson to_elt (m : 'a StrMap.t) : Yojson.Safe.t =
   `List (
     StrMap.bindings m
@@ -141,12 +101,7 @@ end *)
 (** Data associated to a dependency. *)
 type dep_data =
   { dep_symbols : sym_data StrMap.t
-      [@to_yojson fun m ->
-         strmap_to_yojson sym_data_to_yojson m]
-      [@of_yojson fun j ->
-         strmap_of_yojson sym_data_of_yojson j]
   ; dep_open : bool }
-  [@@deriving yojson]
 
 (** Representation of a signature, that is, what is introduced by a
     module/file. Signatures must be created with the functions [create] or
