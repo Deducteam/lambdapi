@@ -6,8 +6,80 @@ open Error
 open Timed
 
 
+  type t =
+  { sign_symbols  : sym StrMap.t
+        [@to_yojson fun m ->
+         strmap_to_yojson sym_to_yojson m]
+        [@of_yojson fun j ->
+         strmap_of_yojson sym_of_yojson j]
+  ; sign_path     : Path.t
+  ; sign_deps     : dep_data Path.Map.t
+        [@to_yojson fun m ->
+         pathmap_to_yojson dep_data_to_yojson m]
+        [@of_yojson fun m ->
+          pathmap_of_yojson dep_data_of_yojson m ]
+  ; sign_builtins : sym StrMap.t
+        [@to_yojson fun m ->
+         strmap_to_yojson sym_to_yojson m]
+        [@of_yojson fun j ->
+          strmap_of_yojson sym_of_yojson j ]
+  ; sign_ind      : ind_data SymMap.t
+        [@to_yojson fun m ->
+          symmap_to_yojson ind_data_to_yojson m
+         ]
+        [@of_yojson fun json ->
+            symmap_of_yojson
+              (ind_data_of_yojson
+              ) json
+          ]
+  ; sign_cp_pos   : cp_pos list SymMap.t
+        [@to_yojson fun m ->
+          symmap_to_yojson (fun lst ->
+            `List (List.map (fun elt -> cp_pos_to_yojson elt) lst)
+            ) m
+         ]
+        [@of_yojson fun json ->
+            symmap_of_yojson
+              (fun j ->
+                match j with
+                | `List lst ->
+                  let rec aux acc = function
+                    | [] -> Ok (List.rev acc)
+                    | x :: xs ->
+                      (match cp_pos_of_yojson x with
+                      | Ok v -> aux (v :: acc) xs
+                      | Error e -> Error e)
+                  in
+                  aux [] lst
+                | _ -> Error "Expected list for cp_pos list"
+              )
+              json
+          ]
+  }
+  [@@deriving yojson]
+
+let to_sign_serializable (s:Sign.t) : t =
+  { sign_symbols  = Timed.(!)s.sign_symbols
+  ; sign_path     = s.sign_path
+  ; sign_deps     = Timed.(!)s.sign_deps
+  ; sign_builtins = Timed.(!)s.sign_builtins
+  ; sign_ind      = Timed.(!)s.sign_ind
+  ; sign_cp_pos   = Timed.(!)s.sign_cp_pos
+  }
+
+let of_sign_serializable (s:t) : Sign.t =
+  { sign_symbols  = Timed.ref s.sign_symbols
+  ; sign_path     = s.sign_path
+  ; sign_deps     = Timed.ref s.sign_deps
+  ; sign_builtins = Timed.ref s.sign_builtins
+  ; sign_ind      = Timed.ref s.sign_ind
+  ; sign_cp_pos   = Timed.ref s.sign_cp_pos
+  }
+
+
+
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
-let write : t -> string -> unit = fun sign fname ->
+let write : Sign.t -> string -> unit = fun sign fname ->
   (* [Unix.fork] is used to safely [unlink] and write an object file, while
      preserving a valid copy of the written signature in the parent
      process. *)
@@ -29,9 +101,9 @@ let write s n = Debug.(record_time Writing (fun () -> write s n))
     with an error message. *)
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
-let read : string -> t = fun fname ->
+let read : string -> Sign.t = fun fname ->
   let ic = open_in fname in
-  let sign =
+  let sign:Sign.t =
     try
       let json_sign = Yojson.Safe.from_channel ic in
       let sign = of_yojson_with_version json_sign in
