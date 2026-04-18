@@ -10,6 +10,7 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_focus_pos : t -> Pos.popt
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
@@ -20,6 +21,7 @@ module Tactic : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_focus_pos : t -> Pos.popt
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 

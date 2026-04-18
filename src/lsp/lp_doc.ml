@@ -54,7 +54,7 @@ let buf_get_and_clear buf =
   let res = Buffer.contents buf in
   Buffer.clear buf; res
 
-let process_pstep (pstate,diags,logs) tac nb_subproofs =
+let process_pstep (pstate, diags, logs) tac nb_subproofs =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   let hndl_tac_res = handle_tactic pstate tac nb_subproofs in
@@ -63,7 +63,8 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
     let qres = match qres with None -> "OK" | Some x -> x in
-    pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    let focus_loc = Tactic.get_focus_pos tac in
+    pstate, (focus_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -96,12 +97,13 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, qres, None in
+    let ok_diag = Command.get_focus_pos ast, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
-  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
+  | Cmd_Proof (pst, tlist, _thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
+    let dg_proof =
+      (Command.get_focus_pos ast, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof, logs =
