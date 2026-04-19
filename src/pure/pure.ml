@@ -179,6 +179,11 @@ let end_proof : proof_state -> command_result =
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
 
+let find_sym : state -> Term.qident Pos.loc -> Term.sym option =
+  fun (_, ss) qid ->
+  try Some (Sig_state.find_sym ~prt:true ~prv:true ss qid)
+  with Fatal _ -> None
+
 (* Equality tests, important for the incremental engine *)
 
 (* There are two kind of tests for equality:

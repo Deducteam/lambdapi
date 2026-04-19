@@ -10,6 +10,7 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Lplib
 open Common
 open Handle
 
@@ -18,6 +19,8 @@ module J = Yojson.Basic
 val std_protocol : bool ref
 
 val mk_range : Pos.pos -> J.t
+
+val mk_range_of_interval : Range.t -> J.t
 
 val mk_reply : id:int -> result:J.t -> J.t
 

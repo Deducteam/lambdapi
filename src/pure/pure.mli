@@ -86,6 +86,11 @@ val end_proof : proof_state -> command_result
     [st]. This can be used for displaying the type of symbols. *)
 val get_symbols : state -> Term.sym Extra.StrMap.t
 
+(** [find_sym st qid] returns the symbol denoted by [qid] in state [st].
+    Handles short names in scope, aliased module paths, and fully-qualified
+    identifiers. Returns [None] if no such symbol is accessible. *)
+val find_sym : state -> Term.qident Pos.loc -> Term.sym option
+
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise
     or reinitialise the pure interface. *)

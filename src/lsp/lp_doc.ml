@@ -148,17 +148,7 @@ let new_doc ~uri ~version ~text =
       let path = String.sub uri 7 (String.length uri - 7) in
       Some(Pure.initial_state path), []
     with Error.Fatal(_pos, msg) ->
-      let loc : Pos.pos =
-        {
-          fname = Some(uri);
-          start_line = 0;
-          start_col  = 0;
-          start_offset  = 0;
-          end_line = 0;
-          end_col = 0;
-          end_offset  = 0
-        } in
-      (None, [(1, msg), Some(loc)])
+      (None, [(1, msg), Some (Pos.file_start uri)])
   in
   { uri;
     text;
