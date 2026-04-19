@@ -168,7 +168,7 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(Some p,m) ->
-    Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+    Tac_Error(Some p, m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
