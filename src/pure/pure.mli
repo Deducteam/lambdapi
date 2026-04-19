@@ -91,6 +91,12 @@ val get_symbols : state -> Term.sym Extra.StrMap.t
     identifiers. Returns [None] if no such symbol is accessible. *)
 val find_sym : state -> Term.qident Pos.loc -> Term.sym option
 
+(** [restore_time st] activates the timed state (loaded signatures, library
+    mappings, ...) captured when [st] was computed. LSP handlers must call
+    this before touching timed globals, otherwise they see whichever
+    document was opened most recently. *)
+val restore_time : state -> unit
+
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise
     or reinitialise the pure interface. *)

@@ -184,6 +184,13 @@ let find_sym : state -> Term.qident Pos.loc -> Term.sym option =
   try Some (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   with Fatal _ -> None
 
+(* [restore_time st] activates the timed state (loaded signatures, library
+   mappings, ...) captured when [st] was computed. LSP requests must call
+   this before touching timed globals like [Library.lib_mappings], otherwise
+   they would observe whichever document was opened most recently. *)
+let restore_time : state -> unit =
+  fun (t, _) -> Time.restore t
+
 (* Equality tests, important for the incremental engine *)
 
 (* There are two kind of tests for equality:

@@ -151,6 +151,7 @@ let do_symbols ofmt ~id params =
     let msg = LSP.mk_reply ~id ~result:`Null in
     LIO.send_json ofmt msg
   | Some ss ->
+    Pure.restore_time ss;
     let sym = Pure.get_symbols ss in
     let sym =
       Extra.StrMap.fold
@@ -308,6 +309,7 @@ let do_definition ofmt ~id params =
     let msg = LSP.mk_reply ~id ~result:`Null in
     LIO.send_json ofmt msg
   | Some ss ->
+    Pure.restore_time ss;
     let ln, pos = get_textPosition params in
 
     (* Lines sent by the client start at 0 *)
@@ -341,6 +343,7 @@ let hover_symInfo ofmt ~id params =
     let ss = match doc.final with
       | Some ss -> ss
       | None -> raise (Error.fatal_no_pos "Root state is missing") in
+    Pure.restore_time ss;
 
     match get_symbol pt doc.map with
     | None -> send_null ()
