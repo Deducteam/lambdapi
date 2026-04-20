@@ -101,7 +101,8 @@ let do_change ofmt params =
 let do_close _ofmt params =
   let document = dict_field "textDocument" params in
   let doc_file = string_field "uri" document in
-  Hashtbl.remove doc_table doc_file
+  Hashtbl.remove doc_table doc_file;
+  Hashtbl.remove completed_table doc_file
 
 let grab_doc params =
   let document = dict_field "textDocument" params in
