@@ -5,63 +5,51 @@ open Common
 open Error
 open Timed
 
+module StrMap = struct
+include StrMap
+  let to_yojson to_elt m = strmap_to_yojson to_elt m
+  let of_yojson of_elt json = strmap_of_yojson of_elt json
+end
+
+module Path = struct
+  include Path
+  module Map = struct
+  include Map
+    let to_yojson to_elm m =
+         pathmap_to_yojson to_elm m
+    let of_yojson of_elm m =
+          pathmap_of_yojson of_elm m
+  end
+end
+
+module SymMap = struct
+include SymMap
+let to_yojson to_elm m =
+  symmap_to_yojson to_elm m
+let of_yojson of_elm m =
+  symmap_of_yojson of_elm  m
+end
 
 type ind_data =
-  { ind_cons : sym list (** Constructors. *)
-        [@to_yojson fun m -> `List (List.map sym_to_yojson m)]
-      [@of_yojson fun j ->
-        match j with
-        |`List l ->
-          let rec aux acc l =
-            begin match l with
-            | [] -> Ok acc
-            | el :: lt -> begin match sym_of_yojson el with
-            | Ok x -> aux (x :: acc) lt
-            | Error e -> Error e
-          end
-            end
-          in
-          aux [] l
-        |_ -> Error "Expected list of sym_json"
-          ]
-  ; ind_prop : sym      (** Induction principle. *)
-        [@to_yojson fun m ->
-          sym_to_yojson m]
-      [@of_yojson fun j ->
-          sym_of_yojson j]
+  { ind_cons : sym list
+  ; ind_prop : sym
   ; ind_nb_params : int (** Number of parameters. *)
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
   [@@deriving yojson]
 
+let rule_to_yojson r = rule_serializable_to_yojson (to_rule_serializable r)
+let rule_of_yojson j =
+  match rule_serializable_of_yojson j with
+  | Ok r -> Ok (of_rule_serializable r)
+  | Error e -> Error e
+
 type sym_data =
   { rules : rule list
-  [@to_yojson fun l ->
-         `List (List.map
-           (fun r -> rule_serializable_to_yojson (to_rule_serializable r))
-           l)]
-      [@of_yojson fun j ->
-         match j with
-         | `List lst ->
-             let rec aux acc = function
-               | [] -> Ok (List.rev acc)
-               | x :: xs ->
-                   begin match rule_serializable_of_yojson x with
-                   | Ok r_ser ->
-                       aux (of_rule_serializable r_ser :: acc) xs
-                   | Error e -> Error e
-                   end
-             in
-             aux [] lst
-         | _ -> Error "rules: expected list"]
   ; nota : float notation option }[@@deriving yojson]
 
 type dep_data =
   { dep_symbols : sym_data StrMap.t
-      [@to_yojson fun m ->
-         strmap_to_yojson sym_data_to_yojson m]
-      [@of_yojson fun j ->
-         strmap_of_yojson sym_data_of_yojson j]
   ; dep_open : bool }
   [@@deriving yojson]
 
@@ -101,53 +89,11 @@ let of_dep_data_serializable (d:dep_data) : Sign.dep_data =
 
 type t =
   { sign_symbols  : sym StrMap.t
-        [@to_yojson fun m ->
-         strmap_to_yojson sym_to_yojson m]
-        [@of_yojson fun j ->
-         strmap_of_yojson sym_of_yojson j]
   ; sign_path     : Path.t
   ; sign_deps     : dep_data Path.Map.t
-        [@to_yojson fun m ->
-         pathmap_to_yojson dep_data_to_yojson m]
-        [@of_yojson fun m ->
-          pathmap_of_yojson dep_data_of_yojson m ]
   ; sign_builtins : sym StrMap.t
-        [@to_yojson fun m ->
-         strmap_to_yojson sym_to_yojson m]
-        [@of_yojson fun j ->
-          strmap_of_yojson sym_of_yojson j ]
   ; sign_ind      : ind_data SymMap.t
-        [@to_yojson fun m ->
-          symmap_to_yojson ind_data_to_yojson m
-         ]
-        [@of_yojson fun json ->
-            symmap_of_yojson
-              (ind_data_of_yojson
-              ) json
-          ]
   ; sign_cp_pos   : cp_pos list SymMap.t
-        [@to_yojson fun m ->
-          symmap_to_yojson (fun lst ->
-            `List (List.map (fun elt -> cp_pos_to_yojson elt) lst)
-            ) m
-         ]
-        [@of_yojson fun json ->
-            symmap_of_yojson
-              (fun j ->
-                match j with
-                | `List lst ->
-                  let rec aux acc = function
-                    | [] -> Ok (List.rev acc)
-                    | x :: xs ->
-                      (match cp_pos_of_yojson x with
-                      | Ok v -> aux (v :: acc) xs
-                      | Error e -> Error e)
-                  in
-                  aux [] lst
-                | _ -> Error "Expected list for cp_pos list"
-              )
-              json
-          ]
   }
   [@@deriving yojson]
 
