@@ -1028,15 +1028,15 @@ let sym_dump =
 
 module Term_serializable = struct
   type term_serializable =
-    | Ser_Vari of var
-    | Ser_Type
-    | Ser_Kind
-    | Ser_Symb of sym_serializable
-    | Ser_Prod of term_serializable * binder_serializable
-    | Ser_Abst of term_serializable * binder_serializable
-    | Ser_Appl of term_serializable * term_serializable
-    | Ser_Patt of int option * string * term_serializable array
-    | Ser_LLet of term_serializable * term_serializable * binder_serializable
+    | Vari of var
+    | Type
+    | Kind
+    | Symb of sym_serializable
+    | Prod of term_serializable * binder_serializable
+    | Abst of term_serializable * binder_serializable
+    | Appl of term_serializable * term_serializable
+    | Patt of int option * string * term_serializable array
+    | LLet of term_serializable * term_serializable * binder_serializable
     [@@deriving yojson]
 
   and binder_serializable =
@@ -1046,10 +1046,10 @@ module Term_serializable = struct
     [@@deriving yojson]
 
   and meta_serializable =
-    { ser_meta_key   : int
-    ; ser_meta_type  : term_serializable
-    ; ser_meta_arity : int
-    ; ser_meta_value : mbinder_serializable option
+    { meta_key   : int
+    ; meta_type  : term_serializable
+    ; meta_arity : int
+    ; meta_value : mbinder_serializable option
     } [@@deriving yojson]
 
   and mbinder_serializable =
@@ -1059,49 +1059,49 @@ module Term_serializable = struct
     [@@deriving yojson]
 
   and rule_serializable =
-    { ser_lhs      : term_serializable list
-    ; ser_names    : string array
-    ; ser_rhs      : term_serializable
-    ; ser_arity    : int
-    ; ser_arities  : int array
-    ; ser_vars_nb  : int
-    ; ser_xvars_nb : int
-    ; ser_rule_pos : Pos.popt
+    { lhs      : term_serializable list
+    ; names    : string array
+    ; rhs      : term_serializable
+    ; arity    : int
+    ; arities  : int array
+    ; vars_nb  : int
+    ; xvars_nb : int
+    ; rule_pos : Pos.popt
     }[@@deriving yojson]
 
   and dtree_serializable =
     rule_serializable Tree_type.dtree_serializable [@@deriving yojson]
 
   and sym_serializable =
-    { ser_sym_expo  : expo
-    ; ser_sym_path  : Path.t
-    ; ser_sym_name  : string
-    ; ser_sym_type  : term_serializable
-    ; ser_sym_impl  : bool list
-    ; ser_sym_prop  : prop
-    ; ser_sym_nota  : float notation (*Timed.ref*)
-    ; ser_sym_def   : term_serializable option (*Timed.ref*)
-    ; ser_sym_opaq  : bool (*Timed.ref*)
-    ; ser_sym_rules : rule_serializable list (* Timed.ref *)
-    ; ser_sym_mstrat: match_strat
-    ; ser_sym_pos   : Pos.popt
-    ; ser_sym_decl_pos : Pos.popt
+    { sym_expo  : expo
+    ; sym_path  : Path.t
+    ; sym_name  : string
+    ; sym_type  : term_serializable
+    ; sym_impl  : bool list
+    ; sym_prop  : prop
+    ; sym_nota  : float notation (*Timed.ref*)
+    ; sym_def   : term_serializable option (*Timed.ref*)
+    ; sym_opaq  : bool (*Timed.ref*)
+    ; sym_rules : rule_serializable list (* Timed.ref *)
+    ; sym_mstrat: match_strat
+    ; sym_pos   : Pos.popt
+    ; sym_decl_pos : Pos.popt
     } [@@deriving yojson]
 
 
-  let rec to_term_serializable t = match t with
-    | Vari x         -> Ser_Vari x
-    | Type           -> Ser_Type
-    | Kind           -> Ser_Kind
-    | Symb x         -> Ser_Symb (to_sym_serializable x)
-    | Prod (x, y)    ->Ser_Prod
+  let rec to_term_serializable (t:term):term_serializable = match t with
+    | Vari x         -> Vari x
+    | Type           -> Type
+    | Kind           -> Kind
+    | Symb x         -> Symb (to_sym_serializable x)
+    | Prod (x, y)    ->Prod
                         (to_term_serializable x, to_binder_serializable y)
-    | Abst (x, y)    ->Ser_Abst
+    | Abst (x, y)    ->Abst
                         (to_term_serializable x, to_binder_serializable y)
-    | Appl (x, y)    ->Ser_Appl
+    | Appl (x, y)    ->Appl
                         (to_term_serializable x, to_term_serializable y)
-    | Patt (x, y, z) -> Ser_Patt (x, y, Array.map to_term_serializable z)
-    | LLet (x, y, z) -> Ser_LLet (to_term_serializable x
+    | Patt (x, y, z) -> Patt (x, y, Array.map to_term_serializable z)
+    | LLet (x, y, z) -> LLet (to_term_serializable x
                                   , to_term_serializable y
                                   , to_binder_serializable z)
     | _              -> assert false
@@ -1109,47 +1109,47 @@ module Term_serializable = struct
   and to_binder_serializable (x, y, z) =
     (x, to_term_serializable y, Array.map to_term_serializable z)
 
-  and to_sym_serializable s =
+  and to_sym_serializable (s:sym) =
     {
-      ser_sym_expo     = s.sym_expo
-    ; ser_sym_path     = s.sym_path
-    ; ser_sym_name     = s.sym_name
-    ; ser_sym_type     = (to_term_serializable (Timed.(!) s.sym_type))
-    ; ser_sym_impl     = s.sym_impl
-    ; ser_sym_prop     = s.sym_prop
-    ; ser_sym_nota     = Timed.(!)s.sym_nota
-    ; ser_sym_def      = Option.map to_term_serializable (Timed.(!) s.sym_def)
-    ; ser_sym_opaq     = Timed.(!)s.sym_opaq
-    ; ser_sym_rules    = List.map to_rule_serializable (Timed.(!)s.sym_rules)
-    ; ser_sym_mstrat   = s.sym_mstrat
-    ; ser_sym_pos      = s.sym_pos
-    ; ser_sym_decl_pos = s.sym_decl_pos
+      sym_expo     = s.sym_expo
+    ; sym_path     = s.sym_path
+    ; sym_name     = s.sym_name
+    ; sym_type     = (to_term_serializable (Timed.(!) s.sym_type))
+    ; sym_impl     = s.sym_impl
+    ; sym_prop     = s.sym_prop
+    ; sym_nota     = Timed.(!)s.sym_nota
+    ; sym_def      = Option.map to_term_serializable (Timed.(!) s.sym_def)
+    ; sym_opaq     = Timed.(!)s.sym_opaq
+    ; sym_rules    = List.map to_rule_serializable (Timed.(!)s.sym_rules)
+    ; sym_mstrat   = s.sym_mstrat
+    ; sym_pos      = s.sym_pos
+    ; sym_decl_pos = s.sym_decl_pos
     }
 
   and to_rule_serializable (r : rule) : rule_serializable =
     {
-      ser_lhs      = List.map to_term_serializable r.lhs;
-      ser_names    = r.names;
-      ser_rhs      = to_term_serializable r.rhs;
-      ser_arity    = r.arity;
-      ser_arities  = r.arities;
-      ser_vars_nb  = r.vars_nb;
-      ser_xvars_nb = r.xvars_nb;
-      ser_rule_pos = r.rule_pos;
+      lhs      = List.map to_term_serializable r.lhs;
+      names    = r.names;
+      rhs      = to_term_serializable r.rhs;
+      arity    = r.arity;
+      arities  = r.arities;
+      vars_nb  = r.vars_nb;
+      xvars_nb = r.xvars_nb;
+      rule_pos = r.rule_pos;
     }
-  let rec of_term_serializable t = match t with
-    | Ser_Vari x          -> Vari x
-    | Ser_Type            -> Type
-    | Ser_Kind            -> Kind
-    | Ser_Symb x          -> Symb (of_sym_serializable x)
-    | Ser_Prod (x, y)     -> Prod
+  let rec of_term_serializable t:term = match t with
+    | Vari x          -> Vari x
+    | Type            -> Type
+    | Kind            -> Kind
+    | Symb x          -> Symb (of_sym_serializable x)
+    | Prod (x, y)     -> Prod
     (of_term_serializable x, of_binder_serializable y)
-    | Ser_Abst (x, y)     -> Abst
+    | Abst (x, y)     -> Abst
     (of_term_serializable x, of_binder_serializable y)
-    | Ser_Appl (x, y)     -> Appl
+    | Appl (x, y)     -> Appl
     (of_term_serializable x, of_term_serializable y)
-    | Ser_Patt (x, y, z)  -> Patt (x, y, Array.map of_term_serializable z)
-    | Ser_LLet (x, y, z)  -> LLet
+    | Patt (x, y, z)  -> Patt (x, y, Array.map of_term_serializable z)
+    | LLet (x, y, z)  -> LLet
                               (of_term_serializable x
                               , of_term_serializable y
                               , of_binder_serializable z)
@@ -1157,34 +1157,34 @@ module Term_serializable = struct
   and of_binder_serializable (x, y, z) =
     (x, of_term_serializable y, Array.map of_term_serializable z)
 
-  and of_sym_serializable s =
+  and of_sym_serializable (s:sym_serializable):sym =
     {
-      sym_expo     = s.ser_sym_expo
-    ; sym_path     = s.ser_sym_path
-    ; sym_name     = s.ser_sym_name
-    ; sym_type     = Timed.ref (of_term_serializable s.ser_sym_type)
-    ; sym_impl     = s.ser_sym_impl
-    ; sym_prop     = s.ser_sym_prop
-    ; sym_nota     = Timed.ref s.ser_sym_nota
-    ; sym_def      = Timed.ref (Option.map of_term_serializable s.ser_sym_def)
-    ; sym_opaq     = Timed.ref s.ser_sym_opaq
-    ; sym_rules    = Timed.ref (List.map of_rule_serializable s.ser_sym_rules)
-    ; sym_mstrat   = s.ser_sym_mstrat
+      sym_expo     = s.sym_expo
+    ; sym_path     = s.sym_path
+    ; sym_name     = s.sym_name
+    ; sym_type     = Timed.ref (of_term_serializable s.sym_type)
+    ; sym_impl     = s.sym_impl
+    ; sym_prop     = s.sym_prop
+    ; sym_nota     = Timed.ref s.sym_nota
+    ; sym_def      = Timed.ref (Option.map of_term_serializable s.sym_def)
+    ; sym_opaq     = Timed.ref s.sym_opaq
+    ; sym_rules    = Timed.ref (List.map of_rule_serializable s.sym_rules)
+    ; sym_mstrat   = s.sym_mstrat
     ; sym_dtree    = Timed.ref (Tree_type.empty_dtree)
-    ; sym_pos      = s.ser_sym_pos
-    ; sym_decl_pos = s.ser_sym_decl_pos
+    ; sym_pos      = s.sym_pos
+    ; sym_decl_pos = s.sym_decl_pos
     }
 
   and of_rule_serializable (r : rule_serializable) : rule =
   {
-    lhs      = List.map of_term_serializable r.ser_lhs;
-    names    = r.ser_names;
-    rhs      = of_term_serializable r.ser_rhs;
-    arity    = r.ser_arity;
-    arities  = r.ser_arities;
-    vars_nb  = r.ser_vars_nb;
-    xvars_nb = r.ser_xvars_nb;
-    rule_pos = r.ser_rule_pos;
+    lhs      = List.map of_term_serializable r.lhs;
+    names    = r.names;
+    rhs      = of_term_serializable r.rhs;
+    arity    = r.arity;
+    arities  = r.arities;
+    vars_nb  = r.vars_nb;
+    xvars_nb = r.xvars_nb;
+    rule_pos = r.rule_pos;
   }
 
   let sym_to_yojson s =

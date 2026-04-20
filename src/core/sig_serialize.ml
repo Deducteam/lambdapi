@@ -274,7 +274,7 @@ let read : string -> Sign.t = fun fname ->
   unsafe_reset sign.sign_builtins;
   unsafe_reset sign.sign_ind;
   unsafe_reset sign.sign_cp_pos;
-  let shallow_reset_sym s =
+  let shallow_reset_sym (s:sym) =
     unsafe_reset s.sym_type;
     unsafe_reset s.sym_def;
     unsafe_reset s.sym_rules;
@@ -297,7 +297,7 @@ let read : string -> Sign.t = fun fname ->
     | Meta _ -> assert false
     | Plac _ -> assert false
   in
-  let reset_rule r =
+  let reset_rule (r:rule) =
     List.iter reset_term r.lhs;
     reset_term r.rhs
   in

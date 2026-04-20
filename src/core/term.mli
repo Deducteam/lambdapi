@@ -479,53 +479,53 @@ val dump_term : term
 module Term_serializable : sig
 
 type term_serializable =
-  | Ser_Vari of var
-  | Ser_Type
-  | Ser_Kind
-  | Ser_Symb of sym_serializable
-  | Ser_Prod of term_serializable * binder_serializable
-  | Ser_Abst of term_serializable * binder_serializable
-  | Ser_Appl of term_serializable * term_serializable
-  | Ser_Patt of int option * string * term_serializable array
-  | Ser_LLet of term_serializable * term_serializable * binder_serializable
+  | Vari of var
+  | Type
+  | Kind
+  | Symb of sym_serializable
+  | Prod of term_serializable * binder_serializable
+  | Abst of term_serializable * binder_serializable
+  | Appl of term_serializable * term_serializable
+  | Patt of int option * string * term_serializable array
+  | LLet of term_serializable * term_serializable * binder_serializable
 
 and binder_serializable =
         binder_info * term_serializable * term_serializable array
 
 and meta_serializable =
-  { ser_meta_key   : int
-  ; ser_meta_type  : term_serializable  (**Timed.ref. *)
-  ; ser_meta_arity : int
-  ; ser_meta_value : mbinder_serializable option (**  Timed.ref. *) }
+  { meta_key   : int
+  ; meta_type  : term_serializable  (**Timed.ref. *)
+  ; meta_arity : int
+  ; meta_value : mbinder_serializable option (**  Timed.ref. *) }
 
 and mbinder_serializable =
         mbinder_info * term_serializable * term_serializable array
 
 and rule_serializable =
-  { ser_lhs      : term_serializable list
-  ; ser_names    : string array
-  ; ser_rhs      : term_serializable
-  ; ser_arity    : int
-  ; ser_arities  : int array
-  ; ser_vars_nb  : int
-  ; ser_xvars_nb : int
-  ; ser_rule_pos : Pos.popt
+  { lhs      : term_serializable list
+  ; names    : string array
+  ; rhs      : term_serializable
+  ; arity    : int
+  ; arities  : int array
+  ; vars_nb  : int
+  ; xvars_nb : int
+  ; rule_pos : Pos.popt
   } [@@deriving yojson]
 
 and sym_serializable =
-  { ser_sym_expo  : expo
-  ; ser_sym_path  : Path.t
-  ; ser_sym_name  : string
-  ; ser_sym_type  : term_serializable
-  ; ser_sym_impl  : bool list
-  ; ser_sym_prop  : prop
-  ; ser_sym_nota  : float notation (*Timed.ref*)
-  ; ser_sym_def   : term_serializable option (* Timed.ref *)
-  ; ser_sym_opaq  : bool (* Timed.ref *)
-  ; ser_sym_rules : rule_serializable list (* Timed.ref*)
-  ; ser_sym_mstrat: match_strat
-  ; ser_sym_pos   : Pos.popt
-  ; ser_sym_decl_pos : Pos.popt
+  { sym_expo  : expo
+  ; sym_path  : Path.t
+  ; sym_name  : string
+  ; sym_type  : term_serializable
+  ; sym_impl  : bool list
+  ; sym_prop  : prop
+  ; sym_nota  : float notation (*Timed.ref*)
+  ; sym_def   : term_serializable option (* Timed.ref *)
+  ; sym_opaq  : bool (* Timed.ref *)
+  ; sym_rules : rule_serializable list (* Timed.ref*)
+  ; sym_mstrat: match_strat
+  ; sym_pos   : Pos.popt
+  ; sym_decl_pos : Pos.popt
   }
 
 and dtree_serializable = rule_serializable Tree_type.dtree_serializable
