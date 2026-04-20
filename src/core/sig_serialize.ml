@@ -1,5 +1,6 @@
 open Sign
 open Term
+open Term_serializable
 open Lplib.Extra
 open Common
 open Error

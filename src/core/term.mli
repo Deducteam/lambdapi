@@ -469,6 +469,14 @@ module Raw : sig
   val ctxt : ctxt pp
 end
 
+type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
+
+type binder_info = {binder_name : string; binder_bound : bool}
+
+val sym_dump : sym
+val dump_term : term
+
+module Term_serializable : sig
 
 type term_serializable =
   | Ser_Vari of var
@@ -481,9 +489,6 @@ type term_serializable =
   | Ser_Patt of int option * string * term_serializable array
   | Ser_LLet of term_serializable * term_serializable * binder_serializable
 
-and mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
-
-and binder_info = {binder_name : string; binder_bound : bool}
 and binder_serializable =
         binder_info * term_serializable * term_serializable array
 
@@ -524,19 +529,15 @@ and sym_serializable =
   }
 
 and dtree_serializable = rule_serializable Tree_type.dtree_serializable
-
-
-val sym_dump : sym
 val sym_to_yojson : sym -> Yojson.Safe.t
-val sym_of_yojson : Yojson.Safe.t -> (sym, string) result
+    val sym_of_yojson : Yojson.Safe.t -> (sym, string) result
 
-val to_sym_serializable : sym -> sym_serializable
-val of_sym_serializable : sym_serializable -> sym
+    val to_sym_serializable : sym -> sym_serializable
+    val of_sym_serializable : sym_serializable -> sym
 
-val to_rule_serializable : rule -> rule_serializable
-val of_rule_serializable : rule_serializable -> rule
+    val to_rule_serializable : rule -> rule_serializable
+    val of_rule_serializable : rule_serializable -> rule
 
-val term_to_yojson : term -> Yojson.Safe.t
-val term_of_yojson : Yojson.Safe.t -> (term, string) result
-
-val dump_term : term
+    val term_to_yojson : term -> Yojson.Safe.t
+    val term_of_yojson : Yojson.Safe.t -> (term, string) result
+end
