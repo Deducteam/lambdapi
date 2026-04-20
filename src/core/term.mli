@@ -64,6 +64,7 @@ type 'a notation =
   | IntZero
   | IntPos
   | IntNeg
+    [@@deriving yojson]
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -447,11 +448,13 @@ val new_problem : unit -> problem
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
+    (* [@@deriving yojson] *)
 
 val subterm_pos : subterm_pos pp
 
 (** Type of critical pair positions (pos,l,r,p,l_p). *)
-type cp_pos = Pos.popt * term * term * subterm_pos * term
+type cp_pos = Pos.popt * term * term * subterm_pos * term [@@deriving yojson]
+    (* [@@deriving yojson] *)
 
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule
@@ -464,4 +467,77 @@ module Raw : sig
   val sym : sym pp
   val term : term pp
   val ctxt : ctxt pp
+end
+
+type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
+
+type binder_info = {binder_name : string; binder_bound : bool}
+
+val sym_dump : sym
+val dump_term : term
+
+module Term_serializable : sig
+
+type term_serializable =
+  | Vari of var
+  | Type
+  | Kind
+  | Symb of sym_serializable
+  | Prod of term_serializable * binder_serializable
+  | Abst of term_serializable * binder_serializable
+  | Appl of term_serializable * term_serializable
+  | Patt of int option * string * term_serializable array
+  | LLet of term_serializable * term_serializable * binder_serializable
+
+and binder_serializable =
+        binder_info * term_serializable * term_serializable array
+
+and meta_serializable =
+  { meta_key   : int
+  ; meta_type  : term_serializable  (**Timed.ref. *)
+  ; meta_arity : int
+  ; meta_value : mbinder_serializable option (**  Timed.ref. *) }
+
+and mbinder_serializable =
+        mbinder_info * term_serializable * term_serializable array
+
+and rule_serializable =
+  { lhs      : term_serializable list
+  ; names    : string array
+  ; rhs      : term_serializable
+  ; arity    : int
+  ; arities  : int array
+  ; vars_nb  : int
+  ; xvars_nb : int
+  ; rule_pos : Pos.popt
+  } [@@deriving yojson]
+
+and sym_serializable =
+  { sym_expo  : expo
+  ; sym_path  : Path.t
+  ; sym_name  : string
+  ; sym_type  : term_serializable
+  ; sym_impl  : bool list
+  ; sym_prop  : prop
+  ; sym_nota  : float notation (*Timed.ref*)
+  ; sym_def   : term_serializable option (* Timed.ref *)
+  ; sym_opaq  : bool (* Timed.ref *)
+  ; sym_rules : rule_serializable list (* Timed.ref*)
+  ; sym_mstrat: match_strat
+  ; sym_pos   : Pos.popt
+  ; sym_decl_pos : Pos.popt
+  }
+
+and dtree_serializable = rule_serializable Tree_type.dtree_serializable
+val sym_to_yojson : sym -> Yojson.Safe.t
+    val sym_of_yojson : Yojson.Safe.t -> (sym, string) result
+
+    val to_sym_serializable : sym -> sym_serializable
+    val of_sym_serializable : sym_serializable -> sym
+
+    val to_rule_serializable : rule -> rule_serializable
+    val of_rule_serializable : rule_serializable -> rule
+
+    val term_to_yojson : term -> Yojson.Safe.t
+    val term_of_yojson : Yojson.Safe.t -> (term, string) result
 end

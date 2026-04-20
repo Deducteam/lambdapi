@@ -41,6 +41,7 @@ depends: [
   "lwt_ppx" {>= "1"}
   "uri" {>= "1.1"}
   "ppx_inline_test"
+  "ppx_deriving_yojson" { >= "3.7.0"}
 ]
 build: [
   ["dune" "subst"] {dev}

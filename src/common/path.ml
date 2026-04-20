@@ -5,7 +5,7 @@ open Lplib open Base
 module Path =
   struct
     (** Representation of a module name (roughly, a file path). *)
-    type t = string list
+    type t = string list [@@deriving yojson]
 
     (** [pp ppf p] prints path [p] on the formatter [ppf]. Remark: to be used
        in Common only as it does not escape identifiers that need to be
@@ -15,6 +15,12 @@ module Path =
     (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare
 
+    let make (s : string) : t =
+      if s = "" then []
+      else
+        s
+        |> String.split_on_char '.'
+        |> List.filter (fun x -> x <> "")
   end
 
 include Path

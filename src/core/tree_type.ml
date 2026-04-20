@@ -22,6 +22,7 @@ module TC =
           in the environment builder to refer  to the higher order variables a
           term may depend on. *)
       | Type
+      [@@deriving yojson]
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -54,6 +55,7 @@ type tree_cond =
   | CondFV of int * int array
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
+  [@@deriving yojson]
 
 (** {b NOTE} that when performing a [tree_cond.CondFV] check, we
     are concerned about variables that were bound in the term being reduced
@@ -73,7 +75,7 @@ let tree_cond : tree_cond pp = fun ppf tc ->
     substitutes variable [v] of the RHS by term [p] of array [v]. In the case
     of higher order patterns, [p] may need to be itself subsituted  with {e
     bound} variables [xs] collected when traversing binders. *)
-type rhs_substit = (int * (int * int array)) list
+type rhs_substit = (int * (int * int array)) list [@@deriving yojson]
 
 (** Representation of a tree. The definition relies on parameters since module
     [Term] depends on the current module, and that would thus produce
@@ -153,6 +155,127 @@ let rec tree_capacity : 'r tree -> int = fun tr ->
    (sometimes) avoid creating several times the same trees when the rules are
    not given in one go. *)
 type 'a dtree = int Lazy.t * 'a tree Lazy.t
+
+
+(* ---------------------------------------------- *)
+
+
+type 'a tree_serializable =
+  | Fail_s
+  | Leaf_s of rhs_substit * 'a
+  | Cond_s of
+      { ok   : 'a tree_serializable
+      ; cond : tree_cond
+      ; fail : 'a tree_serializable
+      }
+  | Eos_s of 'a tree_serializable * 'a tree_serializable
+  | Node_s of
+      { swap : int
+      ; store : bool
+      ; children : (TC.t * 'a tree_serializable) list
+      ; abstraction : (int * 'a tree_serializable) option
+      ; product : (int * 'a tree_serializable) option
+      ; default : 'a tree_serializable option
+      }
+[@@deriving yojson]
+
+let rec to_tree_serializable (f : 'a -> 'b) (t : 'a tree)
+  : 'b tree_serializable =
+  match t with
+  | Fail -> Fail_s
+
+  | Leaf (subst, x) ->
+      Leaf_s (subst, f x)
+
+  | Cond { ok; cond; fail } ->
+      Cond_s
+        { ok   = to_tree_serializable f ok
+        ; cond
+        ; fail = to_tree_serializable f fail
+        }
+
+  | Eos (t1, t2) ->
+      Eos_s
+        ( to_tree_serializable f t1
+        , to_tree_serializable f t2 )
+
+  | Node { swap; store; children; abstraction; product; default } ->
+      Node_s
+        { swap
+        ; store
+        ; children =
+            TCMap.bindings children
+            |> List.map (fun (k, v) ->
+                 (k, to_tree_serializable f v))
+        ; abstraction =
+            Option.map (fun (i, t) ->
+              (i, to_tree_serializable f t)) abstraction
+        ; product =
+            Option.map (fun (i, t) ->
+              (i, to_tree_serializable f t)) product
+        ; default =
+            Option.map (to_tree_serializable f) default
+        }
+
+let rec of_tree_serializable
+    (f : 'a -> 'a_serializable) (t : 'a tree_serializable)
+    : 'a_serializabe tree =
+  match t with
+  | Fail_s -> Fail
+
+  | Leaf_s (subst, x) ->
+      Leaf (subst, f x)
+
+  | Cond_s { ok; cond; fail } ->
+      Cond
+        { ok   = of_tree_serializable f ok
+        ; cond
+        ; fail = of_tree_serializable f fail
+        }
+
+  | Eos_s (t1, t2) ->
+      Eos
+        ( of_tree_serializable f t1
+        , of_tree_serializable f t2 )
+
+  | Node_s { swap; store; children; abstraction; product; default } ->
+      Node
+        { swap
+        ; store
+        ; children =
+            List.fold_left
+              (fun acc (k, v) ->
+                 TCMap.add k (of_tree_serializable f v) acc)
+              TCMap.empty
+              children
+        ; abstraction =
+            Option.map (fun (i, t) ->
+              (i, of_tree_serializable f t)) abstraction
+        ; product =
+            Option.map (fun (i, t) ->
+              (i, of_tree_serializable f t)) product
+        ; default =
+            Option.map (of_tree_serializable f) default
+        }
+
+type 'a dtree_serializable =
+  int * 'a tree_serializable
+[@@deriving yojson]
+
+let to_dtree_serializable
+    ((f : 'a -> 'a_serialisable))((n_lazy, t_lazy) : 'a dtree)
+    : 'a_serialisable dtree_serializable =
+  let n = Lazy.force n_lazy in
+  let t = Lazy.force t_lazy in
+  ( n
+  , to_tree_serializable f t
+  )
+let of_dtree_serializable ((f : 'a_serialisable -> 'a))
+    ((n, t) :'a_serialisable dtree_serializable)
+    : 'a dtree =
+  ( lazy n
+  , lazy (of_tree_serializable f t)
+  )
 
 (** [empty_dtree] is the empty decision tree. *)
 let empty_dtree : 'a dtree = (lazy 0, lazy Fail)

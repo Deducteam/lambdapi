@@ -1,6 +1,7 @@
 (library
  (name common)
  (public_name lambdapi.common)
+ (preprocess (pps ppx_deriving_yojson))
  (modules :standard)
  (libraries camlp-streams str timed lambdapi.lplib)
  (flags -w +3))

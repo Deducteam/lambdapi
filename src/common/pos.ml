@@ -14,7 +14,7 @@ type pos =
   ; end_col      : int (** Column number (utf8) of the ending point.   *)
   ; end_offset   : int (** Number of chars since the beginning of the document
                            for the ending point *)
-  }
+  } [@@deriving yojson]
 
 (** Total comparison function on pos. *)
 let cmp : pos cmp = fun p1 p2 ->
@@ -77,7 +77,7 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
 
 
 (** Type of optional positions. *)
-type popt = pos option
+type popt = pos option [@@deriving yojson]
 
 (** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
 let equal : popt -> popt -> bool = fun p1 p2 ->
