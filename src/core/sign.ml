@@ -4,7 +4,6 @@ open Lplib open Extra
 open Common open Pos
 open Timed
 open Term
-module J = Yojson.Basic
 
 (** Data associated to inductive types. *)
 type ind_data =
