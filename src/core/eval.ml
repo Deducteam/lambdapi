@@ -315,9 +315,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           match bound.(pos) with
           | Some(_) -> env.(slot) <- bound.(pos)
           | None    ->
-              let f e = try IntMap.find e id_vars
-                        with Not_found -> assert false in
-              let xs = Array.map f xs in
+              let var id = try IntMap.find id id_vars
+                           with Not_found -> assert false in
+              let xs = Array.map var xs in
               env.(slot) <- Some(bind_mvar xs vars.(pos))
         in
         List.iter f rhs_subst;
@@ -334,11 +334,11 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                 log_rew "%aCondNL(%d[%a],%d[%a]) %a ≟ %a" D.depth !depth
                   i (Array.pp D.int ",") vi j (Array.pp D.int ",") vj
                   Raw.term vars.(i) Raw.term vars.(j);
-              let f id = try IntMap.find id id_vars
-                        with Not_found -> assert false in
-              let vj = Array.map f vj in
+              let var id = try IntMap.find id id_vars
+                           with Not_found -> assert false in
+              let vj = Array.map var vj in
               let bj = bind_mvar vj vars.(j) in
-              let vi = Array.map (fun id -> mk_Vari (f id)) vi in
+              let vi = Array.map (fun id -> mk_Vari (var id)) vi in
               let tj = msubst bj vi in
               if eq_modulo whnf cfg vars.(i) tj then ok else fail
           | CondFV(i,xs) ->
