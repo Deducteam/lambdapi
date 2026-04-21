@@ -134,7 +134,8 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
 let strint = Array.init 11 string_of_int
 
 (** [scope ~find_sym ~typ k md ss env t] turns a parser-level term [t] into an
-    actual term. *)
+    actual term. [k] is the number of space characters to print before the
+    logging data. *)
 let rec scope : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) k md ss env t ->

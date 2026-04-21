@@ -64,6 +64,10 @@ let make logger_key logger_name logger_desc =
 
   logger.logger_pp
 
+(** Check that [c] is a registered key. *)
+let is_registered c =
+  List.exists (fun {logger_key;_} -> logger_key = c) Stdlib.(!loggers)
+
 (** [set_debug value key] enables or disables the loggers corresponding to
    every character of [str] according to [value]. *)
 let set_debug value str =

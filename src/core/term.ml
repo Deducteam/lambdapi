@@ -48,7 +48,7 @@ let pr_bound = D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")
 type var = int * string
 
 (** [compare_vars x y] safely compares [x] and [y]. Note that it is unsafe to
-    compare variables using [Pervasive.compare]. *)
+    compare variables using [Stdlib.compare]. *)
 let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
 
 (** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
@@ -985,6 +985,7 @@ let new_problem : unit -> problem = fun () ->
 
 (** Printing functions for debug. *)
 module Raw = struct
+  let var = var let _ = var
   let sym = sym let _ = sym
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt

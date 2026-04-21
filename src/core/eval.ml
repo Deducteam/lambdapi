@@ -34,6 +34,10 @@ let log_snf = log_snf.pp
 let log_conv = Logger.make 'c' "conv" "conversion"
 let log_conv = log_conv.pp
 
+(** Logging function for rewriting. *)
+let log_rew = Logger.make 'q' "rewr" "rewriting"
+let log_rew = log_rew.pp
+
 (** Convert modulo eta. *)
 let eta_equality : bool Timed.ref = Console.register_flag "eta_equality" false
 
@@ -294,6 +298,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
      indexes defined during tree build, and [id_vars] is the inverse mapping
      of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
+    if Logger.log_enabled() then
+      log_rew "%atree_walk %a %d %a" D.depth !depth (D.list term) stk cursor
+        (D.map VarMap.iter Raw.var "," D.int ";") vars_id;
     let open Tree_type in
     match tree with
     | Fail -> None
@@ -308,8 +315,10 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           match bound.(pos) with
           | Some(_) -> env.(slot) <- bound.(pos)
           | None    ->
-                let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- Some(bind_mvar xs vars.(pos))
+              let var id = try IntMap.find id id_vars
+                           with Not_found -> assert false in
+              let xs = Array.map var xs in
+              env.(slot) <- Some(bind_mvar xs vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
@@ -320,8 +329,18 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
-          | CondNL(i, j) ->
-            if eq_modulo whnf cfg vars.(i) vars.(j) then ok else fail
+          | CondNL((i,vi), (j,vj)) ->
+              if Logger.log_enabled() then
+                log_rew "%aCondNL(%d[%a],%d[%a]) %a ≟ %a" D.depth !depth
+                  i (Array.pp D.int ",") vi j (Array.pp D.int ",") vj
+                  Raw.term vars.(i) Raw.term vars.(j);
+              let var id = try IntMap.find id id_vars
+                           with Not_found -> assert false in
+              let vj = Array.map var vj in
+              let bj = bind_mvar vj vars.(j) in
+              let vi = Array.map (fun id -> mk_Vari (var id)) vi in
+              let tj = msubst bj vi in
+              if eq_modulo whnf cfg vars.(i) tj then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
