@@ -68,7 +68,7 @@ do
         # abstracted variable type in rule LHS
         573-2);;
         # domain-free lambda/product
-        298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
+        298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225|1362);;
         # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
         547);;
         # aborted proof
