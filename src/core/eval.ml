@@ -35,8 +35,8 @@ let log_conv = Logger.make 'c' "conv" "conversion"
 let log_conv = log_conv.pp
 
 (** Logging function for rewriting. *)
-(*let log_rew = Logger.make 'q' "rewr" "rewriting"
-let log_rew = log_rew.pp*)
+let log_rew = Logger.make 'q' "rewr" "rewriting"
+let log_rew = log_rew.pp
 
 (** Convert modulo eta. *)
 let eta_equality : bool Timed.ref = Console.register_flag "eta_equality" false
@@ -299,7 +299,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
      of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
     if Logger.log_enabled() then
-      log_whnf "%atree_walk %a %d %a" D.depth !depth (D.list term) stk cursor
+      log_rew "%atree_walk %a %d %a" D.depth !depth (D.list term) stk cursor
         (D.map VarMap.iter Raw.var "," D.int ";") vars_id;
     let open Tree_type in
     match tree with
@@ -331,7 +331,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           match cond with
           | CondNL((i,vi), (j,vj)) ->
               if Logger.log_enabled() then
-                log_whnf "%aCondNL(%d[%a],%d[%a]) %a ≟ %a" D.depth !depth
+                log_rew "%aCondNL(%d[%a],%d[%a]) %a ≟ %a" D.depth !depth
                   i (Array.pp D.int ",") vi j (Array.pp D.int ",") vj
                   Raw.term vars.(i) Raw.term vars.(j);
               let f id = try IntMap.find id id_vars

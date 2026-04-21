@@ -1,7 +1,7 @@
 (** Miscellaneous types and utilities for decision trees. *)
 
 open Lplib open Base
-open Common open Debug
+open Common
 
 (** {3 Atomic pattern constructor representation} *)
 
@@ -65,7 +65,7 @@ let tree_cond : tree_cond pp = fun ppf tc ->
   match tc with
   | CondNL((i,xs), (j,ys)) ->
       out ppf "Nl(%d[%a],%d[%a])"
-        i (Array.pp D.int ",") xs j (Array.pp D.int ",") ys
+        i (Array.pp int ",") xs j (Array.pp int ",") ys
   | CondFV(i, _) -> out ppf "Fv(%d)" i
 
 (** Substitution of variables in a RHS. During the filtering process, some
