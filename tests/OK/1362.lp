@@ -3,10 +3,6 @@ symbol A:TYPE;
 symbol a:A;
 symbol f:(A → A) → (A → A) → A;
 
-//flag "print_implicits" on;
-//debug;
-//debug +wq;
-
 rule f (λ x,$F.[x]) (λ y,$F.[y]) ↪ a;
 assert ⊢ f (λ x,x) (λ y,y) ≡ a;
 
