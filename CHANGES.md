@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `simplify` now fails if the goal cannot be simplified.
 - Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
-- Syntax: use a comma instead of a semicolon as element separator in environments of pattern or meta variables.
+- Syntax: use a comma instead of a semicolon as element separator in environments of pattern or meta variables, and unification rule right hand-sides.
 
 ### Fixed
 

@@ -147,30 +147,6 @@ let rec term : bool -> term pp = fun b ppf t ->
 
 (** Translation of declarations. *)
 
-let modifiers : sym -> string = fun s ->
-  match s.sym_expo with
-  | Public ->
-      begin
-        match s.sym_prop with
-        | Const -> ""
-        | Defin -> "def "
-        | Injec -> "injective "
-        | AC _ -> "defac "
-        | Commu -> assert false
-        | Assoc _ -> assert false
-      end
-  | Protec ->
-      begin
-        match s.sym_prop with
-        | Const -> ""
-        | Defin -> "private "
-        | Injec -> "private injective "
-        | AC _ -> "private defac "
-        | Commu -> assert false
-        | Assoc _ -> assert false
-      end
-  | Privat -> assert false
-
 (* Dedukti only accepts the following declarations:
 def s : A := t
 thm s : A := t
