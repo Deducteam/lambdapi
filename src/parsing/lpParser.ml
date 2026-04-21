@@ -1448,7 +1448,7 @@ and env (lb:lexbuf): p_term list =
             []
         | _ ->
             let t = term lb in
-            let ts = list (prefix SEMICOLON term) lb in
+            let ts = list (prefix COMMA term) lb in
             consume R_SQ_BRACKET lb;
             t::ts
       end

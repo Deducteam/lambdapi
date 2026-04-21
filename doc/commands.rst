@@ -368,11 +368,11 @@ ambiguity, i.e. when the variable is not under a binder (unlike in the
 rule η above).
 
 It is possible to define an unnamed pattern variable with the syntax
-``$_.[x;y]``.
+``$_.[x,y]``.
 
 The unnamed pattern variable ``_`` is always the most general: if ``x``
 and ``y`` are the only variables in scope, then ``_`` is equivalent to
-``$_.[x;y]``.
+``$_.[x,y]``.
 
 In rule left-hand sides, λ-expressions cannot have type annotations.
 
