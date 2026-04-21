@@ -97,22 +97,22 @@ module CP = struct
   let is_empty : t -> bool = fun pool ->
     PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
 
-  (** [register_nl slot i vs pool] registers the fact that the slot [slot] in
-      the [vars] array correspond to a term stored at index [i] in the
+  (** [register_nl i (slot,vs) pool] registers the fact that the slot [slot]
+      in the [vars] array correspond to a term stored at index [i] in the
       environment for the RHS. The first time that such a slot is associated
       to [i], it is registered to serve as a reference point for testing
       convertibility when (and if) another such slot is (ever)
       encountered. When that is the case, a convertibility constraint is
       registered between the term stored in the slot [slot] and the term
       stored in the reference slot. *)
-  let register_nl : int -> int -> int array -> t -> t = fun slot i vs pool ->
+  let register_nl : int -> pvar -> t -> t = fun i pv pool ->
     try
       (* We build a new condition if there is already a point of reference. *)
-      let cond = (IntMap.find i pool.variables, (slot,vs)) in
+      let cond = (IntMap.find i pool.variables, pv) in
       { pool with nl_conds = PSet.add cond pool.nl_conds }
     with Not_found ->
       (* First occurence of [i], register the slot as a point of reference. *)
-      { pool with variables = IntMap.add i (slot,vs) pool.variables }
+      { pool with variables = IntMap.add i pv pool.variables }
 
   (** [register_fv slot xs pool] registers a free variables constraint for the
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
@@ -136,8 +136,7 @@ module CP = struct
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
-    | CondNL(i,j) ->
-        {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
+    | CondNL(i,j) -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
     | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -480,7 +479,7 @@ module CM = struct
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
                   arg_path a.arg_path i;
-              CP.register_nl mem i vs cond_pool
+              CP.register_nl i (mem,vs) cond_pool
           | None    -> cond_pool
         in
         let c_subst =
