@@ -166,6 +166,9 @@ let are_quant_args : term list -> bool = fun args ->
   | [b] -> is_abst b
   | _ -> false
 
+let env term ppf ts =
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ",") ts
+
 (** The possible priority levels are [`Func] (top level, including abstraction
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
 type priority = [`Func | `Appl | `Atom]
@@ -260,10 +263,6 @@ and quantifier idmap ppf s args =
 and meta ppf m = out ppf "?%d" m.meta_key
 
 and head idmap wrap ppf t =
-  let env ppf ts =
-    if Array.length ts > 0 then
-      out ppf ".[%a]" (Array.pp (func idmap) ";") ts
-  in
   match unfold t with
   | Appl(_,_)   -> assert false
   (* Application is handled separately, unreachable. *)
@@ -277,9 +276,9 @@ and head idmap wrap ppf t =
   | Type        -> out ppf "TYPE"
   | Kind        -> out ppf "KIND"
   | Symb(s)     -> sym ppf s
-  | Meta(m,e)   -> meta ppf m; if !print_meta_args then env ppf e
+  | Meta(m,e)   -> meta ppf m; if !print_meta_args then env (func idmap) ppf e
   | Plac(_)     -> out ppf "_"
-  | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
+  | Patt(_,n,e) -> out ppf "$%a%a" uid n (env (func idmap)) e
   | Bvar _      -> assert false
   (* Product and abstraction (only them can be wrapped). *)
   | Abst(a,b)   ->
@@ -352,8 +351,7 @@ let term_in idmap ppf t = func idmap ppf (cleanup t)
 
 let term = term_in StrMap.empty
 
-let env ppf ts =
-  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ",") ts
+let env = env term
 
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
   let decl idmap ppf (x,t) = out ppf "%a : %a" var x (func idmap) t in
