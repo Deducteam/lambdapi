@@ -34,7 +34,7 @@
 
 <rule> ::= <term> "↪" <term>
 
-<unif_rule> ::= <equation> "↪" "[" <equation> (";" <equation>)* "]"
+<unif_rule> ::= <equation> "↪" "[" <equation> ("," <equation>)* "]"
 
 <equation> ::= <term> "≡" <term>
 
@@ -72,7 +72,7 @@
 
 <arg> ::= <head> | "[" <term> "]"
 
-<env> ::= "." "[" [<term> (";" <term>)*] "]"
+<env> ::= "." "[" [<term> ("," <term>)*] "]"
 
 <abstraction> ::= <param_list>+ "," <term>
                 | <param> ":" <term> "," <term>
