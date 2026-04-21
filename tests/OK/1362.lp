@@ -5,7 +5,7 @@ symbol f:(A → A) → (A → A) → A;
 
 //flag "print_implicits" on;
 //debug;
-//debug +dw;
+//debug +wq;
 
 rule f (λ x,$F.[x]) (λ y,$F.[y]) ↪ a;
 assert ⊢ f (λ x,x) (λ y,y) ≡ a;

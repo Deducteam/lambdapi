@@ -67,13 +67,13 @@ module CP = struct
   (** Functional sets of pairs of integers. *)
   module PSet = Set.Make(
     struct
-      type t = (int * int array) * (int * int array)
+      type t = pvar * pvar
       let compare = Stdlib.compare
     end)
 
   (** A pool of (convertibility and free variable) conditions. *)
   type t =
-    { variables : (int * int array) IntMap.t
+    { variables : pvar IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
         argument of a [Term.term.Patt]) to its slot in the array
         [vars] of the [Eval.tree_walk] function. It is used to remember

@@ -5,6 +5,8 @@ open Common
 
 (** {3 Atomic pattern constructor representation} *)
 
+type pvar = int * int array
+
 (** Representation of an atomic pattern constructor. *)
 module TC =
   struct
@@ -47,11 +49,11 @@ module TCMap = Map.Make(TC)
 
 (** Representation of a branching conditions. *)
 type tree_cond =
-  | CondNL of (int * int array) * (int * int array)
+  | CondNL of pvar * pvar
   (** Are the terms at the given indices convertible? We enforce the invariant
       that the first element is a point of reference, which appears in all the
       convertibility conditions involving a given non-linear variable. *)
-  | CondFV of int * int array
+  | CondFV of pvar
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
 
@@ -75,7 +77,7 @@ let tree_cond : tree_cond pp = fun ppf tc ->
     substitutes variable [v] of the RHS by term [p] of array [v]. In the case
     of higher order patterns, [p] may need to be itself subsituted  with {e
     bound} variables [xs] collected when traversing binders. *)
-type rhs_substit = (int * (int * int array)) list
+type rhs_substit = (int * pvar) list
 
 (** Representation of a tree. The definition relies on parameters since module
     [Term] depends on the current module, and that would thus produce
