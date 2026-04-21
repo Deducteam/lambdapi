@@ -61,10 +61,10 @@ A user-defined term can be either:
 * an identifier wrapped in parentheses to access its notationless
   value (e.g. ``(+)``)
 
-* a metavariable application ``?0.[x;y]`` that has been generated
+* a metavariable application ``?0.[x,y]`` that has been generated
   previously. ``?0`` alone can be used as a short-hand for ``?0.[]``.
 
-* a pattern-variable application ``$P.[x;y]`` (in rules only). ``$P``
+* a pattern-variable application ``$P.[x,y]`` (in rules only). ``$P``
   alone can be used as a shorthand for ``$P.[]``, except under binders
   (to avoid mistakes).
 
