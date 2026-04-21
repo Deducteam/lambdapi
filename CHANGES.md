@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
 - Syntax: use a comma instead of a semicolon as element separator in environments of pattern or meta variables.
 
+### Fixed
+
+- Convertibility test of non-linear higher-order pattern variables in rule LHS.
+
 ## 3.0.0 (2025-07-16)
 
 ### Added
