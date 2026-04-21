@@ -125,7 +125,7 @@ let rec term : p_term pp = fun ppf t ->
       match ts with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf ".[%a]" (Array.pp func "; ") ts
+      | Some ts -> out ppf ".[%a]" (Array.pp func ",") ts
     in
     match (t.elt, priority) with
     | (P_Type              , _    ) -> out ppf "TYPE"
@@ -219,7 +219,7 @@ let unif_rule : p_rule pp = fun ppf {elt=(l,r);_} ->
     | (_, [t; u]) -> (t, u)
     | _           -> assert false
   in
-  out ppf "%a ↪ [%a]" equiv lhs (List.pp equiv "; ") (unpack r)
+  out ppf "%a ↪ [%a]" equiv lhs (List.pp equiv ", ") (unpack r)
 
 let proof_end : p_proof_end pp = fun ppf pe ->
   out ppf (match pe.elt with

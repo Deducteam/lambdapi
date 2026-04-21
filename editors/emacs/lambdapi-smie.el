@@ -75,7 +75,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
 (defconst lambdapi-smie-bnf
   '((ident)
       (env (ident)
-           (ident ";"))
+           (ident ","))
       (rw-patt)
       (args (ident)
             ("{" ident ":" sterm "}")

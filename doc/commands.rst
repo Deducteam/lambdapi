@@ -559,8 +559,8 @@ Examples:
 ::
 
    unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
-   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
-   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
+   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0, $y ≡ 0 ];
+   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a', $b ≡ T $b', $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.

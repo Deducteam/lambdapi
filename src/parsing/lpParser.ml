@@ -513,7 +513,7 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
       consume HOOK_ARROW lb;
       consume L_SQ_BRACKET lb;
       let eq1 = equation lb in
-      let eqs = list (prefix SEMICOLON equation) lb in
+      let eqs = list (prefix COMMA equation) lb in
       let es = eq1::eqs in
       consume R_SQ_BRACKET lb;
       (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
