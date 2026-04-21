@@ -358,23 +358,21 @@ let rec term : term pp = fun ppf t ->
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
   | Prod(a,(n,b,e)) ->
-      out ppf "(Π %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(Π %s:%a, %a#(%a))" n.binder_name term a terms e term b
   | Abst(a,(n,b,e)) ->
-      out ppf "(λ %s:%a, %a#(%a))" n.binder_name term a clos_env e term b
+      out ppf "(λ %s:%a, %a#(%a))" n.binder_name term a terms e term b
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
-  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
+  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option int) i s terms ts
   | Plac(_) -> out ppf "_"
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) Timed.(!r)
   | LLet(a,t,(n,b,e)) ->
       out ppf "let %s:%a ≔ %a in %a#(%a)"
-        n.binder_name term a term t clos_env e term b
+        n.binder_name term a term t terms e term b
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
-and terms : term array pp = fun ppf ts ->
-  if Array.length ts > 0 then D.array term ppf ts
-and clos_env : term array pp =  fun ppf env -> D.array term ppf env
+and terms : term array pp = fun ppf -> out ppf "[%a]" (Array.pp term ",")
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
    of [t], until a significant {!type:term} constructor is found.  The term
@@ -428,7 +426,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     then tm
     else msubst tm in
   if Logger.log_enabled() then
-    log "msubst %a#%a %a = %a" clos_env env term tm (D.array term) vs term r;
+    log "msubst %a#%a %a = %a" terms env term tm terms vs term r;
   r
 
 (** Total order on terms. *)
@@ -683,7 +681,7 @@ let subst : binder -> term -> term = fun (bi,tm,env) v ->
     if bi.binder_bound = false &&  Array.length env = 0 then tm
     else subst tm in
   if Logger.log_enabled() then
-    log "subst %a#%a [%a] = %a" clos_env env term tm term v term r;
+    log "subst %a#%a [%a] = %a" terms env term tm term v term r;
   r
 
 (** [unbind b] substitutes the binder [b] by a fresh variable of name [name]

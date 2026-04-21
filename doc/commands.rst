@@ -368,11 +368,11 @@ ambiguity, i.e. when the variable is not under a binder (unlike in the
 rule η above).
 
 It is possible to define an unnamed pattern variable with the syntax
-``$_.[x;y]``.
+``$_.[x,y]``.
 
 The unnamed pattern variable ``_`` is always the most general: if ``x``
 and ``y`` are the only variables in scope, then ``_`` is equivalent to
-``$_.[x;y]``.
+``$_.[x,y]``.
 
 In rule left-hand sides, λ-expressions cannot have type annotations.
 
@@ -559,8 +559,8 @@ Examples:
 ::
 
    unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
-   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
-   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
+   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0, $y ≡ 0 ];
+   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a', $b ≡ T $b', $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.
