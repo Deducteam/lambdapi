@@ -41,9 +41,10 @@ let tree_to_dot : Format.formatter -> _ dtree -> unit = fun ppf dtree ->
       | DotFailure           -> out ppf "✗"
     in
     let tcstr : tree_cond pp = fun ppf cstr ->
-      let ar = Array.pp int " " in
+      let ar = Array.pp int "," in
       match cstr with
-      | CondNL(i, j) -> out ppf "%d ≡ %d" i j
+      | CondNL((i,vi), (j,vj)) ->
+          out ppf "%d[%a] ≡ %d[%a]" i ar vi j ar vj
       | CondFV(i,vs) -> out ppf "%a ⊆ FV(%d)" ar vs i
     in
     let node_count = ref 0 in

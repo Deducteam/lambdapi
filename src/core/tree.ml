@@ -67,15 +67,13 @@ module CP = struct
   (** Functional sets of pairs of integers. *)
   module PSet = Set.Make(
     struct
-      type t = int * int
-
-      let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
-        match i1 - j1 with 0 -> i2 - j2 | k -> k
+      type t = (int * int array) * (int * int array)
+      let compare = Stdlib.compare
     end)
 
   (** A pool of (convertibility and free variable) conditions. *)
   type t =
-    { variables : int IntMap.t
+    { variables : (int * int array) IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
         argument of a [Term.term.Patt]) to its slot in the array
         [vars] of the [Eval.tree_walk] function. It is used to remember
@@ -99,21 +97,22 @@ module CP = struct
   let is_empty : t -> bool = fun pool ->
     PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
 
-  (** [register_nl slot i pool] registers the fact that the slot [slot] in the
-      [vars] array correspond to a term stored at index [i] in the environment
-      for the RHS. The first time that such a slot is associated to [i], it is
-      registered to serve as a reference point for testing convertibility when
-      (and if) another such slot is (ever) encountered. When that is the case,
-      a convertibility constraint is registered between the term stored in the
-      slot [slot] and the term stored in the reference slot. *)
-  let register_nl : int -> int -> t -> t = fun slot i pool ->
+  (** [register_nl slot i vs pool] registers the fact that the slot [slot] in
+      the [vars] array correspond to a term stored at index [i] in the
+      environment for the RHS. The first time that such a slot is associated
+      to [i], it is registered to serve as a reference point for testing
+      convertibility when (and if) another such slot is (ever)
+      encountered. When that is the case, a convertibility constraint is
+      registered between the term stored in the slot [slot] and the term
+      stored in the reference slot. *)
+  let register_nl : int -> int -> int array -> t -> t = fun slot i vs pool ->
     try
       (* We build a new condition if there is already a point of reference. *)
-      let cond = (IntMap.find i pool.variables, slot) in
+      let cond = (IntMap.find i pool.variables, (slot,vs)) in
       { pool with nl_conds = PSet.add cond pool.nl_conds }
     with Not_found ->
       (* First occurence of [i], register the slot as a point of reference. *)
-      { pool with variables = IntMap.add i slot pool.variables }
+      { pool with variables = IntMap.add i (slot,vs) pool.variables }
 
   (** [register_fv slot xs pool] registers a free variables constraint for the
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
@@ -137,7 +136,8 @@ module CP = struct
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
-    | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
+    | CondNL(i,j) ->
+        {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
     | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -467,9 +467,10 @@ module CM = struct
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let (_, a, _) = List.destruct pos ci in
+        let vs = Array.map (index_var vi) e in
         let cond_pool =
-          if (Array.length e) <> a.arg_rank then
-            CP.register_fv mem (Array.map (index_var vi) e) r.cond_pool
+          if Array.length e <> a.arg_rank then
+            CP.register_fv mem vs r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
@@ -479,7 +480,7 @@ module CM = struct
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
                   arg_path a.arg_path i;
-              CP.register_nl mem i cond_pool
+              CP.register_nl mem i vs cond_pool
           | None    -> cond_pool
         in
         let c_subst =
@@ -496,7 +497,7 @@ module CM = struct
           let se i (_,(j,_)) = i = j in
           match i with
           | Some(i) when not (List.exists (se i) r.c_subst) ->
-              (mem, (i, Array.map (index_var vi) e)) :: r.c_subst
+              (mem, (i,vs)) :: r.c_subst
           | _ -> r.c_subst
         in
         {r with c_subst; cond_pool}
@@ -760,8 +761,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
         in
         (* Add [var] to the variables that may appear free in patterns. *)
         let vars_id = VarMap.add var v_lvl vars_id in
-        let next =
-          compile vars_id CM.{clauses; slot; positions}
+        let next = compile vars_id CM.{clauses; slot; positions}
         in
         Some(v_lvl, next)
       in

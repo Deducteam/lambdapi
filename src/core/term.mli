@@ -461,6 +461,7 @@ val rhs : sym_rule -> term
 
 (** Basic printing function (for debug). *)
 module Raw : sig
+  val var : var pp
   val sym : sym pp
   val term : term pp
   val ctxt : ctxt pp

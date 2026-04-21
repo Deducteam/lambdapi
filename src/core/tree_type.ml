@@ -1,7 +1,7 @@
 (** Miscellaneous types and utilities for decision trees. *)
 
 open Lplib open Base
-open Common
+open Common open Debug
 
 (** {3 Atomic pattern constructor representation} *)
 
@@ -47,7 +47,7 @@ module TCMap = Map.Make(TC)
 
 (** Representation of a branching conditions. *)
 type tree_cond =
-  | CondNL of int * int
+  | CondNL of (int * int array) * (int * int array)
   (** Are the terms at the given indices convertible? We enforce the invariant
       that the first element is a point of reference, which appears in all the
       convertibility conditions involving a given non-linear variable. *)
@@ -63,7 +63,9 @@ type tree_cond =
 
 let tree_cond : tree_cond pp = fun ppf tc ->
   match tc with
-  | CondNL(i, j) -> out ppf "Nl(%d, %d)" i j
+  | CondNL((i,xs), (j,ys)) ->
+      out ppf "Nl(%d[%a],%d[%a])"
+        i (Array.pp D.int ",") xs j (Array.pp D.int ",") ys
   | CondFV(i, _) -> out ppf "Fv(%d)" i
 
 (** Substitution of variables in a RHS. During the filtering process, some
