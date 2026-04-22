@@ -798,7 +798,16 @@ let dispatch_message ofmt dict =
   | "initialized" ->
     ()
   | msg ->
-    LIO.log_error "no_handler" msg
+    (* Requests carry an id; notifications don't. For requests we must
+       reply with JSON-RPC MethodNotFound so the client doesn't wait
+       forever. Notifications get logged and dropped, matching the
+       spec's "no response" rule. [oint_field] defaults absent id to 0,
+       which we treat as the notification sentinel. *)
+    LIO.log_error "no_handler" msg;
+    if id <> 0 then
+      LIO.send_json ofmt
+        (LSP.mk_error_reply ~id ~code:(-32601)
+           ~msg:("Method not found: " ^ msg))
 
 let process_input ofmt (com : J.t) =
   try dispatch_message ofmt (U.to_assoc com)

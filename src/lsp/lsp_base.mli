@@ -35,6 +35,10 @@ val mk_range_of_interval : Range.t -> J.t
 
 val mk_reply : id:int -> result:J.t -> J.t
 
+val mk_error_reply : id:int -> code:int -> msg:string -> J.t
+(** JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec; [-32601]
+    is [MethodNotFound]. *)
+
 val mk_diagnostics
   : uri:string
   -> version: int
