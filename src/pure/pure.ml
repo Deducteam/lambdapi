@@ -272,6 +272,13 @@ let find_sym : state -> Term.qident Pos.loc -> Term.sym option =
 let restore_time : state -> unit =
   fun (t, _) -> Time.restore t
 
+(** [set_print_state st] installs [st] as the printer's signature state
+    so that subsequent [Print.sym_type] / [Print.term] calls produce
+    correctly qualified output. *)
+let set_print_state : state -> unit = fun (time, ss) ->
+  Time.restore time;
+  Print.sig_state := ss
+
 (* Equality tests, important for the incremental engine *)
 
 (* There are two kind of tests for equality:

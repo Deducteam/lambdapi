@@ -106,6 +106,11 @@ val find_sym : state -> Term.qident Pos.loc -> Term.sym option
     document was opened most recently. *)
 val restore_time : state -> unit
 
+(** [set_print_state st] installs [st] as the printer's signature state
+    so that subsequent [Print.sym_type] / [Print.term] calls produce
+    correctly qualified output. *)
+val set_print_state : state -> unit
+
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise
     or reinitialise the pure interface. *)

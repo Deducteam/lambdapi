@@ -23,6 +23,7 @@ if __name__ == "__main__":
         "tests.lsp.test_symbols",
         "tests.lsp.test_invariants",
         "tests.lsp.test_bugs_observed",
+        "tests.lsp.test_completion",
     ])
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

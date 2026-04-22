@@ -155,6 +155,10 @@ let do_initialize ofmt ~id params =
         ; "documentSymbolProvider", `Bool true
         ; "hoverProvider", `Bool true
         ; "definitionProvider", `Bool true
+        ; "completionProvider", `Assoc [
+            "triggerCharacters", `List [`String "."];
+            "resolveProvider", `Bool true
+          ]
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -529,6 +533,10 @@ let hover_symInfo ofmt ~id params =
   let ln, pos = get_textPosition params in
   let pt = Range.make_point (ln + 1) pos in
 
+  let send contents range =
+    let result = `Assoc ["contents", contents; "range", range] in
+    LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+  in
   let send_null () =
     LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null)
   in
@@ -542,16 +550,182 @@ let hover_symInfo ofmt ~id params =
     match get_symbol pt doc.map with
     | None -> send_null ()
     | Some (qid, range) ->
-      match Pure.find_sym ss (Pos.none qid) with
-      | None -> send_null ()
-      | Some sym_found ->
-        let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
-        let result = `Assoc [ "contents", `String sym_type
-                            ; "range", LSP.mk_range_of_interval range ] in
-        LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+      (match Pure.find_sym ss (Pos.none qid) with
+       | None -> send_null ()
+       | Some sym_found ->
+         let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
+         send (`String sym_type) (LSP.mk_range_of_interval range))
   with e ->
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()
+
+(* --- Completion ------------------------------------------------------- *)
+
+(** CompletionItemKind for a declared symbol. *)
+let completion_kind (tm : Term.sym) =
+  let open Term in
+  let open Timed in
+  let is_undef =
+    Option.is_None !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
+  match tm.sym_prop with
+  | Const -> 21                       (* Constant *)
+  | Injec -> 3                        (* Function *)
+  | _ when is_undef -> 21             (* Constant *)
+  | _ -> 3                            (* Function *)
+
+(** Tactic keywords offered as completions inside a proof. Each entry
+    is [(name, detail, snippet)] — [snippet] is a TextMate-style
+    template used when the client advertises [snippetSupport]. When
+    the client doesn't, the label is inserted verbatim. The list
+    should stay in sync with the [Syntax.p_tactic] cases handled in
+    [Pure.Tactic.get_focus_pos]. *)
+let tactic_completions : (string * string * string) list = [
+  "admit",       "end proof as axiom",              "admit";
+  "apply",       "apply a term to the goal",        "apply ${1:term}";
+  "assume",      "introduce hypotheses",            "assume ${1:h}";
+  "change",      "change the goal type",            "change ${1:type}";
+  "eval",        "evaluate a term",                 "eval ${1:term}";
+  "fail",        "always fail",                     "fail";
+  "generalize",  "generalize a variable",           "generalize ${1:x}";
+  "have",        "introduce an intermediate lemma", "have ${1:h}: ${2:type}";
+  "induction",   "structural induction",            "induction";
+  "refine",      "provide a partial proof term",    "refine ${1:term}";
+  "reflexivity", "close goal by reflexivity",       "reflexivity";
+  "remove",      "remove a hypothesis",             "remove ${1:h}";
+  "rewrite",     "rewrite using an equation",       "rewrite ${1:eq}";
+  "set",         "define a local abbreviation",     "set ${1:x} \xe2\x89\x94 ${2:term}";
+  "simplify",    "simplify the goal",               "simplify";
+  "solve",       "solve by unification",            "solve";
+  "symmetry",    "swap sides of an equation",       "symmetry";
+  "try",         "try a tactic; never fails",       "try ${1:tac}";
+  "why3",        "dispatch to an external prover",  "why3";
+]
+
+let is_tactic_name n =
+  List.exists (fun (tn, _, _) -> tn = n) tactic_completions
+
+(** Hypotheses visible at the cursor inside a proof. Returns the
+    focused goal's [(name, type_string)] list, or [[]] when no goal
+    is active at that position. *)
+let hyps_at_cursor (doc : Lp_doc.t) line character : (string * string) list =
+  match get_node_at_pos doc line character with
+  | None -> []
+  | Some n ->
+    (match closest_before (line + 1, character) n.Lp_doc.goals with
+     | Some (goals, _) ->
+       (match goals with (hyps, _) :: _ -> hyps | [] -> [])
+     | None -> [])
+
+let path_to_json (p : Path.t) : J.t =
+  `List (List.map (fun s -> `String s) p)
+
+let do_completion ofmt ~id params =
+  let uri, line, character = get_docTextPosition params in
+  let empty = `Assoc ["isIncomplete", `Bool false; "items", `List []] in
+  match Hashtbl.find_opt completed_table uri with
+  | None -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty)
+  | Some doc ->
+    match doc.Lp_doc.final with
+    | None -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty)
+    | Some ss ->
+      Pure.restore_time ss;
+      let syms = Pure.get_symbols ss in
+      let in_proof =
+        match get_node_at_pos doc line character with
+        | Some n -> n.Lp_doc.goals <> []
+        | None -> false
+      in
+      let items = ref [] in
+      (* Symbols. `detail` is filled in on [completionItem/resolve]. *)
+      Extra.StrMap.iter (fun name s ->
+        (* Inside a proof, tactic keywords shadow symbols of the same
+           name in the completion list: the user almost certainly
+           means the tactic. *)
+        if in_proof && is_tactic_name name then ()
+        else
+          let data = `Assoc [
+              "kind", `String "symbol";
+              "uri",  `String uri;
+              "path", path_to_json s.Term.sym_path;
+              "name", `String s.Term.sym_name;
+          ] in
+          items := `Assoc [
+            "label", `String name;
+            "kind",  `Int (completion_kind s);
+            "data",  data;
+          ] :: !items
+      ) syms;
+      if in_proof then begin
+        (* Tactic keywords, with snippet insertions when supported. *)
+        List.iter (fun (name, detail, snippet) ->
+          let base = [
+            "label", `String name;
+            "kind",  `Int 14;                 (* Keyword *)
+            "detail", `String detail;
+            "sortText", `String ("0" ^ name);
+          ] in
+          let fields =
+            if !LSP.snippet_support then
+              base @
+              [ "insertText", `String snippet
+              ; "insertTextFormat", `Int 2 ]  (* Snippet *)
+            else base
+          in
+          items := `Assoc fields :: !items
+        ) tactic_completions;
+        (* Hypotheses of the focused goal. *)
+        List.iter (fun (hname, htype) ->
+          items := `Assoc [
+            "label", `String hname;
+            "kind",  `Int 6;                  (* Variable *)
+            "detail", `String htype;
+            "sortText", `String ("1" ^ hname);
+          ] :: !items
+        ) (hyps_at_cursor doc line character)
+      end;
+      let result = `Assoc [
+        "isIncomplete", `Bool false;
+        "items", `List !items;
+      ] in
+      LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+
+(** Attach [detail] (and eventually other fields) to the completion
+    item the client highlighted. The initial completion response is
+    kept light by omitting per-symbol type strings; they're
+    pretty-printed here, lazily, once per highlighted item. *)
+let do_completion_resolve ofmt ~id params =
+  let echo () =
+    LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc params))
+  in
+  match List.assoc_opt "data" params with
+  | Some (`Assoc data) ->
+    (match List.assoc_opt "kind" data with
+     | Some (`String "symbol") ->
+       let uri = try string_field "uri" data with _ -> "" in
+       let name = try string_field "name" data with _ -> "" in
+       let path =
+         try List.map U.to_string (U.to_list (List.assoc "path" data))
+         with _ -> []
+       in
+       (match Hashtbl.find_opt completed_table uri with
+        | None -> echo ()
+        | Some doc ->
+          match doc.Lp_doc.final with
+          | None -> echo ()
+          | Some ss ->
+            Pure.set_print_state ss;
+            (match Pure.find_sym ss (Pos.none (path, name)) with
+             | None -> echo ()
+             | Some sym ->
+               let type_str =
+                 Format.asprintf "%a" Core.Print.sym_type sym in
+               let fields =
+                 ("detail", `String type_str) ::
+                 List.remove_assoc "detail" params in
+               LIO.send_json ofmt
+                 (LSP.mk_reply ~id ~result:(`Assoc fields))))
+     | _ -> echo ())
+  | _ -> echo ()
 
 let protect_dispatch p f x =
   try f x
@@ -589,6 +763,17 @@ let dispatch_message ofmt dict =
   | "textDocument/definition" ->
     (try do_definition ofmt ~id params
      with _ -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null))
+
+  | "textDocument/completion" ->
+    (try do_completion ofmt ~id params
+     with _ ->
+       let empty = `Assoc ["isIncomplete", `Bool false; "items", `List []] in
+       LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty))
+
+  | "completionItem/resolve" ->
+    (try do_completion_resolve ofmt ~id params
+     with _ ->
+       LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc params)))
 
   | "proof/goals" ->
     do_goals ofmt ~id params
