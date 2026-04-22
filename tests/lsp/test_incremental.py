@@ -110,9 +110,13 @@ class TestDebounce(LSPTestCase):
             self.server.did_change(uri, text + f"// rev {v}\n" + tail, v)
         notifs = self.server.drain_notifications(timeout=5.0)
         publishes = _publishes(notifs, uri)
-        # Without debouncing we'd get N publishes (one per change).
-        self.assertLess(len(publishes), N - 1,
-            f"expected coalescing to drop most publishes; "
+        # The debounce design promises: when a later didChange is already
+        # queued, we skip the current re-check. If we blast 11 changes
+        # back-to-back, at most a handful should actually publish — we
+        # pick a concrete cap rather than the permissive "less than N-1"
+        # so a regression that silently reduces coalescing surfaces.
+        self.assertLessEqual(len(publishes), 3,
+            f"rapid edits should coalesce to <=3 publishes; "
             f"got {len(publishes)} for {N - 1} changes")
         # The trailing change must be reflected in the final state.
         final = publishes[-1]["params"]["diagnostics"]

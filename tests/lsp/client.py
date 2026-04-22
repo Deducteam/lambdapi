@@ -42,6 +42,11 @@ class LSPServer:
         self._proc = None
         self._stderr = []
         self._notifications = queue.Queue()
+        # [_pending] maps request id -> reply queue. Writer (test thread)
+        # adds entries before sending; reader thread pops on response.
+        # [_next_id] is touched only from the test thread today, but we
+        # guard both behind [_lock] so the invariant survives refactors.
+        self._lock = threading.Lock()
         self._pending = {}
         self._next_id = 1
         self._reader_thread = None
@@ -88,12 +93,17 @@ class LSPServer:
             except subprocess.TimeoutExpired:
                 self._proc.kill()
                 self._proc.wait(timeout=1)
-        # Close remaining pipes to suppress ResourceWarning.
+        # Close remaining pipes (also unblocks readers still in read()).
         for pipe in (self._proc.stdout, self._proc.stderr, self._proc.stdin):
             try:
                 pipe and pipe.close()
             except Exception:
                 pass
+        # Join reader threads so file descriptors aren't left dangling —
+        # avoids ResourceWarning without needing -W ignore in the runner.
+        for t in (self._reader_thread, self._stderr_thread):
+            if t is not None:
+                t.join(timeout=1.0)
 
     def __enter__(self):
         self.start()
@@ -138,7 +148,8 @@ class LSPServer:
                 continue
             if "id" in msg and ("result" in msg or "error" in msg):
                 # Response to a request
-                q = self._pending.pop(msg["id"], None)
+                with self._lock:
+                    q = self._pending.pop(msg["id"], None)
                 if q is not None:
                     q.put(msg)
             else:
@@ -152,15 +163,20 @@ class LSPServer:
     # --- Request / notification -----------------------------------------
 
     def request(self, method, params=None):
-        mid = self._next_id
-        self._next_id += 1
         reply = queue.Queue(maxsize=1)
-        self._pending[mid] = reply
+        # Reserve the id and register the reply slot *before* sending so
+        # the response can never arrive before we're listening for it.
+        with self._lock:
+            mid = self._next_id
+            self._next_id += 1
+            self._pending[mid] = reply
         self._write({"jsonrpc": "2.0", "id": mid,
                      "method": method, "params": params or {}})
         try:
             msg = reply.get(timeout=self.timeout)
         except queue.Empty:
+            with self._lock:
+                self._pending.pop(mid, None)
             raise LSPError(
                 f"timeout waiting for {method} (id={mid}); "
                 f"stderr={self._stderr[-5:]}")

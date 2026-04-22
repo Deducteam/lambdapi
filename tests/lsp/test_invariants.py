@@ -236,6 +236,21 @@ class TestNonStandardMode(LSPTestCase):
         self.assertNoErrors(diags)
 
 
+class TestStandardModeNoGoalInfo(LSPTestCase):
+    """The dual of [TestNonStandardMode]: with [--standard-lsp] on (our
+    default), the non-standard [goal_info] extension must NOT leak into
+    diagnostics, or strict LSP clients will choke."""
+
+    standard_lsp = True
+
+    @requires_stdlib
+    def test_proof_diagnostics_have_no_goal_info(self):
+        _uri, _text, _src, diags = self.open_fixture("proof.lp")
+        leaked = [d for d in diags if "goal_info" in d]
+        self.assertFalse(leaked,
+            f"standard mode must not emit goal_info; leaked {len(leaked)}")
+
+
 class TestBoundaryPositions(LSPTestCase):
     """Hovering / jumping at boundary positions must not hang or crash."""
 
@@ -303,6 +318,39 @@ class TestErrorRecovery(LSPTestCase):
         # We expect the final state to match: no errors (clean was last).
         self.assertNoErrors(final_diags,
             "after rapid-fire flips ending clean, errors remain")
+
+
+class TestMultibyteColumns(LSPTestCase):
+    """LSP positions are counted in UTF-16 code units (spec default). For
+    BMP-only content this coincides with Python codepoint indices, so we
+    can send a codepoint column and expect the server to agree — as long
+    as it does NOT interpret columns as UTF-8 byte offsets."""
+
+    def test_hover_on_symbol_after_non_ascii_idents(self):
+        uri, _text, src, _ = self.open_fixture("unicode_cols.lp")
+        # In `symbol x : α ≔ β;`, β is at codepoint col 15 but byte col 18.
+        # Asking for hover at col 15 must land on β, not inside ≔.
+        line, col = src.find(r"symbol x :", r"β")
+        result = self.server.hover(uri, line, col)
+        contents = (result or {}).get("contents")
+        text = contents.get("value") if isinstance(contents, dict) \
+            else contents if isinstance(contents, str) else ""
+        self.assertIsNotNone(result,
+            "hover at codepoint col of β should return a result")
+        # β : α — the type "α" should appear in the hover text.
+        self.assertIn("α", text or "",
+            f"hover text should mention α (β's type); got {text!r}")
+
+    def test_definition_on_symbol_after_non_ascii_idents(self):
+        uri, _text, src, _ = self.open_fixture("unicode_cols.lp")
+        line, col = src.find(r"symbol x :", r"β")
+        d = self.server.definition(uri, line, col)
+        if isinstance(d, list):
+            d = d[0] if d else None
+        self.assertIsNotNone(d,
+            "go-to-def on β (after multibyte prefix) should resolve")
+        self.assertEqual(d["range"]["start"]["line"], 1,
+            f"β declared on line 1 of unicode_cols.lp; got {d!r}")
 
 
 class TestSymPosAbsent(LSPTestCase):

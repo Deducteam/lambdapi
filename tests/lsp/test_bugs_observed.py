@@ -29,8 +29,9 @@ class TestCrossFileDefinitionLine(LSPTestCase):
         self.assertIsNotNone(d)
         self.assertTrue(d["uri"].endswith("Nat.lp"))
         got_line = d["range"]["start"]["line"]
-        # ℕ is declared on source line 93 of Nat.lp (LSP line 92).
-        # Anything <= 1 is the fallback bug resurfacing.
+        # Pre-fix bug: every external symbol resolved to the line-1
+        # fallback. We don't hardcode the actual declaration line (it
+        # shifts as stdlib evolves); just guard the regression.
         self.assertGreater(got_line, 1,
             f"stdlib go-to-def landed on line {got_line} "
             f"(regression of the line-1 fallback bug)")

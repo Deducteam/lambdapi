@@ -34,10 +34,21 @@ def _opam_stdlib():
     return None
 
 
+def has_stdlib():
+    """True when the opam Stdlib is reachable (for conditional tests)."""
+    return _opam_stdlib() is not None
+
+
+def stdlib_map_dir():
+    """[--map-dir] value for Stdlib, or None if not installed."""
+    d = _opam_stdlib()
+    return f"Stdlib:{d}" if d else None
+
+
 def requires_stdlib(test):
     """Decorator: skip a test method if Stdlib is not available."""
     return unittest.skipUnless(
-        _opam_stdlib() is not None,
+        has_stdlib(),
         "lambdapi Stdlib not installed; set LAMBDAPI_LIB_ROOT")(test)
 
 
@@ -68,9 +79,9 @@ class LSPTestCase(unittest.TestCase):
 
     def setUp(self):
         map_dirs = list(self.extra_map_dirs)
-        stdlib = _opam_stdlib()
-        if stdlib:
-            map_dirs.append(f"Stdlib:{stdlib}")
+        md = stdlib_map_dir()
+        if md:
+            map_dirs.append(md)
         self.server = LSPServer(
             lib_root=self.lib_root,
             map_dirs=map_dirs,

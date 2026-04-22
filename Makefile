@@ -40,7 +40,7 @@ test: lambdapi
 
 .PHONY: test_lsp
 test_lsp: lambdapi
-	@python3 -W ignore::ResourceWarning -m tests.lsp
+	@python3 -m tests.lsp
 
 .PHONY: test_load
 test_load: lambdapi
