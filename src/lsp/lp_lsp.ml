@@ -476,8 +476,7 @@ let dispatch_message ofmt dict =
     exit 0
 
   (* NOOPs *)
-  | "initialized"
-  | "workspace/didChangeWatchedModule" ->
+  | "initialized" ->
     ()
   | msg ->
     LIO.log_error "no_handler" msg
