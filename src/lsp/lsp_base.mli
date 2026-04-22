@@ -18,6 +18,17 @@ module J = Yojson.Basic
 
 val std_protocol : bool ref
 
+val snippet_support : bool ref
+(** Client supports snippet syntax in [insertText] (LSP
+    [textDocument.completion.completionItem.snippetSupport]). Set
+    from the [initialize] request's [clientCapabilities]. *)
+
+val hierarchical_symbols : bool ref
+(** Client supports hierarchical [DocumentSymbol[]] responses to
+    [textDocument/documentSymbol] (LSP
+    [textDocument.documentSymbol.hierarchicalDocumentSymbolSupport]).
+    When false, fall back to flat [SymbolInformation[]]. *)
+
 val mk_range : Pos.pos -> J.t
 
 val mk_range_of_interval : Range.t -> J.t

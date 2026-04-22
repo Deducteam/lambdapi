@@ -80,8 +80,74 @@ let pending_change_for_uri (uri : string) : bool =
      with _ -> false))
     false pending
 
+(* Walk a nested path of object keys; return the leaf or [None] if any
+   segment is missing / has the wrong shape. *)
+let rec json_path (j : J.t) (keys : string list) : J.t option =
+  match keys with
+  | [] -> Some j
+  | k :: rest ->
+    (match j with
+     | `Assoc fields ->
+       (match List.assoc_opt k fields with
+        | Some v -> json_path v rest
+        | None -> None)
+     | _ -> None)
+
+(** [path_of_file_uri uri] strips the [file://] scheme and percent-decodes
+    the remainder. Returns [None] when [uri] is not a [file:] URI. *)
+let path_of_file_uri (uri : string) : string option =
+  if String.is_prefix "file://" uri then
+    Some (Uri.pct_decode (String.sub uri 7 (String.length uri - 7)))
+  else None
+
 (* Request Handling: The client expects a reply *)
-let do_initialize ofmt ~id _params =
+let do_initialize ofmt ~id params =
+  (* Read clientCapabilities for features we gate on client support. *)
+  let client_caps =
+    try List.assoc "capabilities" params with Not_found -> `Null in
+  let snippet_support =
+    match json_path client_caps
+            ["textDocument"; "completion"; "completionItem";
+             "snippetSupport"]
+    with
+    | Some (`Bool b) -> b
+    | _ -> false
+  in
+  let hierarchical_symbols =
+    match json_path client_caps
+            ["textDocument"; "documentSymbol";
+             "hierarchicalDocumentSymbolSupport"]
+    with
+    | Some (`Bool b) -> b
+    | _ -> false
+  in
+  LSP.snippet_support := snippet_support;
+  LSP.hierarchical_symbols := hierarchical_symbols;
+  (* Apply the workspace's [lambdapi.pkg] (if any) so module mappings
+     are live before the first document is opened. [rootUri] is the
+     pre-3.6 field; [workspaceFolders] is the current one — honour both
+     when present. Per-file [Package.apply_config] still runs on every
+     open, so this is strictly a bootstrap. *)
+  let apply_folder uri =
+    match path_of_file_uri uri with
+    | Some p ->
+      LIO.log_error "initialize" ("applying package config at " ^ p);
+      Parsing.Package.apply_config p
+    | None -> ()
+  in
+  (match List.assoc_opt "rootUri" params with
+   | Some (`String uri) -> apply_folder uri
+   | _ -> ());
+  (match List.assoc_opt "workspaceFolders" params with
+   | Some (`List folders) ->
+     List.iter (fun f ->
+       match f with
+       | `Assoc fields ->
+         (match List.assoc_opt "uri" fields with
+          | Some (`String uri) -> apply_folder uri
+          | _ -> ())
+       | _ -> ()) folders
+   | _ -> ());
   let msg = LSP.mk_reply ~id ~result:(
       `Assoc ["capabilities",
        `Assoc [

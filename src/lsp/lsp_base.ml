@@ -17,6 +17,14 @@ open Handle
 (* Whether to send extended lsp messages *)
 let std_protocol = ref true
 
+(* Whether the client supports snippet-format insertText. Set from
+   clientCapabilities at initialize time. *)
+let snippet_support = ref false
+
+(* Whether the client supports hierarchical DocumentSymbol[] responses.
+   Set from clientCapabilities at initialize time. *)
+let hierarchical_symbols = ref false
+
 module J = Yojson.Basic
 
 let mk_extra l = if !std_protocol then [] else l
