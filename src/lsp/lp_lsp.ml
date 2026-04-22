@@ -500,18 +500,26 @@ let do_definition ofmt ~id params =
 
     (* Lines sent by the client start at 0 *)
     let pt = Range.make_point (ln + 1) pos in
+    let module_def path =
+      let file = Library.(file_of_path path ^ lp_src_extension) in
+      mk_definfo file (Pos.file_start file)
+    in
     let sym_info =
       match get_symbol pt doc.map with
-      | None -> `Null
       | Some (qid, _) ->
-        match Pure.find_sym ss (Pos.none qid) with
+        (match Pure.find_sym ss (Pos.none qid) with
+         | None -> `Null
+         | Some s when s.Term.sym_path = Sign.Ghost.path -> `Null
+         | Some s ->
+           let file =
+             Library.(file_of_path s.Term.sym_path ^ lp_src_extension) in
+           let pos = Option.get (Pos.file_start file) s.sym_pos in
+           mk_definfo file pos)
+      | None ->
+        (* Fall back to module-path lookup for go-to-def on require/open. *)
+        match get_symbol pt doc.path_map with
+        | Some (path, _) -> module_def path
         | None -> `Null
-        | Some s when s.Term.sym_path = Sign.Ghost.path -> `Null
-        | Some s ->
-          let file =
-            Library.(file_of_path s.Term.sym_path ^ lp_src_extension) in
-          let pos = Option.get (Pos.file_start file) s.sym_pos in
-          mk_definfo file pos
     in
     let msg = LSP.mk_reply ~id ~result:sym_info in
     LIO.send_json ofmt msg

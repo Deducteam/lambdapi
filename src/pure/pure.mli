@@ -19,6 +19,10 @@ end
 
 val rangemap : Command.t list -> Term.qident RangeMap.t
 
+(** [path_rangemap cmds] maps source ranges of module paths appearing in
+    [require]/[open] commands to the paths they denote. *)
+val path_rangemap : Command.t list -> Common.Path.t RangeMap.t
+
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig
   type t

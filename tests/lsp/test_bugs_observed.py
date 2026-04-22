@@ -1,8 +1,13 @@
-"""Tests for a bug observed in live Zed usage:
+"""Tests for two bugs observed in live Zed usage:
 
-cross-file go-to-def landed on line 0 instead of the actual declaration
-line (pre-existing; fixed by pr/lsp's do_definition change, but the
-test here guards against regression).
+1. cross-file go-to-def landed on line 0 instead of the actual declaration
+   line (pre-existing; fixed by pr/lsp's do_definition change, but the
+   test here guards against regression)
+2. go-to-def on the module name in `require open Foo.Bar` returns null
+   (still broken; parser/RangeMap doesn't track module paths)
+
+The third observed issue (`p ∨ q` rendered as `p \∨ q`) couldn't be
+reproduced in the LSP output and is likely a Zed rendering artifact.
 """
 
 import unittest
@@ -58,6 +63,22 @@ class TestCrossFileDefinitionLine(LSPTestCase):
         # The pre-fix fallback always returned char 0.
         self.assertGreater(r["character"], 0,
             f"cross-file go-to-def fell back to char 0: {r}")
+
+
+@requires_stdlib
+class TestRequireOpenDefinition(LSPTestCase):
+    """Go-to-def on a module name in `require open` should navigate to
+    that module."""
+
+    def test_go_to_def_on_required_module(self):
+        uri, _text, src, _ = self.open_fixture("imports.lp")
+        # `Nat` in `require open Stdlib.Nat;`
+        line, col = src.find(r"require open Stdlib\.Nat", r"\bNat")
+        d = _first_definition(self.server.definition(uri, line, col))
+        self.assertIsNotNone(d,
+            "go-to-def on module in `require open` should resolve")
+        self.assertTrue(d["uri"].endswith("Nat.lp"),
+            f"should resolve to Nat.lp, got {d.get('uri')}")
 
 
 if __name__ == "__main__":

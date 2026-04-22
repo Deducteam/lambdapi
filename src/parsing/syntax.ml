@@ -718,3 +718,15 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   in
 
   List.fold_left fold_command
+
+(** [fold_paths f a ast] applies [f] to every module path occurring in
+    [require], [require … as …], or [open] commands. Used by the LSP to
+    offer go-to-definition on module names. *)
+let fold_paths : ('a -> p_path -> 'a) -> 'a -> p_command list -> 'a =
+  fun f ->
+  List.fold_left (fun a {elt; _} ->
+    match elt with
+    | P_require (_, paths)
+    | P_open (_, paths) -> List.fold_left f a paths
+    | P_require_as (path, _) -> f a path
+    | _ -> a)

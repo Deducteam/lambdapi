@@ -42,6 +42,7 @@ type t = {
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Core.Term.qident RangeMap.t;
+  path_map : Common.Path.t RangeMap.t;
 }
 
 let option_default o1 d =
@@ -61,10 +62,10 @@ let process_pstep (pstate, diags, logs) tac nb_subproofs =
   let logs = ((3, buf_get_and_clear lp_logger), tac_loc) :: logs in
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
-    let goals = Some (current_goals pstate) in
-    let qres = match qres with None -> "OK" | Some x -> x in
+    let gs = current_goals pstate in
+    let qres = match qres with Some x -> x | None -> "OK" in
     let focus_loc = Tactic.get_focus_pos tac in
-    pstate, (focus_loc, 4, qres, goals) :: diags, logs
+    pstate, (focus_loc, 4, qres, Some gs) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -160,6 +161,7 @@ let new_doc ~uri ~version ~text =
     nodes = [];
     logs = logs;
     map = RangeMap.empty;
+    path_map = RangeMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -202,5 +204,6 @@ let check_text ~doc =
     | Some(pos,msg) -> logs @ [((1, msg), Some pos)], diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
-  let doc = { doc with nodes; final=Some(final); map; logs } in
+  let path_map = Pure.path_rangemap cmds in
+  let doc = { doc with nodes; final=Some(final); map; path_map; logs } in
   doc, LSP.mk_diagnostics ~uri ~version diags

@@ -87,6 +87,16 @@ let rangemap : Command.t list -> Term.qident RangeMap.t =
   in
   Syntax.fold_idents f RangeMap.empty
 
+(** Document module-path range map: positions of paths appearing in
+    [require]/[open] commands, mapped to the path they denote. *)
+let path_rangemap : Command.t list -> Common.Path.t RangeMap.t =
+  let f map ({elt; pos} : Syntax.p_path) =
+    match pos with
+    | Some pos -> RangeMap.add (interval_of_pos pos) elt map
+    | None -> map
+  in
+  Syntax.fold_paths f RangeMap.empty
+
 (** Representation of a single tactic (abstract). *)
 module Tactic = struct
   type t = Syntax.p_tactic
