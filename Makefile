@@ -36,6 +36,11 @@ test_all: test
 test: lambdapi
 	@dune runtest
 	@tests/dtrees.sh
+	@$(MAKE) test_lsp
+
+.PHONY: test_lsp
+test_lsp: lambdapi
+	@python3 -W ignore::ResourceWarning -m tests.lsp
 
 .PHONY: test_load
 test_load: lambdapi

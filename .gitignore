@@ -21,3 +21,5 @@ libraries/zenon_modulo
 .DS_Store
 *.map
 *.log
+__pycache__/
+*.pyc
