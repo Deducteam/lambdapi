@@ -42,6 +42,7 @@ type t = {
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Core.Term.qident RangeMap.t;
+  path_map : Common.Path.t RangeMap.t;
 }
 
 let option_default o1 d =
@@ -54,16 +55,17 @@ let buf_get_and_clear buf =
   let res = Buffer.contents buf in
   Buffer.clear buf; res
 
-let process_pstep (pstate,diags,logs) tac nb_subproofs =
+let process_pstep (pstate, diags, logs) tac nb_subproofs =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   let hndl_tac_res = handle_tactic pstate tac nb_subproofs in
   let logs = ((3, buf_get_and_clear lp_logger), tac_loc) :: logs in
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
-    let goals = Some (current_goals pstate) in
-    let qres = match qres with None -> "OK" | Some x -> x in
-    pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    let gs = current_goals pstate in
+    let qres = match qres with Some x -> x | None -> "OK" in
+    let focus_loc = Tactic.get_focus_pos tac in
+    pstate, (focus_loc, 4, qres, Some gs) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -96,12 +98,13 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, qres, None in
+    let ok_diag = Command.get_focus_pos ast, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
-  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
+  | Cmd_Proof (pst, tlist, _thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
+    let dg_proof =
+      (Command.get_focus_pos ast, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof, logs =
@@ -148,17 +151,7 @@ let new_doc ~uri ~version ~text =
       let path = String.sub uri 7 (String.length uri - 7) in
       Some(Pure.initial_state path), []
     with Error.Fatal(_pos, msg) ->
-      let loc : Pos.pos =
-        {
-          fname = Some(uri);
-          start_line = 0;
-          start_col  = 0;
-          start_offset  = 0;
-          end_line = 0;
-          end_col = 0;
-          end_offset  = 0
-        } in
-      (None, [(1, msg), Some(loc)])
+      (None, [(1, msg), Some (Pos.file_start uri)])
   in
   { uri;
     text;
@@ -168,6 +161,7 @@ let new_doc ~uri ~version ~text =
     nodes = [];
     logs = logs;
     map = RangeMap.empty;
+    path_map = RangeMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -210,5 +204,6 @@ let check_text ~doc =
     | Some(pos,msg) -> logs @ [((1, msg), Some pos)], diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
-  let doc = { doc with nodes; final=Some(final); map; logs } in
+  let path_map = Pure.path_rangemap cmds in
+  let doc = { doc with nodes; final=Some(final); map; path_map; logs } in
   doc, LSP.mk_diagnostics ~uri ~version diags

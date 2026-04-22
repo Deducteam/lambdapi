@@ -23,29 +23,77 @@ let log_object hdr obj =
 
 exception ReadError of string
 
-let read_request ic =
-  let cl = input_line ic in
-  let sin = Scanf.Scanning.from_string cl in
+(* Unbuffered input over [Unix.stdin], with our own line/exact-byte
+   buffer. We can't use [Stdlib.in_channel] for stdin: it reads ahead
+   of the current message into an opaque internal buffer, after which
+   [Unix.select] on the file descriptor reports "no data ready" even
+   though more messages are sitting in the OCaml buffer — breaking
+   any peek-based debouncing. Owning the buffer ourselves lets us
+   answer [bytes_pending ()] honestly. *)
+let in_buf : Buffer.t = Buffer.create 4096
+
+let drop_first n =
+  let len = Buffer.length in_buf in
+  if n >= len then Buffer.clear in_buf
+  else begin
+    let rest = Buffer.sub in_buf n (len - n) in
+    Buffer.clear in_buf;
+    Buffer.add_string in_buf rest
+  end
+
+let chunk = Bytes.create 4096
+
+let read_more () =
+  let n = Unix.read Unix.stdin chunk 0 (Bytes.length chunk) in
+  if n = 0 then raise End_of_file;
+  Buffer.add_subbytes in_buf chunk 0 n
+
+(* Read up to and including the next ['\n']; return the line *without*
+   the trailing ['\n'] (a trailing ['\r'] is preserved). *)
+let rec read_line_ub () : string =
+  let s = Buffer.contents in_buf in
+  match String.index_opt s '\n' with
+  | Some i ->
+    let line = String.sub s 0 i in
+    drop_first (i + 1);
+    line
+  | None ->
+    read_more (); read_line_ub ()
+
+let rec read_exact n : string =
+  if Buffer.length in_buf >= n then begin
+    let s = Buffer.sub in_buf 0 n in
+    drop_first n;
+    s
+  end else begin
+    read_more (); read_exact n
+  end
+
+(* True iff there are bytes already in our buffer or ready on the fd
+   within [timeout] seconds. The buffer-first check is what makes the
+   coalesce-pending-didChange path actually fire on tight bursts. *)
+let bytes_pending ?(timeout = 0.0) () : bool =
+  if Buffer.length in_buf > 0 then true
+  else
+    try
+      let r, _, _ = Unix.select [Unix.stdin] [] [] timeout in
+      r <> []
+    with _ -> false
+
+let read_request () : J.t =
   try
-    let raw_obj =
-      Scanf.bscanf sin "Content-Length: %d\r" (fun size ->
-          let buf = Bytes.create size in
-          (* Consume the second \r\n *)
-          let _ = input_line ic in
-          really_input ic buf 0 size;
-          Bytes.to_string buf
-        ) in
-    J.from_string raw_obj
+    let header = read_line_ub () in
+    let size =
+      Scanf.sscanf header "Content-Length: %d" (fun n -> n) in
+    (* Consume the empty separator line (its '\n' was the second of
+       a "\r\n\r\n" pair). *)
+    let _ = read_line_ub () in
+    J.from_string (read_exact size)
   with
-  (* if the end of input is encountered while some more characters are needed
-     to read the current conversion specification. *)
   | End_of_file ->
     raise (ReadError "EOF")
-  (* if the input does not match the format. *)
   | Scanf.Scan_failure msg
-  (* if a conversion to a number is not possible. *)
   | Failure msg
-  (* if the format string is invalid. *)
   | Invalid_argument msg ->
     raise (ReadError msg)
 

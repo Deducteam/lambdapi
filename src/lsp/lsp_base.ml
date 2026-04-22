@@ -10,11 +10,20 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Lplib
 open Common
 open Handle
 
 (* Whether to send extended lsp messages *)
 let std_protocol = ref true
+
+(* Whether the client supports snippet-format insertText. Set from
+   clientCapabilities at initialize time. *)
+let snippet_support = ref false
+
+(* Whether the client supports hierarchical DocumentSymbol[] responses.
+   Set from clientCapabilities at initialize time. *)
+let hierarchical_symbols = ref false
 
 module J = Yojson.Basic
 
@@ -28,16 +37,37 @@ let _parse_uri str =
 let mk_reply ~id ~result =
   `Assoc [ "jsonrpc", `String "2.0"; "id",     `Int id;   "result", result ]
 
+(* JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec (see also
+   LSP §error-codes): -32601 MethodNotFound is the one we reach for. *)
+let mk_error_reply ~id ~code ~msg =
+  `Assoc [ "jsonrpc", `String "2.0";
+           "id",      `Int id;
+           "error",   `Assoc ["code", `Int code; "message", `String msg] ]
+
 let mk_event m p   =
   `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
+
+(* LSP positions are uinteger; clamp defensively to avoid rejection by
+   strict clients when a synthetic Pos.pos slips through with negative
+   or zero line/column values. *)
+let clamp n = if n < 0 then 0 else n
 
 let mk_range (p : Pos.pos) : J.t =
   let open Pos in
   let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
     p
   in
-  `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
-          "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
+  `Assoc ["start", `Assoc ["line", `Int (clamp (line1 - 1));
+                           "character", `Int (clamp col1)];
+          "end",   `Assoc ["line", `Int (clamp (line2 - 1));
+                           "character", `Int (clamp col2)]]
+
+let mk_range_of_interval (r : Range.t) : J.t =
+  let s = Range.interval_start r and e = Range.interval_end r in
+  `Assoc ["start", `Assoc ["line", `Int (clamp (Range.line s - 1));
+                           "character", `Int (clamp (Range.column s))];
+          "end",   `Assoc ["line", `Int (clamp (Range.line e - 1));
+                           "character", `Int (clamp (Range.column e))]]
 
 let json_of_goal (hyps, concl) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in

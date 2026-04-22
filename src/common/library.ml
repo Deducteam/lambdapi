@@ -212,7 +212,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
       match !mapping with
       | None       -> mapping := Some(mp, fp)
       | Some(_, p) ->
-          if String.(length p < length fp) then mapping := Some(mp, p)
+          if String.(length p < length fp) then mapping := Some(mp, fp)
   in
   LibMap.iter f !lib_mappings;
   (* Fail if there is none. *)
