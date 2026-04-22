@@ -42,6 +42,7 @@ module Command = struct
   (* TODO: Fixme not to use generic equality *)
   let equal_with_pos = (=)
   let get_pos c = Pos.(c.pos)
+  let get_elt (c : t) : Syntax.p_command_aux = c.Pos.elt
   let print = Util.located Pretty.command
 
   (** Focused position for OK diagnostics.

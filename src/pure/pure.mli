@@ -11,6 +11,9 @@ module Command : sig
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
   val get_focus_pos : t -> Pos.popt
+  val get_elt : t -> Parsing.Syntax.p_command_aux
+  (** Expose the parser-level command shape so clients (LSP, MCP, …)
+      can pattern-match on declaration forms (e.g. to build outlines). *)
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
