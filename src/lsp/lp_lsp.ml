@@ -33,6 +33,53 @@ let odict_field name dict =
 module LIO = Lsp_io
 module LSP = Lsp_base
 
+(* --- didChange debouncing ------------------------------------------ *)
+(* The main event loop is single-threaded; didChange triggers a full
+   re-check, which can take seconds on large files. Under rapid typing
+   we'd queue up one re-check per keystroke and fall further and
+   further behind. The fix: read-ahead on stdin, and drop obsolete
+   didChanges before running the check.
+                                                                      *)
+
+(* Messages read from stdin but not yet dispatched, held back so we
+   can peek ahead at what's in flight. *)
+let pending : J.t Queue.t = Queue.create ()
+
+(* Drain every message immediately available (in our IO buffer or on
+   the fd) into [pending]. The buffer-first check inside
+   [LIO.bytes_pending] is critical: messages frequently land in the
+   IO buffer past the current one, but [Unix.select] on the fd alone
+   wouldn't see them. *)
+let drain_stdin_nonblocking () : unit =
+  while LIO.bytes_pending () do
+    try Queue.add (LIO.read_request ()) pending
+    with _ -> ()
+  done
+
+(* Return the next request, preferring already-drained ones over a
+   fresh blocking read. *)
+let read_next_or_block () : J.t =
+  match Queue.take_opt pending with
+  | Some m -> m
+  | None -> LIO.read_request ()
+
+(* True iff a later [textDocument/didChange] for [uri] is sitting in
+   [pending]. If so, running a re-check for the current change is
+   wasted work — the trailing one will trigger its own. *)
+let pending_change_for_uri (uri : string) : bool =
+  Queue.fold (fun acc msg ->
+    acc ||
+    (try
+       let d = Yojson.Basic.Util.to_assoc msg in
+       let mth = Yojson.Basic.Util.to_string (List.assoc "method" d) in
+       mth = "textDocument/didChange" &&
+       let p = Yojson.Basic.Util.to_assoc (List.assoc "params" d) in
+       let document = Yojson.Basic.Util.to_assoc
+         (List.assoc "textDocument" p) in
+       Yojson.Basic.Util.to_string (List.assoc "uri" document) = uri
+     with _ -> false))
+    false pending
+
 (* Request Handling: The client expects a reply *)
 let do_initialize ofmt ~id _params =
   let msg = LSP.mk_reply ~id ~result:(
@@ -65,13 +112,6 @@ let do_check_text ofmt ~doc =
   Hashtbl.replace completed_table doc.uri doc;
   LIO.send_json ofmt @@ diags
 
-let do_change ofmt ~doc change =
-  let open Lp_doc in
-  LIO.log_error "checking file"
-    (doc.uri ^ " / version: " ^ (string_of_int doc.version));
-  let doc = { doc with text = string_field "text" change; } in
-  do_check_text ofmt ~doc
-
 let do_open ofmt params =
   let document = dict_field "textDocument" params in
   let uri, version, text =
@@ -94,9 +134,28 @@ let do_change ofmt params =
     string_field "uri" document,
     int_field "version" document in
   let changes = List.map U.to_assoc @@ list_field "contentChanges" params in
+  LIO.log_error "checking file"
+    (uri ^ " / version: " ^ (string_of_int version));
   let doc = Hashtbl.find doc_table uri in
   let doc = { doc with Lp_doc.version; } in
-  List.iter (do_change ofmt ~doc) changes
+  (* Apply every content change to the in-memory text before deciding
+     whether to re-check. With full-document sync each change is a
+     whole new text, but we keep the fold so incremental sync can drop
+     in later. *)
+  let doc =
+    List.fold_left
+      (fun (doc : Lp_doc.t) change ->
+        { doc with text = string_field "text" change })
+      doc changes in
+  Hashtbl.replace doc_table uri doc;
+  (* Debounce: if a later didChange for this URI is already in flight,
+     skip the re-check — the trailing change will trigger its own. *)
+  drain_stdin_nonblocking ();
+  if pending_change_for_uri uri then
+    LIO.log_error "debounce"
+      ("skipping check; later didChange pending for " ^ uri)
+  else
+    do_check_text ofmt ~doc
 
 let do_close _ofmt params =
   let document = dict_field "textDocument" params in
@@ -457,11 +516,13 @@ let main std log_file =
   (* Console.verbose := 4; *)
 
   let rec loop () =
-    let com = LIO.read_request stdin in
+    let com = read_next_or_block () in
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
-    (* flush lp_oc ;*)
+    (* Soak up anything that arrived while we were busy so the
+       debounce check in [do_change] sees a current view. *)
+    drain_stdin_nonblocking ();
     loop ()
   in
   try loop ()

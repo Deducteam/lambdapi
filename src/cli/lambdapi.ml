@@ -201,7 +201,10 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
 (** Running the LSP server. *)
 let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  let run _ = Config.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  let run _ =
+    Config.init cfg;
+    Lsp.Lp_lsp.main standard_lsp lsp_log_file
+  in
   Error.handle_exceptions run
 
 (** Printing a decision tree. *)

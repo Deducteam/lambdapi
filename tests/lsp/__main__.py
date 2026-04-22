@@ -18,6 +18,7 @@ if __name__ == "__main__":
         "tests.lsp.test_diagnostics",
         "tests.lsp.test_hover",
         "tests.lsp.test_definition",
+        "tests.lsp.test_incremental",
         "tests.lsp.test_goals",
         "tests.lsp.test_invariants",
         "tests.lsp.test_bugs_observed",
