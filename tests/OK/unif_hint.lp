@@ -24,7 +24,7 @@ symbol iz: I z;
 //    &x ≡ z   &y ≡ z
 // -------------------
 //    + &x &y ≡ z
-unif_rule (+ $x $y) ≡ z ↪ [ $x ≡ z, $y ≡ z ];
+unif_rule (+ $x $y) ≡ z ↪ [ $x ≡ z; $y ≡ z ];
 // Trigger the unification problem + ?1 ?2 ≡ z
 type H (+ _ _) iz;
 
@@ -42,7 +42,7 @@ compute J (pair _ z) kz;
 // The arrow problem
 constant symbol arrow : Set → Set → Set;
 rule El (arrow $t $u) ↪ El $t → El $u;
-unif_rule $a → $b ≡ El $c ↪ [ $a ≡ El $ea, $b ≡ El $eb, $c ≡ arrow $ea $eb ];
+unif_rule $a → $b ≡ El $c ↪ [ $a ≡ El $ea; $b ≡ El $eb; $c ≡ arrow $ea $eb ];
 symbol eq (t: Set): El t → El t → Bool;
 type eq _ (λ _, z) (λ _, z);
 
