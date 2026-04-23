@@ -167,7 +167,7 @@ let are_quant_args : term list -> bool = fun args ->
   | _ -> false
 
 let env term ppf ts =
-  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ",") ts
+  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
 
 (** The possible priority levels are [`Func] (top level, including abstraction
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)

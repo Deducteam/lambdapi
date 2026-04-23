@@ -14,6 +14,6 @@ assert ⊢ g (λ x y,x) (λ x,x) ≡ a;
 symbol h:(A → A → A) → (A → A → A) → A;
 symbol i: A → A → A;
 
-rule h (λ x y,$F.[x,y]) (λ x y,$F.[y,x]) ↪ a;
+rule h (λ x y,$F.[x;y]) (λ x y,$F.[y;x]) ↪ a;
 assertnot ⊢ h (λ x y,i x y) (λ x y,i x y) ≡ a;
 assert ⊢ h (λ x y,i x y) (λ x y,i y x) ≡ a;
