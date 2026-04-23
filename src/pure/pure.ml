@@ -65,11 +65,11 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
     Result.Error (None, "EOF")
   | Some c ->
     Ok c
-  | exception Fatal(Some(Some(pos)), msg) ->
+  | exception Fatal(Some(Some(pos)), msg, "") ->
     Error(Some pos, msg)
-  | exception Fatal(Some(None)     , _  ) ->
+  | exception Fatal(Some(None)     , _  , "") ->
     assert false
-  | exception Fatal(None           , _  ) ->
+  | exception Fatal(None           , _  , "") ->
     assert false
 
 (** Exception raised by [parse_text] on error. *)
@@ -77,6 +77,7 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
 let parse_text :
       fname:string -> string -> Command.t list * (Pos.pos * string) option =
   fun ~fname s ->
+  Stdlib.(Tool.Indexing.lsp_input := (fname,s)) ;
   let parse_string =
     if Filename.check_suffix fname dk_src_extension then
       Parser.Dk.parse_string
@@ -87,9 +88,10 @@ let parse_text :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_string fname s);
     List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg) -> List.rev Stdlib.(!cmds), Some(pos, msg)
-  | Fatal(Some(None)     , _  ) -> assert false
-  | Fatal(None           , _  ) -> assert false
+  | Fatal(Some(Some(pos)), msg, err_desc) ->
+      List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
+  | Fatal(Some(None)     , _  , _) -> assert false
+  | Fatal(None           , _  , _) -> assert false
 
 let parse_file :
       fname:string -> Command.t list * (Pos.pos * string) option =
@@ -104,9 +106,9 @@ let parse_file :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_file fname);
     List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg) -> List.rev Stdlib.(!cmds), Some(pos, msg)
-  | Fatal(Some(None)     , _  ) -> assert false
-  | Fatal(None           , _  ) -> assert false
+  | Fatal(Some(Some(pos)), msg, "") -> List.rev Stdlib.(!cmds), Some(pos, msg)
+  | Fatal(Some(None)     , _ , "" ) -> assert false
+  | Fatal(None           , _ , "" ) -> assert false
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 
@@ -158,8 +160,8 @@ let handle_command : state -> Command.t -> command_result =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
-  with Fatal(Some p,m) ->
-    Cmd_Error(Some p, m)
+  with Fatal(Some p,m, err_desc) ->
+    Cmd_Error(Some p, m ^ "\n" ^ err_desc)
 
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
   fun (_, ss, ps, finalize, prv, sym_pos) tac n ->
@@ -167,14 +169,14 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
-  with Fatal(Some p,m) ->
-    Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+  with Fatal(Some p,m, err_desc) ->
+    Tac_Error(Some p, m ^ "\n" ^ err_desc)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
   try Cmd_OK((Time.save (), finalize ss ps), None)
-  with Fatal(Some p,m) ->
-    Cmd_Error(Some p, m)
+  with Fatal(Some p,m, err_descr) ->
+    Cmd_Error(Some p, m ^ "\n" ^ err_descr)
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope

@@ -227,6 +227,9 @@ let unlink : t -> unit = fun sign ->
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
 
+let add_symbol_callback = Stdlib.ref (fun _ -> ())
+let add_rules_callback = Stdlib.ref (fun _ _ -> ())
+
 (** [add_symbol sign expo prop mstrat opaq name pos typ impl notation] adds in
     the signature [sign] a symbol with name [name], exposition [expo],
     property [prop], matching strategy [strat], opacity [opaq], type [typ],
@@ -241,6 +244,7 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
       (cleanup typ) (minimize_impl impl)
   in
   sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
+  if Stdlib.(!Common.Console.lsp_mod) then Stdlib.(!add_symbol_callback sym) ;
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -336,23 +340,6 @@ let read =
   let open Stdlib in let r = ref Ghost.sign in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
-(** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
-    does not correspond to a symbol of signature [sign], it is stored in its
-    dependencies. /!\ does not update the decision tree or the critical
-    pairs. *)
-let add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
-  s.sym_rules := !(s.sym_rules) @ [r];
-  if s.sym_path <> sign.sign_path then
-    let d = try Path.Map.find s.sym_path !(sign.sign_deps)
-            with Not_found -> assert false in
-    let f = function
-      | None -> Some{rules=[r]; nota=None}
-      | Some sd -> Some{sd with rules=sd.rules@[r]}
-    in
-    let sm = StrMap.update s.sym_name f d.dep_symbols in
-    let d = {d with dep_symbols=sm} in
-    sign.sign_deps := Path.Map.add s.sym_path d !(sign.sign_deps)
-
 (** [add_rules sign s rs] adds the new rules [rs] to the symbol [s]. When the
     rules do not correspond to a symbol of signature [sign], they are stored
     in its dependencies. /!\ does not update the decision tree or the critical
@@ -360,6 +347,7 @@ let add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
 let add_rules : t -> sym -> rule list -> unit = fun sign s rs ->
   s.sym_rules := !(s.sym_rules) @ rs;
   if s.sym_path <> sign.sign_path then
+   begin
     let d = try Path.Map.find s.sym_path !(sign.sign_deps)
             with Not_found -> assert false in
     let f = function
@@ -369,6 +357,16 @@ let add_rules : t -> sym -> rule list -> unit = fun sign s rs ->
     let sm = StrMap.update s.sym_name f d.dep_symbols in
     let d = {d with dep_symbols=sm} in
     sign.sign_deps := Path.Map.add s.sym_path d !(sign.sign_deps)
+   end ;
+  if Stdlib.(!Common.Console.lsp_mod) then Stdlib.(!add_rules_callback s rs)
+
+(** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
+    does not correspond to a symbol of signature [sign], it is stored in its
+    dependencies. /!\ does not update the decision tree or the critical
+    pairs. *)
+let add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
+  add_rules sign s [r]
+
 
 (** [add_notation sign sym nota] changes the notation of [s] to [n] in
     the signature [sign]. *)
