@@ -15,6 +15,26 @@ module Util = struct
 
 end
 
+(** Make a position spanning [len] characters from the start of [p]. *)
+let keyword_pos (p : Pos.pos) (len : int) : Pos.pos =
+  { p with end_line = p.start_line; end_col = p.start_col + len;
+           end_offset = p.start_offset + len }
+
+(** Keyword length for query commands. *)
+let query_keyword_len : Syntax.p_query_aux -> int = function
+  | Syntax.P_query_assert (false, _) -> 6  (* "assert" *)
+  | Syntax.P_query_assert (true, _) -> 9   (* "assertnot" *)
+  | Syntax.P_query_normalize _ -> 7        (* "compute" *)
+  | Syntax.P_query_infer _ -> 4            (* "type" *)
+  | Syntax.P_query_print _ -> 5            (* "print" *)
+  | Syntax.P_query_proofterm -> 9          (* "proofterm" *)
+  | Syntax.P_query_search _ -> 6           (* "search" *)
+  | Syntax.P_query_flag _ -> 4             (* "flag" *)
+  | Syntax.P_query_verbose _ -> 7          (* "verbose" *)
+  | Syntax.P_query_debug _ -> 5            (* "debug" *)
+  | Syntax.P_query_prover _ -> 6           (* "prover" *)
+  | Syntax.P_query_prover_timeout _ -> 14  (* "prover_timeout" *)
+
 (** Representation of a single command (abstract). *)
 module Command = struct
   type t = Syntax.p_command
@@ -23,6 +43,30 @@ module Command = struct
   let equal_with_pos = (=)
   let get_pos c = Pos.(c.pos)
   let print = Util.located Pretty.command
+
+  (** Focused position for OK diagnostics.
+      For symbol/inductive/opaque: underlines the declared name.
+      For all other commands: underlines the command keyword. *)
+  let get_focus_pos (c : t) : Pos.popt =
+    match c.elt with
+    | Syntax.P_symbol s -> s.p_sym_nam.pos
+    | Syntax.P_inductive (_, _, ind :: _) ->
+      let (name, _, _) = ind.elt in name.pos
+    | Syntax.P_opaque qid -> qid.pos
+    | _ ->
+      let kw_len = match c.elt with
+        | Syntax.P_rules _ -> 4       (* "rule" *)
+        | Syntax.P_unif_rule _ -> 9   (* "unif_rule" *)
+        | Syntax.P_coercion _ -> 11   (* "coerce_rule" *)
+        | Syntax.P_notation _ -> 8    (* "notation" *)
+        | Syntax.P_builtin _ -> 7     (* "builtin" *)
+        | Syntax.P_require _ -> 7     (* "require" *)
+        | Syntax.P_require_as _ -> 7  (* "require" *)
+        | Syntax.P_open _ -> 4        (* "open" *)
+        | Syntax.P_query q -> query_keyword_len q.elt
+        | _ -> 0
+      in
+      Option.map (fun p -> keyword_pos p kw_len) c.pos
 end
 
 let interval_of_pos : Pos.pos -> Range.t =
@@ -48,6 +92,32 @@ module Tactic = struct
   let equal = Syntax.eq_p_tactic
   let get_pos t = Pos.(t.pos)
   let print = Util.located Pretty.tactic
+
+  (** Focused position for OK diagnostics: underlines the tactic keyword. *)
+  let get_focus_pos (t : t) : Pos.popt =
+    let kw_len = match t.elt with
+      | Syntax.P_tac_admit -> 5       (* "admit" *)
+      | Syntax.P_tac_apply _ -> 5     (* "apply" *)
+      | Syntax.P_tac_assume _ -> 6    (* "assume" *)
+      | Syntax.P_tac_change _ -> 6    (* "change" *)
+      | Syntax.P_tac_eval _ -> 4      (* "eval" *)
+      | Syntax.P_tac_fail -> 4        (* "fail" *)
+      | Syntax.P_tac_generalize _ -> 10 (* "generalize" *)
+      | Syntax.P_tac_have _ -> 4      (* "have" *)
+      | Syntax.P_tac_induction -> 9   (* "induction" *)
+      | Syntax.P_tac_refine _ -> 6    (* "refine" *)
+      | Syntax.P_tac_refl -> 11       (* "reflexivity" *)
+      | Syntax.P_tac_remove _ -> 6    (* "remove" *)
+      | Syntax.P_tac_rewrite _ -> 7   (* "rewrite" *)
+      | Syntax.P_tac_set _ -> 3       (* "set" *)
+      | Syntax.P_tac_simpl _ -> 8     (* "simplify" *)
+      | Syntax.P_tac_solve -> 5       (* "solve" *)
+      | Syntax.P_tac_sym -> 8         (* "symmetry" *)
+      | Syntax.P_tac_why3 _ -> 4      (* "why3" *)
+      | Syntax.P_tac_query q -> query_keyword_len q.elt
+      | _ -> 0
+    in
+    Option.map (fun p -> keyword_pos p kw_len) t.pos
 end
 
 (** Representation of a single proof (abstract). *)
@@ -168,7 +238,7 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(Some p,m) ->
-    Tac_Error(Some p, Pos.popt_to_string p ^ " " ^ m)
+    Tac_Error(Some p, m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
@@ -178,6 +248,18 @@ let end_proof : proof_state -> command_result =
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
+
+let find_sym : state -> Term.qident Pos.loc -> Term.sym option =
+  fun (_, ss) qid ->
+  try Some (Sig_state.find_sym ~prt:true ~prv:true ss qid)
+  with Fatal _ -> None
+
+(* [restore_time st] activates the timed state (loaded signatures, library
+   mappings, ...) captured when [st] was computed. LSP requests must call
+   this before touching timed globals like [Library.lib_mappings], otherwise
+   they would observe whichever document was opened most recently. *)
+let restore_time : state -> unit =
+  fun (t, _) -> Time.restore t
 
 (* Equality tests, important for the incremental engine *)
 
