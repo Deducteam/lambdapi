@@ -624,10 +624,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_, _) as e -> raise e
-  | Fatal(None         ,m, _)      -> fatal pos "%s" m
-  | Fatal(Some(None)   ,m, _)      -> fatal pos "%s" m
+  | Timeout                   as e                    -> raise e
+  | Fatal(Some(Some(_)),_, _) as e                    -> raise e
+  | Fatal(None         ,m, cont)      -> fatal pos ~cont "%s" m
+  | Fatal(Some(None)   ,m, cont)      -> fatal pos ~cont "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

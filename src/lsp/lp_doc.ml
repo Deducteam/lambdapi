@@ -144,7 +144,7 @@ let new_doc ~uri ~version ~text =
       assert(String.is_prefix "file://" uri);
       let path = String.sub uri 7 (String.length uri - 7) in
       Some(Pure.initial_state path), []
-    with Error.Fatal(_pos, msg, _) ->
+    with Error.Fatal(_pos, msg, cont) ->
       let loc : Pos.pos =
         {
           fname = Some(uri);
@@ -155,7 +155,7 @@ let new_doc ~uri ~version ~text =
           end_col = 0;
           end_offset  = 0
         } in
-      (None, [(1, msg), Some(loc)])
+      (None, [(1, msg ^ "\n" ^ cont), Some(loc)])
   in
   { uri;
     text;
