@@ -467,7 +467,7 @@ module DB = struct
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
   ~lis:(lisb,lise) ~pres:(preb,pree)
-  ~bold:(boldb,bolde) ~code:(codeb,codee) ?(colorizer=Lplib.Color.default)
+  ~bold:(boldb,bolde) ~code:(codeb,codee) ?(colorizer=Lplib.Extra.default)
   fmt l =
   if l = [] then
    Lplib.Base.out fmt "Nothing found"
@@ -502,7 +502,7 @@ module DB = struct
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>") ~bold:("<b>","</b>")
-   ~code:("<code>","</code>") ~colorizer: Lplib.Color.default
+   ~code:("<code>","</code>") ~colorizer: Lplib.Extra.default
 
  let pp_item_list fmt l =
   generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
@@ -514,7 +514,7 @@ module DB = struct
       (if Stdlib.(!Common.Console.lsp_mod) || Unix.isatty Unix.stdout then
         Lplib.Color.red
       else
-        Lplib.Color.default)
+        Lplib.Extra.default)
     fmt l
 
  let pp_results_list fmt l = pp_item_list fmt l
