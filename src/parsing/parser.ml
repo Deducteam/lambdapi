@@ -94,15 +94,11 @@ module Aux(Lexer:
   sig
   type token
   val the_current_token : (token * position * position) ref
-  val get_token : Sedlexing.lexbuf -> unit
+  val get_token : Sedlexing.lexbuf
+  (* -> unit *)
     -> token * Lexing.position * Lexing.position
-  (* val parsing :
-    (Sedlexing.lexbuf -> 'a) -> Sedlexing.lexbuf -> 'a *)
   end)=
 struct
-
-(* let current_token() : Lexer.token = let (t,_,_) =
-    !Lexer.the_current_token in t *)
 
 let current_pos() : position * position =
   let (_,p1,p2) = !Lexer.the_current_token in (p1,p2)
@@ -110,7 +106,7 @@ let current_pos() : position * position =
 let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
   let t = !Lexer.the_current_token in
   let reset() = Lexer.the_current_token := t in
-  Lexer.the_current_token := Lexer.get_token lb ();
+  Lexer.the_current_token := Lexer.get_token lb;
   try let r = entry lb in begin reset(); r end
   with e -> begin reset(); raise e end
 
@@ -175,8 +171,7 @@ sig
   include Aux(struct
   type token = LpLexer.token
   let the_current_token = LpParser.the_current_token
-  let get_token x _ = LpLexer.token x
-    (* parsing = LpParser.new_parsing *)
+  let get_token x = LpLexer.token x
   end)
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
@@ -203,7 +198,7 @@ end
   include Aux(struct
   type token = RocqLexer.token
   let the_current_token = RocqParser.the_current_token
-  let get_token x _ = RocqLexer.token x
+  let get_token x = RocqLexer.token x
   end)
   (* exported functions *)
 (*
