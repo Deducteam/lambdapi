@@ -1,0 +1,3 @@
+- stocker les instances en mémoires
+- classes avec plusieurs arguments
+- types modulo rewriting

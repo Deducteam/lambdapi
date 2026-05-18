@@ -67,15 +67,15 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
   MLData term;
   LPCode {|
 kind sealed-goal type.
-type nabla (term -> sealed-goal) -> sealed-goal.
-type seal goal -> sealed-goal.
+external symbol nabla : (term -> sealed-goal) -> sealed-goal = "0".
+external symbol seal : goal -> sealed-goal = "0".
 
 kind goal type.
-type goal list prop -> term -> term -> goal.
+external symbol goal : list prop -> term -> term -> goal = "0".
 
-type of term -> term -> prop.
+external symbol of : term -> term -> prop = "0".
 
-pred msolve o:list sealed-goal.
+external pred msolve o:list sealed-goal.
   
 |};
 
@@ -160,15 +160,20 @@ let document () =
 let elpi = ref None
 
 let init () =
+(*  match Parsing.Package.find_config "lambdapi.pkg" with
+  | None           -> ()
+  | Some(cfg_file) ->
+  let root = Filename.dirname cfg_file in *)
+  let root = "/home/agontard/lambdapi/tests" in
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
-    ~file_resolver:(Parse.std_resolver ~paths:["/home/tassi/work-area/lambdapi"] ()) () in
+    ~file_resolver:(Parse.std_resolver ~paths:[root] ()) () in
   elpi := Some e;
   document ()
 
 let rec ensure_initialized () =
   match !elpi with
-  | None -> init (); ensure_initialized ()
+  | None -> init (); assert (!elpi <> None) ; ensure_initialized ()
   | Some e -> e
 
 (** Given an Elpi file, a predicate name and a Terms.term argument we
@@ -294,10 +299,11 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in
         let st, arg, gls = Elpi.API.Utils.map_acc (goal.embed ~depth:0) st tc in
-        st, mkAppGlobalL msolvec arg, gls in
+        st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
             
       let query = Elpi.API.RawQuery.compile_raw_term prog query in
 
+ (*     let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in*)
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; _ } ->
           let _ = readback_assignments state in

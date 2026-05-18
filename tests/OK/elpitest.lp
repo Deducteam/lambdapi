@@ -1,12 +1,10 @@
 /* dune exec lambdapi check tests/OK/elpitest.lp */
 require open tests.OK.logic;
-require open tests.OK.bool;
-require open tests.OK.nat;
+require open tests.OK.boolean;
 
 flag "print_implicits" on; // default is off
 flag "print_contexts" on; // default is off
 flag "print_domains" on; // default is off
-flag "print_meta_types" on; // default is off
 
 constant typeclass symbol eqdec : U → TYPE;
 constant symbol mk_eqdec [i] :
@@ -24,22 +22,22 @@ symbol mk_Pair [i] [j] : T i → T j → Pair i j;
 symbol pair : U → U → U;
 rule T (pair $i $j) ↪ Pair $i $j;
 
-symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
-existing instance bool_eqdec;
+instance symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
 instance symbol nat_eqdec  : eqdec nat ≔ mk_eqdec eq_nat /* p */;
 instance symbol pair_eqdec : Π i j, eqdec i → eqdec j → eqdec (pair i j);
   /* ≔ mk_eqdec eq_nat ; */
 
-type λ b , true == b;
+type λ x , true == x;
 type λ n , 1 == n;
-type λ n : T nat, λ b : T bool, mk_Pair 1 true == mk_Pair n b;
-
-rule @== _ (@mk_eqdec _ $f /* _ */) ↪ $f;
+type λ n : T nat, λ B0 : B, mk_Pair 1 B0 == mk_Pair n B0;
+/*
+rule @== _ (@mk_eqdec _ $f  _ ) ↪ $f;
 
 compute true == true;
-compute true == false;
-compute 1 == 0;
+compute true == false; 
+compute 1 == 0; 
 
+*/
 // assert ⊢ eqop _ true false : B;
 // elpi "tests/OK/elpitest.elpi" "main"
 //  (Π x y , P (x = y) → P (y = x));

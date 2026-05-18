@@ -109,6 +109,10 @@ let string_of_token = function
   | VERBOSE -> "verbose"
   | WHY3 -> "why3"
   | WITH -> "with"
+  | TYPECLASS -> "typeclass"
+  | INSTANCE -> "instance"
+  | ELPI -> "Elpi"
+  | EXISTING -> ""
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -363,6 +367,8 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
   | ASSOCIATIVE
   | COMMUTATIVE
   | CONSTANT
+  | TYPECLASS
+  | INSTANCE
   | INJECTIVE
   | SEQUENTIAL
   | PRIVATE
@@ -484,6 +490,7 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
         | _ ->
             expected "" [COLON;ASSIGN]
       end
+      
   | L_PAREN
   | L_SQ_BRACKET ->
       let pos1 = current_pos() in
@@ -634,6 +641,14 @@ and modifier (lb:lexbuf): p_modifier =
       let pos1 = current_pos() in
       consume_token lb;
       extend_pos (*__FUNCTION__*) pos1 (P_mstrat Term.Sequen)
+  | TYPECLASS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      extend_pos (*__FUNCTION__*) pos1 P_typeclass
+  | INSTANCE ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      extend_pos (*__FUNCTION__*) pos1 P_typeclass_instance
   | _ ->
       exposition lb
 

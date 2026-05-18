@@ -2,3 +2,9 @@
 (env
  (dev     (flags :standard))
  (release (flags :standard)))
+
+(install
+ (files tests/tcsolver.elpi)
+ (section share)
+ (package lambdapi)
+)
