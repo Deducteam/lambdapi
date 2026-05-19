@@ -84,6 +84,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let s = String.concat "" (List.map f (Logger.log_summary())) in
       return string ("debug flags:"^s)
   | P_query_debug(e,s) ->
+      String.iter (fun c -> if Logger.is_registered c then ()
+                            else fatal pos "Unknown debug flag \'%c\'" c) s;
       Logger.set_debug e s;
       Console.out 1 "debug %s%s" (if e then "+" else "-") s;
       None

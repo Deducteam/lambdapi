@@ -81,9 +81,9 @@ and param : p_term option -> string -> p_ident option pp = fun a sep ppf id ->
 and params : string -> p_params pp = fun sep ppf (ids,a,_) ->
   match ids, a with
   | None::_, None ->
-      fatal_no_pos "Cannot translate \"_\" parameters with no type."
+      fatal_no_pos "Cannot translate \"_\" binder parameters with no type."
   | Some {pos;_}::_, None ->
-      fatal pos "Cannot translate parameters with no type."
+      fatal pos "Cannot translate binder parameters with no type."
   | _ -> List.iter (out ppf "%a" (param a sep)) ids
 
 and params_list : string -> p_params list pp = fun sep ppf ->

@@ -6,7 +6,7 @@ open Timed
 open Common open Name
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
-    appears in it, and @raise [Not_found] otherwise. *)
+    appears in it, and raises [Not_found] otherwise. *)
 let type_of : var -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> eq_vars x y) ctx in a
 
@@ -31,7 +31,7 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   in
   List.fold_left f (t,0) ctx
 
-(** [unfold ctx t] behaves like {!val:Term.unfold} unless term [t] is of the
+(** [unfold ctx t] behaves like {!Term.unfold} unless term [t] is of the
     form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is replaced by
     the definition of [x] in [ctx].  In particular, if no operation is carried
     out on [t], we have [unfold ctx t == t]. *)

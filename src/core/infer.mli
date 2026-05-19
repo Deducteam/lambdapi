@@ -2,7 +2,7 @@
 
 open Term
 
-(** [infer_noexn p ctx t] returns [[Some(t',a)] where [t'] is a refinement of
+(** [infer_noexn p ctx t] returns [Some(t',a)] where [t'] is a refinement of
    [t] and [a] is some type for [t'] in the context [ctx], and [None]
    otherwise, possibly adding new constraints in [p]. The metavariables of [p]
    are updated when a metavariable is instantiated or created. [ctx] must be

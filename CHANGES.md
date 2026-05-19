@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
 
+### Fixed
+
+- Convertibility test of non-linear higher-order pattern variables in rule LHS.
+
 ## 3.0.0 (2025-07-16)
 
 ### Added

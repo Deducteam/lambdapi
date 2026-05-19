@@ -18,7 +18,7 @@ let log = log.pp
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
-    {!module:Tree_type} (they could not be defined here as this would lead to
+    [Tree_type] (they could not be defined here as this would lead to
     a cyclic dependency).
 
     {b Example:} let us consider the rewrite system for symbol [f] defined as:
@@ -38,17 +38,17 @@ let log = log.pp
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
     portion [S─∘─Z] is made possible by a swap. *)
 
-(** Representation of a tree (see {!type:Tree_type.tree}). *)
+(** Representation of a tree (see [Tree_type.tree]). *)
 type tree = rule Tree_type.tree
 
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Tree_type.tree.Cond}) that must
+    conditions (see constructor [Tree_type.tree.Cond]) that must
     be tested during evaluation to select which of the two subsequent branches
     to follow. There are two forms of conditions:
-    - convertibility conditions ({!constructor:Tree_type.tree_cond.CondNL}),
-    - free variable conditions ({!constructor:Tree_type.tree_cond.CondFV}).
+    - convertibility conditions ([Tree_type.tree_cond.CondNL]),
+    - free variable conditions ([Tree_type.tree_cond.CondFV]).
 
     Convertibility conditions are used whenever we try to apply a rule that is
     not left-linear, for example [f $x $x (s $y) ↪ r]. In this case we need to
@@ -67,27 +67,25 @@ module CP = struct
   (** Functional sets of pairs of integers. *)
   module PSet = Set.Make(
     struct
-      type t = int * int
-
-      let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
-        match i1 - j1 with 0 -> i2 - j2 | k -> k
+      type t = pvar * pvar
+      let compare = Stdlib.compare
     end)
 
   (** A pool of (convertibility and free variable) conditions. *)
   type t =
-    { variables : int IntMap.t
+    { variables : pvar IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
-        argument of a {!constructor:Term.term.Patt}) to its slot in the array
-        [vars] of the {!val:Eval.tree_walk} function. It is used to remember
+        argument of a [Term.term.Patt]) to its slot in the array
+        [vars] of the [Eval.tree_walk] function. It is used to remember
         non linearity constraints. *)
     ; nl_conds : PSet.t
     (** Set of convertibility constraints [(i,j)] with [i < j]. The constraint
         [(i,j)] is satisfied if the terms stored at indices [i] and [j] in the
-        [vars] array of the {!val:Eval.tree_walk} function are convertible. *)
+        [vars] array of the [Eval.tree_walk] function are convertible. *)
     ; fv_conds : int array IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
-        stored at slot [i] in the [vars] array of {!val:Eval.tree_walk}. *) }
+        stored at slot [i] in the [vars] array of [Eval.tree_walk]. *) }
 
   (** [empty] is the condition pool holding no condition. *)
   let empty : t =
@@ -99,21 +97,22 @@ module CP = struct
   let is_empty : t -> bool = fun pool ->
     PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
 
-  (** [register_nl slot i pool] registers the fact that the slot [slot] in the
-      [vars] array correspond to a term stored at index [i] in the environment
-      for the RHS. The first time that such a slot is associated to [i], it is
-      registered to serve as a reference point for testing convertibility when
-      (and if) another such slot is (ever) encountered. When that is the case,
-      a convertibility constraint is registered between the term stored in the
-      slot [slot] and the term stored in the reference slot. *)
-  let register_nl : int -> int -> t -> t = fun slot i pool ->
+  (** [register_nl i (slot,vs) pool] registers the fact that the slot [slot]
+      in the [vars] array correspond to a term stored at index [i] in the
+      environment for the RHS. The first time that such a slot is associated
+      to [i], it is registered to serve as a reference point for testing
+      convertibility when (and if) another such slot is (ever)
+      encountered. When that is the case, a convertibility constraint is
+      registered between the term stored in the slot [slot] and the term
+      stored in the reference slot. *)
+  let register_nl : int -> pvar -> t -> t = fun i pv pool ->
     try
       (* We build a new condition if there is already a point of reference. *)
-      let cond = (IntMap.find i pool.variables, slot) in
+      let cond = (IntMap.find i pool.variables, pv) in
       { pool with nl_conds = PSet.add cond pool.nl_conds }
     with Not_found ->
       (* First occurence of [i], register the slot as a point of reference. *)
-      { pool with variables = IntMap.add i slot pool.variables }
+      { pool with variables = IntMap.add i pv pool.variables }
 
   (** [register_fv slot xs pool] registers a free variables constraint for the
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
@@ -169,10 +168,10 @@ end
 (** {1 Clause matrix and pattern matching problem} *)
 
 (** {b NOTE} We ideally need the type [stack] of terms used during evaluation
-    (argument [stk] of {!val:Eval.tree_walk}) to have fast element access (for
+    (argument [stk] of [Eval.tree_walk]) to have fast element access (for
     swaps) as well as fast destruction and reconstruction operations (for more
-    information on these operations have a look at  {!val:Lplib.List.destruct}
-    and {!val:Lplib.List.reconstruct}).  These operations are intuitively used
+    information on these operations have a look at [Lplib.List.destruct]
+    and [Lplib.List.reconstruct]).  These operations are intuitively used
     to inspect a particular element, reduce it, and then reinsert it. It seems
     that in practice,  the naive representation based on lists performs better
     than more elaborate solutions, unless there are rules with many arguments.
@@ -209,7 +208,7 @@ module CM = struct
   let arg_path : int list pp = fun ppf pth ->
     out ppf "{%a}" (List.pp int ".") (List.rev pth)
 
-  (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
+  (** {b NOTE} the [arg_path] describes a path to the represented term.
       The idea is that each index of the list tells under which argument to go
       next (counting from [0]), starting from the end of the list. For example
       let us consider the term [f x (g a b)]. The subterm [a] is accessed with
@@ -217,7 +216,7 @@ module CM = struct
       take its first argument). Similarly, [b] is encoded as [[1 ; 1]] and [x]
       as [[0]]. Note that a value [[]] does not describe a valid path. Also, a
       [0] index is used when going under abstractions. In that case, the field
-      {!field:arg_rank} is incremented. *)
+      [arg_rank] is incremented. *)
 
   (** A clause matrix row (schematically {i c_lhs ↪ c_rhs if cond_pool}). *)
   type clause =
@@ -240,7 +239,7 @@ module CM = struct
   (** Type of clause matrices. *)
   type t =
     { clauses   : clause list
-    (** The rewrite rules. The order is significant when the {!Sequen}
+    (** The rewrite rules. The order is significant when the [Sequen]
         strategy is used: the rewrite rules are ordered by decreasing
         priority. *)
     ; slot      : int
@@ -272,7 +271,7 @@ module CM = struct
         variable condition: only variables of [vs] are in the matched term. *)
 
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
-      {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
+      [Tree_type.TC.t]) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
     | TRef _ | Appl _ -> assert false (*Cannot happen with get_args*)
@@ -400,7 +399,7 @@ module CM = struct
     try
       if mstrat = Sequen then
         (* [List.hd] won't fail because if the matrix is empty, then we don't
-           enter the function (see {!val:compile}). If it is not, then it has
+           enter the function (see [compile]). If it is not, then it has
            at least one clause. *)
         let fc = List.hd clauses in
         if is_exhausted positions fc then Yield(fc) else raise Not_found
@@ -467,9 +466,10 @@ module CM = struct
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let (_, a, _) = List.destruct pos ci in
+        let vs = Array.map (index_var vi) e in
         let cond_pool =
-          if (Array.length e) <> a.arg_rank then
-            CP.register_fv mem (Array.map (index_var vi) e) r.cond_pool
+          if Array.length e <> a.arg_rank then
+            CP.register_fv mem vs r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
@@ -479,7 +479,7 @@ module CM = struct
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
                   arg_path a.arg_path i;
-              CP.register_nl mem i cond_pool
+              CP.register_nl i (mem,vs) cond_pool
           | None    -> cond_pool
         in
         let c_subst =
@@ -496,7 +496,7 @@ module CM = struct
           let se i (_,(j,_)) = i = j in
           match i with
           | Some(i) when not (List.exists (se i) r.c_subst) ->
-              (mem, (i, Array.map (index_var vi) e)) :: r.c_subst
+              (mem, (i,vs)) :: r.c_subst
           | _ -> r.c_subst
         in
         {r with c_subst; cond_pool}
@@ -674,10 +674,10 @@ let harvest :
   in
   loop (Array.to_list lhs) subst slot
 
-(** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
+(** {b NOTE} [compile] produces a decision tree from a set of rewriting
     rules (in practice, they all belong to a same symbol). This tree is
     designed to be used in the reduction process, in function
-    {!val:Eval.tree_walk}. The purpose of the trees is to
+    [Eval.tree_walk]. The purpose of the trees is to
     - declare efficiently whether the input term (during evaluation) matches
       some LHS from the orginal rules (the one from which the tree is built);
     - build a substitution mapping some (sub) terms of the filtered term to
@@ -688,9 +688,8 @@ let harvest :
     having (as head structure) symbol [s] will be accepted.
 
     The second bullet is managed by the substitution of type
-    {!type:Tree_type.rhs_substit}. If a LHS contains a named pattern variable,
-    then it
-    is used in the RHS. Sub-terms that are filtered by named variables that
+    [Tree_type.rhs_substit]. If a LHS contains a named pattern variable, then
+    it is used in the RHS. Sub-terms that are filtered by named variables that
     are bound in the RHS are saved into an array during evaluation. When a
     leaf is reached, the substitution is applied on the RHS, copying terms
     from that array to the RHS. Subterms are saved into the array when field
@@ -761,8 +760,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
         in
         (* Add [var] to the variables that may appear free in patterns. *)
         let vars_id = VarMap.add var v_lvl vars_id in
-        let next =
-          compile vars_id CM.{clauses; slot; positions}
+        let next = compile vars_id CM.{clauses; slot; positions}
         in
         Some(v_lvl, next)
       in

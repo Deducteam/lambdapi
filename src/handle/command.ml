@@ -284,15 +284,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
-          Builtin.check ss pos n s;
-          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-          (Sig_state.add_builtin ss n s, None, None)
-      end
+      Builtin.check ss pos n s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
@@ -505,7 +499,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Build proof data. *)
-    let pdata =
+    let pdata, qres =
       (* Type of the symbol. *)
       let t, a =
         match a with
@@ -533,10 +527,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             | Some (t,a) -> Some (Pos.make pos t), a
       in
       (* Get tactics and proof end. *)
-      let pdata_proof, pe =
+      let pdata_proof, pe, qres =
         match p_sym_prf with
-        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end
-        | Some (ts, pe) -> ts, pe
+        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end, None
+        | Some (ts, pe) -> ts, pe, Some (fun () -> "OK")
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
@@ -603,9 +597,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
-      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
+      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in
-      (ss, Some pdata, None)
+      (ss, Some pdata, qres)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

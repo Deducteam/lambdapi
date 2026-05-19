@@ -39,11 +39,11 @@ module D = struct
 
   let array : 'a pp -> 'a array pp = fun elt ppf a ->
     let n = Array.length a in
-    if n = 0 then out ppf "[]"
+    if n = 0 then out ppf "[||]"
     else begin
-      out ppf "[%a" elt a.(0);
+      out ppf "[|%a" elt a.(0);
       for i = 1 to n-1 do out ppf "; %a" elt a.(i) done;
-      out ppf "]"
+      out ppf "|]"
     end
 
   let hashtbl : 'a pp -> 'b pp -> ('a, 'b) Hashtbl.t pp = fun key elt ->
@@ -54,7 +54,7 @@ module D = struct
     -> 'key pp -> string -> 'elt pp -> string -> 'map pp =
     fun iter key sep1 elt sep2 ppf m ->
     let f k t = out ppf "%a%s%a%s" key k sep1 elt t sep2 in
-    out ppf "["; iter f m; out ppf "]"
+    out ppf "{"; iter f m; out ppf "}"
 
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
     map StrMap.iter string "," elt ";"

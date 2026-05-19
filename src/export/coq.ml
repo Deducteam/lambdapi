@@ -154,7 +154,8 @@ let list elt sep oc xs =
 (** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found -> s
+  try StrMap.find s !rmap with Not_found ->
+    if StrMap.exists (fun _ id' -> s = id') !rmap then s ^ "__alt__" else s
 
 let raw_ident oc s = string oc (translate_ident s)
 

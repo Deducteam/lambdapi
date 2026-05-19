@@ -2,12 +2,12 @@
 
 by checking the joinability of critical pairs.
 
-- CP(l-->r, p, g-->d) = { (s(r), s(l[d]_p) | s = mgu(l|_p,g) } is the critical
-   pair between l|_p and g.
+- CP(l-->r, p, g-->d) = \{ (s(r), s(l[d]_p) | s = mgu(l|_p,g) \} is the
+  critical pair between l|_p and g.
 
-- CP*(l-->r, g-->d) = U { CP(l-->r, p, g-->d) | p in FPos(l) }
+- CP*(l-->r, g-->d) = U \{ CP(l-->r, p, g-->d) | p in FPos(l) \}
 
-- CP*(R,S) = U { CP*(l-->r, g-->d) | l-->r in R, g-->d in S }
+- CP*(R,S) = U \{ CP*(l-->r, g-->d) | l-->r in R, g-->d in S \}
 
 The set of critical pairs of a rewrite system R is CP(R) = CP*(R,R).
 

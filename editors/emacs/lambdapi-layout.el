@@ -2,6 +2,9 @@
 ;; SPDX-License-Identifier: CECILL-2.1
 ;;; Commentary:
 ;;; Code:
+
+(defvar lp-window-layout nil)
+
 (defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc" ; any random name will work
   "Buffer name for used by `lambdapi-refresh-window-layout'. Must
 not match any buffer used by user")
@@ -9,16 +12,16 @@ not match any buffer used by user")
 (defun lambdapi--apply-window-layout (tree)
   "Applies the window configuration given by the argument tree,
 it is either a list (split-side ratio child1-tree child2-tree)
-or a leaf which is a buffer or a string with buffer's name.
+or a leaf which is a buffer or a string with buffer\'s name.
 
-It is meant to be called by `lambdapi-refresh-window-layout'
-which also replaces buffers with name `lambdapi--temp-buffer-name'
+It is meant to be called by `lambdapi-refresh-window-layout`
+which also replaces buffers with name `lambdapi--temp-buffer-name`
 with the current buffer.
 
 Example:
 
 (lambdapi--apply-window-layout
-               '(h 0.6 \"proofs\" (v 0.3 \"goals\" \"logs\")))
+               `(h 0.6 \"proofs\" (v 0.3 \"goals\" \"logs\")))
 
 will produce
 
@@ -57,7 +60,7 @@ will produce
   (interactive)
   (let ((curbuf (current-buffer)))
     (delete-other-windows)
-    (lambdapi--apply-window-layout lambdapi-window-layout)
+    (lambdapi--apply-window-layout lp-window-layout)
     (dolist (win (get-buffer-window-list lambdapi--temp-buffer-name))
       (with-selected-window win
         (switch-to-buffer curbuf t t)))
@@ -82,8 +85,8 @@ will produce
   "Window layout of LambdaPi."
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time
-  :set (lambda (option newval)
-         (setq lambdapi-window-layout newval)
+  :set (lambda (_option newval)
+         (setq lp-window-layout newval)
          (lambdapi-refresh-window-layout))
   :type '(radio (sexp :tag "Layout 0"
 		      :format "%t\n"

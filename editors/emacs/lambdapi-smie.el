@@ -72,10 +72,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       `(column . ,(current-column)))
      (t '(column . 0)))))
 
-(defconst lambdapi--smie-prec
-  (smie-prec2->grammar
-   (smie-bnf->prec2
-    '((ident)
+(defconst lambdapi-smie-bnf
+  '((ident)
       (env (ident)
            (ident ";"))
       (rw-patt)
@@ -176,6 +174,12 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                (query ";")
                ("unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
                (symdec ";")))
+)
+
+(defconst lambdapi--smie-prec
+  (smie-prec2->grammar
+   (smie-bnf->prec2
+    lambdapi-smie-bnf
     '((assoc ";") (assoc "≔"))
     '((assoc ";") (assoc "↪"))
     '((assoc "≡") (assoc ",") (assoc "in") (assoc "→")))))

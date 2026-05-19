@@ -147,47 +147,43 @@ let rec term : bool -> term pp = fun b ppf t ->
 
 (** Translation of declarations. *)
 
-let modifiers : sym -> string list = fun s ->
-  let open Stdlib in
-  let r = ref [] in
-  let add m = r := m::!r in
-  begin
-    match s.sym_prop with
-    | Const -> ()
-    | Injec -> add "injective"
-    | AC _ -> add "defac"
-    | Defin -> add "def"
-    | Assoc _ -> assert false
-    | Commu -> assert false
-  end;
-  if s.sym_expo = Protec then add "private";
-  !r
+(* Dedukti only accepts the following declarations:
+def s : A := t
+thm s : A := t
+
+injective s : A
+private s : A
+private injective s : A
+def s : A
+defac s [A]
+private defac [A]
+*)
+let sym_type : sym pp = fun ppf s ->
+  match s.sym_prop with
+  | AC _ ->
+      out ppf "[%a]" (term true)
+        (match unfold !(s.sym_type) with Prod(t,_) -> t | _ -> assert false)
+  | _ -> out ppf ": %a" (term true) !(s.sym_type)
+
+let sym_decl_only : sym pp = fun ppf s ->
+  out ppf "%s%s%a %a.@."
+    (if s.sym_expo = Protec then "private " else "")
+    (match s.sym_prop with
+     | AC _ -> "defac " | Injec -> "injective" | _ -> "")
+    ident s.sym_name sym_type s
 
 let sym_decl : sym pp = fun ppf s ->
   match !(s.sym_def) with
-  | None ->
-    begin match s.sym_prop with
-      | AC _ ->
-        begin match unfold !(s.sym_type) with
-          | Prod(t,_) ->
-            out ppf "%a%a [%a].@."
-              (List.pp (suffix string " ") "") (modifiers s)
-              ident s.sym_name (term true) t
-          | _ -> assert false
-        end
-      | _ ->
-        out ppf "%a%a : %a.@."
-          (List.pp (suffix string " ") "") (modifiers s)
-          ident s.sym_name (term true) !(s.sym_type)
-    end
+  | None -> sym_decl_only ppf s
   | Some d ->
-    if !(s.sym_opaq) then
-      out ppf "thm %a : %a := %a.@."
-        ident s.sym_name (term true) !(s.sym_type) (term true) d
-    else
-      out ppf "%a%a : %a := %a.@."
-        (List.pp (suffix string " ") "") (modifiers s)
-        ident s.sym_name (term true) !(s.sym_type) (term true) d
+      (* in case of an AC, injective or protected symbol, we need to give the
+         definition in a rule after the declaration *)
+      if is_modulo s || s.sym_prop = Injec || s.sym_expo = Protec then
+        out ppf "%a[]%s --> %a.@." sym_decl_only s s.sym_name (term true) d
+      else
+        out ppf "%s%a : %a := %a.@."
+          (if !(s.sym_opaq) then "thm " else "def ")
+          ident s.sym_name (term true) !(s.sym_type) (term true) d
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
   let rec var ppf i =
