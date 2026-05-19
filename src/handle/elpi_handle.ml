@@ -11,6 +11,7 @@ let ofc = RawData.Constants.declare_global_symbol "of"
 let nablac = RawData.Constants.declare_global_symbol "nabla"
 let sealc = RawData.Constants.declare_global_symbol "seal"
 let msolvec = RawData.Constants.declare_global_symbol "msolve"
+let compilec = RawData.Constants.declare_global_symbol "compile"
 
 let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
   let open Term in
@@ -88,13 +89,13 @@ external pred msolve o:list sealed-goal.
     (fun s _ ~depth:_ -> !: (Timed.(!) s.Term.sym_type))),
     DocAbove);
 
-  MLCode(Pred("lp.tc-instances",
+  (*MLCode(Pred("lp.tc-instances",
     Out(list sym,"L",
     Read (ContextualConversion.unit_ctx, "Gives the list of type class instances")),
     (fun _ ~depth:_ _ _ state ->
       let s = State.get ss_component state in
       !: (s.Sig_state.active_tc_inst |> Term.SymSet.elements))),
-    DocAbove);
+    DocAbove);*)
 
   MLCode(Pred("lp.tc?",
     In(sym,"S",
@@ -160,10 +161,12 @@ let document () =
 let elpi = ref None
 
 let init () =
-(*  match Parsing.Package.find_config "lambdapi.pkg" with
-  | None           -> ()
-  | Some(cfg_file) ->
-  let root = Filename.dirname cfg_file in *)
+(* let cwd = Filename.concat (Sys.getcwd()) "." in
+ let root = match Parsing.Package.find_config cwd with
+  | None           -> Common.Error.wrn None "%s" (Option.get !Common.Library.lib_root);
+                      let getfile s = Common.Library.file_of_path (Common.Library.path_of_file Parsing.LpLexer.escape s) in
+                      Common.Error.wrn None "%s" (getfile "tests/OK/elpitest.lp") ; cwd
+  | Some(cfg_file) -> Filename.dirname cfg_file in*)
   let root = "/home/agontard/lambdapi/tests" in
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
@@ -221,6 +224,47 @@ fun ss file predicate arg ->
 
 let extend (cctx) v ?def ty = (v, ty, def) :: cctx
 
+let tc_solver_prog =
+  let elpi = ensure_initialized() in
+  let file = "tcsolver.elpi" in
+  let ast = Parse.program ~elpi ~file in
+  let flags = Elpi.API.Compile.default_flags in
+  match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
+  | [ x ] ->
+    let base = Elpi.API.Compile.(empty_base ~elpi) in
+    let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
+    Elpi.API.Compile.extend ~flags ~base unit
+  | _ -> Common.Error.fatal_no_pos "elpi: accumulate not supported"
+
+let add_tc_instance : Term.sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program =
+  fun sym base ->
+  let query st =
+    let open Elpi.API.RawData in
+    let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
+    let v = mkUnifVar v ~args:[] st in
+    let st, arg, gls = Elpi_lambdapi.sym.Conversion.embed ~depth:0 st sym in
+    st, mkAppGlobal compilec arg [v] , gls in
+    (* predicate; arguments = (D(term,arg,Q(term,"it",N))) }) in *)
+  let query = Elpi.API.RawQuery.compile_raw_term tc_solver_prog query in
+  match Execute.once (Elpi.API.Compile.optimize query) with
+  | Execute.Success {
+      Data.state; (*pp_ctx; constraints;*) assignments; _
+    } ->
+      let _ = readback_assignments state in
+      let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
+      let loc : Ast.Loc.t = Ast.Loc.initial "TODO" in
+      let ast = Elpi.API.Utils.clause_of_term ~depth:0 loc arg1 in
+      let flags = Elpi.API.Compile.default_flags in
+      let elpi = ensure_initialized() in
+      begin match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
+      | [ x ] ->
+        let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
+        Elpi.API.Compile.extend ~flags ~base unit
+      | _ -> Common.Error.fatal_no_pos "elpi: accumulate not supported"
+      end
+  | Failure -> Common.Error.fatal_no_pos "elpi: failure in add_instance"
+  | NoMoreSteps -> assert false
+
 let is_tc_instance : Sig_state.t -> Term.ctxt -> Term.meta -> bool =
   fun ss c m ->
   let open Timed in
@@ -267,14 +311,13 @@ let metas_of_term : Term.ctxt -> Term.term -> Term.meta list =
 
 let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
 
-(* we set the state, Elpi.API.Qery lacks this function *)
+(* we set the state, Elpi.API.Query lacks this function *)
 
 let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Term.ctxt ->
   Term.term * Term.term -> Term.term * Term.term =
   fun ?scope ss pos _pb ctxt (t,ty) ->
     let tc = metas_of_term ctxt t in
     if tc <> [] then begin
-      let elpi = ensure_initialized () in
       Option.iter (fun f -> scope_ref := f) scope;
 
       Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
@@ -282,26 +325,13 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         (fun m ->
           Common.Console.out 1 "META TY:@ %d : %a@\n" m.Term.meta_key Print.term (Timed.(!(m.Term.meta_type))))
           tc;
-
-      let file = "tcsolver.elpi" in
-      (* let pos = Elpi_AUX.loc_of_pos pos in *)
-
-      let ast = Parse.program ~elpi ~file in
-      let prog =
-        let flags = Elpi.API.Compile.default_flags in
-        match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
-        | [ x ] ->
-          let base = Elpi.API.Compile.(empty_base ~elpi) in
-          let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
-          Elpi.API.Compile.extend ~flags ~base unit
-        | _ -> Common.Error.fatal pos "elpi: accumulate not supported" in
       let query st =
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in
         let st, arg, gls = Elpi.API.Utils.map_acc (goal.embed ~depth:0) st tc in
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
             
-      let query = Elpi.API.RawQuery.compile_raw_term prog query in
+      let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
  (*     let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in*)
       match Execute.once (Elpi.API.Compile.optimize query) with

@@ -1,9 +1,8 @@
 msolve L :-
-  print {{ + }},
   print "### GOALS: " L,
-  compile_all Cl,
+  /*compile_all Cl,
   print "RULES:" Cl,
-  Cl => std.forall L (open tc).
+  Cl => */std.forall L (open tc).
 
 pred open i:(symbol -> term -> term -> prop), i:sealed-goal.
 open P (nabla F) :- pi x\ open P (F x).
@@ -14,7 +13,7 @@ open P (seal (goal Ctx Ty Wit)) :- var Wit,
   lp.tc? Class, !, print "GOAL:" (P Class X Wit),
   Ctx ==> P Class X Wit,
   print "TC INSTANCE:\n" Ctx "|-\n" Wit ":" Ty "\n".
-open P (seal (goal Ctx Ty Wit)) :-
+open _ (seal (goal Ctx Ty Wit)) :-
   print "NOT A TC INFERENCE PROBLEM:\n" Ctx "|-\n" Wit ":" Ty "\n".
 
 pred tc o:symbol, o:term, o:term.
@@ -53,7 +52,7 @@ compile (appl (appl {{ + }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [C
   */
 
 compile End TODO HD (tc S U HD :- TODO) :- safe-dest-app End (symb S) [U]. 
-
+/*
 pred compile_all o:list prop.
 compile_all Props :-
   lp.tc-instances Candidates,
@@ -61,3 +60,4 @@ compile_all Props :-
   std.map Candidates
     (N\claus\ sigma T\ lp.sig N T, compile T [] (symb N) claus)
     Props.
+*/

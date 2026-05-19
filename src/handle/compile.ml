@@ -51,7 +51,7 @@ let rec compile_with :
       Console.out 1 (Color.blu "Start checking \"%s\"%s") src forced;
       loading := mp :: !loading;
       let sign = Sign.create mp in
-      let ss = Stdlib.ref (Sig_state.of_sign sign) in
+      let ss = Stdlib.ref (Sig_state.of_sign_and_solver sign Elpi_handle.tc_solver_prog Elpi_handle.add_tc_instance) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;

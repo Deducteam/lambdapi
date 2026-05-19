@@ -316,8 +316,8 @@ type p_modifier_aux =
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
-  | P_typeclass
-  | P_typeclass_instance
+  | P_typeclass (** typeclass *)
+  | P_typeclass_instance (** typeclass instance *)
 
 type p_modifier = p_modifier_aux loc
 

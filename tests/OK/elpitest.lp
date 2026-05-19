@@ -21,23 +21,29 @@ symbol Pair : U → U → TYPE;
 symbol mk_Pair [i] [j] : T i → T j → Pair i j;
 symbol pair : U → U → U;
 rule T (pair $i $j) ↪ Pair $i $j;
+symbol fst [i j] : Pair i j → T i;
+rule @fst $i $j (@mk_Pair $i $j $x _) ↪ $x;
+symbol snd [i j] : Pair i j → T j;
+rule @snd $i $j (@mk_Pair $i $j _ $y) ↪ $y;
+symbol eq_pair [i j] (eqi : T i → T i → B) (eqj : T j → T j → B) (p1 p2 : Pair i j): B ≔
+  bool_and (eqi (@fst i j p1) (@fst i j p2)) (eqj (@snd i j p1) (@snd i j p2));
 
 instance symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
 instance symbol nat_eqdec  : eqdec nat ≔ mk_eqdec eq_nat /* p */;
-instance symbol pair_eqdec : Π i j, eqdec i → eqdec j → eqdec (pair i j);
-  /* ≔ mk_eqdec eq_nat ; */
+instance symbol pair_eqdec : Π i j, eqdec i → eqdec j → eqdec (pair i j) ≔
+  λ i j deci decj, mk_eqdec (@eq_pair i j (@== _ deci) (@== _ decj));
 
 type λ x , true == x;
 type λ n , 1 == n;
 type λ n : T nat, λ B0 : B, mk_Pair 1 B0 == mk_Pair n B0;
-/*
-rule @== _ (@mk_eqdec _ $f  _ ) ↪ $f;
+
+rule @== _ (@mk_eqdec _ $f) ↪ $f;
 
 compute true == true;
 compute true == false; 
-compute 1 == 0; 
+compute 1 == 0;
+compute mk_Pair 1 true == mk_Pair 1 true;
 
-*/
 // assert ⊢ eqop _ true false : B;
 // elpi "tests/OK/elpitest.elpi" "main"
 //  (Π x y , P (x = y) → P (y = x));

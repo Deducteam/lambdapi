@@ -20,7 +20,8 @@ let add_sym ss id =
 (* Define a signature state and some symbols. *)
 
 let sig_state : Sig_state.t =
-  Sig_state.of_sign (Sign.create (Path.ghost "rewriting_tests"))
+  Sig_state.of_sign_and_solver (Sign.create (Path.ghost "rewriting_tests"))
+    Handle.Elpi_handle.tc_solver_prog Handle.Elpi_handle.add_tc_instance
 
 let sig_state, c = add_sym sig_state "C"
 let sig_state, ok = add_sym sig_state "Ok"

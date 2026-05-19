@@ -259,4 +259,3 @@ let readback_assignments st =
             meta.Term.meta_value := Some t;
             st
     ) mmap st
-

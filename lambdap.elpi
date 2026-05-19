@@ -34,9 +34,6 @@ external pred msolve o:list sealed-goal.
 % [lp.sig S T] Gives the type of a symbol
 external func lp.sig symbol -> term.
 
-% [lp.tc-instances L] Gives the list of type class instances
-external func lp.tc-instances -> list symbol.
-
 % [lp.tc? S] Tells if S is a type class
 external func lp.tc? symbol.
 

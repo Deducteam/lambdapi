@@ -21,13 +21,15 @@ module LPSearchMain =
 struct
 
 let sig_state_of_require =
+ let open Elpi_handle in
  function
-   None -> Core.Sig_state.dummy
+   None -> Core.Sig_state.of_solver tc_solver_prog add_tc_instance
  | Some req ->
     (* Search for a package from the current working directory. *)
     Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
-    Core.Sig_state.of_sign
+    Core.Sig_state.of_sign_and_solver
      (Compile.compile (Parsing.Parser.path_of_string req))
+     tc_solver_prog add_tc_instance
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
@@ -215,7 +217,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
     let sym =
       Timed.(Console.verbose := 0); (* To avoid printing "Checked ..." *)
       let sign = Compile.compile mp in
-      let ss = Sig_state.of_sign sign in
+      let ss = Elpi_handle.(Sig_state.of_sign_and_solver sign tc_solver_prog add_tc_instance) in
       if ghost then
         (* Search through ghost symbols. *)
         try Sign.find Sign.Ghost.sign sym
