@@ -19,15 +19,15 @@ open Sign
     the tc_solver is an option so that sig_states can be created before
     elpi is initialized. *)
 type sig_state =
-  { signature      : Sign.t                                                      (** Current signature. *)
-  ; in_scope       : sym StrMap.t                                                (** Symbols in scope.  *)
-  ; alias_path     : Path.t StrMap.t                                             (** Alias to path map. *)
-  ; path_alias     : string Path.Map.t                                           (** Path to alias map. *)
-  ; builtins       : sym StrMap.t                                                (** Builtins. *)
-  ; active_tc      : SymSet.t                                                    (** Active TC *)
-  ; tc_solver_prog : Elpi.API.Compile.program option                             (** TC solver *)
-  ; add_tc_instance: sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update   *)
-  ; open_paths     : Path.Set.t                                                  (** Open modules. *) }
+  { signature      : Sign.t                                                                   (** Current signature. *)
+  ; in_scope       : sym StrMap.t                                                             (** Symbols in scope.  *)
+  ; alias_path     : Path.t StrMap.t                                                          (** Alias to path map. *)
+  ; path_alias     : string Path.Map.t                                                        (** Path to alias map. *)
+  ; builtins       : sym StrMap.t                                                             (** Builtins. *)
+  ; active_tc      : SymSet.t                                                                 (** Active TC *)
+  ; tc_solver_prog : Elpi.API.Compile.program option                                          (** TC solver *)
+  ; add_tc_instance: sig_state -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update   *)
+  ; open_paths     : Path.Set.t                                                               (** Open modules. *) }
 
 type t = sig_state
 
@@ -39,7 +39,7 @@ let get_solver : sig_state -> popt -> Elpi.API.Compile.program = fun ss pos ->
 
 let update_solver : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
   let tc_solver = get_solver ss pos in
-  {ss with tc_solver_prog = Some (ss.add_tc_instance sym tc_solver) }
+  {ss with tc_solver_prog = Some (ss.add_tc_instance ss sym tc_solver) }
 
 (** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
     signature state from [ss] by creating a new symbol with expo [e], property
@@ -60,7 +60,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     if tc then Sign.add_tc ss.signature sym;
   let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
   if tci then Sign.add_tc_inst ss.signature sym;
-  let tc_solver_prog = if tci then Some(ss.add_tc_instance sym (get_solver ss pos))
+  let tc_solver_prog = if tci then Some(ss.add_tc_instance ss sym (get_solver ss pos))
   else ss.tc_solver_prog in
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope; active_tc; tc_solver_prog}, sym
@@ -109,8 +109,9 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     signature [sign] and open it and the ghost signature as well, assuming that
     [sign] has been created using [Sign.create].
 *)
-let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program -> (sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
+let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program -> (t -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
   fun signature prog update ->
+
   let ss =
     { signature
     ; in_scope = StrMap.empty
@@ -136,12 +137,12 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; builtins = StrMap.empty  
     ; active_tc = SymSet.empty
     ; tc_solver_prog = None
-    ; add_tc_instance = (fun _ x -> x)
+    ; add_tc_instance = (fun _ _ x -> x)
     ; open_paths = Path.Set.empty }
   in
   open_sign (open_sign ss Ghost.sign) signature
 
-let of_solver : Elpi.API.Compile.program -> (sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
+let of_solver : Elpi.API.Compile.program -> (t -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
   of_sign_and_solver (Sign.create [])
 
 (** Dummy [sig_state]. *)

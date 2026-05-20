@@ -1,6 +1,6 @@
 msolve L :-
   print "### GOALS: " L,
-  /*compile_all Cl,
+  /*comp_all Cl,
   print "RULES:" Cl,
   Cl => */std.forall L (open tc).
 
@@ -24,26 +24,30 @@ safe-dest-app (appl HD ARG) H AS :- !,
   std.append A [ARG] AS.
 safe-dest-app X X [].
 
-pred compile i:term, i:list prop, i:term, o:prop.
+external pred compile i:symbol o:prop.
+
+compile S RES :- comp {lp.sig S} [] (symb S) RES, print RES.
+
+pred comp i:term, i:list prop, i:term, o:prop.
 /*
-compile (prod (appl (appl {{ + }} _Univ) Term as W) F) TODO H (pi x\ C x) :-
+comp (prod (appl (appl {{ + }} _Univ) Term as W) F) TODO H (pi x\ C x) :-
   safe-dest-app Term (symb S) _, lp.tc? S,
   !,
   pi x\
-    compile (F x) [tc S W x |TODO] (appl H x) (C x).
+    comp (F x) [tc S W x |TODO] (appl H x) (C x).
 */
-compile (prod (appl T U) F) TODO H (pi x\ C x) :-
-  T = symb S, lp.tc? S,
+comp (prod (appl T U) F) TODO H (pi x\ C x) :-
+  print (appl T U), T = symb S, std.spy (lp.tc? S),
   !,
   pi x\
-    compile (F x) [tc S U x |TODO] (appl H x) (C x).
+    comp (F x) [tc S U x |TODO] (appl H x) (C x).
 
-compile (prod _ F) TODO H (pi x\ C x) :-
+comp (prod _ F) TODO H (pi x\ C x) :-
   !,
   pi x\
-    compile (F x) TODO (appl H x) (C x).
+    comp (F x) TODO (appl H x) (C x).
 /*
-compile (appl (appl {{ + }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [Conv u t|TODO]) :- !,
+comp (appl (appl {{ + }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [Conv u t|TODO]) :- !,
   safe-dest-app Term (symb S) _,
   pi u t\
     End u t = (appl (appl {{ + }} u) t),
@@ -51,13 +55,13 @@ compile (appl (appl {{ + }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [C
     /*Conv u t = (/*lp.eq_modulo*/ u = Univ, std.spy(lp.unif t Term)). */
   */
 
-compile End TODO HD (tc S U HD :- TODO) :- safe-dest-app End (symb S) [U]. 
+comp End TODO HD (tc S U HD :- TODO) :- safe-dest-app End (symb S) [U]. 
 /*
-pred compile_all o:list prop.
-compile_all Props :-
+pred comp_all o:list prop.
+comp_all Props :-
   lp.tc-instances Candidates,
   print "instances" Candidates,
   std.map Candidates
-    (N\claus\ sigma T\ lp.sig N T, compile T [] (symb N) claus)
+    (N\claus\ sigma T\ lp.sig N T, comp T [] (symb N) claus)
     Props.
 */
