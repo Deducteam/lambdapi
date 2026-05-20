@@ -342,7 +342,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
             
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
-     let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in
+     (*let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in*)
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; _ } ->
           let _ = readback_assignments state in
