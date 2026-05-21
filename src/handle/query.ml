@@ -19,9 +19,9 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
           if !p.unsolved = [] then begin
             Common.Console.out 1 "starting tc resolution";
             let t, a = Elpi_handle.solve_tc ?scope ss pos p ctx (t, a) in
-            match Infer.infer_noexn p ctx t with
+            (try match Infer.infer_noexn p ctx t with
             | None -> fatal pos "%a is not typable AFTER TC RESOLUTION!!!!" term t
-            | _ -> Common.Console.out 1 "TC RESOLUTION OK!@ ";
+            | _ -> Common.Console.out 1 "TC RESOLUTION OK!@ " with | m -> wrn pos "fail here!" ; raise m) ;
                t, a
           end
           else

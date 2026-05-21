@@ -151,10 +151,10 @@ let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -
 
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
-(* Data.term -> Terms.term. We use and IntMap to link Elpi's De Bruijn
+(* Data.term -> Terms.term. We use an IntMap to link Elpi's De Bruijn
    levels to Bindlib's var *)
-let readback_term_box : Term.term Conversion.readback =
-fun ~depth st t ->
+let readback_term_box : ?pp_ctx: Data.pretty_printer_context option -> ?pos: Common.Pos.popt -> Term.term Conversion.readback =
+fun ?(pp_ctx = None) ?(pos=None) ~depth st t -> 
   let open RawData in
   let open Term in
   let gls = ref [] in
@@ -164,11 +164,15 @@ fun ~depth st t ->
     match look ~depth t with
     | Const c when c == typec -> st, mk_Type
     | Const c when c == kindc -> st, mk_Kind
-    | Const c when c >= 0 ->
+    | Const (c : constant) when c >= 0 ->
         begin try
           let v = IntMap.find c ctx in
           st, mk_Vari v
-        with Not_found -> Utils.type_error "readback_term: free variable" end
+        with Not_found ->
+          let elpivarname = Elpi.API.RawData.Constants.show c in
+          Common.Error.wrn pos "readback_term: free_variable %i" c;
+          let v = new_var elpivarname in
+          st, mk_Vari v end
     | App(c,s,[]) when c == symbc ->
         let st, s = call sym.Conversion.readback ~depth st s in
         st, mk_Symb s
@@ -197,7 +201,9 @@ fun ~depth st t ->
            in
         let st, args = Elpi_AUX.list_map_fold (aux ~depth ctx) st args in
         st, mk_Meta (meta, Array.of_list args)
-    | _ -> Utils.type_error "readback_term"
+    | _ -> begin match pp_ctx with
+      | Some pp_ctx -> Common.Error.fatal pos "readback term, unexpected term %a" (Pp.term pp_ctx) t
+      | _ -> Common.Error.fatal pos "readback term" end
   and aux_lam ~depth ctx st t =
     match look ~depth t with
     | Lam bo ->
@@ -205,13 +211,15 @@ fun ~depth st t ->
         let ctx = IntMap.add depth v ctx in
         let st, bo = aux ~depth:(depth+1) ctx st bo in
         st, bind_var v bo
-    | _ -> Utils.type_error "readback_term"
+    | _ -> begin match pp_ctx with
+      | Some pp_ctx -> Common.Error.fatal pos "readback term, unexpected term %a" (Pp.term pp_ctx) t
+      | _ -> Common.Error.fatal pos "readback term" end
   in
   let st, t = aux ~depth IntMap.empty st t in
   st, t, List.rev !gls
 
-let readback_term ~depth st t =
-  let st, t, gls = readback_term_box ~depth st t in
+let readback_term ?(pp_ctx=None) ?(pos=None) ~depth st t =
+  let st, t, gls = readback_term_box ~pp_ctx ~pos ~depth st t in
   st, t, gls
 
 (** Terms.term has a HOAS *)
@@ -227,13 +235,13 @@ external symbol appl:  term -> term -> term = "0".
 external symbol abst:  term -> (term -> term) -> term = "0".
 external symbol prod:  term -> (term -> term) -> term = "0".
   |});
-  readback = readback_term;
+  readback = readback_term ~pp_ctx:None ~pos:None;
   embed = embed_term ?ctx:None ?pats:None;
 }
 
 (** Assignments to Elpi's unification variables are a spine of lambdas
     followed by an actual term. We read them back as a Bindlib.mbinder *)
-let readback_mbinder st t =
+let readback_mbinder ?(pp_ctx=None) ?(pos=None) st t =
   let open RawData in
   let rec aux ~depth nvars t =
     match look ~depth t with
@@ -241,11 +249,11 @@ let readback_mbinder st t =
     | _ ->
         let vs = Array.init nvars (fun i ->
         Term.new_var (Printf.sprintf "x%d" i)) in
-        let st, t, _ = readback_term_box ~depth st t in
+        let st, t, _ = readback_term_box ~pp_ctx ~pos ~depth st t in
         st, (Term.bind_mvar vs t)
   in
     aux ~depth:0 0 t
-let readback_assignments st =
+let readback_assignments ?(pp_ctx=None) ?(pos=None) st =
   let mmap = State.get metamap st in
   MM.fold (fun meta _flex body st ->
     match body with
@@ -255,7 +263,7 @@ let readback_assignments st =
         match ! (meta.Term.meta_value) with
         | Some _ -> assert false
         | None ->
-            let st, t = readback_mbinder st t in
+            let st, t = readback_mbinder ~pp_ctx ~pos st t in
             meta.Term.meta_value := Some t;
             st
     ) mmap st

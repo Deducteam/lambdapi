@@ -17,15 +17,13 @@ external symbol prod:  term -> (term -> term) -> term = "0".
   
 
 kind sealed-goal type.
-external symbol nabla : (term -> sealed-goal) -> sealed-goal = "0".
+external symbol nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
 external symbol seal : goal -> sealed-goal = "0".
 
 kind goal type.
-external symbol goal : list prop -> term -> term -> goal = "0".
+external symbol goal : term -> term -> goal = "0".
 
-external symbol of : term -> term -> prop = "0".
-
-external pred msolve o:list sealed-goal.
+external pred msolve i:list sealed-goal o:list (option term).
   
 
 

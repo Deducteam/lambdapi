@@ -28,10 +28,17 @@ rule @snd $i $j (@mk_Pair $i $j _ $y) ↪ $y;
 symbol eq_pair [i j] (eqi : T i → T i → B) (eqj : T j → T j → B) (p1 p2 : Pair i j): B ≔
   bool_and (eqi (@fst i j p1) (@fst i j p2)) (eqj (@snd i j p1) (@snd i j p2));
 
+
 instance symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
 instance symbol nat_eqdec  : eqdec nat ≔ mk_eqdec eq_nat /* p */;
+//type _;
+//type λ x , true == x;
+type U;
+type pair;
+type λ i j (deci : eqdec i) (decj : eqdec j), mk_eqdec (@eq_pair i j (==) (==));
+symbol test ≔ λ n, n == 1;
 instance symbol pair_eqdec : Π i j, eqdec i → eqdec j → eqdec (pair i j) ≔
-  λ i j deci decj, mk_eqdec (@eq_pair i j (@== _ deci) (@== _ decj));
+  λ i j deci decj, mk_eqdec (@eq_pair i j (==) (==));
 
 type λ x , true == x;
 type λ n , 1 == n;
@@ -43,6 +50,9 @@ compute true == true;
 compute true == false; 
 compute 1 == 0;
 compute mk_Pair 1 true == mk_Pair 1 true;
+
+print test;
+print pair_eqdec;
 
 // assert ⊢ eqop _ true false : B;
 // elpi "tests/OK/elpitest.elpi" "main"

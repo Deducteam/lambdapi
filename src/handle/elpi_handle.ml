@@ -7,7 +7,6 @@ let ss_component : Sig_state.t State.component =
     ~pp:(fun _fmt _ -> ()) ~init:(fun () -> Sig_state.dummy) ~start:(fun x -> x) ()
 
 let goalc = RawData.Constants.declare_global_symbol "goal"
-let ofc = RawData.Constants.declare_global_symbol "of"
 let nablac = RawData.Constants.declare_global_symbol "nabla"
 let sealc = RawData.Constants.declare_global_symbol "seal"
 let msolvec = RawData.Constants.declare_global_symbol "msolve"
@@ -20,10 +19,10 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
     !(m.meta_type) in 
 
   let open RawData in
-  let open Utils in
+  (*let open Utils in*)
   (*Common.Console.out 1 "BEFORE EMBED GOAL:@ %a@\n" Print.term ty;*)
 
-  let rec aux ~depth st (c,ctx,i,args) ty =
+  let rec aux ~depth st (c,i,args) ty =
     match unfold ty with
     | Prod (dom,b) ->
       (*Common.Console.out 1 "EMBED HYP:@ %a@\n" Print.term dom;*)
@@ -31,19 +30,19 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
       let x,b,c = Ctxt.unbind ~keep:true c depth None b in
       let st, g, gls1 =
         aux ~depth:(depth+1) st
-          (c,(depth+1,mkApp ofc (mkBound depth) [dom])::ctx,i,x::args) b in
-      st, mkApp nablac (mkLam g) [], gls @ gls1
+          (c,i,x::args) b in
+      st, mkApp nablac dom [mkLam g], gls @ gls1
     | _ ->
        (*Common.Console.out 1 "EMBED CONCL:@ %d %d |- %a@\n" (List.length c) (List.length ctx) Print.term ty;*)
-       let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in
+       (*let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in*)
        let st, ty, gls = embed_term ~ctx:c ~depth st ty in
        let args = List.rev args |> List.map Term.mk_Vari in
        let args1,args2 = Lplib.List.cut args (i.Term.meta_arity) in
        let m = Term.add_args (mk_Meta (i, args1 |> Array.of_list)) args2 in
        let st, i, gls1 = embed_term ~ctx:c ~depth st m in
-       st, mkApp sealc (mkApp goalc (list_to_lp_list ctx) [ty; i]) [], gls @ gls1
+       st, mkApp sealc (mkApp goalc (*(list_to_lp_list ctx)*) ty [i]) [], gls @ gls1
   in
-  let rc = aux ~depth st ([],[],m,[]) ty in
+  let rc = aux ~depth st ([],m,[]) ty in
   (*Common.Console.out 1 "EMBED GOAL END ------------:@ %a@\n" Print.term ty;*)
   rc
    
@@ -68,15 +67,13 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
   MLData term;
   LPCode {|
 kind sealed-goal type.
-external symbol nabla : (term -> sealed-goal) -> sealed-goal = "0".
+external symbol nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
 external symbol seal : goal -> sealed-goal = "0".
 
 kind goal type.
-external symbol goal : list prop -> term -> term -> goal = "0".
+external symbol goal : term -> term -> goal = "0".
 
-external symbol of : term -> term -> prop = "0".
-
-external pred msolve o:list sealed-goal.
+external pred msolve i:list sealed-goal o:list (option term).
   
 |};
 
@@ -168,6 +165,7 @@ let init () =
                       Common.Error.wrn None "%s" (getfile "tests/OK/elpitest.lp") ; cwd
   | Some(cfg_file) -> Filename.dirname cfg_file in*)
   let root = "/home/agontard/lambdapi/tests" in
+  Setup.set_warn (fun ?loc:_~id s -> match id with Setup.UndeclaredGlobal -> Common.Error.fatal None "%s" s | _ -> Common.Error.wrn None "%s" s);
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
     ~file_resolver:(Parse.std_resolver ~paths:[root] ()) () in
@@ -317,6 +315,19 @@ let metas_of_term : Term.ctxt -> Term.term -> Term.meta list =
     aux c t;
     !acc
 
+(** [meta_map_term t] replaces each subterm of [t] of the form [Term.Meta (m,args)] with [f m args] *)
+let rec meta_map_term : (Term.meta -> Term.term array -> Term.term) -> Term.term -> Term.term =
+  fun f t -> let open Term in
+  let cont = meta_map_term f in
+  let bcont = binder cont in
+  match t with
+  | Meta(m,args) -> f m args
+  | Abst(dom,b) -> let dom = cont dom in let b = bcont b in mk_Abst(dom,b)
+  | Prod(dom,b) -> let dom = cont dom in let b = bcont b in mk_Prod(dom,b)
+  | LLet(dom,t,b) -> let dom = cont dom in let t = cont t in let b = bcont b in
+    mk_LLet(dom,t,b)
+  | Appl(t,u) -> let t = cont t in let u = cont u in mk_Appl(t,u)
+  | _ -> t
 
 let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
 
@@ -326,7 +337,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
   Term.term * Term.term -> Term.term * Term.term =
   fun ?scope ss pos _pb ctxt (t,ty) ->
     let tc = metas_of_term ctxt t in
-    if tc <> [] then begin
+    if tc == [] then (t,ty) else begin
       Option.iter (fun f -> scope_ref := f) scope;
 
       Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
@@ -337,23 +348,32 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
       let query st =
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in
+        let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
+        let v = mkUnifVar v ~args:[] st in
         let st, arg, gls = Elpi.API.Utils.map_acc (goal.embed ~depth:0) st tc in
-        st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
-            
+        st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg; v], gls in
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
      (*let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in*)
       match Execute.once (Elpi.API.Compile.optimize query) with
-      | Execute.Success { Data.state; _ } ->
-          let _ = readback_assignments state in
-          ()
-      | Failure -> ()
+      | Execute.Success { Data.state; assignments; _} ->
+          (*let _ = readback_assignments ~pp_ctx:(Some pp_ctx) ~pos state in*)
+          let insts = Elpi.API.Setup.StrMap.find "Result" assignments in
+          let insts = Elpi.API.Utils.lp_list_to_list ~depth:0 insts in
+          let _,insts,_ = Elpi.API.Utils.map_acc ((Elpi.Builtin.option term).readback ~depth:0) state insts in
+          let fill_meta m' = Option.map (List.nth insts)
+            (List.find_index (fun m -> Term.(m.meta_key = m'.meta_key)) tc)
+          in
+          let inst_meta m args = match fill_meta m with
+            | Some (Some t) -> Eval.snf_beta (Term.add_args t (Array.to_list args))
+            | _ -> Term.mk_Meta(m,args)
+          in
+          let res = meta_map_term inst_meta t in
+          (res,ty)
+      | Failure -> (t,ty)
         (* Common.Error.fatal_no_pos "elpi: failure" *)
       | NoMoreSteps -> assert false
-    end;
-    t, ty
-
-
+    end
 
 let embed_qterm
   : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> Term.term -> Elpi.API.Ast.Term.t =

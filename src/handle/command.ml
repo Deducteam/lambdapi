@@ -604,11 +604,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           match pt, t with
           | Some pt, Some t ->
               let gt = match g with Typ gt -> gt | _ -> assert false in
-              Tactic.tac_refine ~check:false pt.pos ps gt proof_goals p t.elt
-          | _, _ -> Tactic.tac_solve pos ps
+              Tactic.tac_refine ~check:false pt.pos ss ps gt proof_goals p t.elt
+          | _, _ -> Tactic.tac_solve pos ss ps
         else
           let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
-          Tactic.tac_solve pos ps
+          Tactic.tac_solve pos ss ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
