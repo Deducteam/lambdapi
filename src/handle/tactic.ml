@@ -96,14 +96,16 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss p
     | _ -> true
   in*)
   let try_solvetc g = match g with
-    | Typ gt -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
+    | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
       let t,_ = Elpi_handle.solve_tc ~scope:(fun _ -> (goal_term,[])) ss pos p (ctxt g) (goal_term,gt.goal_type) in
       if match t with Meta _ -> false | _ -> true then
         begin match Infer.check_noexn p (ctxt g) t gt.goal_type with
-        | Some res when Unif.solve_noexn p -> gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
-        | _ -> Common.Error.fatal pos "tc solver error" end
+        | Some res when Unif.solve_noexn p ->
+          p := {!p with recompute = true };
+          gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
+        | _ -> Common.Error.fatal pos "typeclass solver error: typecheck" end
     | _ -> ()
-    in 
+    in
   (*let gs_typ = List.filter non_instantiated gs_typ in*)
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
@@ -113,11 +115,13 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss p
     if List.exists (is_eq_goal_meta m) gs_typ then gs
     else Goal.of_meta m :: gs
   in
-  let proof_goals =
-    gs_typ @ MetaSet.fold add_goal (!p).metas
-               (List.map (fun c -> Unif c) (!p).unsolved)
-  in
-  List.iter try_solvetc proof_goals;
+  (* try solving the remaining goals, and in case of progress, re-trigger unification. *)
+  let pb_goals = MetaSet.fold add_goal (!p).metas [] in 
+  List.iter try_solvetc gs_typ ;
+  List.iter try_solvetc pb_goals;
+  if not (Unif.solve_noexn p)
+    then Common.Error.fatal pos "typeclass solver error: unification";
+  let proof_goals = gs_typ @ pb_goals @ (List.map (fun c -> Unif c) (!p).unsolved) in
   Proof.remove_solved_goals {ps with proof_goals}
   (*let proof_goals = List.filter non_instantiated proof_goals in
   {ps with proof_goals}*)

@@ -340,11 +340,11 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
     if tc == [] then (t,ty) else begin
       Option.iter (fun f -> scope_ref := f) scope;
 
-      Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
+      (*Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
       List.iter
         (fun m ->
           Common.Console.out 1 "META TY:@ %d : %a@\n" m.Term.meta_key Print.term (Timed.(!(m.Term.meta_type))))
-          tc;
+          tc;*)
       let query st =
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in

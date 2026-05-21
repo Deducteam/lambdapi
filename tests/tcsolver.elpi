@@ -1,9 +1,9 @@
 msolve L RES :-
-  print "### GOALS: " L,
-  /*comp_all Cl,
+  /*print "### GOALS: " L,
+  comp_all Cl,
   print "RULES:" Cl,
-  Cl => */std.map L (open tc) RES,
-  print "RESULT:" RES.
+  Cl => */std.map L (open tc) RES /*,
+  print "RESULT:" RES */.
 
 pred add_abst term, (term -> option term) -> option term.
 add_abst _ (x\none) none.
@@ -15,15 +15,15 @@ open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp Ty [] x Rule ; Rule = true
   Rule ==> open P (F x) (Wit x), add_abst Ty Wit Abswit.
 
 open P (seal (goal /*Ctx*/ Ty Wit)) (some Wit) :- 
-  print "TC PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n",
+  %print "TC PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n",
   safe-dest-app Ty (symb Class) [X],
   not (var Class),
-  lp.tc? Class, !, print "GOAL:" (P Class X Wit),
-  P Class X Wit,
-  print "TC INSTANCE:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n".
+  lp.tc? Class, !, %print "GOAL:" (P Class X Wit),
+  P Class X Wit /*,
+  print "TC INSTANCE:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n"*/.
 
-open _ (seal (goal /*Ctx*/ Ty Wit)) none :-
-  print "NOT A TC INFERENCE PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n".
+open _ (seal (goal /*Ctx*/ _Ty _Wit)) none /* :-
+  print "NOT A TC INFERENCE PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n" */. 
 
 /*func recover-type term, sealed-goal -> term.
 recover-type T (nabla F) Ty :- pi x\ recover-type T (F x) Ty.
@@ -46,7 +46,7 @@ safe-dest-app X X [].
 
 external pred compile i:symbol o:prop.
 
-compile S RES :- comp {lp.sig S} [] (symb S) RES, print RES.
+compile S RES :- comp {lp.sig S} [] (symb S) RES /*, print RES */.
 
 pred comp i:term, i:list prop, i:term, o:prop.
 /*
@@ -57,7 +57,7 @@ comp (prod (appl (appl {{ + }} _Univ) Term as W) F) TODO H (pi x\ C x) :-
     comp (F x) [tc S W x |TODO] (appl H x) (C x).
 */
 comp (prod (appl T U) F) TODO H (pi x\ C x) :-
-  print (appl T U), T = symb S, lp.tc? S,
+  T = symb S, lp.tc? S,
   !,
   pi x\
     comp (F x) [tc S U x |TODO] (appl H x) (C x).
