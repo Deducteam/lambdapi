@@ -46,7 +46,7 @@ builtin "remove" ≔ #remove;
 constant symbol #repeat : Tactic → Tactic;
 builtin "repeat" ≔ #repeat;
 
-constant symbol #rewrite [p] : π p → Tactic;
+ symbol #rewrite : String → String → Π [a], π a → Tactic;
 builtin "rewrite" ≔ #rewrite;
 
 constant symbol #set : String → Π [a], τ a → Tactic;
@@ -69,6 +69,9 @@ builtin "try" ≔ #try;
 
 constant symbol #why3 : Tactic;
 builtin "why3" ≔ #why3;
+
+constant symbol #change : Tactic;
+builtin "change" ≔ #change;
 
 // defined tactics
 
