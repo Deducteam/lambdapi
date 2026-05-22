@@ -1,14 +1,11 @@
-require open tests.OK.Z;
+
 /* Encoding of simple type theory */
-/*constant symbol Set : TYPE;
-constant symbol bool : Set;*/
-constant symbol fun : Set → Set → Set;
-//injective symbol El : Set → TYPE;
-injective symbol El : tests.OK.Set.Set → TYPE ≔ tests.OK.Set.τ;
+constant symbol Set : TYPE;
 constant symbol bool : Set;
-rule τ bool ↪ Prop;
-rule τ (fun $a $b) ↪ τ $a → τ $b;
-injective symbol Prf : El bool → TYPE ≔ π;
+constant symbol fun : Set → Set → Set;
+injective symbol El : Set → TYPE;
+rule El (fun $a $b) ↪ El $a → El $b;
+injective symbol Prf : El bool → TYPE;
 
 /* HOL-Light primitive constants, axioms and rules */
 constant symbol = [A] : El (fun A (fun A bool)); notation = infix 50;
@@ -51,8 +48,8 @@ constant symbol ∧ : El (fun bool (fun bool bool)); notation ∧ infix left 20;
 constant symbol ⊤ : El bool;
 
 /* Natural deduction rules */
-rule π (⇒ $p $q) ↪ Prf $p → Prf $q;
-rule π (∀ $p) ↪ Π x, Prf ($p x);
+rule Prf (⇒ $p $q) ↪ Prf $p → Prf $q;
+rule Prf (∀ $p) ↪ Π x, Prf ($p x);
 symbol ⊤ᵢ : Prf ⊤;
 symbol ∧ᵢ [p : El bool] : Prf p → Π [q : El bool], Prf q → Prf (p ∧ q);
 symbol ∧ₑ₁ [p q : El bool] : Prf (p ∧ q) → Prf p;
@@ -330,43 +327,34 @@ opaque instance symbol cancel_semigroup_add_of_group_add [A] :
     }; 
 end;
 
-symbol eq_compat [A] [x y : El A] : Prf (x tests.OK.Eq.= y) → Prf (x = y) ≔ begin
-  assume A x y eqxy; apply (ind_eq eqxy (λ z, z = y));
-  refine (REFL y);
+opaque symbol minus_add_cancel [A : Set] [B : group_add_class A] a b :
+  Prf (— a + (a + b) = b) ≔ begin
+  assume A ? a b; rewrite left add_assoc; rewrite left_minus;
+  rewrite add_0_left; reflexivity;
 end;
 
-instance symbol Z0_inst ≔ mk_zero 0;
-instance symbol Zplus_inst ≔ mk_plus (tests.OK.Z.+);
-instance symbol Zuminus_inst ≔ mk_uminus (tests.OK.Z.—);
-instance symbol Zminus_inst ≔ mk_minus (tests.OK.Z.-);
-instance symbol Zsemigroup_inst : semigroup_add_class int ≔ begin
-  apply mk_semigroup_add; assume a b c;
-  apply eq_compat; refine (+_assoc a b c);
-end;
-instance symbol Zmonoid_inst : monoid_add_class int ≔ begin
-  apply mk_monoid_add { 
-    reflexivity;
-  } {
-    reflexivity;
-  };
-end;
-instance symbol Zgroup_inst : group_add_class int ≔ begin
-  apply mk_group_add {
-    assume a;
-    have eq1 : Prf (— — a = a)
-      { apply eq_compat; refine (—_idem a) };
-    rewrite left .[X in _ + X]eq1;
-    have eq2 : Prf (— a + — — a = — (a + — a))
-      { symmetry; apply eq_compat; refine (distr_—_+ a (— a))};
-    rewrite eq2;
-    have eq3 : Prf (a + — a = _0)
-      { apply eq_compat; refine (-_same a) };
-    rewrite eq3; reflexivity;
-  } {
-    reflexivity;
-  };
+opaque symbol add_minus_cancel [A] [_ : group_add_class A] a b :
+  Prf (a + (— a + b) = b) ≔ begin
+  assume A ? a b ; rewrite left add_assoc; rewrite right_minus;
+  rewrite add_0_left; reflexivity;
 end;
 
-symbol testuse (a b : ℤ): Prf (a + b = 0 ⇒ — a = b) ≔ begin
-  assume a b oppab;
-abort;
+opaque symbol diff_add_cancel [A] [_ : group_add_class A] a b :
+  Prf (a - b + b = a) ≔ begin
+  assume A ? a b; rewrite diff_conv_add_uminus; rewrite add_assoc;
+  rewrite left_minus; apply add_0_right;
+end;
+
+opaque symbol add_diff_cancel [A] [_: group_add_class A] a b :
+  Prf (a + b - b = a) ≔ begin
+  assume A ? a b; rewrite diff_conv_add_uminus; rewrite add_assoc;
+  rewrite right_minus; apply add_0_right;
+end;
+
+opaque symbol minus_add [A] [_ : group_add_class A] a b :
+  Prf (— (a + b) = — b + — a) ≔ begin
+  assume A ? a b; apply (minus_unique (a + b));
+  rewrite add_assoc; rewrite left (add_assoc b);
+  rewrite right_minus; rewrite add_0_left;
+  refine (right_minus a);
+end;

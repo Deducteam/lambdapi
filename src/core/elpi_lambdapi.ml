@@ -17,19 +17,30 @@ module Elpi_AUX = struct
     let s, l, _ = Utils.map_acc f s l in
     s, l
 
-  let loc_of_pos = function
+  let loc_of_pos = function {Common.Pos.fname; start_line; start_col; _} ->
+    {
+      Ast.Loc.source_name =
+        (match fname with None -> "(.)" | Some x -> x);
+      source_start = 0;
+      source_stop = 0;
+      line = start_line;
+      line_starts_at = start_col;
+      client_payload = None;
+    }
+  
+  let loc_of_popt = function
     | None -> Ast.Loc.initial "(elpi)"
-    | Some x ->
-        let { Common.Pos.fname; start_line; start_col; _ } = x in
-        {
-          Ast.Loc.source_name =
-            (match fname with None -> "(.)" | Some x -> x);
-          source_start = 0;
-          source_stop = 0;
-          line = start_line;
-          line_starts_at = start_col;
-          client_payload = None;
-        }
+    | Some x -> loc_of_pos x
+  
+  let pos_of_loc {Ast.Loc.source_name; source_start; source_stop; line; line_starts_at; _} =
+  { Common.Pos.fname = Some (source_name)
+  ; start_line       = line
+  ; start_col        = line_starts_at
+  ; start_offset     = 0
+  ; end_line         = line
+  ; end_col          = line_starts_at + source_stop - source_start
+  ; end_offset       = 0
+  }
 
 end
 
