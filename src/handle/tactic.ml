@@ -349,44 +349,52 @@ let is_right (pos:popt) (t:term): bool =
       end
   | _ -> fatal pos "rewrite tactic not applied to a side string literal"
 
-(** [p_tactic ss pos idmap t] interprets as a tactic the term [t] obtained by
-    scoping and normalization of a p_term at position [pos]. *)
-let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
-  let c = get_config ss pos in
-  let rec tac idmap t = Pos.make pos (tac_aux idmap t)
-  and tac_aux idmap t =
+(** [p_tactic ss pt] translates the p_term [pt] into a p_tactic. *)
+let p_tactic (ss:Sig_state.t) (prv:bool) (ps:proof_state) (pt:p_term)
+      (g:goal) (env:Env.t) : p_tactic =
+  let pos = pt.pos
+  and idmap = get_names g
+  and ctx = Env.to_ctxt env in
+  let c = get_config ss pos
+  and scope = Scope.scope_term ~mok:(Proof.meta_of_key ps) prv ss env in
+  let tac pt = Pos.make pos (P_tac_eval pt) in
+  let tac_aux pt =
+    let t = scope pt in
+    let t = Eval.whnf ctx t in
     match get_args t with
     | Symb s, ts ->
         begin
           try
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> P_tac_admit
-            | T_and, [t1;t2] -> P_tac_and(tac idmap t1, tac idmap t2)
+            | T_and, [t1;t2] -> P_tac_and(tac t1, tac t2)
             | T_and, _ -> assert false
-            | T_apply, [_;t] -> P_tac_apply(p_term pos idmap t)
+            | T_apply, [_;t] -> P_tac_apply t
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
             | T_assume, _ -> assert false
-            | T_change, [_;t] -> P_tac_apply(p_term pos idmap t)
+            | T_change, [_;t] -> P_tac_apply t
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
             | T_have, [t1;t2] ->
-                let prf_sym = Builtin.get ss pos [] "P" in
-                let prf = p_term pos idmap (mk_Symb prf_sym) in
-                let t2 = Pos.make pos (P_Appl(prf, p_term pos idmap t2)) in
-                P_tac_have(p_ident_of_sym pos t1, t2)
+                let s = Builtin.get ss t2.pos [] "P" in
+                let p = P_Iden(mk(s.sym_path,s.sym_name),true) in
+                let p = if !(s.sym_nota) = NoNotation then p
+                        else P_Wrap (Pos.make t2.pos p)
+                let t2 = Pos.make t2.pos (P_Appl(p,t2)) in
+                P_tac_have(t1,t2)
             | T_have, _ -> assert false
             | T_induction, _ -> P_tac_induction
-            | T_orelse, [t1;t2] -> P_tac_orelse(tac idmap t1, tac idmap t2)
+            | T_orelse, [t1;t2] -> P_tac_orelse(tac t1, tac t2)
             | T_orelse, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
             | T_remove, [_;t] -> P_tac_remove [p_ident_of_var pos t]
             | T_remove, _ -> assert false
-            | T_repeat, [t] -> P_tac_repeat(tac idmap t)
+            | T_repeat, [t] -> P_tac_repeat(tac t)
             | T_repeat, _ -> assert false
             | T_rewrite, [side;pat;_;t] ->
                 P_tac_rewrite(is_right pos side,
@@ -399,7 +407,7 @@ let p_tactic (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_tactic =
             | T_simplify_beta, _ -> P_tac_simpl SimpBetaOnly
             | T_solve, _ -> P_tac_solve
             | T_symmetry, _ -> P_tac_sym
-            | T_try, [t] -> P_tac_try(tac idmap t)
+            | T_try, [t] -> P_tac_try(tac t)
             | T_try, _ -> assert false
             | T_why3, _ -> P_tac_why3 None
           with Not_found ->
@@ -688,9 +696,7 @@ let rec handle :
       let ps = handle ss sym_pos prv ps t1 in
       handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
-      let t = Eval.snf (Env.to_ctxt env) (scope pt) in
-      let idmap = get_names g in
-      handle ss sym_pos prv ps (p_tactic ss pt.pos idmap t)
+      handle ss sym_pos prv ps (p_tactic ss pt)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
