@@ -349,7 +349,8 @@ let is_right (pos:popt) (t:term): bool =
       end
   | _ -> fatal pos "rewrite tactic not applied to a side string literal"
 
-(** [p_tactic ss pt] translates the p_term [pt] into a p_tactic. *)
+(** [p_tactic ss g env pos t] weak head normalizes [t] and convert the result
+    into a p_tactic. *)
 let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
     : p_tactic =
   let idmap = get_names g
