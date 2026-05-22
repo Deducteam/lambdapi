@@ -109,6 +109,7 @@ type token =
   | BACKQUOTE
   | COMMA
   | COLON
+  | DISJUNCTION
   | DOT
   | EQUIV
   | HOOK_ARROW
@@ -283,6 +284,7 @@ let rec token lb =
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
+  | '&' -> DISJUNCTION
   | '.' -> DOT
   | 0x2261 (* ≡ *) -> EQUIV
   | 0x21aa (* ↪ *) -> HOOK_ARROW

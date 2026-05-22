@@ -35,6 +35,7 @@ let string_of_token = function
   | CONSTANT -> "constant"
   | DEBUG -> "debug"
   | DEBUG_FLAGS _ -> "debug flags"
+  | DISJUNCTION -> "&"
   | DOT -> "."
   | END -> "end"
   | EQUIV -> "≡"
@@ -1571,26 +1572,31 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
   | UID "concl" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
   | UID "hyp" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
   | UID "lhs" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
   | UID "rhs" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
@@ -1617,8 +1623,8 @@ and ssearch (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let cq = csearch lb in
   match current_token() with
-  | SEMICOLON ->
-      let cqs = list (prefix SEMICOLON csearch) lb in
+  | DISJUNCTION ->
+      let cqs = list (prefix DISJUNCTION csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
