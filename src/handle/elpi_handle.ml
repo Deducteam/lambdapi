@@ -239,8 +239,8 @@ let tc_solver_prog =
   | Elpi.API.Compile.CompileError(l,m) -> begin match l with | Some l -> Common.Error.fatal None "%s" (Elpi.API.Ast.Loc.show l ^ "\n" ^ m)
     | _ -> Common.Error.fatal None "%s" m end
 
-let add_tc_instance : Sig_state.t -> Term.sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program =
-  fun ss sym base ->
+let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program =
+  fun ss pos sym base ->
   let query st =
     let open Elpi.API.RawData in
     let st = State.set ss_component st ss in
@@ -256,9 +256,9 @@ let add_tc_instance : Sig_state.t -> Term.sym -> Elpi.API.Compile.program -> Elp
   | Execute.Success {
       Data.state; pp_ctx; (*constraints;*) assignments; _
     } ->
-      let _ = readback_assignments state in
+      let _ = readback_assignments ~pos state in
       let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
-      let loc : Ast.Loc.t = Ast.Loc.initial "TODO" in
+      let loc : Ast.Loc.t = Elpi_AUX.loc_of_popt pos in
       let ast = Elpi.API.Utils.clause_of_term ~pp_ctx ~depth:0 loc arg1 in
       (*let () = Format.eprintf "%a\n%!" Elpi.API.Pp.Ast.program ast in*)
       let flags = Elpi.API.Compile.default_flags in
@@ -267,9 +267,9 @@ let add_tc_instance : Sig_state.t -> Term.sym -> Elpi.API.Compile.program -> Elp
       | [ x ] ->
         let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
         Elpi.API.Compile.extend ~flags ~base unit
-      | _ -> Common.Error.fatal_no_pos "elpi: accumulate not supported"
+      | _ -> Common.Error.fatal pos "elpi: accumulate not supported"
       end
-  | Failure -> Common.Error.fatal_no_pos "elpi: failure in add_instance"
+  | Failure -> Common.Error.fatal pos "elpi: failure in add_instance"
   | NoMoreSteps -> assert false
 
 let is_tc_instance : Sig_state.t -> Term.ctxt -> Term.meta -> bool =
