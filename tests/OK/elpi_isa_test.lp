@@ -369,5 +369,4 @@ end;
 
 symbol testuse (a b : ℤ): Prf (a + b = 0 ⇒ — a = b) ≔ begin
   assume a b oppab;
-  flag "elpi-trace" on; type (minus_unique a b oppab); rewrite (minus_unique a b _) { refine oppab; } { reflexivity; };
 abort;

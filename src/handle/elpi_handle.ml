@@ -395,7 +395,8 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
                   Though accidentally, it looks like it is useful. *)
           p := {!p with recompute = true};
           gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
-        | _ -> fatal pos "typeclass solver error: typecheck" end
+        | _ -> fatal pos "typeclass solver error: could not check %a : %a"
+               Print.term t Print.term gt.goal_type end
     | _ -> ()
     in
   let is_eq_goal_meta m = function

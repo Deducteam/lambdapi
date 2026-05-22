@@ -14,11 +14,19 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
-      let _ = Elpi_handle.tc_solve_problem ?scope ss pos p in
+      let remgoals = Elpi_handle.tc_solve_problem ?scope ss pos p in
+      p := {!p with recompute = true};
       if List.is_empty !p.unsolved then t,a
-      else let ids = Ctxt.names ctx in let term = term_in ids in
-        wrn pos "unsolved goals:\n%a" Print.constrs !p.unsolved;
-        fatal pos "Failed to infer the type of %a." term t
+      else let goals ppf gs = match gs with
+        | [] -> out ppf "No goal."
+        | g::gs ->
+          let idmap = Goal.get_names g in
+          out ppf "%a0. %a" (Goal.hyps idmap) g (Goal.concl idmap) g;
+          let goal i g = out ppf "\n%d. %a" (i+1) Goal.pp_no_hyp g in
+          List.iteri goal gs
+      in let ids = Ctxt.names ctx in let term = term_in ids in
+      wrn pos "unsolved goals:\n%a" goals remgoals;
+      fatal pos "Failed to infer the type of %a." term t
       (*if Unif.solve_noexn p then
         begin
           if !p. = [] then begin
