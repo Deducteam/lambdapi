@@ -333,6 +333,8 @@ let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref =
 
 (* we set the state, Elpi.API.Query lacks this function *)
 
+let trace = Common.Console.register_flag "elpi-trace" false
+
 let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Term.ctxt ->
   Term.term * Term.term -> Term.term * Term.term =
   fun ?scope ss pos _pb ctxt (t,ty) ->
@@ -354,7 +356,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg; v], gls in
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
-     (*let _ = Setup.trace ["-trace-on";"-trace-at";"1";"9999";"-trace-only";"\\(run\\|select\\|user:\\)"] in*)
+      if Timed.(!trace) then (let _ = Setup.trace ["-trace-on";"json";"/tmp/rawtrace.json";"-trace-at";"1";"9999";"-trace-only";"user"] in ());
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; assignments; _} ->
           (*let _ = readback_assignments ~pp_ctx:(Some pp_ctx) ~pos state in*)
@@ -374,6 +376,45 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         (* Common.Error.fatal_no_pos "elpi: failure" *)
       | NoMoreSteps -> assert false
     end
+
+let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * string) list) -> ?additional_goals: Goal.goal list -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Goal.goal list =
+  fun ?scope ?(additional_goals=[]) ss pos p ->
+  let open Goal in
+  let open Term in
+  let open Common.Error in
+  let open Timed in
+  if not (Unif.solve_noexn p) then
+    fatal pos "Unification goals are unsatisfiable.";
+  let try_solvetc g = match g with
+    | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
+      let t,_ = solve_tc ?scope ss pos p (ctxt g) (goal_term,gt.goal_type) in
+      if match t with Meta _ -> false | _ -> true then
+        begin match Infer.check_noexn p (ctxt g) t gt.goal_type with
+        | Some res when Unif.solve_noexn p ->
+          (*TODO: do I need to do that actually ? or perhaps only once at the end.
+                  Though accidentally, it looks like it is useful. *)
+          p := {!p with recompute = true};
+          gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
+        | _ -> fatal pos "typeclass solver error: typecheck" end
+    | _ -> ()
+    in
+  let is_eq_goal_meta m = function
+    | Typ gt -> m == gt.goal_meta
+    | _ -> assert false
+  in
+  let add_goal m gs =
+    if List.exists (is_eq_goal_meta m) gs then gs
+    else Goal.of_meta m :: gs
+  in
+  (* try solving the remaining goals, and in case of progress, re-trigger unification. *)
+  let all_goals = MetaSet.fold add_goal (!p).metas additional_goals in 
+  List.iter try_solvetc all_goals;
+  if not (Unif.solve_noexn p)
+    then Common.Error.fatal pos "typeclass solver error: unification";
+  let f = function
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | Unif _ -> assert false in
+  List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)
 
 let embed_qterm
   : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> Term.term -> Elpi.API.Ast.Term.t =

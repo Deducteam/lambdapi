@@ -14,9 +14,14 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
-      if Unif.solve_noexn p then
+      let _ = Elpi_handle.tc_solve_problem ?scope ss pos p in
+      if List.is_empty !p.unsolved then t,a
+      else let ids = Ctxt.names ctx in let term = term_in ids in
+        wrn pos "unsolved goals:\n%a" Print.constrs !p.unsolved;
+        fatal pos "Failed to infer the type of %a." term t
+      (*if Unif.solve_noexn p then
         begin
-          if !p.unsolved = [] then begin
+          if !p. = [] then begin
             Common.Console.out 1 "starting tc resolution";
             let t, a = Elpi_handle.solve_tc ?scope ss pos p ctx (t, a) in
             (try match Infer.infer_noexn p ctx t with
@@ -33,7 +38,7 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
         end
       else
         let ids = Ctxt.names ctx in let term = term_in ids in
-        fatal pos "%a is not typable." term t
+        fatal pos "%a is not typable." term t*)
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->

@@ -1,10 +1,14 @@
+require open tests.OK.Z;
 /* Encoding of simple type theory */
-constant symbol Set : TYPE;
-constant symbol bool : Set;
+/*constant symbol Set : TYPE;
+constant symbol bool : Set;*/
 constant symbol fun : Set → Set → Set;
-injective symbol El : Set → TYPE;
-rule El (fun $a $b) ↪ El $a → El $b;
-injective symbol Prf : El bool → TYPE;
+//injective symbol El : Set → TYPE;
+injective symbol El : tests.OK.Set.Set → TYPE ≔ tests.OK.Set.τ;
+constant symbol bool : Set;
+rule τ bool ↪ Prop;
+rule τ (fun $a $b) ↪ τ $a → τ $b;
+injective symbol Prf : El bool → TYPE ≔ π;
 
 /* HOL-Light primitive constants, axioms and rules */
 constant symbol = [A] : El (fun A (fun A bool)); notation = infix 50;
@@ -47,8 +51,8 @@ constant symbol ∧ : El (fun bool (fun bool bool)); notation ∧ infix left 20;
 constant symbol ⊤ : El bool;
 
 /* Natural deduction rules */
-rule Prf (⇒ $p $q) ↪ Prf $p → Prf $q;
-rule Prf (∀ $p) ↪ Π x, Prf ($p x);
+rule π (⇒ $p $q) ↪ Prf $p → Prf $q;
+rule π (∀ $p) ↪ Π x, Prf ($p x);
 symbol ⊤ᵢ : Prf ⊤;
 symbol ∧ᵢ [p : El bool] : Prf p → Π [q : El bool], Prf q → Prf (p ∧ q);
 symbol ∧ₑ₁ [p q : El bool] : Prf (p ∧ q) → Prf p;
@@ -82,8 +86,8 @@ rule @- _ (mk_minus $sub) ↪ $sub;
 
 injective typeclass symbol uminus_class : Set → TYPE;
 constant symbol mk_uminus [A : Set] : El (fun A A) → uminus_class A;
-symbol -- [A : Set] [B : uminus_class A] : El (fun A A); notation -- prefix 80;
-rule @-- _ (mk_uminus $opp) ↪ $opp;
+symbol — [A : Set] [B : uminus_class A] : El (fun A A); notation — prefix 80;
+rule @— _ (mk_uminus $opp) ↪ $opp;
 
 injective typeclass symbol times_class : Set → TYPE;
 constant symbol mk_times [A : Set] : El (fun A (fun A A)) → times_class A;
@@ -260,7 +264,7 @@ end;
 
 injective typeclass symbol group_add_class : Set → TYPE;
 constant symbol mk_group_add [A] [B : minus_class A] [C : uminus_class A] [D : monoid_add_class A] :
-  Prf (`∀ a, -- a + a = _0) → Prf (`∀ a, `∀ b, a + -- b = a - b) → group_add_class A;
+  Prf (`∀ a, — a + a = _0) → Prf (`∀ a, `∀ b, a + — b = a - b) → group_add_class A;
 
 instance symbol minus_of_group_add [A] : group_add_class A → minus_class A;
 rule minus_of_group_add (@mk_group_add _ $prf _ _ _ _) ↪ $prf;
@@ -270,39 +274,39 @@ instance symbol monoid_add_of_group_add [A] : group_add_class A → monoid_add_c
 rule monoid_add_of_group_add (@mk_group_add _ _ _ $prf _ _) ↪ $prf;
 
 symbol left_minus [A] [B : group_add_class A] :
-  Prf (`∀ a, -- a + a = _0);
+  Prf (`∀ a, — a + a = _0);
 
 symbol add_uminus_conv_diff [A] [B : group_add_class A] :
-  Prf (`∀ a, `∀ b, a + -- b = a - b);
+  Prf (`∀ a, `∀ b, a + — b = a - b);
 
 opaque symbol diff_conv_add_uminus [A] [B : group_add_class A] :
-  Prf (`∀ a, `∀ b, a - b = a + -- b) ≔ begin
+  Prf (`∀ a, `∀ b, a - b = a + — b) ≔ begin
   assume A ? a b; symmetry; refine (add_uminus_conv_diff a b);
 end;
 
 opaque symbol minus_unique [A] [B : group_add_class A] :
-  Prf (`∀ a, `∀ b, a + b = _0 ⇒ -- a = b) ≔ begin
-    assume A ? a b sum0; rewrite left (add_0_right (-- a));
+  Prf (`∀ a, `∀ b, a + b = _0 ⇒ — a = b) ≔ begin
+    assume A ? a b sum0; rewrite left (add_0_right (— a));
     rewrite left sum0; rewrite left add_assoc;
     rewrite left_minus; apply add_0_left;
 end;
 
 opaque symbol minus_zero [A] [B : group_add_class A] :
-  Prf (-- _0 = _0) ≔ begin
-  assume A ?; rewrite left (add_0_right (-- _0));
+  Prf (— _0 = _0) ≔ begin
+  assume A ?; rewrite left (add_0_right (— _0));
   refine (left_minus _0);
 end;
 
 opaque symbol minus_minus [A] [B : group_add_class A] :
-  Prf (`∀ a, -- -- a = a) ≔ begin
-  assume A ? a; apply (minus_unique (-- a));
+  Prf (`∀ a, — — a = a) ≔ begin
+  assume A ? a; apply (minus_unique (— a));
   refine (left_minus a);
 end;
 
 opaque symbol right_minus [A] [B : group_add_class A] :
-  Prf (`∀ a, a + -- a = _0) ≔ begin
+  Prf (`∀ a, a + — a = _0) ≔ begin
   assume A ? a; rewrite left .[X in X + _](minus_minus a);
-  refine (left_minus (-- a));
+  refine (left_minus (— a));
 end;
 
 opaque symbol diff_self [A] [B : group_add_class A] :
@@ -325,3 +329,45 @@ opaque instance symbol cancel_semigroup_add_of_group_add [A] :
       rewrite eqbaca; reflexivity;
     }; 
 end;
+
+symbol eq_compat [A] [x y : El A] : Prf (x tests.OK.Eq.= y) → Prf (x = y) ≔ begin
+  assume A x y eqxy; apply (ind_eq eqxy (λ z, z = y));
+  refine (REFL y);
+end;
+
+instance symbol Z0_inst ≔ mk_zero 0;
+instance symbol Zplus_inst ≔ mk_plus (tests.OK.Z.+);
+instance symbol Zuminus_inst ≔ mk_uminus (tests.OK.Z.—);
+instance symbol Zminus_inst ≔ mk_minus (tests.OK.Z.-);
+instance symbol Zsemigroup_inst : semigroup_add_class int ≔ begin
+  apply mk_semigroup_add; assume a b c;
+  apply eq_compat; refine (+_assoc a b c);
+end;
+instance symbol Zmonoid_inst : monoid_add_class int ≔ begin
+  apply mk_monoid_add { 
+    reflexivity;
+  } {
+    reflexivity;
+  };
+end;
+instance symbol Zgroup_inst : group_add_class int ≔ begin
+  apply mk_group_add {
+    assume a;
+    have eq1 : Prf (— — a = a)
+      { apply eq_compat; refine (—_idem a) };
+    rewrite left .[X in _ + X]eq1;
+    have eq2 : Prf (— a + — — a = — (a + — a))
+      { symmetry; apply eq_compat; refine (distr_—_+ a (— a))};
+    rewrite eq2;
+    have eq3 : Prf (a + — a = _0)
+      { apply eq_compat; refine (-_same a) };
+    rewrite eq3; reflexivity;
+  } {
+    reflexivity;
+  };
+end;
+
+symbol testuse (a b : ℤ): Prf (a + b = 0 ⇒ — a = b) ≔ begin
+  assume a b oppab;
+  flag "elpi-trace" on; type (minus_unique a b oppab); rewrite (minus_unique a b _) { refine oppab; } { reflexivity; };
+abort;
