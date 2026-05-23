@@ -33,9 +33,7 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_tc       : SymSet.t ref
-  ; sign_tc_inst  : SymSet.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
-
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool = fun sign name ->
@@ -71,7 +69,6 @@ module Ghost = struct
     ; sign_builtins = ref StrMap.empty
     ; sign_ind = ref SymMap.empty
     ; sign_tc = ref SymSet.empty
-    ; sign_tc_inst = ref SymSet.empty
     ; sign_cp_pos = ref SymMap.empty }
 
   let _ = loaded := Path.Map.add path sign !loaded
@@ -93,7 +90,6 @@ let create : Path.t -> t = fun sign_path ->
   ; sign_builtins = ref StrMap.empty
   ; sign_ind = ref SymMap.empty
   ; sign_tc = ref SymSet.empty
-  ; sign_tc_inst = ref SymSet.empty
   ; sign_cp_pos = ref SymMap.empty }
 
 (** [loading] contains the modules that are being processed. They are stored
@@ -292,7 +288,6 @@ let read : string -> t = fun fname ->
   unsafe_reset sign.sign_ind;
   unsafe_reset sign.sign_cp_pos;
   unsafe_reset sign.sign_tc;
-  unsafe_reset sign.sign_tc_inst;
   let shallow_reset_sym s =
     unsafe_reset s.sym_type;
     unsafe_reset s.sym_def;
@@ -331,7 +326,6 @@ let read : string -> t = fun fname ->
   let f _ {dep_symbols=sm; _} =
     StrMap.iter (fun _ sd -> List.iter reset_rule sd.rules) sm in
   SymSet.iter (fun s -> reset_sym s) !(sign.sign_tc);
-  SymSet.iter (fun s -> reset_sym s) !(sign.sign_tc_inst);
   Path.Map.iter f !(sign.sign_deps);
   let reset_ind i =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
@@ -444,11 +438,7 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
   in
   List.concat (minimize [] deps)
 
+(** [add_tc sign sym] registers [sym] as a typeclass in [sign] *)
 let add_tc : t -> sym -> unit =
   fun sign sym ->
     sign.sign_tc := SymSet.add sym !(sign.sign_tc)
-
-let add_tc_inst : t -> sym -> unit =
-  fun sign sym ->    
-    sign.sign_tc_inst := SymSet.add sym !(sign.sign_tc_inst);
-  

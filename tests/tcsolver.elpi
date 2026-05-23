@@ -1,61 +1,45 @@
-msolve L RES :-
-  /*print "### GOALS: " L,
-  comp_all Cl,
-  print "RULES:" Cl,
-  Cl => */std.map L (open tc) RES /*,
-  print "RESULT:" RES */.
+msolve Goals RES :- std.map Goals (open tc) RES.
 
+%add_abst Ty (x\O) lambda-binds x with type Ty inside O.
 pred add_abst term, (term -> option term) -> option term.
-add_abst _ (x\none) none.
+add_abst _ (_\none) none.
 
 add_abst Ty (x\ some (T x)) (some (abst Ty T)).
 
+/* load the goal's context (possibly adding new local typeclass instances)
+   before trying typeclass resolution if the goal is a typeclass
+   returns an instance if it finds one, and none otherwise
+*/
 pred open i:(symbol -> term -> term -> prop), i:sealed-goal, o:option term.
 open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp Ty [] x Rule ; Rule = true),
   Rule ==> open P (F x) (Wit x), add_abst Ty Wit Abswit.
 
-open P (seal (goal /*Ctx*/ Ty Wit)) (some Wit) :- 
-  %print "TC PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n",
+open P (seal (goal Ty Wit)) (some Wit) :- 
   safe-dest-app Ty (symb Class) [X],
   not (var Class),
-  lp.tc? Class, !, %print "GOAL:" (P Class X Wit),
-  P Class X Wit /*,
-  print "TC INSTANCE:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n"*/.
+  lp.tc? Class, !,
+  P Class X Wit.
 
-open _ (seal (goal /*Ctx*/ _Ty _Wit)) none /* :-
-  print "NOT A TC INFERENCE PROBLEM:\n" /*Ctx*/ "|-\n" Wit ":" Ty "\n" */. 
+open _ (seal (goal _ _)) none.
 
-/*func recover-type term, sealed-goal -> term.
-recover-type T (nabla F) Ty :- pi x\ recover-type T (F x) Ty.
-
-recover-type T (seal (goal Ctx _ _)) Ty :- memo! Ctx (of T Ty).*/
-
-/*%std.mem! but outputs the element.
-func memo! list A -> A.
-memo! [X|_] X :- !.
-memo! [_|L] X :- memo! L X.*/
-
-
+%[tc Name Arg Inst] <=> Inst is an instance of (Name Arg)
+%(currently, typeclasses must have exactly one argument)
 pred tc o:symbol, o:term, o:term.
 
+%splits a term between its head and args (without reductions)
 pred safe-dest-app i:term, o:term, o:list term.
 safe-dest-app (appl HD ARG) H AS :- !,
   safe-dest-app HD H A,
   std.append A [ARG] AS.
 safe-dest-app X X [].
 
+%tries to compile a symbol's type into a typeclass instance rule
 external pred compile i:symbol o:prop.
 
-compile S RES :- comp {lp.sig S} [] (symb S) RES /*, print RES */.
+compile S RES :- comp {lp.sig S} [] (symb S) RES.
 
 pred comp i:term, i:list prop, i:term, o:prop.
-/*
-comp (prod (appl (appl {{ + }} _Univ) Term as W) F) TODO H (pi x\ C x) :-
-  safe-dest-app Term (symb S) _, lp.tc? S,
-  !,
-  pi x\
-    comp (F x) [tc S W x |TODO] (appl H x) (C x).
-*/
+
 comp (prod (appl T U) F) TODO H (pi x\ C x) :-
   T = symb S, lp.tc? S,
   !,
@@ -66,22 +50,5 @@ comp (prod _ F) TODO H (pi x\ C x) :-
   !,
   pi x\
     comp (F x) TODO (appl H x) (C x).
-/*
-comp (appl (appl {{ + }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [Conv u t|TODO]) :- !,
-  safe-dest-app Term (symb S) _,
-  pi u t\
-    End u t = (appl (appl {{ + }} u) t),
-    Conv u t = (/*lp.eq_modulo*/ u = Univ, (t = Term ; (sigma T'\ sigma Term'\ lp.snf t T', lp.snf Term Term', (T' = Term')) ; lp.eq_modulo t Term)).
-    /*Conv u t = (/*lp.eq_modulo*/ u = Univ, std.spy(lp.unif t Term)). */
-  */
 
 comp End TODO HD (tc S U HD :- TODO) :- safe-dest-app End (symb S) [U], lp.tc? S. 
-/*
-pred comp_all o:list prop.
-comp_all Props :-
-  lp.tc-instances Candidates,
-  print "instances" Candidates,
-  std.map Candidates
-    (N\claus\ sigma T\ lp.sig N T, comp T [] (symb N) claus)
-    Props.
-*/

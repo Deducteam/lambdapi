@@ -490,6 +490,7 @@ let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
     ; m_lhs_in_env  = [] }) in
   scope ?find_sym ~typ 0 md ss env t
 
+(** TODO: maybe useless? *)
 let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
   bool -> sig_state -> env -> p_term -> term * (int * string) list =
   fun ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->

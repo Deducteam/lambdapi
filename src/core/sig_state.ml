@@ -38,6 +38,10 @@ let get_solver : sig_state -> popt -> Elpi.API.Compile.program = fun ss pos ->
   match ss.tc_solver_prog with Some p -> p
   | _ -> fatal pos "tc_solver was not initialized"
 
+(** [update_solver ss sym pos] generates a new signature state from [ss]
+    by compile [sym] to an instance in its typeclass solver.
+    Fails if the solver was not yet initialized or if the conclusion of
+    [sym]'s type cannot be recognised as a typeclass *)
 let update_solver : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
   let tc_solver = get_solver ss pos in
   {ss with tc_solver_prog = Some (ss.add_tc_instance ss pos sym tc_solver) }
@@ -60,7 +64,6 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   end;
     if tc then Sign.add_tc ss.signature sym;
   let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
-  if tci then Sign.add_tc_inst ss.signature sym;
   let tc_solver_prog = if tci then Some(ss.add_tc_instance ss pos sym (get_solver ss pos))
   else ss.tc_solver_prog in
   let in_scope = StrMap.add id.elt sym ss.in_scope in
@@ -142,6 +145,9 @@ let of_sign : Sign.t -> sig_state = fun signature ->
   in
   open_sign (open_sign ss Ghost.sign) signature
 
+(** [of_sign_and_solver sign solver add_instance] creates a new sig_state
+    with tc-solver [solver] and self-update function [add_instance].
+*)
 let of_solver : Elpi.API.Compile.program -> (t -> popt -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
   of_sign_and_solver (Sign.create [])
 

@@ -72,8 +72,9 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
   fun ss sym_pos ps gt ->
   admit_meta ss sym_pos gt.goal_meta; remove_solved_goals ps
 
-(** [tac_solve pos ps] tries to simplify the unification goals of the proof
-   state [ps] and fails if constraints are unsolvable. *)
+(** [tac_solve pos ss ps] tries to simplify the unification goals of the proof
+   state [ps] with help from the typeclass solver of [ss] and fails
+   if constraints are unsolvable. *)
 let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss ps ->
   if Logger.log_enabled() then log "tac_solve";
   (* convert the proof_state into a problem *)
@@ -85,47 +86,8 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss p
   in
   p := {!p with metas = List.fold_left add_meta MetaSet.empty gs_typ
               ; to_solve = List.rev_map get_constr gs_unif};
-  (* try to solve the problem *)
   let proof_goals = Elpi_handle.tc_solve_problem ~additional_goals:gs_typ ss pos p in
   {ps with proof_goals}
-  (*if not (Unif.solve_noexn p) then
-    fatal pos "Unification goals are unsatisfiable.";
-  (* compute the new list of goals by preserving the order of initial goals
-     and adding the new goals at the end *)
-  (*let is_instantiated g =
-    match g with
-    | Typ gt -> !(gt.goal_meta.meta_value) = None
-    | _ -> true
-  in*)
-  let try_solvetc g = match g with
-    | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
-      let t,_ = Elpi_handle.solve_tc ~scope:(fun _ -> (goal_term,[])) ss pos p (ctxt g) (goal_term,gt.goal_type) in
-      if match t with Meta _ -> false | _ -> true then
-        begin match Infer.check_noexn p (ctxt g) t gt.goal_type with
-        | Some res when Unif.solve_noexn p ->
-          p := {!p with recompute = true };
-          gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
-        | _ -> Common.Error.fatal pos "typeclass solver error: typecheck" end
-    | _ -> ()
-    in
-  (*let gs_typ = List.filter non_instantiated gs_typ in*)
-  let is_eq_goal_meta m = function
-    | Typ gt -> m == gt.goal_meta
-    | _ -> assert false
-  in
-  let add_goal m gs =
-    if List.exists (is_eq_goal_meta m) gs_typ then gs
-    else Goal.of_meta m :: gs
-  in
-  (* try solving the remaining goals, and in case of progress, re-trigger unification. *)
-  let pb_goals = MetaSet.fold add_goal (!p).metas gs_typ in 
-  List.iter try_solvetc pb_goals;
-  if not (Unif.solve_noexn p)
-    then Common.Error.fatal pos "typeclass solver error: unification";
-  let proof_goals = pb_goals @ (List.map (fun c -> Unif c) (!p).unsolved) in
-  Proof.remove_solved_goals {ps with proof_goals}
-  (*let proof_goals = List.filter non_instantiated proof_goals in
-  {ps with proof_goals}*)*)
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
 let tac_refine : ?check:bool ->

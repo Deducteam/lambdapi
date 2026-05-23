@@ -27,7 +27,8 @@ val scope_term :
 val scope_search_pattern :
   ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option) ->
   sig_state -> env -> p_term -> term
-  
+
+(** TODO: maybe useless? *)
 val scope_term_w_pats :
   ?typ:bool (* default: false *) ->
   ?mok:(int -> meta option) ->
