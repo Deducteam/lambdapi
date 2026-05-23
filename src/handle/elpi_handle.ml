@@ -1,18 +1,36 @@
+(** functions to call the typeclass instance compiler and typeclass solver
+    from tcsolver.elpi. *)
 open Elpi.API
 open Core
 open Elpi_lambdapi
 
+(** Typeclasses are stored in the signature state, so make it available
+    in the Elpi state to allow to read them *)
 let ss_component : Sig_state.t State.component =
   State.declare_component ~name:"elpi:ss"
     ~pp:(fun _fmt _ -> ()) ~init:(fun () -> Sig_state.dummy) ~start:(fun x -> x) ()
 
+(** Elpi constant for the type of goals *)
 let goalc = RawData.Constants.declare_global_symbol "goal"
+
+(** Elpi constant, constructor for the [goal] type*)
 let nablac = RawData.Constants.declare_global_symbol "nabla"
+
+(** Elpi constant, constructor for the [goal] type*)
 let sealc = RawData.Constants.declare_global_symbol "seal"
+
+(** Elpi constant for the type class solver function [msolve] from tcsolver.elpi *)
 let msolvec = RawData.Constants.declare_global_symbol "msolve"
+
+(** Elpi symbol for the type class instance compiler function [compile]
+    from tcsolver.elpi *)
 let compilec = RawData.Constants.declare_global_symbol "compile"
 
-let embed_goal : ?pos:Common.Pos.pos -> Term.meta Conversion.embedding = fun ?pos ~depth st m ->
+(** [embed_goal pos ~depth st m] translates the type Lambdapi of the
+    metavariable [m] to an Elpi term of type [goal], returning the updated 
+    Elpi state [st], the translated Elpi term and an
+    (I believe necessarily empty) list of conversion goals. *)
+let embed_goal : Common.Pos.popt -> Term.meta Conversion.embedding = fun pos ~depth st m ->
   let open Term in
   let ty =
     let open Timed in
@@ -26,7 +44,7 @@ let embed_goal : ?pos:Common.Pos.pos -> Term.meta Conversion.embedding = fun ?po
     match unfold ty with
     | Prod (dom,b) ->
       (*Common.Console.out 1 "EMBED HYP:@ %a@\n" Print.term dom;*)
-      let st, dom, gls = embed_term ~ctx:c ?pos ~depth st dom in
+      let st, dom, gls = embed_term ~ctx:c pos ~depth st dom in
       let x,b,c = Ctxt.unbind ~keep:true c depth None b in
       let st, g, gls1 =
         aux ~depth:(depth+1) st
@@ -35,19 +53,22 @@ let embed_goal : ?pos:Common.Pos.pos -> Term.meta Conversion.embedding = fun ?po
     | _ ->
        (*Common.Console.out 1 "EMBED CONCL:@ %d %d |- %a@\n" (List.length c) (List.length ctx) Print.term ty;*)
        (*let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in*)
-       let st, ty, gls = embed_term ~ctx:c ?pos ~depth st ty in
+       let st, ty, gls = embed_term ~ctx:c pos ~depth st ty in
        let args = List.rev args |> List.map Term.mk_Vari in
        let args1,args2 = Lplib.List.cut args (i.Term.meta_arity) in
        let m = Term.add_args (mk_Meta (i, args1 |> Array.of_list)) args2 in
-       let st, i, gls1 = embed_term ~ctx:c ?pos ~depth st m in
+       let st, i, gls1 = embed_term ~ctx:c pos ~depth st m in
        st, mkApp sealc (mkApp goalc (*(list_to_lp_list ctx)*) ty [i]) [], gls @ gls1
   in
   let rc = aux ~depth st ([],m,[]) ty in
   (*Common.Console.out 1 "EMBED GOAL END ------------:@ %a@\n" Print.term ty;*)
   rc
-   
+
+(** Conversion of goal metavariables between Lambdapi and Elpi.
+    It currently only allows to go from lp to elpi, as its readback
+    function is not implemented *)
 let goal : Term.meta Conversion.t = {
-  Conversion.embed = embed_goal ?pos:None;
+  Conversion.embed = embed_goal None;
   readback = (fun ~depth:_ _ _ -> assert false);
   pp_doc = (fun fmt _ -> Format.fprintf fmt "TODO");
   pp = (fun fmt _ -> Format.fprintf fmt "TODO");
@@ -148,15 +169,18 @@ external pred msolve i:list sealed-goal o:list (option term).
 
 ] @ Elpi.Builtin.std_declarations
 
+(** Expose them to Elpi. *)
 let lambdapi_builtins =
   BuiltIn.declare ~file_name:"lambdap.elpi" lambdapi_builtin_declarations
 
+(** Generates the documentation of builtin functions in file lambdap.elpi *)
 let document () =
   BuiltIn.document_file ~header:"% automatically generated" lambdapi_builtins
 
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
 
+(** Initialises Elpi *)
 let init () =
 (* let cwd = Filename.concat (Sys.getcwd()) "." in
  let root = match Parsing.Package.find_config cwd with
@@ -172,6 +196,7 @@ let init () =
   elpi := Some e;
   document ()
 
+(** Sanity check + returns the Elpi setup *)
 let rec ensure_initialized () =
   match !elpi with
   | None -> init (); assert (!elpi <> None) ; ensure_initialized ()
@@ -179,6 +204,7 @@ let rec ensure_initialized () =
 
 (** Given an Elpi file, a predicate name and a Terms.term argument we
     run Elpi and print the term before/after the execution  *)
+(*  Unused but nice to have as a template. *)
 let run : Sig_state.t -> string -> string -> Parsing.Syntax.p_term -> unit =
 fun ss file predicate arg ->
   let pos = arg.Common.Pos.pos in
@@ -198,7 +224,7 @@ fun ss file predicate arg ->
   let query st =
     let open Elpi.API.RawData in
     let st = State.set ss_component st ss in
-    let st, arg, gls = Elpi_lambdapi.embed_term ?pos ~depth:0 st arg in
+    let st, arg, gls = Elpi_lambdapi.embed_term pos ~depth:0 st arg in
     let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
     let v = mkUnifVar v ~args:[] st in
     let predicate = Elpi.API.RawQuery.global_name_to_constant st predicate in
@@ -211,17 +237,16 @@ fun ss file predicate arg ->
   | Execute.Success {
       Data.state; pp_ctx; constraints; assignments; _
     } ->
-      let _ = readback_assignments state in
+      let _ = readback_assignments pos state in
       let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
-      let _, arg1, _ = Elpi_lambdapi.readback_term ~depth:0 state arg1 in
+      let _, arg1, _ = Elpi_lambdapi.readback_term pos ~depth:0 state arg1 in
       Common.Console.out 1 "\nelpi: after: %a\n" Print.term arg1;
       Common.Console.out 1 "elpi: constraints:@ @[<v>%a@]\n"
         Pp.(constraints pp_ctx) constraints
   | Failure -> Common.Error.fatal_no_pos "elpi: failure"
   | NoMoreSteps -> assert false
 
-let extend (cctx) v ?def ty = (v, ty, def) :: cctx
-
+(** The compiled content of tcsolver.elpi *)
 let tc_solver_prog =
   try (
   let elpi = ensure_initialized() in
@@ -239,6 +264,9 @@ let tc_solver_prog =
   | Elpi.API.Compile.CompileError(l,m) -> begin match l with | Some l -> Common.Error.fatal None "%s" (Elpi.API.Ast.Loc.show l ^ "\n" ^ m)
     | _ -> Common.Error.fatal None "%s" m end
 
+(** If the head symbol of the conclusion of the type of [sym] is a typeclass
+    in [ss], [add_tc_instance ss pos sym prog] compiles and adds a rule to the
+    tc solver program [prog] declaring [sym] as an instance of that class. *)
 let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program =
   fun ss pos sym base ->
   let query st =
@@ -256,7 +284,7 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Com
   | Execute.Success {
       Data.state; pp_ctx; (*constraints;*) assignments; _
     } ->
-      let _ = readback_assignments ?pos state in
+      let _ = readback_assignments pos state in
       let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
       let loc : Ast.Loc.t = Loc.of_popt pos in
       let ast = Elpi.API.Utils.clause_of_term ~pp_ctx ~depth:0 loc arg1 in
@@ -272,47 +300,29 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Com
   | Failure -> Common.Error.fatal pos "elpi: failure in add_instance"
   | NoMoreSteps -> assert false
 
-let is_tc_instance : Sig_state.t -> Term.ctxt -> Term.meta -> bool =
-  fun ss c m ->
-  let open Timed in
-  let open Term in
-  let is_tc symb  =
-    SymSet.mem symb !(ss.Sig_state.signature.Sign.sign_tc) in
-  let rec aux c t =
-    match get_args (unfold t) with
-    | Symb s, _ -> is_tc s
-    | Prod(dom, b), [] ->
-      let (x, b) = unbind b in
-      let c = extend c x dom in
-      aux c b
-    | _ -> false
-  in
-    aux c !(m.meta_type)
-
-let metas_of_term : Term.ctxt -> Term.term -> Term.meta list =
-  fun c t ->
+(** [metas_of_term t] Computes the list of all metavariables appearing in [t] *)
+let metas_of_term : Term.term -> Term.meta list =
+  fun t ->
   let open Term in
   let acc = ref [] in
-  let rec aux c t =
+  let rec aux t =
     match unfold t with
     | Meta(m,_) when not (List.memq m !acc) ->
        acc := m :: !acc
     | Abst (dom, b) | Prod(dom, b) ->
-       aux c dom;
-       let (x, b) = unbind b in
-       let c = extend c x dom in
-       aux c b
+       aux dom;
+       let (_, b) = unbind b in
+       aux b
     | LLet (dom, t, b) ->
-       aux c dom;
-       aux c t;
-       let (x, b) = unbind b in
-       let c = extend c x dom in
-       aux c b
-    | Appl(t,u) -> aux c t; aux c u
+       aux dom;
+       aux t;
+       let (_, b) = unbind b in
+       aux b
+    | Appl(t,u) -> aux t; aux u
     | Plac _ -> assert false (* term was inferred before *)
     | _ -> ()
   in
-    aux c t;
+    aux t;
     !acc
 
 (** [meta_map_term t] replaces each subterm of [t] of the form [Term.Meta (m,args)] with [f m args] *)
@@ -329,17 +339,20 @@ let rec meta_map_term : (Term.meta -> Term.term array -> Term.term) -> Term.term
   | Appl(t,u) -> let t = cont t in let u = cont u in mk_Appl(t,u)
   | _ -> t
 
+(** Not sure. *)
 let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
 
-(* we set the state, Elpi.API.Query lacks this function *)
-
+(** Flag "elpi-trace". When set on, calls to elpi will write the elpi trace in file /tmp/rawtrace.json *)
 let trace = Common.Console.register_flag "elpi-trace" false
 
-let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Term.ctxt ->
-  Term.term * Term.term -> Term.term * Term.term =
-  fun ?scope ss pos _pb ctxt (t,ty) ->
-    let tc = metas_of_term ctxt t in
-    if tc == [] then (t,ty) else begin
+(* we set the state, Elpi.API.Query lacks this function *)
+(** [solve_tc ss pos _ t] tries to instantiate all metavariables in [t] by calling the
+    typeclass solver from tcsolver.elpi *)
+let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem ->
+  Term.term -> Term.term  =
+  fun ?scope ss pos _pb t ->
+    let tc = metas_of_term t in
+    if tc == [] then t else begin
       Option.iter (fun f -> scope_ref := f) scope;
 
       (*Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
@@ -352,7 +365,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         let st = State.set ss_component st ss in
         let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
         let v = mkUnifVar v ~args:[] st in
-        let st, arg, gls = Elpi.API.Utils.map_acc (embed_goal ~depth:0 ?pos) st tc in
+        let st, arg, gls = Elpi.API.Utils.map_acc (embed_goal ~depth:0 pos) st tc in
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg; v], gls in
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
@@ -370,13 +383,14 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
             | Some (Some t) -> Eval.snf_beta (Term.add_args t (Array.to_list args))
             | _ -> Term.mk_Meta(m,args)
           in
-          let res = meta_map_term inst_meta t in
-          (res,ty)
-      | Failure -> (t,ty)
-        (* Common.Error.fatal_no_pos "elpi: failure" *)
+          meta_map_term inst_meta t
+      | Failure -> Common.Error.fatal pos "elpi: typeclass solver failure"
       | NoMoreSteps -> assert false
     end
 
+(** [tc_solve_problem ?additional_goals ss pos p] tries to solve
+    the unification problem [p], prompting the typeclass solver for
+    goals that could not be solved, returning the goals it could not solve either. *)
 let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * string) list) -> ?additional_goals: Goal.goal list -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Goal.goal list =
   fun ?scope ?(additional_goals=[]) ss pos p ->
   let open Goal in
@@ -387,7 +401,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
     fatal pos "Unification goals are unsatisfiable.";
   let try_solvetc g = match g with
     | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
-      let t,_ = solve_tc ?scope ss pos p (ctxt g) (goal_term,gt.goal_type) in
+      let t = solve_tc ?scope ss pos p goal_term in
       if match t with Meta _ -> false | _ -> true then
         begin match Infer.check_noexn p (ctxt g) t gt.goal_type with
         | Some res when Unif.solve_noexn p ->
@@ -417,6 +431,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
     | Unif _ -> assert false in
   List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)
 
+(** similar to [embed_term] but returns and Elpi.API.Ast.Term.t, whatever the difference might be *)
 let embed_qterm
   : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> Term.term -> Elpi.API.Ast.Term.t =
   fun ~language ~pats t ->
@@ -468,7 +483,8 @@ let embed_qterm
   in
   aux t
 
-
+(** Should allow to quote Lambdapi terms in Elpi
+    and have it be interpreted as Elpi terms of type term.  *)
 let lpq : Quotation.quotation = fun ~language _st _loc text ->
   let open Parsing in
   let ast = Parser.Lp.parse_string "xxx" ("type " ^ text ^ ";") in
