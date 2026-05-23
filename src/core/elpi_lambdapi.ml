@@ -1,6 +1,10 @@
+(** Tools to have Lambdapi interact with Elpi,
+    including converting Lambdapi terms to and back from Elpi terms using a HOAS. *)
 open Elpi.API
 
 module Elpi_AUX = struct
+  (** [array_map_fold f st a] is similar to [Array.map f a] but also using and updating
+      the state [st] for each call to [f] *)
   let array_map_fold f st a =
     let len = Array.length a in
     let st = ref st in
@@ -12,14 +16,23 @@ module Elpi_AUX = struct
     done;
     !st, b
 
+  (** [list_map_fold f st a] is similar to [List.map f a] but also using and updating
+      the state [st] for each call to [f] *)
   let list_map_fold f s l =
     let f st x = let st, x = f st x in st, x, [] in
     let s, l, _ = Utils.map_acc f s l in
     s, l
+end
 
-  let loc_of_pos = function {Common.Pos.fname; start_line; start_col; _} ->
+(** Tools to convert pos/locs to allow Elpi and Lambdapi to raise errors about
+    each other's files. *)
+module Loc = struct
+  open Ast.Loc open Common.Pos
+
+  (** [Loc.of_pos pos] translates the Lambdapi position [pos] to Elpi *)
+  let of_pos = function {fname; start_line; start_col; _} ->
     {
-      Ast.Loc.source_name =
+      source_name =
         (match fname with None -> "(.)" | Some x -> x);
       source_start = 0;
       source_stop = 0;
@@ -28,11 +41,13 @@ module Elpi_AUX = struct
       client_payload = None;
     }
   
-  let loc_of_popt = function
-    | None -> Ast.Loc.initial "(elpi)"
-    | Some x -> loc_of_pos x
+  (** [Loc.of_popt pos] translates the optional Lambdapi position [pos] to Elpi *)
+  let of_popt = function
+    | None -> initial "(lambdapi)"
+    | Some x -> of_pos x
   
-  let pos_of_loc {Ast.Loc.source_name; source_start; source_stop; line; line_starts_at; _} =
+  (** [Loc.to_pos loc] Translates an the Elpi localisation [loc] to Lambdapi *)
+  let to_pos {Ast.Loc.source_name; source_start; source_stop; line; line_starts_at; _} =
   { Common.Pos.fname = Some (source_name)
   ; start_line       = line
   ; start_col        = line_starts_at
@@ -41,11 +56,10 @@ module Elpi_AUX = struct
   ; end_col          = line_starts_at + source_stop - source_start
   ; end_offset       = 0
   }
-
 end
 
-(** Terms.sym is exposed to Elpi as an opaque data type (no syntax like int or
-    string). APIs are provided to manipulate symbols, eg get their type *)
+(** Tools to store and read {!type:Term.sym}s in Elpi as an opaque data type
+    (no syntax like int or string). APIs are provided to manipulate symbols, eg get their type *)
 let (csym, sym) : Term.sym RawOpaqueData.cdata * Term.sym Conversion.t = RawOpaqueData.declare {
   OpaqueData.name = "symbol";
   doc = "A symbol";
@@ -61,16 +75,29 @@ let (csym, sym) : Term.sym RawOpaqueData.cdata * Term.sym Conversion.t = RawOpaq
 
 (* Allocate Elpi symbols for the term constructors (type and kind are Elpi
    keywords, hence typ and kin) *)
+
+(** Elpi constant for the constructor {!term:Term.Type} *)
 let typec = RawData.Constants.declare_global_symbol "typ"
+
+(** Elpi constant for the constructor {!term:Term.Kind} *)
 let kindc = RawData.Constants.declare_global_symbol "kin"
+
+(** Elpi constant for the constructor {!term:Term.Symb} *)
 let symbc = RawData.Constants.declare_global_symbol "symb"
+
+(** Elpi constant for the constructor {!term:Term.Prod} *)
 let prodc = RawData.Constants.declare_global_symbol "prod"
+
+(** Elpi constant for the constructor {!term:Term.Abst} *)
 let abstc = RawData.Constants.declare_global_symbol "abst"
+
+(** Elpi constant for the constructor {!term:Term.Appl} *)
 let applc = RawData.Constants.declare_global_symbol "appl"
 
 (* A two way map linking Elpi's unification variable and Terms.meta.
    An instance of this map is part of the Elpi state (threaded by many
    APIs) *)
+(* TODO: currently unused, might be buggy, see readback_assignments below *)
 module M = struct
   type t = Term.meta
   let compare m1 m2 = Stdlib.compare m1.Term.meta_key m2.Term.meta_key
@@ -80,6 +107,7 @@ end
 module MM = FlexibleData.Map(M)
 let metamap : MM.t State.component = MM.uvmap
 
+(** Elpi state component allowing to store a Lambdapi {!type:Term.problem}. *)
 let pb = State.declare_component ~name:"elpi:problem"
   ~pp:(fun fmt (p : Term.problem) ->
      Format.fprintf fmt "@[<hov 2>";
@@ -89,10 +117,14 @@ let pb = State.declare_component ~name:"elpi:problem"
   ) ~init:Term.new_problem ~start:(fun x -> x)
   ()
 
-
-(* Terms.term -> Data.term, we use Ctxt.ctxt to carry a link between
-   Bindlib's var to Elpi's De Bruijn levels *)
-let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -> Term.term Conversion.embedding = fun ?(pats=[]) ?(ctx=[]) ~depth st t ->
+(** [embed_term ?pats ?ctx pos ~depth st t] translates the Lambdapi {!type:Term.term} [t] to Elpi,
+    returning the updated Elpi state [st], the translated Elpi term and an 
+    (I believe necessarily empty) list of conversion goals. *)
+(* [ctx] stores a map between Lambdapi free variables and Elpi De Bruijn indices.
+    [pats] is a map of affectations of pattern variables ($x $y ...) to (the name of) a corresponding
+    Elpi unification variable, allowing possibly non-linear user written pattern holes.
+    Currently unused, however. It is also not clear how such a map should be obtained in the first place. *)
+let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -> ?pos:Common.Pos.pos -> Term.term Conversion.embedding = fun ?(pats=[]) ?(ctx=[]) ?pos ~depth st t ->
   let open RawData in
   let open Term in
   (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
@@ -149,23 +181,24 @@ let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -
           st, mkUnifVar flex ~args:[] st
         with Not_found ->
           let pats = List.map (fun (i,n) -> Printf.sprintf "%d :-> %s; " i n) pats in
-          Common.Error.fatal_no_pos "embed_term: unnamed pattern %d in map: %s" i (String.concat "" pats);
+          Common.Error.fatal pos "embed_term: unnamed pattern %d in map: %s" i (String.concat "" pats);
       end
-    | Patt _ -> Common.Error.fatal_no_pos "embed_term: Patt not implemented"
-    | Wild   -> Common.Error.fatal_no_pos "embed_term: Wild not implemented"
-    | TRef _ -> Common.Error.fatal_no_pos "embed_term: TRef not implemented"
-    | LLet _ -> Common.Error.fatal_no_pos "embed_term: LLet not implemented"
-    | Bvar _ -> Common.Error.fatal_no_pos "embed_term: Bvar not implemented"
+    | Patt _ -> Common.Error.fatal pos "embed_term: Patt not implemented"
+    | Wild   -> Common.Error.fatal pos "embed_term: Wild not implemented"
+    | TRef _ -> Common.Error.fatal pos "embed_term: TRef not implemented"
+    | LLet _ -> Common.Error.fatal pos "embed_term: LLet not implemented"
+    | Bvar _ -> Common.Error.fatal pos "embed_term: Bvar not implemented"
   in
   let st, t = aux ~depth ctx st t in
   st, t, List.rev !gls
 
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
-(* Data.term -> Terms.term. We use an IntMap to link Elpi's De Bruijn
-   levels to Bindlib's var *)
-let readback_term_box : ?pp_ctx: Data.pretty_printer_context option -> ?pos: Common.Pos.popt -> Term.term Conversion.readback =
-fun ?(pp_ctx = None) ?(pos=None) ~depth st t -> 
+(** [readback_term_box ?pp_ctx ?pos ~depth st t] translates the Elpi term [t]
+    back to a lambdapi term, returning the updated Elpi state [st], the translated
+    Elpi term and an (I believe necessarily empty) list of conversion goals. *)
+let readback_term_box : ?pp_ctx: Data.pretty_printer_context option -> ?pos: Common.Pos.pos -> Term.term Conversion.readback =
+fun ?(pp_ctx = None) ?pos ~depth st t -> 
   let open RawData in
   let open Term in
   let gls = ref [] in
@@ -229,8 +262,11 @@ fun ?(pp_ctx = None) ?(pos=None) ~depth st t ->
   let st, t = aux ~depth IntMap.empty st t in
   st, t, List.rev !gls
 
-let readback_term ?(pp_ctx=None) ?(pos=None) ~depth st t =
-  let st, t, gls = readback_term_box ~pp_ctx ~pos ~depth st t in
+(** [readback_term ?pp_ctx ?pos ~depth st t] translates the Elpi term [t]
+    back to a lambdapi term, returning the updated Elpi state [st], the translated
+    Elpi term and an (I believe necessarily empty) list of conversion goals. *)
+let readback_term ?(pp_ctx=None) ?pos ~depth st t =
+  let st, t, gls = readback_term_box ~pp_ctx ?pos ~depth st t in
   st, t, gls
 
 (** Terms.term has a HOAS *)
@@ -246,13 +282,13 @@ external symbol appl:  term -> term -> term = "0".
 external symbol abst:  term -> (term -> term) -> term = "0".
 external symbol prod:  term -> (term -> term) -> term = "0".
   |});
-  readback = readback_term ~pp_ctx:None ~pos:None;
-  embed = embed_term ?ctx:None ?pats:None;
+  readback = readback_term ~pp_ctx:None ?pos:None;
+  embed = embed_term ?ctx:None ?pats:None ?pos:None;
 }
 
 (** Assignments to Elpi's unification variables are a spine of lambdas
-    followed by an actual term. We read them back as a Bindlib.mbinder *)
-let readback_mbinder ?(pp_ctx=None) ?(pos=None) st t =
+    followed by an actual term. We read them back as a {!type:Term.mbinder} *)
+let readback_mbinder ?(pp_ctx=None) ?pos st t =
   let open RawData in
   let rec aux ~depth nvars t =
     match look ~depth t with
@@ -260,11 +296,17 @@ let readback_mbinder ?(pp_ctx=None) ?(pos=None) st t =
     | _ ->
         let vs = Array.init nvars (fun i ->
         Term.new_var (Printf.sprintf "x%d" i)) in
-        let st, t, _ = readback_term_box ~pp_ctx ~pos ~depth st t in
+        let st, t, _ = readback_term_box ~pp_ctx ?pos ~depth st t in
         st, (Term.bind_mvar vs t)
   in
     aux ~depth:0 0 t
-let readback_assignments ?(pp_ctx=None) ?(pos=None) st =
+
+(* TODO: inspect, has caused metavariables to be instantied incorrectly.
+   The problem is perhaps the context possibly being changed by Elpi?
+   I believe there was a problem with meta arity not being respected *)
+(* Currently, instead of using this metamap, the tc solver simply returns the
+   instance *)
+let readback_assignments ?(pp_ctx=None) ?pos st =
   let mmap = State.get metamap st in
   MM.fold (fun meta _flex body st ->
     match body with
@@ -274,7 +316,7 @@ let readback_assignments ?(pp_ctx=None) ?(pos=None) st =
         match ! (meta.Term.meta_value) with
         | Some _ -> assert false
         | None ->
-            let st, t = readback_mbinder ~pp_ctx ~pos st t in
+            let st, t = readback_mbinder ~pp_ctx ?pos st t in
             meta.Term.meta_value := Some t;
             st
     ) mmap st

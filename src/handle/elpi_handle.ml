@@ -12,7 +12,7 @@ let sealc = RawData.Constants.declare_global_symbol "seal"
 let msolvec = RawData.Constants.declare_global_symbol "msolve"
 let compilec = RawData.Constants.declare_global_symbol "compile"
 
-let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
+let embed_goal : ?pos:Common.Pos.pos -> Term.meta Conversion.embedding = fun ?pos ~depth st m ->
   let open Term in
   let ty =
     let open Timed in
@@ -26,7 +26,7 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
     match unfold ty with
     | Prod (dom,b) ->
       (*Common.Console.out 1 "EMBED HYP:@ %a@\n" Print.term dom;*)
-      let st, dom, gls = embed_term ~ctx:c ~depth st dom in
+      let st, dom, gls = embed_term ~ctx:c ?pos ~depth st dom in
       let x,b,c = Ctxt.unbind ~keep:true c depth None b in
       let st, g, gls1 =
         aux ~depth:(depth+1) st
@@ -35,11 +35,11 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
     | _ ->
        (*Common.Console.out 1 "EMBED CONCL:@ %d %d |- %a@\n" (List.length c) (List.length ctx) Print.term ty;*)
        (*let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in*)
-       let st, ty, gls = embed_term ~ctx:c ~depth st ty in
+       let st, ty, gls = embed_term ~ctx:c ?pos ~depth st ty in
        let args = List.rev args |> List.map Term.mk_Vari in
        let args1,args2 = Lplib.List.cut args (i.Term.meta_arity) in
        let m = Term.add_args (mk_Meta (i, args1 |> Array.of_list)) args2 in
-       let st, i, gls1 = embed_term ~ctx:c ~depth st m in
+       let st, i, gls1 = embed_term ~ctx:c ?pos ~depth st m in
        st, mkApp sealc (mkApp goalc (*(list_to_lp_list ctx)*) ty [i]) [], gls @ gls1
   in
   let rc = aux ~depth st ([],m,[]) ty in
@@ -47,7 +47,7 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
   rc
    
 let goal : Term.meta Conversion.t = {
-  Conversion.embed = embed_goal;
+  Conversion.embed = embed_goal ?pos:None;
   readback = (fun ~depth:_ _ _ -> assert false);
   pp_doc = (fun fmt _ -> Format.fprintf fmt "TODO");
   pp = (fun fmt _ -> Format.fprintf fmt "TODO");
@@ -198,7 +198,7 @@ fun ss file predicate arg ->
   let query st =
     let open Elpi.API.RawData in
     let st = State.set ss_component st ss in
-    let st, arg, gls = Elpi_lambdapi.embed_term ~depth:0 st arg in
+    let st, arg, gls = Elpi_lambdapi.embed_term ?pos ~depth:0 st arg in
     let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
     let v = mkUnifVar v ~args:[] st in
     let predicate = Elpi.API.RawQuery.global_name_to_constant st predicate in
@@ -256,9 +256,9 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Com
   | Execute.Success {
       Data.state; pp_ctx; (*constraints;*) assignments; _
     } ->
-      let _ = readback_assignments ~pos state in
+      let _ = readback_assignments ?pos state in
       let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
-      let loc : Ast.Loc.t = Elpi_AUX.loc_of_popt pos in
+      let loc : Ast.Loc.t = Loc.of_popt pos in
       let ast = Elpi.API.Utils.clause_of_term ~pp_ctx ~depth:0 loc arg1 in
       (*let () = Format.eprintf "%a\n%!" Elpi.API.Pp.Ast.program ast in*)
       let flags = Elpi.API.Compile.default_flags in
@@ -352,7 +352,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         let st = State.set ss_component st ss in
         let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
         let v = mkUnifVar v ~args:[] st in
-        let st, arg, gls = Elpi.API.Utils.map_acc (goal.embed ~depth:0) st tc in
+        let st, arg, gls = Elpi.API.Utils.map_acc (embed_goal ~depth:0 ?pos) st tc in
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg; v], gls in
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
 
