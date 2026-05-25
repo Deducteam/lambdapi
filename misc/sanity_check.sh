@@ -14,7 +14,7 @@ gawk '/@see/{next}length>78    {print "In " FILENAME ", line " FNR " more than 7
 gawk '/.*\s$/      {print "In " FILENAME ", line " FNR " has trailing spaces..."}' $files >> $out
 
 # Check for tabulations.
-gawk '/.*\t.*/     {print "In " FILENAME ", line " FNR " contains tabulations..."}' `echo $files | sed -e 's|src/cli/init.ml||'` >> $out
+gawk '/.*\t.*/     {print "In " FILENAME ", line " FNR " contains tabulations..."}' `echo $files | sed -e 's|src/cli/init.ml||' -e 's|src/cli/main.ml||'` >> $out
 
 # Check for [Pervasives].
 gawk '/Pervasives/ {print "In " FILENAME ", line " FNR " use of [Pervasives] should be replaced by [Stdlib]..."}' $files >> $out

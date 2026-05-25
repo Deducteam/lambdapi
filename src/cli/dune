@@ -4,5 +4,13 @@
  (modes byte native)
  (modules :standard)
  (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle
-            lambdapi.export unix)           
+            lambdapi.export unix)
+)
+
+(executable
+ (name main)
+ (public_name main)
+ (modes byte native)
+ (modules :standard)
+ (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle lambdapi.export unix)
 )
