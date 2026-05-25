@@ -565,14 +565,15 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
       if p_sym_mod <> [] then expected "" [SYMBOL];
       let pos1 = current_pos() in
       consume_token lb;
-      let command qid = match current_token() with
-        | INSTANCE -> P_type_class_instance qid
-        | TYPECLASS -> P_type_class qid
-        | _ -> expected "" [INSTANCE;TYPECLASS]
-      in
-      consume_token lb;
-      let i = qid lb in
-      extend_pos pos1 (command i)
+      let of_next_qid command =
+        consume_token lb;
+        let i = qid lb in
+        extend_pos pos1 (command i)
+      in begin match current_token() with
+      | INSTANCE -> of_next_qid (fun i -> P_type_class_instance i)
+      | TYPECLASS -> of_next_qid (fun i -> P_type_class i)
+      | _ -> expected "" [INSTANCE;TYPECLASS]
+      end
   | _ ->
       if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
       let pos1 = current_pos() in
