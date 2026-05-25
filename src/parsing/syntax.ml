@@ -346,8 +346,8 @@ type p_command_aux =
   | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
   | P_open of (*private?*)bool * p_path list
-  | P_type_class of p_ident
-  | P_type_class_instance of p_ident
+  | P_type_class of p_qident
+  | P_type_class_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
@@ -358,6 +358,7 @@ type p_command_aux =
   | P_query of p_query
   | P_opaque of p_qident
   | P_elpi of string * string * p_term
+  | P_accumulate of string 
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
@@ -701,7 +702,11 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     match elt with
     | P_require (_, _)
     | P_require_as (_, _)
-    | P_open _ -> a
+    | P_open _
+    | P_elpi _
+    | P_type_class _
+    | P_type_class_instance _
+    | P_accumulate _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_opaque qid
     | P_builtin (_, qid)
@@ -720,9 +725,6 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
              (Pos.make pos
                 (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))
         p_sym_prf
-    | P_elpi _ -> assert false
-    | P_type_class _ -> assert false
-    | P_type_class_instance _ -> assert false
   in
 
   List.fold_left fold_command

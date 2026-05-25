@@ -391,8 +391,9 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
   | P_elpi _ -> assert false
-  | P_type_class ({Pos.elt = id}) -> out ppf "existing typeclass %s" id
-  | P_type_class_instance ({Pos.elt = id}) -> out ppf "existing instance %s" id
+  | P_type_class qid -> out ppf "existing typeclass %a" qident qid
+  | P_type_class_instance qid -> out ppf "existing instance %a" qident qid
+  | P_accumulate _code -> out ppf "elpi accumulate begin (...) end" (*out ppf "elpi accumulate begin\n%s\nend" code*)
   end;
   out ppf ";"
 

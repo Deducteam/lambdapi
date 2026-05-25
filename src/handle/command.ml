@@ -247,15 +247,19 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     if !(s.sym_opaq) then fatal pos "Symbol already opaque.";
     s.sym_opaq := true;
     (ss, None, None)
-  | P_type_class({ Pos.elt = id; pos }) ->
-    let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
+  | P_type_class qid ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
     Sign.add_tc ss.signature sym;
     { ss with Sig_state.active_tc = SymSet.add sym ss.active_tc }, None, None
-  | P_type_class_instance ({ Pos.elt = id; pos }) ->
-    let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
+  | P_type_class_instance qid ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
     Sig_state.update_solver ss sym pos, None, None
   | P_elpi(file,pred,arg) ->
       (ss, None, (Elpi_handle.run ss file pred arg; None))
+  | P_accumulate code ->
+      let base = get_solver ss pos in
+      let tc_solver_prog = Some (Elpi_handle.accumulate_string_to_program ~pos ~base ~code) in 
+      ({ss with tc_solver_prog}, None, None) 
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)

@@ -111,8 +111,8 @@ let string_of_token = function
   | WITH -> "with"
   | TYPECLASS -> "typeclass"
   | INSTANCE -> "instance"
-  | ELPI -> "Elpi"
-  | EXISTING -> ""
+  | ELPI -> "elpi"
+  | EXISTING -> "existing"
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -561,6 +561,18 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
       let i = qid lb in
       let n = notation lb in
       extend_pos (*__FUNCTION__*) pos1 (P_notation(i,n))
+  | EXISTING ->
+      if p_sym_mod <> [] then expected "" [SYMBOL];
+      let pos1 = current_pos() in
+      consume_token lb;
+      let command qid = match current_token() with
+        | INSTANCE -> P_type_class_instance qid
+        | TYPECLASS -> P_type_class qid
+        | _ -> expected "" [INSTANCE;TYPECLASS]
+      in
+      consume_token lb;
+      let i = qid lb in
+      extend_pos pos1 (command i)
   | _ ->
       if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
       let pos1 = current_pos() in

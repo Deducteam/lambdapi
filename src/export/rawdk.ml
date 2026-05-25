@@ -245,6 +245,7 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_type_class _
   | P_type_class_instance _
   | P_elpi _
+  | P_accumulate _
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)

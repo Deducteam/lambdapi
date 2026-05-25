@@ -431,7 +431,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
     | Unif _ -> assert false in
   List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)
 
-(** similar to [embed_term] but returns and Elpi.API.Ast.Term.t, whatever the difference might be *)
+(** similar to [embed_term] but returns an Elpi.API.Ast.Term.t, whatever the difference might be *)
 let embed_qterm
   : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> Term.term -> Elpi.API.Ast.Term.t =
   fun ~language ~pats t ->
@@ -497,3 +497,41 @@ let lpq : Quotation.quotation = fun ~language _st _loc text ->
   | _ -> assert false
 
 let () = Quotation.set_default_quotation lpq
+
+(** Catches elpi compiler errors while executing f and sends proper
+    [Common.Error.fatal] error. *)
+let handle_elpi_compiler_errors ~pos ?error_header f =
+  let w_header ?loc m =
+    match error_header with
+    | None -> let pos = Option.fold ~none:pos ~some:(fun loc -> Some (Loc.to_pos loc)) loc in
+      Common.Error.fatal pos "%s" m
+    | Some h -> Common.Error.wrn pos h;
+      Common.Error.fatal (Option.map Loc.to_pos loc) "%s" m in
+  try f()
+  with
+  | Sys_error msg ->
+    w_header msg
+  | Elpi.API.Compile.CompileError(oloc, msg) ->
+    w_header ?loc:oloc msg
+  | Parse.ParseError(loc, msg) ->
+    w_header ~loc msg
+
+(** Copied from rocq-elpi, parses a string containing Elpi code. *)
+let asts_from_string ~pos s : Elpi.API.Compile.scoped_program list =
+  handle_elpi_compiler_errors ~pos (fun () ->
+    let elpi = ensure_initialized() in
+    let digest = Digest.(string s) in
+    let loc = Loc.of_popt pos in
+    let ast = Parse.program_from ~elpi ~loc ~digest (Lexing.from_string s) in
+    Elpi.API.Compile.scope_ast ~elpi ast)
+
+(** [accumulate_string_to_program ~pos ~base ~code] adds rules and predicates
+    defined in [code] to the Elpi program [base] *)
+let accumulate_string_to_program ~pos ~base ~code =
+  let elpi = ensure_initialized() in
+  let flags = Elpi.API.Compile.default_flags in
+  match asts_from_string ~pos code with
+  | [ x ] ->
+    let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
+    Elpi.API.Compile.extend ~flags ~base unit
+  | _ -> Common.Error.fatal pos "elpi: accumulate not supported"
