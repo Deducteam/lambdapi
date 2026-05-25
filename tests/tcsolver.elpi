@@ -17,7 +17,7 @@ open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp Ty [] x Rule ; Rule = true
 open P (seal (goal Ty Wit)) (some Wit) :- 
   safe-dest-app Ty (symb Class) [X],
   not (var Class),
-  lp.tc? Class, !,
+  lp.tc? Class,
   P Class X Wit.
 
 open _ (seal (goal _ _)) none.
