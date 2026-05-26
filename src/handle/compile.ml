@@ -14,8 +14,8 @@ let gen_obj = Stdlib.ref false
     Sign.t]. [compile force mp] returns the signature associated to the module
     path [mp]. The corresponding file is processed only when the corresponding
     object file does not exist or must be updated, or when [force] is
-    [true]. In that case, the produced signature is stored in the
-    corresponding object file if the option [--gen_obj] or [-c] is set. *)
+    [true]. In that case, the signature is stored in the corresponding object
+    file if the option [!gen_obj] is [true]. *)
 let rec compile : bool -> Command.compiler = fun force mp ->
   if mp = Ghost.path then Ghost.sign else
   let base = file_of_path mp in
