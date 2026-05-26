@@ -10,16 +10,13 @@ open Core open Sign
     source files. The default behaviour is not te generate them. *)
 let gen_obj = Stdlib.ref false
 
-(** [compile_with ~handle ~force mp] compiles the file corresponding to module
-   path [mp] using function [~handle] to process commands. Module [mp] is
-   processed when it is necessary, i.e. the corresponding object file does not
-   exist, or it must be updated, or [~force] is [true]. In that case, the
-   produced signature is stored in the corresponding object file if the option
-   [--gen_obj] or [-c] is set. *)
-let rec compile_with :
-  handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
-  -> force:bool -> Command.compiler =
-  fun ~handle ~force mp ->
+(** [compile force] returns a compiler, i.e. a function of type [Path.t ->
+    Sign.t]. [compile force mp] returns the signature associated to the module
+    path [mp]. The corresponding file is processed only when the corresponding
+    object file does not exist or must be updated, or when [~force] is
+    [true]. In that case, the produced signature is stored in the
+    corresponding object file if the option [--gen_obj] or [-c] is set. *)
+let rec compile : bool -> Command.compiler = fun force mp ->
   if mp = Ghost.path then Ghost.sign else
   let base = file_of_path mp in
   let src =
@@ -59,8 +56,8 @@ let rec compile_with :
         Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
         sout "\n%!";*)
       Tactic.reset_admitted();
-      let compile = compile_with ~handle ~force in
-      let consume cmd = Stdlib.(ss := handle compile !ss cmd) in
+      let consume cmd =
+        Stdlib.(ss := Command.handle (compile force) !ss cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
       Console.out 1 (Color.blu "End checking \"%s\"%s") src forced;
       Sign.strip_private sign;
@@ -75,7 +72,7 @@ let rec compile_with :
       Console.out 2 (Color.blu "Loading \"%s\" ...") obj;
       let sign = Sign.read obj in
       (* We recursively load every module [mp'] on which [mp] depends. *)
-      let compile mp' _ = ignore (compile_with ~handle ~force:false mp') in
+      let compile mp _ = ignore (compile false mp) in
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
@@ -86,49 +83,10 @@ let rec compile_with :
       sign
     end
 
-(** [compile force mp] compiles module path [mp], forcing
-    compilation of up-to-date files if [force] is true. *)
-let compile : ?force:bool -> Path.t -> Sign.t = fun ?(force=false) ->
-  compile_with ~handle:Command.handle ~force
+let compile = compile false
 
-(** [compile_file fname] looks for a package configuration file for
-    [fname] and compiles [fname]. It is the main compiling function. It
-    is called from the main program exclusively. *)
-let compile_file : ?force:bool -> string -> Sign.t =
-  fun ?(force=false) fname ->
+(** [compile_file fname] looks for a package configuration file for [fname]
+    and compiles [fname]. *)
+let compile_file (fname:string): Sign.t =
   Package.apply_config fname;
-  compile ~force (path_of_file LpLexer.escape fname)
-
-(** The functions provided in this module perform the same computations as the
-   ones defined earlier, but restore the console state and the library
-   mappings when they have finished. An optional library mapping or console
-   state can be passed as argument to change the settings. *)
-module PureUpToSign = struct
-
-  (** [apply_cfg ?lm ?st f x] is the same as [f x] except that the console
-     state and {!val:Library.lib_mappings} are restored after the evaluation
-     of [f x]. [?lm] allows to set the library mappings and [?st] to set the
-     console state. *)
-  let apply_cfg :
-    ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
-    fun ?lm ?st f x ->
-      let lib_mappings = !Library.lib_mappings in
-      Console.State.push ();
-      Option.iter Library.add_mapping lm;
-      Option.iter Console.State.apply st;
-      let restore () =
-        Library.lib_mappings := lib_mappings;
-        Console.State.pop ()
-      in
-      try let res = f x in restore (); res
-      with e -> restore (); raise e
-
-  let compile :
-  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> Path.t -> Sign.t
-    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile ~force)
-
-  let compile_file :
-  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> string -> Sign.t
-    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile_file ~force)
-
-end
+  compile (path_of_file LpLexer.escape fname)
