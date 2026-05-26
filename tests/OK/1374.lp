@@ -1,13 +1,8 @@
-
 require open tests.OK.HOL tests.OK.Tactic tests.OK.PropExt;
 
 symbol #and ≔ (&);
 
-// We can combine equality theorems from PropExt.lp to define tactics:
-
 symbol rem¬⊤ ≔ #and (#rewrite "" "" ¬⊤) (#rewrite "" "" ⊥∨);
-
-// We can use these as expected in proofs:
 
 symbol example x : π ((¬ ⊤ ∨ x) = x)≔
 begin
@@ -15,8 +10,6 @@ begin
     eval rem¬⊤;
     reflexivity
 end;
-
-// However, if we state the same theories without the "opaque" modifier, like this:
 
 symbol ¬⊤_noOp : π (¬ ⊤ = ⊥) ≔
 begin
@@ -30,8 +23,6 @@ begin
   assume x; rewrite ∨_com; refine ∨⊥ x
 end;
 
-// we can successfully use them manually to write a proof:
-
 symbol example_noO_manual x : π ((¬ ⊤ ∨ x) = x)≔
 begin
     assume x;
@@ -40,12 +31,7 @@ begin
     reflexivity
 end;
 
-// But if we define an equivalent tactic using these theorems:
-
 symbol rem¬⊤_noOP ≔ #and (#rewrite "" "" ¬⊤_noOp) (#rewrite "" "" ⊥∨_noOp);
-
-
-// pattern matching fails:
 
 symbol example_noOp x : π ((¬ ⊤ ∨ x) = x)≔
 begin
@@ -54,4 +40,24 @@ begin
     reflexivity
 end;
 
+symbol a: Prop;
 
+symbol repeat_rewrite_defined ≔ #repeat (#rewrite "" "" =⊤);
+
+symbol example1 : π ((a = ⊤) = a) ≔
+begin
+  eval repeat_rewrite_defined;
+  reflexivity
+end;
+
+symbol example2 : π ((a = ⊤) = a) ≔
+begin
+  eval (#rewrite "" "" =⊤);
+  reflexivity
+end;
+
+symbol example3 : π ((a = ⊤) = a) ≔
+begin
+  eval (#repeat (#rewrite "" "" =⊤));
+  reflexivity
+end;

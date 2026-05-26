@@ -64,14 +64,14 @@ An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/
 ``orelse``
 ----------
 
-``orelse T1 T2`` applies ``T1``. If ``T1`` succeeds, then ``orelse T1 T2`` stops. Otherwise, ``orelse T1 T2`` applied ``T2``.
+``orelse T1 T2`` applies ``T1``. If ``T1`` succeeds, then ``orelse T1 T2`` stops. Otherwise, ``orelse T1 T2`` applies ``T2``.
 
 .. _repeat:
 
 ``repeat``
 ----------
 
-``repeat T`` applies ``T`` on the first goals as long as possible, unless the number of goals decreases, in which case the tactic stops.
+``repeat T`` applies ``T`` on the first goal until the number of goals decreases.
 
 .. _try:
 

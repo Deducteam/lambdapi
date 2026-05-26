@@ -254,17 +254,18 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
 
 (** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
 let p_term (pos:popt): int StrMap.t -> term -> p_term =
-  let mk = Pos.make pos in
-  let rec term idmap t = Pos.make pos (term_aux idmap t)
+  let rec term idmap (t:term) :p_term =
+    if Logger.log_enabled() then log "p_term %a" Print.term t;
+    Pos.make pos (term_aux idmap t)
   and params idmap x a =
     [Some(Pos.make pos (base_name x))],Some(term idmap a),false
   and term_aux idmap t :p_term_aux =
     match unfold t with
     | Type -> P_Type
     | Symb s ->
-        let t = P_Iden(mk(s.sym_path,s.sym_name),true) in
+        let t = P_Iden(Pos.make pos (s.sym_path,s.sym_name),true) in
         if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
-    | Vari v -> P_Iden(mk([],base_name v),false)
+    | Vari v -> P_Iden(Pos.make pos ([],base_name v),false)
     | Appl(u,v) -> P_Appl(term idmap u, term idmap v)
     | Prod(a,b) ->
         let (x,b),idmap' = Print.safe_unbind idmap b in
@@ -359,7 +360,9 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
   let p_term = p_term pos idmap in
   let tac_eval t = Pos.make pos (P_tac_eval (p_term t)) in
   let tac t =
+    if Logger.log_enabled() then log "p_tactic %a" term t;
     let t = Eval.whnf ctx t in
+    if Logger.log_enabled() then log "whnf %a" term t;
     match get_args t with
     | Symb s, ts ->
         begin
@@ -498,10 +501,9 @@ let rec handle :
       let vabs = Pos.make pos vname in
       let varg = Pos.make pos ([],vname) in
       let vparam = [[Some vabs],Some pa,false] in
-      let mk = Pos.make pos in
-      let idbody = mk(P_Iden(varg,false)) in
-      let id = mk(P_Abst(vparam,idbody)) in
-      let t = mk(P_Appl(id,mk P_Wild)) in
+      let idbody = Pos.make pos (P_Iden(varg,false)) in
+      let id =  Pos.make pos (P_Abst(vparam,idbody)) in
+      let t = Pos.make pos (P_Appl(id,Pos.make pos P_Wild)) in
       tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
@@ -694,8 +696,15 @@ let rec handle :
       let ps = handle ss sym_pos prv ps t1 in
       handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
-      let t = scope pt in
-      handle ss sym_pos prv ps (p_tactic ss g env pos t)
+      let t = scope pt and p = new_problem() and c = Env.to_ctxt env in
+      match Infer.infer_noexn p c t with
+      | None ->
+          let term = term_in (Ctxt.names c) in
+          fatal pt.pos "Cannot infer the type of [%a]" term t
+      | Some(t,_) ->
+          if Unif.solve_noexn p then
+            handle ss sym_pos prv ps (p_tactic ss g env pos t)
+          else fatal pos "Cannot solve typing constraints for [%a]" term t
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

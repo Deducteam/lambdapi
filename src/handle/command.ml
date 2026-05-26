@@ -625,16 +625,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+(** [handle compile ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
-    {!module:Tactic} The function [compile_mod] is used to compile required
+    {!module:Tactic} The function [compile] is used to compile required
     modules recursively. *)
 let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
-  fun compile_mod ss cmd ->
+  fun compile ss cmd ->
   LibMeta.reset_meta_counter ();
-  (* We provide the compilation function to the handle commands, so that
+  (* We provide the compilation function to the handle command, so that
      "require" is able to compile files. *)
-  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  let (ss, p, _) = get_proof_data compile ss cmd in
   match p with
   | None -> ss
   | Some d ->
