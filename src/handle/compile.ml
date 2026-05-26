@@ -13,7 +13,7 @@ let gen_obj = Stdlib.ref false
 (** [compile force] returns a compiler, i.e. a function of type [Path.t ->
     Sign.t]. [compile force mp] returns the signature associated to the module
     path [mp]. The corresponding file is processed only when the corresponding
-    object file does not exist or must be updated, or when [~force] is
+    object file does not exist or must be updated, or when [force] is
     [true]. In that case, the produced signature is stored in the
     corresponding object file if the option [--gen_obj] or [-c] is set. *)
 let rec compile : bool -> Command.compiler = fun force mp ->
