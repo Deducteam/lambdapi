@@ -81,6 +81,13 @@ let goal : Term.meta Conversion.t = {
   ty = Conversion.TyName "sealed-goal"
 }
 
+let pp2string pp x =
+  let b = Buffer.create 80 in
+  let fmt = Format.formatter_of_buffer b in
+  Format.pp_set_margin fmt 80;
+  Format.fprintf fmt "%a%!" pp x;
+  Buffer.contents b
+
 (** APIs (data types and predicates) exposed to Elpi *)
 let lambdapi_builtin_declarations : BuiltIn.declaration list =
   let open BuiltIn in
@@ -130,7 +137,7 @@ external pred msolve i:list sealed-goal o:list (option term).
   (fun args ~depth _hyps _constraints state ->
      let pp = RawPp.term depth in
      let pos = State.get pos_component state in
-     Common.Error.fatal pos "%a" (RawPp.list ~boxed:true pp " ") args
+     Common.Error.fatal pos "%s" (pp2string (RawPp.list ~boxed:true pp " ") args)
      )),
   DocAbove);
 

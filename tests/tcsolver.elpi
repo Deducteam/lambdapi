@@ -56,9 +56,10 @@ comp B (prod _ F) TODO H (pi x\ C x) :-
 
 comp B End TODO HD (tc S U HD :- TODO) :-
   safe-dest-app End Head Args,
-  (Head = symb S ; (B = tt, lp.error "Typeclass instance compilation error."
+  (Head = symb S ; (B = tt, lp.error "Typeclass instance compilation error:"
     "The head of the conclusion is not a symbol:" Head)),
-  (Args = [U] ; (B = tt, lp.error "Typeclass instance compilation error."
-    "the conclusion is not an application to exactly one argument:" End)),
-  (lp.tc? S ; (B = tt, lp.error "Typeclass instance compilation error."
-    "the conclusion's head is not a typeclass:" S)). 
+  (Args = [U] ; (B = tt, lp.error "Typeclass instance compilation error:"
+    "The conclusion is not an application to exactly one argument.\nHead:"
+     S "Arguments:" Args)),
+  (lp.tc? S ; (B = tt, lp.error "Typeclass instance compilation error:"
+    "The conclusion's head is not a typeclass:" S)). 

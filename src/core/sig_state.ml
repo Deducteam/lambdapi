@@ -39,7 +39,7 @@ let get_solver : sig_state -> popt -> Elpi.API.Compile.program = fun ss pos ->
   | _ -> fatal pos "tc_solver was not initialized"
 
 (** [update_solver ss sym pos] generates a new signature state from [ss]
-    by compile [sym] to an instance in its typeclass solver.
+    by compiling [sym] to an instance in its typeclass solver.
     Fails if the solver was not yet initialized or if the conclusion of
     [sym]'s type cannot be recognised as a typeclass *)
 let update_solver : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->

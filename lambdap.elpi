@@ -32,6 +32,13 @@ external pred msolve i:list sealed-goal o:list (option term).
 % [lp.sig S T] Gives the type of a symbol
 external func lp.sig symbol -> term.
 
+% [lp.wrn ...] Prints a generic warning message
+external type lp.wrn variadic any (func).
+
+% [lp.error ...] Prints and *aborts* the program. It is a fatal error for
+% Elpi and Lambdapi
+external type lp.error variadic any (func).
+
 % [lp.tc? S] Tells if S is a type class
 external func lp.tc? symbol.
 
