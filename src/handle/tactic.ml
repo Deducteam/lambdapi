@@ -255,7 +255,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
 (** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
 let p_term (pos:popt): int StrMap.t -> term -> p_term =
   let rec term idmap (t:term) :p_term =
-    if Logger.log_enabled() then log "p_term %a" Print.term t;
+    (*if Logger.log_enabled() then log "p_term %a" Print.term t;*)
     Pos.make pos (term_aux idmap t)
   and params idmap x a =
     [Some(Pos.make pos (base_name x))],Some(term idmap a),false
@@ -328,8 +328,8 @@ let p_term_of_string (pos:popt) (t:term): p_term =
     term [t] that is part of a bigger term obtained by scoping and normalizing
     of a p_term at position [pos]. *)
 let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
-  if Logger.log_enabled() then
-    log "p_rwpatt_of_string %a %a" Pos.short pos term t;
+  (*if Logger.log_enabled() then
+    log "p_rwpatt_of_string %a %a" Pos.short pos term t;*)
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = remove_quotes s.sym_name in
@@ -360,9 +360,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
   let p_term = p_term pos idmap in
   let tac_eval t = Pos.make pos (P_tac_eval (p_term t)) in
   let tac t =
-    if Logger.log_enabled() then log "p_tactic %a" term t;
     let t = Eval.whnf ctx t in
-    if Logger.log_enabled() then log "whnf %a" term t;
+    if Logger.log_enabled() then log "%a" term t;
     match get_args t with
     | Symb s, ts ->
         begin
