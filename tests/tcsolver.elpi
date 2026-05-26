@@ -1,17 +1,19 @@
 msolve Goals RES :- std.map Goals (open tc) RES.
 
-%add_abst Ty (x\O) lambda-binds x with type Ty inside O.
+/* [add_abst Ty (x\ O)] returns [some (λ x : Ty, t x)] if [O] is [some (t x)]
+ * and [none] otherwise
+ */
 pred add_abst term, (term -> option term) -> option term.
 add_abst _ (_\none) none.
 
 add_abst Ty (x\ some (T x)) (some (abst Ty T)).
 
 /* load the goal's context (possibly adding new local typeclass instances)
-   before trying typeclass resolution if the goal is a typeclass
-   returns an instance if it finds one, and none otherwise
-*/
+ * before trying typeclass resolution if the goal is a typeclass
+ * returns an instance if it finds one, and none otherwise
+ */
 pred open i:(symbol -> term -> term -> prop), i:sealed-goal, o:option term.
-open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp Ty [] x Rule ; Rule = true),
+open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp ff Ty [] x Rule ; Rule = true),
   Rule ==> open P (F x) (Wit x), add_abst Ty Wit Abswit.
 
 open P (seal (goal Ty Wit)) (some Wit) :- 
@@ -36,19 +38,27 @@ safe-dest-app X X [].
 %tries to compile a symbol's type into a typeclass instance rule
 external pred compile i:symbol o:prop.
 
-compile S RES :- comp {lp.sig S} [] (symb S) RES.
+compile S RES :- comp tt {lp.sig S} [] (symb S) RES.
 
-pred comp i:term, i:list prop, i:term, o:prop.
+%if first argument is true, errors are fatal.
+pred comp i:bool, i:term, i:list prop, i:term, o:prop.
 
-comp (prod (appl T U) F) TODO H (pi x\ C x) :-
+comp B (prod (appl T U) F) TODO H (pi x\ C x) :-
   T = symb S, lp.tc? S,
   !,
   pi x\
-    comp (F x) [tc S U x |TODO] (appl H x) (C x).
+    comp B (F x) [tc S U x |TODO] (appl H x) (C x).
 
-comp (prod _ F) TODO H (pi x\ C x) :-
+comp B (prod _ F) TODO H (pi x\ C x) :-
   !,
   pi x\
-    comp (F x) TODO (appl H x) (C x).
+    comp B (F x) TODO (appl H x) (C x).
 
-comp End TODO HD (tc S U HD :- TODO) :- safe-dest-app End (symb S) [U], lp.tc? S. 
+comp B End TODO HD (tc S U HD :- TODO) :-
+  safe-dest-app End Head Args,
+  (Head = symb S ; (B = tt, lp.error "Typeclass instance compilation error."
+    "The head of the conclusion is not a symbol:" Head)),
+  (Args = [U] ; (B = tt, lp.error "Typeclass instance compilation error."
+    "the conclusion is not an application to exactly one argument:" End)),
+  (lp.tc? S ; (B = tt, lp.error "Typeclass instance compilation error."
+    "the conclusion's head is not a typeclass:" S)). 

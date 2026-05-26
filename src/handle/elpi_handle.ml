@@ -10,6 +10,12 @@ let ss_component : Sig_state.t State.component =
   State.declare_component ~name:"elpi:ss"
     ~pp:(fun _fmt _ -> ()) ~init:(fun () -> Sig_state.dummy) ~start:(fun x -> x) ()
 
+(** Allow elpi access to the position it is called at, so it can raise warnings
+    or errors *)
+let pos_component : Common.Pos.popt State.component =
+  State.declare_component ~name:"elpi:pos"
+    ~pp:Common.Pos.pp ~init:(fun () -> None) ~start:(fun x -> x) ()
+
 (** Elpi constant for the type of goals *)
 let goalc = RawData.Constants.declare_global_symbol "goal"
 
@@ -81,6 +87,7 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
   let open BuiltInPredicate in
   let open BuiltInData in
   let open BuiltInPredicate.Notation in
+  let open ContextualConversion in
 [
   LPDoc "---- Lambdapi datatypes ----";
 
@@ -106,6 +113,26 @@ external pred msolve i:list sealed-goal o:list (option term).
     Easy "Gives the type of a symbol")),
     (fun s _ ~depth:_ -> !: (Timed.(!) s.Term.sym_type))),
     DocAbove);
+  
+  MLCode(Pred("lp.wrn",
+    VariadicIn(unit_ctx, !> any, "Prints a generic warning message"),
+  (fun args ~depth _hyps _constraints state ->
+     let pp = RawPp.term depth in
+     let pos = State.get pos_component state in
+     Common.Error.wrn pos "%a" (RawPp.list ~boxed:true pp " ") args;
+     state, (), []
+     )),
+  DocAbove);
+
+  MLCode(Pred("lp.error",
+    VariadicIn(unit_ctx, !> any, "Prints and *aborts* the program." ^
+    " It is a fatal error for Elpi and Lambdapi"),
+  (fun args ~depth _hyps _constraints state ->
+     let pp = RawPp.term depth in
+     let pos = State.get pos_component state in
+     Common.Error.fatal pos "%a" (RawPp.list ~boxed:true pp " ") args
+     )),
+  DocAbove);
 
   (*MLCode(Pred("lp.tc-instances",
     Out(list sym,"L",
@@ -224,6 +251,7 @@ fun ss file predicate arg ->
   let query st =
     let open Elpi.API.RawData in
     let st = State.set ss_component st ss in
+    let st = State.set pos_component st pos in
     let st, arg, gls = Elpi_lambdapi.embed_term pos ~depth:0 st arg in
     let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
     let v = mkUnifVar v ~args:[] st in
@@ -272,6 +300,7 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym -> Elpi.API.Com
   let query st =
     let open Elpi.API.RawData in
     let st = State.set ss_component st ss in
+    let st = State.set pos_component st pos in
     let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
     let v = mkUnifVar v ~args:[] st in
     let st, arg, gls = Elpi_lambdapi.sym.Conversion.embed ~depth:0 st sym in
@@ -363,6 +392,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
       let query st =
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in
+        let st = State.set pos_component st pos in
         let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
         let v = mkUnifVar v ~args:[] st in
         let st, arg, gls = Elpi.API.Utils.map_acc (embed_goal ~depth:0 pos) st tc in
@@ -485,9 +515,10 @@ let embed_qterm
 
 (** Should allow to quote Lambdapi terms in Elpi
     and have it be interpreted as Elpi terms of type term.  *)
-let lpq : Quotation.quotation = fun ~language _st _loc text ->
+let lpq : Quotation.quotation = fun ~language _st loc text ->
   let open Parsing in
-  let ast = Parser.Lp.parse_string "xxx" ("type " ^ text ^ ";") in
+  let file = loc.source_name in
+  let ast = Parser.Lp.parse_string file ("type " ^ text ^ ";") in
   match ast |> Stream.next |> fun x -> x.Common.Pos.elt with
   | Syntax.P_query { Common.Pos.elt = Syntax.P_query_infer(t,_); _ } ->
       (*Printf.eprintf "Q %s\n" text;*)
