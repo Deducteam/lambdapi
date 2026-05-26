@@ -35,7 +35,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
 
-The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores.
+The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores. If the builtin ``and`` is mapped to some symbol, say ``&``, then ``t & u`` is interpreted as follows: the tactic ``t`` is applied and, in case of success, the tactic ``u`` is applied. All other symbols are interpreted by the corresponding tactics.
 
 An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/Tactic.lp>`__:
 
