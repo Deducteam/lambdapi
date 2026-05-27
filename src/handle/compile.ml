@@ -76,16 +76,43 @@ let rec compile : Command.compiler = fun mp ->
       Path.Map.iter (fun mp' _ -> ignore (compile mp')) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      (* Since ghost signatures are always assumed to be already loaded, we
-         need to explicitly update the decision tree of their symbols because
-         it is not done in linking which normally follows loading. We also
-         need to set the type of string symbols to the String builtin. *)
+      (* Since the ghost signature is implicitly loaded but not linked, we
+         need to explicitly update the decision tree of ghost symbols and the
+         type of string literals with the String builtin. *)
+      (* [find_opt name sign] tries to find the builtin [name] in [sign] or in
+         its open dependencies. *)
+      let find_opt name =
+        let exception Found of Term.sym in
+        let rec find sign =
+          match Extra.StrMap.find_opt name !(sign.sign_builtins) with
+          | Some sym -> raise (Found sym)
+          | None ->
+              let f mp d =
+                if d.dep_open then
+                  match Path.Map.find_opt mp !loaded with
+                  | Some sign -> find sign
+                  | None -> assert false
+              in
+              Path.Map.iter f !(sign.sign_deps)
+        in
+        try find sign; None with Found sym -> Some sym
+      in
+      (* [get_sym_String()] searches for the "String" builtin once and record
+         it to return it right away if asked again. *)
+      let get_sym_String =
+        let open Stdlib in
+        let searched = ref false and sym = ref None in
+        fun () ->
+        if !searched then !sym
+        else let s = find_opt "String" in (sym := s; searched := true; s)
+      in
+      (* update the type and decision trees of ghost symbols *)
       let update s =
         Tree.update_dtree s [];
         if String.is_string_literal s.sym_name then
-          let ss = Sig_state.of_sign sign in
-          let string_sym = Builtin.get ss s.sym_pos mp "String" in
-          s.sym_type := Term.mk_Symb string_sym
+          match get_sym_String() with
+          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
+          | None -> assert false
       in
       Ghost.iter update;
       sign
