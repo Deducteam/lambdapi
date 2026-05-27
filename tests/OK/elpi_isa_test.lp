@@ -358,3 +358,175 @@ opaque symbol minus_add [A] [_ : group_add_class A] a b :
   rewrite right_minus; rewrite add_0_left;
   refine (right_minus a);
 end;
+
+symbol ⊥ₑ : Prf ⊥ → Π p, Prf p;
+symbol ¬_def : Prf ((¬) = (λ p, p ⇒ ⊥));
+
+instance symbol boolF2_zero ≔ mk_zero ⊥;
+instance symbol boolF2_uminus ≔ mk_uminus (λ (b : El bool), b);
+instance symbol boolF2_plus ≔ mk_plus (λ b b', (b ∧ ¬ b') ∨ (¬ b ∧ b'));
+symbol deduce_minus [A] [_ : plus_class A] [_ : uminus_class A] : minus_class A
+  ≔ mk_minus (λ (x y : El A), x + — y);
+instance symbol boolF2_minus : minus_class bool ≔ deduce_minus;
+
+opaque symbol ∧ᵢ_alt [p q] : Prf p → Prf q → Prf (p ∧ q) ≔ λ Hp Hq, ∧ᵢ Hp Hq;
+opaque symbol ∨ᵢ₂_alt [q : El bool] : Prf q → Π p : El bool, Prf (p ∨ q) ≔
+  λ Hq p, ∨ᵢ₂ p Hq;
+//provable of course
+symbol EM p : Prf (p ∨ ¬ p);
+
+opaque symbol boolF2_add_assoc (a b c : El bool) :
+  Prf (((a + b) + c) = (a + (b + c))) ≔ begin
+  assume b b' b''; apply prop_ext {
+    assume bigsumtrue; apply (∨ₑ bigsumtrue) {
+      change (Prf _); rewrite ¬_def; simplify rule off;
+      assume bigconjtrue ; apply (∨ₑ (∧ₑ₁ bigconjtrue)) {
+        change (Prf _); rewrite ¬_def; simplify rule off;
+        assume smallconjtrue; apply ∨ᵢ₁; apply (∧ᵢ_alt) {
+          refine (∧ₑ₁ smallconjtrue)
+        } {
+          rewrite ¬_def; simplify rule off; assume smallsumtrue;
+          apply (∨ₑ smallsumtrue) {
+            assume contra; apply (∧ₑ₂ smallconjtrue _);
+            refine (∧ₑ₁ contra);
+          } {
+            assume contra; apply (∧ₑ₂ bigconjtrue _);
+            refine (∧ₑ₂ contra);
+          };
+        }
+      } {
+        change (Prf _); rewrite ¬_def; simplify rule off;
+        assume smallconjtrue; apply ∨ᵢ₂_alt; apply (∧ᵢ_alt) {
+          rewrite ¬_def; refine (∧ₑ₁ smallconjtrue)
+        } {
+          apply ∨ᵢ₁; apply ∧ᵢ_alt {
+            refine (∧ₑ₂ smallconjtrue);
+          } {
+            rewrite ¬_def; refine (∧ₑ₂ bigconjtrue)
+          };
+        }
+      }
+    } {
+      change (Prf (_ ⇒ _)); rewrite ¬_def; simplify rule off;
+      assume bigconjtrue ; apply (∨ₑ (EM b)) {
+        assume Hb; apply ∨ᵢ₁; apply (∧ᵢ_alt Hb);
+        rewrite ¬_def; assume smallsumtrue; 
+        apply (∨ₑ smallsumtrue) {
+          change (Prf _); rewrite ¬_def; simplify rule off;
+          assume smallconjtrue; apply (∧ₑ₂ smallconjtrue _) ;
+          refine (∧ₑ₂ bigconjtrue)
+        } {
+          assume smallconjtrue; apply (∧ₑ₁ bigconjtrue _);
+          apply ∨ᵢ₁; refine (∧ᵢ Hb (∧ₑ₁ smallconjtrue))
+        };
+      } {
+        assume Hnb; apply ∨ᵢ₂_alt; apply (∧ᵢ_alt Hnb);
+        apply ∨ᵢ₂_alt; apply (∧ᵢ_alt _ (∧ₑ₂ bigconjtrue));
+        rewrite ¬_def; assume Hb'; apply (∧ₑ₁ bigconjtrue _);
+        refine (∨ᵢ₂ _ (∧ᵢ Hnb Hb'));
+      };
+    };
+  } {
+    assume bigsumtrue; apply (∨ₑ bigsumtrue) {
+      change (Prf _); rewrite ¬_def; simplify rule off;
+      assume bigconjtrue ; apply (∨ₑ (EM b'')) {
+        assume Hb''; apply ∨ᵢ₂_alt; apply (∧ᵢ_alt _ Hb'');
+        rewrite ¬_def; assume smallsumtrue; 
+        apply (∨ₑ smallsumtrue) {
+          assume smallconjtrue; apply (∧ₑ₂ bigconjtrue _);
+          apply ∨ᵢ₂_alt; refine (∧ᵢ (∧ₑ₂ smallconjtrue) Hb'')
+        } {
+          change (Prf _); rewrite ¬_def; simplify rule off;
+          assume smallconjtrue; apply (∧ₑ₁ smallconjtrue _) ;
+          refine (∧ₑ₁ bigconjtrue)
+        };
+      } {
+        assume Hnb''; apply ∨ᵢ₁; apply (∧ᵢ_alt _ Hnb'');
+        apply ∨ᵢ₁; apply (∧ᵢ_alt (∧ₑ₁ bigconjtrue));
+        rewrite ¬_def; assume Hb'; apply (∧ₑ₂ bigconjtrue _);
+        refine (∨ᵢ₁ (∧ᵢ Hb' Hnb'') _);
+      };
+    } {
+      change (Prf _); rewrite ¬_def; simplify rule off;  
+      assume bigconjtrue ; apply (∨ₑ (∧ₑ₂ bigconjtrue)) {
+        assume smallconjtrue; apply ∨ᵢ₁;
+        apply (∧ᵢ_alt _ (∧ₑ₂ smallconjtrue));
+        simplify; rewrite ¬_def;
+        refine (∨ᵢ₂ _ (∧ᵢ (∧ₑ₁ bigconjtrue) (∧ₑ₁ smallconjtrue)))
+      } {
+        change (Prf _); rewrite ¬_def; simplify rule off;  
+        assume smallconjtrue; apply ∨ᵢ₂_alt;
+        apply (∧ᵢ_alt _ (∧ₑ₂ smallconjtrue)); rewrite ¬_def;
+        assume smallsumtrue;  apply (∨ₑ smallsumtrue) {
+          refine (λ contra, ∧ₑ₁ bigconjtrue (∧ₑ₁ contra))
+        } {
+          refine (λ contra, ∧ₑ₁ smallconjtrue (∧ₑ₂ contra))
+        };
+      }
+    };
+  };
+end;
+
+instance symbol boolF2_semigroup_add ≔ mk_semigroup_add boolF2_add_assoc;
+
+opaque symbol ¬⊥ : Prf ((¬ ⊥) = ⊤) ≔ begin
+  apply (prop_ext (λ _, ⊤ᵢ));
+  assume ?; rewrite ¬_def; refine (λ H⊥, H⊥);
+end;
+
+opaque symbol ∧_⊤_left p : Prf ((⊤ ∧ p) = p) ≔ prop_ext ∧ₑ₂ (λ Hp, ∧ᵢ ⊤ᵢ Hp);
+
+opaque symbol boolF2_add_0_left (a : El bool) : Prf (_0 + a = a) ≔ begin
+  assume a; apply prop_ext {
+    assume 0+a; apply (∨ₑ 0+a) {
+      assume contra; apply ⊥ₑ; refine (∧ₑ₁ contra) 
+    } {
+      assume res; refine (∧ₑ₂ res)
+    };
+  } {
+    assume Ha; apply ∨ᵢ₂_alt; simplify; rewrite ¬⊥;
+    rewrite ∧_⊤_left; refine Ha
+  };
+end;
+
+opaque symbol boolF2_add_comm (a b : El bool) : Prf (a + b = b + a) ≔ begin
+  assume a b; apply prop_ext {
+    assume a+b; apply (∨ₑ a+b) {
+      assume a∧¬b; apply ∨ᵢ₂_alt;
+      refine (∧ᵢ (∧ₑ₂ a∧¬b) (∧ₑ₁ a∧¬b))
+    } {
+      assume ¬a∧b; apply ∨ᵢ₁;
+      refine (∧ᵢ (∧ₑ₂ ¬a∧b) (∧ₑ₁ ¬a∧b))
+    }
+  } {
+    assume a+b; apply (∨ₑ a+b) {
+      assume a∧¬b; apply ∨ᵢ₂_alt;
+      refine (∧ᵢ (∧ₑ₂ a∧¬b) (∧ₑ₁ a∧¬b))
+    } {
+      assume ¬a∧b; apply ∨ᵢ₁;
+      refine (∧ᵢ (∧ₑ₂ ¬a∧b) (∧ₑ₁ ¬a∧b))
+    }
+  }
+end;
+
+instance symbol boolF2_monoid_add : monoid_add_class bool ≔ begin
+  apply mk_monoid_add boolF2_add_0_left;
+  assume a; rewrite boolF2_add_comm; apply boolF2_add_0_left;
+end;
+
+opaque symbol boolF2_*2=0 (b : El bool) : Prf (b + b = ⊥) ≔ begin
+  assume b; apply (prop_ext _ (λ H⊥, ⊥ₑ H⊥ _)); assume b+b;
+  apply (∨ₑ b+b) {
+    change (Prf _); rewrite ¬_def; refine (λ c, ∧ₑ₂ c (∧ₑ₁ c))
+  } {
+    change (Prf _); rewrite ¬_def; refine (λ c, ∧ₑ₁ c (∧ₑ₂ c))
+  }
+end;
+
+instance symbol boolF2_group_add : group_add_class bool ≔ begin
+  apply (mk_group_add boolF2_*2=0); reflexivity;
+end;
+
+symbol test (a b : El bool) : Prf (a + b + b = a) ≔ begin
+  assume a b; apply add_diff_cancel;
+end;

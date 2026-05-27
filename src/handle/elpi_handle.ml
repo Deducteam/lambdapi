@@ -408,8 +408,8 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
 
       if Timed.(!trace) then (let _ = Setup.trace ["-trace-on";"json";"/tmp/rawtrace.json";"-trace-at";"1";"9999";"-trace-only";"user"] in ());
       match Execute.once (Elpi.API.Compile.optimize query) with
-      | Execute.Success { Data.state; assignments; _} ->
-          (*let _ = readback_assignments ~pp_ctx:(Some pp_ctx) ~pos state in*)
+      | Execute.Success { Data.state; assignments; (*pp_ctx;*) _} ->
+          (*let state = readback_assignments ~pp_ctx pos state in*)
           let insts = Elpi.API.Setup.StrMap.find "Result" assignments in
           let insts = Elpi.API.Utils.lp_list_to_list ~depth:0 insts in
           let _,insts,_ = Elpi.API.Utils.map_acc ((Elpi.Builtin.option term).readback ~depth:0) state insts in
