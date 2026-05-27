@@ -23,9 +23,8 @@ let source base =
   | true , false -> lp_src
   | false, true -> dk_src
 
-(** [compile] returns a compiler, i.e. a function of type [sig_state -> Path.t
-    -> Sign.t]. [compile ss mp] returns the signature associated to the module
-    path [mp]. The corresponding file is processed only when the corresponding
+(** [compile ss mp] returns the signature associated to the module path
+    [mp]. The corresponding file is processed only when the corresponding
     object file does not exist or must be updated. In that case, the signature
     is stored in the corresponding object file if [!gen_obj] is [true]. The
     sig_state [ss] is only used to get the "String" builtin. *)
