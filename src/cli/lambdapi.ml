@@ -27,7 +27,8 @@ let sig_state_of_require =
     (* Search for a package from the current working directory. *)
     Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
     Core.Sig_state.of_sign
-     (Compile.compile (Parsing.Parser.path_of_string req))
+      (Compile.compile Core.Sig_state.dummy
+         (Parsing.Parser.path_of_string req))
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
@@ -213,7 +214,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
     Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     let sym =
       Timed.(Console.verbose := 0); (* To avoid printing "Checked ..." *)
-      let sign = Compile.compile mp in
+      let sign = Compile.compile Sig_state.dummy mp in
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)

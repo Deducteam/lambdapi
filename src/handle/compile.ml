@@ -23,12 +23,13 @@ let source base =
   | true , false -> lp_src
   | false, true -> dk_src
 
-(** [compile] returns a compiler, i.e. a function of type [Path.t ->
-    Sign.t]. [compile mp] returns the signature associated to the module path
-    [mp]. The corresponding file is processed only when the corresponding
+(** [compile] returns a compiler, i.e. a function of type [sig_state -> Path.t
+    -> Sign.t]. [compile ss mp] returns the signature associated to the module
+    path [mp]. The corresponding file is processed only when the corresponding
     object file does not exist or must be updated. In that case, the signature
-    is stored in the corresponding object file if [!gen_obj] is [true]. *)
-let rec compile : Command.compiler = fun mp ->
+    is stored in the corresponding object file if [!gen_obj] is [true]. The
+    sig_state [ss] is only used to get the "String" builtin. *)
+let rec compile : Command.compiler = fun ss mp ->
   if List.mem mp !loading then
     begin
       let base = file_of_path mp in
@@ -49,7 +50,6 @@ let rec compile : Command.compiler = fun mp ->
       Console.out 1 (Color.blu "Start checking \"%s\"") src;
       loading := mp :: !loading;
       let sign = Sign.create mp in
-      let ss = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
@@ -57,6 +57,7 @@ let rec compile : Command.compiler = fun mp ->
         Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
         sout "\n%!";*)
       Tactic.reset_admitted();
+      let ss = Stdlib.ref (Sig_state.of_sign sign) in
       let consume cmd = Stdlib.(ss := Command.handle compile !ss cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
       Console.out 1 (Color.blu "End checking \"%s\"") src;
@@ -73,46 +74,21 @@ let rec compile : Command.compiler = fun mp ->
       Console.out 2 (Color.blu "Load \"%s\"") obj;
       let sign = Sign.read obj in
       (* We recursively load every module [mp'] on which [mp] depends. *)
-      Path.Map.iter (fun mp' _ -> ignore (compile mp')) !(sign.sign_deps);
+      Path.Map.iter (fun mp' _ -> ignore (compile ss mp')) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
       (* Since the ghost signature is implicitly loaded but not linked, we
          need to explicitly update the decision tree of ghost symbols and the
          type of string literals with the String builtin. *)
-      (* [find_opt name sign] tries to find the builtin [name] in [sign] or in
-         its open dependencies. *)
-      let find_opt name =
-        let exception Found of Term.sym in
-        let rec find sign =
-          match Extra.StrMap.find_opt name !(sign.sign_builtins) with
-          | Some sym -> raise (Found sym)
-          | None ->
-              let f mp d =
-                if d.dep_open then
-                  match Path.Map.find_opt mp !loaded with
-                  | Some sign -> find sign
-                  | None -> assert false
-              in
-              Path.Map.iter f !(sign.sign_deps)
-        in
-        try find sign; None with Found sym -> Some sym
-      in
-      (* [get_sym_String()] searches for the "String" builtin once and record
-         it to return it right away if asked again. *)
-      let get_sym_String =
-        let open Stdlib in
-        let searched = ref false and sym = ref None in
-        fun () ->
-        if !searched then !sym
-        else let s = find_opt "String" in (sym := s; searched := true; s)
-      in
-      (* update the type and decision trees of ghost symbols *)
       let update s =
-        Tree.update_dtree s [];
-        if String.is_string_literal s.sym_name then
-          match get_sym_String() with
+        if String.is_string_literal s.Term.sym_name then
+          match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
+          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
+          | None ->
+          match Builtin.get_opt ss "String" with
           | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
           | None -> assert false
+        else Tree.update_dtree s []
       in
       Ghost.iter update;
       sign
@@ -122,4 +98,4 @@ let rec compile : Command.compiler = fun mp ->
     and compiles [fname]. *)
 let compile_file (fname:string): Sign.t =
   Package.apply_config fname;
-  compile (path_of_file LpLexer.escape fname)
+  compile Sig_state.dummy (path_of_file LpLexer.escape fname)

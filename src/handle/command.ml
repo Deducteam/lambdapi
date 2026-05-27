@@ -9,7 +9,7 @@ open Proof
 open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
-type compiler = Path.t -> Sign.t
+type compiler = sig_state -> Path.t -> Sign.t
 
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
@@ -94,7 +94,7 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
     else
       begin
         (* Compile [p] (this adds it to [Sign.loaded]). *)
-        let sign = compile p in
+        let sign = compile ss p in
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
