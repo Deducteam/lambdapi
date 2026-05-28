@@ -35,7 +35,7 @@ let string_of_token = function
   | CONSTANT -> "constant"
   | DEBUG -> "debug"
   | DEBUG_FLAGS _ -> "debug flags"
-  | DISJUNCTION -> "&"
+  | DISJUNCTION -> "ANND"
   | DOT -> "."
   | END -> "end"
   | EQUIV -> "≡"

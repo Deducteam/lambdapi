@@ -270,6 +270,7 @@ let rec token lb =
   | "verbose" -> VERBOSE
   | "why3" -> WHY3
   | "with" -> WITH
+  | "ANND" -> DISJUNCTION
 
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
@@ -284,7 +285,6 @@ let rec token lb =
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
-  | '&' -> DISJUNCTION
   | '.' -> DOT
   | 0x2261 (* ≡ *) -> EQUIV
   | 0x21aa (* ↪ *) -> HOOK_ARROW

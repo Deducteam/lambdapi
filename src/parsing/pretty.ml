@@ -259,7 +259,7 @@ let search_constr ppf = function
 let generalize ppf b = if b then string ppf " generalize"
 
 let search_base ppf = function
-  | QName s -> out ppf "name %s" s
+  | QName s -> out ppf "name = %s" s
   | QSearch(t,g,None) -> out ppf "anywhere%a%a" generalize g term t
   | QSearch(t,g,Some c) ->
       out ppf "%a%a%a" search_constr c generalize g term t
