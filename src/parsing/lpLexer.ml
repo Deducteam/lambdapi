@@ -46,10 +46,8 @@ type token =
   | COMPUTE
   | CONSTANT
   | DEBUG
-  | ELPI
   | END
   | EVAL
-  | EXISTING
   | FAIL
   | FLAG
   | GENERALIZE
@@ -223,10 +221,8 @@ let rec token lb =
   | "compute" -> COMPUTE
   | "constant" -> CONSTANT
   | "debug" -> DEBUG
-  | "elpi" -> ELPI
   | "end" -> END
   | "eval" -> EVAL
-  | "existing" -> EXISTING
   | "fail" -> FAIL
   | "flag" -> FLAG
   | "generalize" -> GENERALIZE

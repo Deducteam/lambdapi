@@ -111,8 +111,6 @@ let string_of_token = function
   | WITH -> "with"
   | TYPECLASS -> "typeclass"
   | INSTANCE -> "instance"
-  | ELPI -> "elpi"
-  | EXISTING -> "existing"
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -385,10 +383,20 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
         | [{elt=P_opaq;_}] ->
             let i = qid lb in
             extend_pos (*__FUNCTION__*) pos1 (P_opaque i)
+        | [{elt=P_typeclass;_}] ->
+            let i = qid lb in
+            extend_pos (*__FUNCTION__*) pos1 (P_type_class i)
+        | [{elt=P_typeclass_instance;_}] ->
+            let i = qid lb in
+            extend_pos (*__FUNCTION__*) pos1 (P_type_class_instance i)
         | [] ->
             expected "command keyword missing" []
         | {elt=P_opaq;_}::{pos;_}::_ ->
             expected "an opaque command must be followed by an identifier" []
+        | {elt=P_typeclass;_}::{pos;_}::_ ->
+            expected "a typeclass command must be followed by an identifier" []
+        | {elt=P_typeclass_instance;_}::{pos;_}::_ ->
+            expected "an instance command must be followed by an identifier" []
         | _ ->
             expected "" [SYMBOL]
       end
@@ -490,7 +498,6 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
         | _ ->
             expected "" [COLON;ASSIGN]
       end
-      
   | L_PAREN
   | L_SQ_BRACKET ->
       let pos1 = current_pos() in
@@ -561,19 +568,6 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
       let i = qid lb in
       let n = notation lb in
       extend_pos (*__FUNCTION__*) pos1 (P_notation(i,n))
-  | EXISTING ->
-      if p_sym_mod <> [] then expected "" [SYMBOL];
-      let pos1 = current_pos() in
-      consume_token lb;
-      let of_next_qid command =
-        consume_token lb;
-        let i = qid lb in
-        extend_pos pos1 (command i)
-      in begin match current_token() with
-      | INSTANCE -> of_next_qid (fun i -> P_type_class_instance i)
-      | TYPECLASS -> of_next_qid (fun i -> P_type_class i)
-      | _ -> expected "" [INSTANCE;TYPECLASS]
-      end
   | _ ->
       if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
       let pos1 = current_pos() in

@@ -254,12 +254,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_type_class_instance qid ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
     Sig_state.update_solver ss sym pos, None, None
-  | P_elpi(file,pred,arg) ->
-      (ss, None, (Elpi_handle.run ss file pred arg; None))
-  | P_accumulate code ->
-      let base = get_solver ss pos in
-      let tc_solver_prog = Some (Elpi_handle.accumulate_string_to_program ~pos ~base ~code) in 
-      ({ss with tc_solver_prog}, None, None) 
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)
@@ -643,7 +637,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
-
 
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from

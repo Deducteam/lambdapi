@@ -107,8 +107,8 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
   | P_mstrat(s) -> Print.match_strat ppf s
   | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
-  | P_typeclass -> out ppf " typeclass"
-  | P_typeclass_instance -> out ppf " instance"
+  | P_typeclass -> out ppf "typeclass "
+  | P_typeclass_instance -> out ppf "instance "
 
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
@@ -390,10 +390,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
-  | P_elpi _ -> assert false
-  | P_type_class qid -> out ppf "existing typeclass %a" qident qid
-  | P_type_class_instance qid -> out ppf "existing instance %a" qident qid
-  | P_accumulate _code -> out ppf "elpi accumulate begin (...) end" (*out ppf "elpi accumulate begin\n%s\nend" code*)
+  | P_type_class qid -> out ppf "typeclass %a" qident qid
+  | P_type_class_instance qid -> out ppf "instance %a" qident qid
   end;
   out ppf ";"
 
