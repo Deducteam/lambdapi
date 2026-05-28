@@ -47,7 +47,7 @@ do
         # require escaped module name
         π/utf_path|escape_path|'a b/escape file'|require_nondkmident);;
         # use builtin strings
-        Tactic);;
+        Tactic|1374);;
         # default case
         *) translate $f.lp;;
     esac

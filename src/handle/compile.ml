@@ -10,48 +10,45 @@ open Core open Sign
     source files. The default behaviour is not te generate them. *)
 let gen_obj = Stdlib.ref false
 
-(** [compile_with ~handle ~force mp] compiles the file corresponding to module
-   path [mp] using function [~handle] to process commands. Module [mp] is
-   processed when it is necessary, i.e. the corresponding object file does not
-   exist, or it must be updated, or [~force] is [true]. In that case, the
-   produced signature is stored in the corresponding object file if the option
-   [--gen_obj] or [-c] is set. *)
-let rec compile_with :
-  handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
-  -> force:bool -> Command.compiler =
-  fun ~handle ~force mp ->
-  if mp = Ghost.path then Ghost.sign else
-  let base = file_of_path mp in
-  let src =
-    let lp_src = base ^ lp_src_extension in
-    let dk_src = base ^ dk_src_extension in
-    match (Sys.file_exists lp_src, Sys.file_exists dk_src) with
-    | (false, false) ->
-        fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
-    | (true , true ) ->
-        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
-          lp_src dk_src lp_src; lp_src
-    | (true , false) -> lp_src
-    | (false, true ) -> dk_src
-  in
-  let obj = base ^ obj_extension in
+(** [source base] returns which file among [base.dk] and [base.lp] to use. *)
+let source base =
+  let lp_src = base ^ lp_src_extension
+  and dk_src = base ^ dk_src_extension in
+  match Sys.file_exists lp_src, Sys.file_exists dk_src with
+  | false, false ->
+      fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
+  | true , true ->
+      wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+        lp_src dk_src lp_src; lp_src
+  | true , false -> lp_src
+  | false, true -> dk_src
+
+(** [compile ss mp] returns the signature associated to the module path
+    [mp]. The corresponding file is processed only when the corresponding
+    object file does not exist or must be updated. In that case, the signature
+    is stored in the corresponding object file if [!gen_obj] is [true]. The
+    sig_state [ss] is only used to get the "String" builtin. *)
+let rec compile : Command.compiler = fun ss mp ->
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in \"%s\".@." src;
-      fatal_msg "Dependency stack for module %a:@." Path.pp mp;
+      let base = file_of_path mp in
+      fatal_msg "Circular dependency detected in \"%s\".@." (source base);
+      fatal_msg "Dependency stack for module:@.";
       List.iter (fatal_msg "- %a@." Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
+  if mp = Ghost.path then Ghost.sign else
   match Path.Map.find_opt mp !loaded with
   | Some sign -> sign
   | None ->
-    if force || Extra.more_recent src obj then
+    let base = file_of_path mp in
+    let obj = base ^ obj_extension in
+    let src = source base in
+    if Extra.more_recent src obj then
     begin
-      let forced = if force then " (forced)" else "" in
-      Console.out 1 (Color.blu "Start checking \"%s\"%s") src forced;
+      Console.out 1 (Color.blu "Start checking \"%s\"") src;
       loading := mp :: !loading;
       let sign = Sign.create mp in
-      let ss = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
@@ -59,76 +56,45 @@ let rec compile_with :
         Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
         sout "\n%!";*)
       Tactic.reset_admitted();
-      let compile = compile_with ~handle ~force in
-      let consume cmd = Stdlib.(ss := handle compile !ss cmd) in
+      let ss = Stdlib.ref (Sig_state.of_sign sign) in
+      let consume cmd = Stdlib.(ss := Command.handle compile !ss cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
-      Console.out 1 (Color.blu "End checking \"%s\"%s") src forced;
+      Console.out 1 (Color.blu "End checking \"%s\"") src;
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
-        Console.out 2 (Color.blu "Writing \"%s\" ...")obj; Sign.write sign obj
+        Console.out 2 (Color.blu "Write \"%s\"") obj;
+        Sign.write sign obj
       end;
       loading := List.tl !loading;
       sign
     end
     else
     begin
-      Console.out 2 (Color.blu "Loading \"%s\" ...") obj;
+      Console.out 2 (Color.blu "Load \"%s\"") obj;
       let sign = Sign.read obj in
       (* We recursively load every module [mp'] on which [mp] depends. *)
-      let compile mp' _ = ignore (compile_with ~handle ~force:false mp') in
-      Path.Map.iter compile !(sign.sign_deps);
+      Path.Map.iter (fun mp' _ -> ignore (compile ss mp')) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      (* Since ghost signatures are always assumed to be already loaded,
-         we need to explicitly update the decision tree of their symbols
-         because it is not done in linking which normally follows loading. *)
-      Ghost.iter (fun s -> Tree.update_dtree s []);
+      (* Since the ghost signature is implicitly loaded but not linked, we
+         need to explicitly update the decision tree of ghost symbols and the
+         type of string literals with the String builtin. *)
+      let update s =
+        if String.is_string_literal s.Term.sym_name then
+          match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
+          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
+          | None ->
+          match Builtin.get_opt ss "String" with
+          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
+          | None -> assert false
+        else Tree.update_dtree s []
+      in
+      Ghost.iter update;
       sign
     end
 
-(** [compile force mp] compiles module path [mp], forcing
-    compilation of up-to-date files if [force] is true. *)
-let compile : ?force:bool -> Path.t -> Sign.t = fun ?(force=false) ->
-  compile_with ~handle:Command.handle ~force
-
-(** [compile_file fname] looks for a package configuration file for
-    [fname] and compiles [fname]. It is the main compiling function. It
-    is called from the main program exclusively. *)
-let compile_file : ?force:bool -> string -> Sign.t =
-  fun ?(force=false) fname ->
+(** [compile_file fname] looks for a package configuration file for [fname]
+    and compiles [fname]. *)
+let compile_file (fname:string): Sign.t =
   Package.apply_config fname;
-  compile ~force (path_of_file LpLexer.escape fname)
-
-(** The functions provided in this module perform the same computations as the
-   ones defined earlier, but restore the console state and the library
-   mappings when they have finished. An optional library mapping or console
-   state can be passed as argument to change the settings. *)
-module PureUpToSign = struct
-
-  (** [apply_cfg ?lm ?st f x] is the same as [f x] except that the console
-     state and {!val:Library.lib_mappings} are restored after the evaluation
-     of [f x]. [?lm] allows to set the library mappings and [?st] to set the
-     console state. *)
-  let apply_cfg :
-    ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
-    fun ?lm ?st f x ->
-      let lib_mappings = !Library.lib_mappings in
-      Console.State.push ();
-      Option.iter Library.add_mapping lm;
-      Option.iter Console.State.apply st;
-      let restore () =
-        Library.lib_mappings := lib_mappings;
-        Console.State.pop ()
-      in
-      try let res = f x in restore (); res
-      with e -> restore (); raise e
-
-  let compile :
-  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> Path.t -> Sign.t
-    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile ~force)
-
-  let compile_file :
-  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> string -> Sign.t
-    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile_file ~force)
-
-end
+  compile Sig_state.dummy (path_of_file LpLexer.escape fname)
