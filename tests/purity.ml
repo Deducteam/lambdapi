@@ -9,9 +9,9 @@ let () =
 (** Sanity check for pure compilation: same file may be compiled twice. *)
 let test_compile_twice () =
   let nat_lp = "OK/natural.lp" in
-  ignore @@ Compile.PureUpToSign.compile_file nat_lp;
+  ignore @@ Library.restore_after Compile.compile_file nat_lp;
   Alcotest.(check unit) "Compile twice same file in same runtime"
-   (ignore @@ Compile.PureUpToSign.compile_file nat_lp) ()
+   (ignore @@ Library.restore_after Compile.compile_file nat_lp) ()
 
 (** Check that pure compilation is indeed pure. *)
 let purity_check () =
@@ -21,7 +21,7 @@ let purity_check () =
   let verbose = !Console.verbose in
   let loggers = Logger.get_activated_loggers () in
   let flags = Stdlib.(!Console.boolean_flags) in
-  ignore @@ Compile.PureUpToSign.compile_file "OK/natural.lp";
+  ignore @@ Library.restore_after Compile.compile_file "OK/natural.lp";
   Alcotest.(check int) "verbosity" verbose !Console.verbose;
   Alcotest.(check string) "loggers" loggers (Logger.get_activated_loggers ());
   (* The pretty printer is used to check equality *)

@@ -483,3 +483,8 @@ let embed_qterm
     | Bvar _ -> Common.Error.fatal_no_pos "embed_qterm: Bvar not implemented"
   in
   aux t
+
+module Sig_state = struct
+  let dummy = Sig_state.of_solver tc_solver_prog add_tc_instance
+  let of_sign s = Sig_state.of_sign_and_solver s tc_solver_prog add_tc_instance
+end

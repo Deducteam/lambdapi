@@ -7,8 +7,8 @@ open Core
 let () =
   Library.set_lib_root (Some "/tmp");
   Timed.(Console.verbose := 0);
-  let sign = Compile.PureUpToSign.compile_file "../OK/boolean.lp" in
-  let ss = Elpi_handle.(Sig_state.of_sign_and_solver sign tc_solver_prog add_tc_instance) in
+  let sign = Library.restore_after Compile.compile_file "../OK/boolean.lp" in
+  let ss = Elpi_handle.Sig_state.of_sign sign in
   (* Regular symbol *)
   let sym =
     Sig_state.find_sym ~prt:true ~prv:true ss

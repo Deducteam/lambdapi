@@ -346,8 +346,7 @@ and atom idmap ppf t = pp `Atom idmap ppf t
 and appl idmap ppf t = pp `Appl idmap ppf t
 and func idmap ppf t = pp `Func idmap ppf t
 
-(* we cleanup terms to print non-dependent products are arrow types *)
-let term_in idmap ppf t = func idmap ppf (cleanup t)
+let term_in = func
 
 let term = term_in StrMap.empty
 

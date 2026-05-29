@@ -35,7 +35,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "try" ≔ …; // : T → T
    builtin "why3" ≔ …; // : T
 
-The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores.
+The tactics taking a string as argument need the ``"String"`` :ref:`builtin` to be set. The string argument of ``refine`` is parsed as a term, and thus can contain underscores. If the builtin ``and`` is mapped to some symbol, say ``&``, then ``t & u`` is interpreted as follows: the tactic ``t`` is applied and, in case of success, the tactic ``u`` is applied. All other symbols are interpreted by the corresponding tactics.
 
 An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/Tactic.lp>`__:
 
@@ -64,14 +64,14 @@ An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/
 ``orelse``
 ----------
 
-``orelse T1 T2`` applies ``T1``. If ``T1`` succeeds, then ``orelse T1 T2`` stops. Otherwise, ``orelse T1 T2`` applied ``T2``.
+``orelse T1 T2`` applies ``T1``. If ``T1`` succeeds, then ``orelse T1 T2`` stops. Otherwise, ``orelse T1 T2`` applies ``T2``.
 
 .. _repeat:
 
 ``repeat``
 ----------
 
-``repeat T`` applies ``T`` on the first goals as long as possible, unless the number of goals decreases, in which case the tactic stops.
+``repeat T`` applies ``T`` on the first goal until the number of goals decreases.
 
 .. _try:
 
