@@ -203,9 +203,24 @@ external pred msolve i:list sealed-goal o:list (option term).
 
 ] @ Elpi.Builtin.std_declarations
 
+(** Should be the correct path to either the lambdapi/ directory
+    or its dune build clone. *)
+let elpi_path,builtins_file =
+  let rec iter f n x = if n > 0 then iter f (n-1) (f x) else x in
+  let exec = Sys.executable_name in
+  let from_lp = Filename.concat (iter Filename.dirname 3 exec) in
+  if Sys.file_exists (from_lp "src/elpi/tcsolver.elpi")
+  then from_lp "src/elpi", from_lp "doc/lambdapi-builtins.elpi"
+  else
+  let from_opam_switch = Filename.concat (iter Filename.dirname 2 exec) in
+  if Sys.file_exists (from_opam_switch "lib/lambdapi/elpi/tcsolver.elpi")
+  then from_opam_switch "lib/lambdapi/elpi",
+    from_opam_switch "doc/lambdapi/lambdapi-builtins.elpi"
+  else assert false
+
 (** Expose them to Elpi. *)
 let lambdapi_builtins =
-  BuiltIn.declare ~file_name:"lambdap.elpi" lambdapi_builtin_declarations
+  BuiltIn.declare ~file_name:builtins_file lambdapi_builtin_declarations
 
 (** Generates the documentation of builtin functions in file lambdap.elpi *)
 let document () =
@@ -214,19 +229,12 @@ let document () =
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
 
-(** Should be the correct path to either the lambdapi/ directory
-    or its dune build clone, where tcsolver.exe. *)
-let lambdapi_path =
-  let rec iter f n x = if n > 0 then iter f (n-1) (f x) else x in
-  iter Filename.dirname 3 (Lplib.Filename.normalize (Sys.argv.(0)))
-
 (** Initialises Elpi *)
 let init () =
-  let root = lambdapi_path ^ "/src/elpi" in
   Setup.set_warn (fun ?loc:_~id s -> match id with Setup.UndeclaredGlobal -> Common.Error.fatal None "%s" s | _ -> Common.Error.wrn None "%s" s);
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
-    ~file_resolver:(Parse.std_resolver ~paths:[root] ()) () in
+    ~file_resolver:(Parse.std_resolver ~paths:[elpi_path] ()) () in
   elpi := Some e;
   document ()
 
