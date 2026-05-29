@@ -105,6 +105,9 @@ module M = struct
   let show m = Format.asprintf "%a" pp m
 end
 module MM = FlexibleData.Map(M)
+
+(** A two way map linking Elpi's unification variable and Terms.meta,
+    stored in the elpi state *)
 let metamap : MM.t State.component = MM.uvmap
 
 (** Elpi state component allowing to store a Lambdapi {!type:Term.problem}. *)

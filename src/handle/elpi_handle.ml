@@ -28,7 +28,7 @@ let sealc = RawData.Constants.declare_global_symbol "seal"
 (** Elpi constant for the type class solver function [msolve] from tcsolver.elpi *)
 let msolvec = RawData.Constants.declare_global_symbol "msolve"
 
-(** Elpi symbol for the type class instance compiler function [compile]
+(** Elpi constant for the type class instance compiler function [compile]
     from tcsolver.elpi *)
 let compilec = RawData.Constants.declare_global_symbol "compile"
 
@@ -76,8 +76,8 @@ let embed_goal : Common.Pos.popt -> Term.meta Conversion.embedding = fun pos ~de
 let goal : Term.meta Conversion.t = {
   Conversion.embed = embed_goal None;
   readback = (fun ~depth:_ _ _ -> assert false);
-  pp_doc = (fun fmt _ -> Format.fprintf fmt "TODO");
-  pp = (fun fmt _ -> Format.fprintf fmt "TODO");
+  pp_doc = (fun fmt _ -> Format.fprintf fmt "Lambdapi goal metavariable");
+  pp = Print.meta;
   ty = Conversion.TyName "sealed-goal"
 }
 
@@ -235,51 +235,6 @@ let rec ensure_initialized () =
   match !elpi with
   | None -> init (); assert (!elpi <> None) ; ensure_initialized ()
   | Some e -> e
-
-(** Given an Elpi file, a predicate name and a Terms.term argument we
-    run Elpi and print the term before/after the execution  *)
-(*  Unused but nice to have as a template. *)
-let run : Sig_state.t -> string -> string -> Parsing.Syntax.p_term -> unit =
-fun ss file predicate arg ->
-  let pos = arg.Common.Pos.pos in
-  (* let loc = Elpi_AUX.loc_of_pos pos in *)
-  let arg = Parsing.Scope.scope_term false ss Env.empty arg in
-  let elpi = ensure_initialized () in
-
-  let ast = Parse.program ~elpi ~file in
-  let prog =
-    let flags = Elpi.API.Compile.default_flags in
-    match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
-    | [ x ] ->
-      let base = Elpi.API.Compile.(empty_base ~elpi) in
-      let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
-      Elpi.API.Compile.extend ~flags ~base unit
-    | _ -> Common.Error.fatal pos "elpi: accumulate not supported" in
-  let query st =
-    let open Elpi.API.RawData in
-    let st = State.set ss_component st ss in
-    let st = State.set pos_component st pos in
-    let st, arg, gls = Elpi_lambdapi.embed_term pos ~depth:0 st arg in
-    let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
-    let v = mkUnifVar v ~args:[] st in
-    let predicate = Elpi.API.RawQuery.global_name_to_constant st predicate in
-    st, mkAppGlobal predicate arg [v] , gls in
-    (* predicate; arguments = (D(term,arg,Q(term,"it",N))) }) in *)
-  let query = Elpi.API.RawQuery.compile_raw_term prog query in
-
-  Common.Console.out 1 "\nelpi: before: %a\n" Print.term arg;
-  match Execute.once (Elpi.API.Compile.optimize query) with
-  | Execute.Success {
-      Data.state; pp_ctx; constraints; assignments; _
-    } ->
-      let _ = readback_assignments pos state in
-      let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
-      let _, arg1, _ = Elpi_lambdapi.readback_term pos ~depth:0 state arg1 in
-      Common.Console.out 1 "\nelpi: after: %a\n" Print.term arg1;
-      Common.Console.out 1 "elpi: constraints:@ @[<v>%a@]\n"
-        Pp.(constraints pp_ctx) constraints
-  | Failure -> Common.Error.fatal_no_pos "elpi: failure"
-  | NoMoreSteps -> assert false
 
 (** The compiled content of tcsolver.elpi *)
 let tc_solver_prog =
@@ -535,41 +490,3 @@ let lpq : Quotation.quotation = fun ~language _st loc text ->
   | _ -> assert false
 
 let () = Quotation.set_default_quotation lpq
-
-(** Catches elpi compiler errors while executing f and sends proper
-    [Common.Error.fatal] error. *)
-let handle_elpi_compiler_errors ~pos ?error_header f =
-  let w_header ?loc m =
-    match error_header with
-    | None -> let pos = Option.fold ~none:pos ~some:(fun loc -> Some (Loc.to_pos loc)) loc in
-      Common.Error.fatal pos "%s" m
-    | Some h -> Common.Error.wrn pos h;
-      Common.Error.fatal (Option.map Loc.to_pos loc) "%s" m in
-  try f()
-  with
-  | Sys_error msg ->
-    w_header msg
-  | Elpi.API.Compile.CompileError(oloc, msg) ->
-    w_header ?loc:oloc msg
-  | Parse.ParseError(loc, msg) ->
-    w_header ~loc msg
-
-(** Copied from rocq-elpi, parses a string containing Elpi code. *)
-let asts_from_string ~pos s : Elpi.API.Compile.scoped_program list =
-  handle_elpi_compiler_errors ~pos (fun () ->
-    let elpi = ensure_initialized() in
-    let digest = Digest.(string s) in
-    let loc = Loc.of_popt pos in
-    let ast = Parse.program_from ~elpi ~loc ~digest (Lexing.from_string s) in
-    Elpi.API.Compile.scope_ast ~elpi ast)
-
-(** [accumulate_string_to_program ~pos ~base ~code] adds rules and predicates
-    defined in [code] to the Elpi program [base] *)
-let accumulate_string_to_program ~pos ~base ~code =
-  let elpi = ensure_initialized() in
-  let flags = Elpi.API.Compile.default_flags in
-  match asts_from_string ~pos code with
-  | [ x ] ->
-    let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
-    Elpi.API.Compile.extend ~flags ~base unit
-  | _ -> Common.Error.fatal pos "elpi: accumulate not supported"
