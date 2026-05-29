@@ -203,8 +203,7 @@ external pred msolve i:list sealed-goal o:list (option term).
 
 ] @ Elpi.Builtin.std_declarations
 
-(** Should be the correct path to either the lambdapi/ directory
-    or its dune build clone. *)
+(** Path useful for Elpi *)
 let elpi_path,builtins_file =
   let rec iter f n x = if n > 0 then iter f (n-1) (f x) else x in
   let exec = Sys.executable_name in
@@ -214,15 +213,15 @@ let elpi_path,builtins_file =
   else
   let from_opam_switch = Filename.concat (iter Filename.dirname 2 exec) in
   if Sys.file_exists (from_opam_switch "lib/lambdapi/elpi/tcsolver.elpi")
-  then from_opam_switch "lib/lambdapi/elpi",
-    from_opam_switch "doc/lambdapi/lambdapi-builtins.elpi"
+  then from_opam_switch "lib/lambdapi/elpi", ""
   else assert false
 
 (** Expose them to Elpi. *)
 let lambdapi_builtins =
   BuiltIn.declare ~file_name:builtins_file lambdapi_builtin_declarations
 
-(** Generates the documentation of builtin functions in file lambdap.elpi *)
+(** Generates the documentation of builtin functions in file
+    doc/lambdapi-builtins.elpi *)
 let document () =
   BuiltIn.document_file ~header:"% automatically generated" lambdapi_builtins
 
@@ -231,12 +230,15 @@ let elpi = ref None
 
 (** Initialises Elpi *)
 let init () =
-  Setup.set_warn (fun ?loc:_~id s -> match id with Setup.UndeclaredGlobal -> Common.Error.fatal None "%s" s | _ -> Common.Error.wrn None "%s" s);
+  Setup.set_warn (fun ?loc ~id s ->
+    let pos = Option.map Loc.to_pos loc in
+    match id with
+    | Setup.UndeclaredGlobal -> Common.Error.fatal pos "%s" s
+    | _ -> Common.Error.wrn pos "%s" s);
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
     ~file_resolver:(Parse.std_resolver ~paths:[elpi_path] ()) () in
-  elpi := Some e;
-  document ()
+  elpi := Some e
 
 (** Sanity check + returns the Elpi setup *)
 let rec ensure_initialized () =
