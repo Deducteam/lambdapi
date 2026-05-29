@@ -425,11 +425,10 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
 
 (** similar to [embed_term] but returns an Elpi.API.Ast.Term.t, whatever the difference might be *)
 let embed_qterm
-  : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> Term.term -> Elpi.API.Ast.Term.t =
-  fun ~language ~pats t ->
+  : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> loc:Ast.Loc.t -> Term.term -> Elpi.API.Ast.Term.t =
+  fun ~language ~pats ~loc t ->
   let open Ast.Term in
   let open Term in
-  let loc = Ast.Loc.initial "dummy" in
   (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
   let rec aux t =
     (*Common.Console.out 1 "EMBED:@ %d |- %a@\n" (List.length ctx) Print.term t;*)
@@ -474,19 +473,3 @@ let embed_qterm
     | Bvar _ -> Common.Error.fatal_no_pos "embed_qterm: Bvar not implemented"
   in
   aux t
-
-(** Should allow to quote Lambdapi terms in Elpi
-    and have it be interpreted as Elpi terms of type term.  *)
-let lpq : Quotation.quotation = fun ~language _st loc text ->
-  let open Parsing in
-  let file = loc.source_name in
-  let ast = Parser.Lp.parse_string file ("type " ^ text ^ ";") in
-  match ast |> Stream.next |> fun x -> x.Common.Pos.elt with
-  | Syntax.P_query { Common.Pos.elt = Syntax.P_query_infer(t,_); _ } ->
-      (*Printf.eprintf "Q %s\n" text;*)
-      let t, pats = !scope_ref t in
-      let t = embed_qterm ~language ~pats t in
-      t
-  | _ -> assert false
-
-let () = Quotation.set_default_quotation lpq
