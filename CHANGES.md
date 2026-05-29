@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+- Support for typeclasses using Elpi
+  * Added syntax: two new symbol modifiers `typeclass` and `instance` and individual commands `typeclass/instance qid` to declare a previously defined symbol as a typeclass or instance.
+  * typeclass instance search is used in tactics, symbol definitions, and the `type` query, upon encountering any unsolvable hole (wildcard or implicit argument)
 
 ### Changed
 

@@ -43,6 +43,7 @@ let _ = let open LpLexer in
     ; "inductive", INDUCTIVE
     ; "infix", INFIX
     ; "injective", INJECTIVE
+    ; "instance", INSTANCE
     ; "left", SIDE(Pratter.Left)
     ; "let", LET
     ; "off", SWITCH(false)
@@ -70,6 +71,7 @@ let _ = let open LpLexer in
     ; "symbol", SYMBOL
     ; "symmetry", SYMMETRY
     ; "type", TYPE_QUERY
+    ; "typeclass", TYPECLASS
     ; "TYPE", TYPE_TERM
     ; "unif_rule", UNIF_RULE
     ; "verbose", VERBOSE
