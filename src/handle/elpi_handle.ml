@@ -32,7 +32,7 @@ let msolvec = RawData.Constants.declare_global_symbol "msolve"
     from tcsolver.elpi *)
 let compilec = RawData.Constants.declare_global_symbol "compile"
 
-(** [embed_goal pos ~depth st m] translates the type Lambdapi of the
+(** [embed_goal pos ~depth st m] translates the Lambdapi type of the
     metavariable [m] to an Elpi term of type [goal], returning the updated 
     Elpi state [st], the translated Elpi term and an
     (I believe necessarily empty) list of conversion goals. *)
@@ -214,15 +214,15 @@ let document () =
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
 
+(** Should be the correct path to either the lambdapi/ directory
+    or its dune build clone, where tcsolver.exe. *)
+let lambdapi_path =
+  let rec iter f n x = if n > 0 then iter f (n-1) (f x) else x in
+  iter Filename.dirname 3 (Lplib.Filename.normalize (Sys.argv.(0)))
+
 (** Initialises Elpi *)
 let init () =
-(* let cwd = Filename.concat (Sys.getcwd()) "." in
- let root = match Parsing.Package.find_config cwd with
-  | None           -> Common.Error.wrn None "%s" (Option.get !Common.Library.lib_root);
-                      let getfile s = Common.Library.file_of_path (Common.Library.path_of_file Parsing.LpLexer.escape s) in
-                      Common.Error.wrn None "%s" (getfile "tests/OK/elpitest.lp") ; cwd
-  | Some(cfg_file) -> Filename.dirname cfg_file in*)
-  let root = "/home/agontard/lambdapi/tests" in
+  let root = lambdapi_path ^ "/src/elpi" in
   Setup.set_warn (fun ?loc:_~id s -> match id with Setup.UndeclaredGlobal -> Common.Error.fatal None "%s" s | _ -> Common.Error.wrn None "%s" s);
   let e = Setup.init
     ~builtins:[lambdapi_builtins]

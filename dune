@@ -4,7 +4,7 @@
  (release (flags :standard)))
 
 (install
- (files tests/tcsolver.elpi)
+ (files src/elpi/tcsolver.elpi)
  (section share)
  (package lambdapi)
 )
