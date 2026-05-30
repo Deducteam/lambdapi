@@ -343,8 +343,8 @@ let rec meta_map_term : (Term.meta -> Term.term array -> Term.term) -> Term.term
 (** Not sure. *)
 let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
 
-(** Flag "elpi-trace". When set on, calls to elpi will write the elpi trace in file /tmp/rawtrace.json *)
-let trace = Common.Console.register_flag "elpi-trace" false
+(** Flag "elpi_trace". When set on, calls to elpi will write the elpi trace in file /tmp/rawtrace.json *)
+let trace = Common.Console.register_flag "elpi_trace" false
 
 (* we set the state, Elpi.API.Query lacks this function *)
 (** [solve_tc ss pos _ t] tries to instantiate all metavariables in [t] by calling the

@@ -78,10 +78,10 @@ induction principle of ``I``.
 The tactic ``refine t`` tries to instantiate the focused goal by the
 term ``t``. ``t`` can contain references to other goals by using
 ``?n`` where ``n`` is a goal name. ``t`` can contain underscores ``_``
-or new metavariable names ``?n`` as well. The type-checking and
-unification algorithms will then try to instantiate some of the
-metavariables. The new metavariables that cannot be solved are added
-as new goals.
+or new metavariable names ``?n`` as well. The type-checking,
+unification and typeclass solver algorithms will then try to instantiate
+some of the metavariables. The new metavariables that cannot be solved are
+added as new goals.
 
 .. _remove:
 
