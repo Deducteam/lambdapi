@@ -592,20 +592,23 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = add_goals_of_problem p [] in
-        if p_sym_def then
-          (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p a 0 in
-          let g = Goal.of_meta m in
-          let ps = {proof_name = p_sym_nam; proof_term = Some m;
-                    proof_goals = g :: proof_goals} in
-          match pt, t with
-          | Some pt, Some t ->
-              let gt = match g with Typ gt -> gt | _ -> assert false in
-              Tactic.tac_refine ~check:false pt.pos ss ps gt proof_goals p t.elt
-          | _, _ -> Tactic.tac_solve pos ss ps
-        else
-          let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
-          Tactic.tac_solve pos ss ps
+        let ps =
+          if p_sym_def then
+            (* Add a new focused goal for the definition. *)
+            let m = LibMeta.fresh p a 0 in
+            let proof_goals =
+              match t with
+              | Some t ->
+                  (* Refine the focused goal with the given term. *)
+                  LibMeta.set p m (bind_mvar [||] t.elt);
+                  proof_goals
+              | _ -> Goal.of_meta m :: proof_goals
+            in
+            {proof_name = p_sym_nam; proof_term = Some m; proof_goals}
+          else
+            {proof_name = p_sym_nam; proof_term = None; proof_goals}
+        in
+        Tactic.tac_solve pos ss ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
