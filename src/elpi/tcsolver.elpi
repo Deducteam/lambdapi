@@ -1,28 +1,28 @@
-msolve Goals RES :- std.map Goals (open tc) RES.
+msolve Goals :- std.forall Goals (open tc).
 
+/*
 /* [add_abst Ty (x\ O)] returns [some (λ x : Ty, t x)] if [O] is [some (t x)]
  * and [none] otherwise
  */
 pred add_abst term, (term -> option term) -> option term.
 add_abst _ (_\none) none.
 
-add_abst Ty (x\ some (T x)) (some (abst Ty T)).
+add_abst Ty (x\ some (T x)) (some (abst Ty T)). */
 
 /* load the goal's context (possibly adding new local typeclass instances)
  * before trying typeclass resolution if the goal is a typeclass
- * returns an instance if it finds one, and none otherwise
  */
-pred open i:(symbol -> term -> term -> prop), i:sealed-goal, o:option term.
-open P (nabla Ty F) Abswit :- pi x\ sigma Rule\ (comp ff Ty [] x Rule ; Rule = true),
-  Rule ==> open P (F x) (Wit x), add_abst Ty Wit Abswit.
+pred open i:(symbol -> term -> term -> prop), i:sealed-goal.
+open P (nabla Ty F) :- pi x\ sigma Rule\ (comp ff Ty [] x Rule ; Rule = true),
+  Rule ==> open P (F x).
 
-open P (seal (goal Ty Wit)) (some Wit) :- 
+open P (seal (goal Ty Wit)) :- 
   safe-dest-app Ty (symb Class) [X],
   not (var Class),
   lp.tc? Class,
   P Class X Wit.
 
-open _ (seal (goal _ _)) none.
+open _ _. %if not in any of the above cases, just do nothing. 
 
 %[tc Name Arg Inst] <=> Inst is an instance of (Name Arg)
 %(currently, typeclasses must have exactly one argument)

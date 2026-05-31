@@ -80,13 +80,39 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss p
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
+  let ctxtmap = ref Elpi_lambdapi.IntMap.empty in
   let add_meta ms = function
     | Unif _ -> ms
-    | Typ gt -> MetaSet.add gt.goal_meta ms
+    | Typ gt as g ->
+      ctxtmap := Elpi_lambdapi.IntMap.add gt.goal_meta.meta_key
+        (Env.to_ctxt (Goal.env g)) !ctxtmap;
+      MetaSet.add gt.goal_meta ms
   in
+  let ctxtmap = !ctxtmap in
   p := {!p with metas = List.fold_left add_meta MetaSet.empty gs_typ
               ; to_solve = List.rev_map get_constr gs_unif};
-  let proof_goals = Elpi_handle.tc_solve_problem ~additional_goals:gs_typ ss pos p in
+  if not (Elpi_handle.solve_with_tc ~ctxtmap ss pos p) then
+    fatal pos "Unification goals are unsatisfiable.";
+  (* compute the new list of goals by preserving the order of initial goals
+     and adding the new goals at the end *)
+  let non_instantiated g =
+    match g with
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> false
+  in
+  let gs_typ = List.filter non_instantiated gs_typ in
+  let is_eq_goal_meta m = function
+    | Typ gt -> m == gt.goal_meta
+    | _ -> assert false
+  in
+  let add_goal m gs =
+    if List.exists (is_eq_goal_meta m) gs_typ then gs
+    else Goal.of_meta m :: gs
+  in
+  let proof_goals =
+    gs_typ @ MetaSet.fold add_goal (!p).metas
+               (List.map (fun c -> Unif c) (!p).unsolved)
+  in
   {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)

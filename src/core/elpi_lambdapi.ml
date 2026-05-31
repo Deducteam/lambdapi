@@ -320,8 +320,6 @@ let readback_assignments ?pp_ctx pos st =
         match ! (meta.meta_value) with
         | Some _ -> assert false
         | None ->
-            let cpp_ctx = Option.get pp_ctx in
-            Common.Console.out 1 "Meta: %i\nArity:%i\nType:%a\n-------\nElpi term:\n%a" meta.meta_key meta.meta_arity Print.term !(meta.meta_type) (Pp.term cpp_ctx) t;
             let st, t = readback_mbinder ?pp_ctx pos st t in
             meta.Term.meta_value := Some t;
             st

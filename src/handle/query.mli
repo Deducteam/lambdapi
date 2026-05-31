@@ -5,23 +5,23 @@ open Parsing open Syntax
 open Common open Pos
 open Proof
 
-(** [infer pos p c t] returns a couple [(t',a)] where [a] is the type of [t]
+(** [infer ss pos p c t] returns a couple [(t',a)] where [a] is the type of [t]
     in context [c] and under constraints of problem [p]; and [t'] is the
     refinement of [t]. Note that [p] gets modified. Context [c] must well
     sorted. Raises [Fatal] if [t] cannot be typed. *)
 val infer : ?scope:(Parsing.Syntax.p_term ->
                    Core.Term.term * (int * string) list) -> Sig_state.t -> popt -> problem -> ctxt -> term -> term * term
 
-(** [check pos p c t a] checks that the term [t] has type [a] in context [c]
+(** [check ss pos p c t a] checks that the term [t] has type [a] in context [c]
     and under the constraints of [p], and returns [t] refined. Context [c]
     must be well-sorted. Note that [p] is modified. Raises [Fatal] if [t] is
     not of type [a]. *)
-val check : popt -> problem -> ctxt -> term -> term -> term
+val check : Sig_state.t -> popt -> problem -> ctxt -> term -> term -> term
 
-(** [check_sort pos p c t] checks that the term [t] has type [Type] or [Kind]
+(** [check_sort ss pos p c t] checks that the term [t] has type [Type] or [Kind]
     in context [c] and under the constraints of [p]. Context [c] must be well
     sorted. Raises [Fatal] if [t] cannot be typed by a sort (Type or Kind). *)
-val check_sort : popt -> problem -> ctxt -> term -> term * term
+val check_sort : Sig_state.t -> popt -> problem -> ctxt -> term -> term * term
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option

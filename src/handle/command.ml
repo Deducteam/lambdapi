@@ -198,7 +198,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let p = new_problem() in
   let typ = scope_term ~typ:true (expo = Privat) ss Env.empty typ in
   (* We check that [typ] is typable by a sort. *)
-  let (typ,  _) = Query.check_sort pos p [] typ in
+  let (typ,  _) = Query.check_sort ss pos p [] typ in
   (* We check that no metavariable remains. *)
   if !p.metas <> MetaSet.empty then begin
     fatal_msg "The type of %a has unsolved metavariables.@." uid name;

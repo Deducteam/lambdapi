@@ -4,6 +4,75 @@ open Elpi.API
 open Core
 open Elpi_lambdapi
 
+(* The following allow to quote lambdapi terms in elpi*)
+
+(** Not sure. *)
+let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
+
+(** similar to [embed_term] but returns an Elpi.API.Ast.Term.t, whatever the difference might be *)
+let embed_qterm
+  : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> loc:Ast.Loc.t -> Term.term -> Elpi.API.Ast.Term.t =
+  fun ~language ~pats ~loc t ->
+  let open Ast.Term in
+  let open Term in
+  (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
+  let rec aux t =
+    (*Common.Console.out 1 "EMBED:@ %d |- %a@\n" (List.length ctx) Print.term t;*)
+    match Term.unfold t with
+    | Vari v ->
+        mkBound ~language ~loc (Ast.Name.from_string (uniq_name v))
+    | Type -> mkGlobal ~loc typec
+    | Kind -> mkGlobal ~loc kindc
+    | Symb s ->
+        let s = csym.RawOpaqueData.cino s in
+        mkAppGlobal ~loc ~hdloc:loc symbc (mkOpaque ~loc s) []
+    | Prod (src, tgt) ->
+        let src = aux src in
+        let v,tgt = unbind tgt in
+        let tgt = aux tgt in
+        mkAppGlobal ~loc ~hdloc:loc prodc src
+          [mkLam ~loc (Some((Ast.Name.from_string (uniq_name v),loc,language))) tgt]
+    | Abst (ty, body) ->
+        let src = aux ty in
+        let v,tgt = unbind body in
+        let tgt = aux tgt in
+        mkAppGlobal ~loc ~hdloc:loc abstc src
+          [mkLam ~loc (Some((Ast.Name.from_string (uniq_name v),loc,language))) tgt]
+    | Appl (hd, arg) ->
+        let hd = aux hd in
+        let arg = aux arg in
+        mkAppGlobal ~loc ~hdloc:loc applc hd [arg]
+    | Meta _ -> assert false
+    | Plac _ -> mkDiscard ~loc
+    | Patt(Some i,_,_) -> begin
+        try
+          let x = List.assoc i pats in
+          mkVar ~loc ~hdloc:loc (Ast.Name.from_string x) []
+        with Not_found ->
+          let pats = List.map (fun (i,n) -> Printf.sprintf "%d :-> %s; " i n) pats in
+          Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: unnamed pattern %d in map: %s" i (String.concat "" pats);
+      end
+    | Patt _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: Patt not implemented"
+    | Wild   -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: Wild not implemented"
+    | TRef _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: TRef not implemented"
+    | LLet _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: LLet not implemented"
+    | Bvar _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: Bvar not implemented"
+  in
+  aux t
+
+let lpq : Quotation.quotation = fun ~language _st loc text ->
+  let open Parsing in
+  let ast = Parser.Lp.parse_string loc.source_name ("type " ^ text ^ ";") in
+  match ast |> Stream.next |> fun x -> x.Common.Pos.elt with
+  | Syntax.P_query { Common.Pos.elt = Syntax.P_query_infer(t,_); _ } ->
+      (*Printf.eprintf "Q %s\n" text;*)
+      let t, pats = !scope_ref t in
+      let t = embed_qterm ~language ~pats ~loc t in
+      t
+  | _ -> assert false
+
+let () = Quotation.set_default_quotation lpq
+
 (** Typeclasses are stored in the signature state, so make it available
     in the Elpi state to allow to read them *)
 let ss_component : Sig_state.t State.component =
@@ -108,7 +177,7 @@ external symbol seal : goal -> sealed-goal = "0".
 kind goal type.
 external symbol goal : term -> term -> goal = "0".
 
-external pred msolve i:list sealed-goal o:list (option term).
+external pred msolve i:list sealed-goal.
   
 |};
 
@@ -340,21 +409,29 @@ let rec meta_map_term : (Term.meta -> Term.term array -> Term.term) -> Term.term
   | Appl(t,u) -> let t = cont t in let u = cont u in mk_Appl(t,u)
   | _ -> t
 
-(** Not sure. *)
-let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref = ref (fun _ -> assert false)
-
 (** Flag "elpi_trace". When set on, calls to elpi will write the elpi trace in file /tmp/rawtrace.json *)
 let trace = Common.Console.register_flag "elpi_trace" false
 
 (* we set the state, Elpi.API.Query lacks this function *)
-(** [solve_tc ss pos _ t] tries to instantiate all metavariables in [t] by calling the
-    typeclass solver from tcsolver.elpi *)
-let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem ->
-  Term.term -> Term.term  =
-  fun ?scope ss pos _pb t ->
-    let tc = metas_of_term t in
-    if tc == [] then t else begin
-      Option.iter (fun f -> scope_ref := f) scope;
+(** [solve_wit_tc ?ctxmap ss pos p] tries to solve problem [p]
+    by repeatedly calling {!val:Unif.solve_noexn} and the
+    typeclass solver from tcsolver.elpi until no progress can
+    be made. It returns [false] if it finds a constraint it
+    cannot satisfy. [ctxmap] maps meta_keys with the associated
+    meta's context *)
+let solve_with_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> ?ctxtmap: Term.ctxt IntMap.t -> Sig_state.t -> Common.Pos.popt -> Term.problem -> bool =
+  fun ?scope ?(ctxtmap=IntMap.empty) ss pos p ->
+    let open Timed in
+    let open Term in
+    let res = ref true in
+    let continue = ref true in
+    while !continue && !res do
+    continue := false;
+    if not (Unif.solve_noexn p) then res := false else begin
+    let ms = !p.metas in
+    if MetaSet.is_empty ms then () else
+    let tc = MetaSet.to_list ms in
+      Option.iter (fun f -> Stdlib.(scope_ref := f)) scope;
 
       (*Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
       List.iter
@@ -365,31 +442,45 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
         let open Elpi.API.RawData in
         let st = State.set ss_component st ss in
         let st = State.set pos_component st pos in
-        let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
-        let v = mkUnifVar v ~args:[] st in
         let st, arg, gls = Elpi.API.Utils.map_acc (embed_goal ~depth:0 pos) st tc in
-        st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg; v], gls in
+        if Timed.(!trace) then Common.Error.wrn pos "%a" (Stdlib.Format.pp_print_list (RawPp.term 0)) arg;
+        st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
       let query = Elpi.API.RawQuery.compile_raw_term (Sig_state.get_solver ss pos) query in
-
-      if Timed.(!trace) then (let _ = Setup.trace ["-trace-on";"json";"/tmp/rawtrace.json";"-trace-at";"1";"9999";"-trace-only";"user"] in ());
+      if Timed.(!trace) then (let res = Setup.trace ["-trace-on";"json";"/tmp/rawtrace.tmp.json";"-trace-at";"1";"9999";"-trace-only";"user"] in List.iter (Common.Error.wrn pos "%s") res);
       match Execute.once (Elpi.API.Compile.optimize query) with
-      | Execute.Success { Data.state; assignments; (*pp_ctx;*) _} ->
-          (*let state = readback_assignments ~pp_ctx pos state in*)
-          let insts = Elpi.API.Setup.StrMap.find "Result" assignments in
-          let insts = Elpi.API.Utils.lp_list_to_list ~depth:0 insts in
-          let _,insts,_ = Elpi.API.Utils.map_acc ((Elpi.Builtin.option term).readback ~depth:0) state insts in
-          let fill_meta m' = Option.map (List.nth insts)
-            (List.find_index (fun m -> Term.(m.meta_key = m'.meta_key)) tc)
+      | Execute.Success { Data.state; pp_ctx; _} ->
+          let _ = readback_assignments ~pp_ctx pos state in
+          let instantiate_meta m =
+            match !(m.Term.meta_value) with
+            | Some b ->
+              let vs = Array.map (fun s -> mk_Vari (new_var s))
+                (mbinder_names b)
+              in
+              let res = msubst b vs in
+              let c = ref (Option.value ~default:[]
+                (IntMap.find_opt m.meta_key ctxtmap)) in
+              let ty = Array.fold_left (function
+              | Prod(vty,b) -> fun v ->
+                c := begin match v with
+                  | Vari v -> (v,vty,None)::!c
+                  | _ -> assert false end;
+                subst b v
+              | _ -> assert false) !(m.meta_type) vs
+              in
+              if Unif.instantiate p !c m vs res
+              then continue := true
+              else Common.Error.fatal pos
+                "Typeclass solver error: %s %a with %a"
+                "couldn't instanciate meta of type"  Print.term ty Print.term res
+            | _ -> ()
           in
-          let inst_meta m args = match fill_meta m with
-            | Some (Some t) -> Eval.snf_beta (Term.add_args t (Array.to_list args))
-            | _ -> Term.mk_Meta(m,args)
-          in
-          meta_map_term inst_meta t
+          Term.MetaSet.iter instantiate_meta ms;
       | Failure -> Common.Error.fatal pos "elpi: typeclass solver failure"
       | NoMoreSteps -> assert false
-    end
+    end done;
+  !res
 
+  (*
 (** [tc_solve_problem ?additional_goals ss pos p] tries to solve
     the unification problem [p], prompting the typeclass solver for
     goals that could not be solved, returning the goals it could not solve either. *)
@@ -401,6 +492,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
   let open Timed in
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
+  
   let try_solvetc g = match g with
     | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
       let t = solve_tc ?scope ss pos p goal_term in
@@ -420,7 +512,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
     | _ -> assert false
   in
   let add_goal m gs =
-    if List.exists (is_eq_goal_meta m) gs then gs
+    if List.exists (is_eq_goal_meta m) additional_goals then gs
     else Goal.of_meta m :: gs
   in
   (* try solving the remaining goals, and in case of progress, re-trigger unification. *)
@@ -431,58 +523,7 @@ let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * stri
   let f = function
     | Typ gt -> !(gt.goal_meta.meta_value) = None
     | Unif _ -> assert false in
-  List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)
-
-(** similar to [embed_term] but returns an Elpi.API.Ast.Term.t, whatever the difference might be *)
-let embed_qterm
-  : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> loc:Ast.Loc.t -> Term.term -> Elpi.API.Ast.Term.t =
-  fun ~language ~pats ~loc t ->
-  let open Ast.Term in
-  let open Term in
-  (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
-  let rec aux t =
-    (*Common.Console.out 1 "EMBED:@ %d |- %a@\n" (List.length ctx) Print.term t;*)
-    match Term.unfold t with
-    | Vari v ->
-        mkBound ~language ~loc (Ast.Name.from_string (uniq_name v))
-    | Type -> mkGlobal ~loc typec
-    | Kind -> mkGlobal ~loc kindc
-    | Symb s ->
-        let s = csym.RawOpaqueData.cino s in
-        mkAppGlobal ~loc ~hdloc:loc symbc (mkOpaque ~loc s) []
-    | Prod (src, tgt) ->
-        let src = aux src in
-        let v,tgt = unbind tgt in
-        let tgt = aux tgt in
-        mkAppGlobal ~loc ~hdloc:loc prodc src
-          [mkLam ~loc (Some((Ast.Name.from_string (uniq_name v),loc,language))) tgt]
-    | Abst (ty, body) ->
-        let src = aux ty in
-        let v,tgt = unbind body in
-        let tgt = aux tgt in
-        mkAppGlobal ~loc ~hdloc:loc abstc src
-          [mkLam ~loc (Some((Ast.Name.from_string (uniq_name v),loc,language))) tgt]
-    | Appl (hd, arg) ->
-        let hd = aux hd in
-        let arg = aux arg in
-        mkAppGlobal ~loc ~hdloc:loc applc hd [arg]
-    | Meta _ -> assert false
-    | Plac _ -> mkDiscard ~loc
-    | Patt(Some i,_,_) -> begin
-        try
-          let x = List.assoc i pats in
-          mkVar ~loc ~hdloc:loc (Ast.Name.from_string x) []
-        with Not_found ->
-          let pats = List.map (fun (i,n) -> Printf.sprintf "%d :-> %s; " i n) pats in
-          Common.Error.fatal_no_pos "embed_qterm: unnamed pattern %d in map: %s" i (String.concat "" pats);
-      end
-    | Patt _ -> Common.Error.fatal_no_pos "embed_qterm: Patt not implemented"
-    | Wild   -> Common.Error.fatal_no_pos "embed_qterm: Wild not implemented"
-    | TRef _ -> Common.Error.fatal_no_pos "embed_qterm: TRef not implemented"
-    | LLet _ -> Common.Error.fatal_no_pos "embed_qterm: LLet not implemented"
-    | Bvar _ -> Common.Error.fatal_no_pos "embed_qterm: Bvar not implemented"
-  in
-  aux t
+  List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)*)
 
 module Sig_state = struct
   let dummy = Sig_state.of_solver tc_solver_prog add_tc_instance

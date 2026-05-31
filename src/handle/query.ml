@@ -14,19 +14,24 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
-      let remgoals = Elpi_handle.tc_solve_problem ?scope ss pos p in
-      p := {!p with recompute = true};
-      if List.is_empty !p.unsolved then t,a
-      else let goals ppf gs = match gs with
-        | [] -> out ppf "No goal."
-        | g::gs ->
-          let idmap = Goal.get_names g in
-          out ppf "%a0. %a" (Goal.hyps idmap) g (Goal.concl idmap) g;
-          let goal i g = out ppf "\n%d. %a" (i+1) Goal.pp_no_hyp g in
-          List.iteri goal gs
-      in let ids = Ctxt.names ctx in let term = term_in ids in
-      wrn pos "unsolved goals:\n%a" goals remgoals;
-      fatal pos "Failed to infer the type of %a." term t
+      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+      if Elpi_handle.solve_with_tc ?scope ~ctxtmap ss pos p then
+        begin
+          if !p.unsolved = [] then (t, a)
+          else
+            begin
+              let ids = Ctxt.names ctx in let term = term_in ids in
+              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
+              fatal pos "Failed to infer the type of %a." term t
+            end
+        end
+      else
+        let ids = Ctxt.names ctx in let term = term_in ids in
+        fatal pos "%a is not typable." term t
+
       (*if Unif.solve_noexn p then
         begin
           if !p. = [] then begin
@@ -48,15 +53,19 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
         let ids = Ctxt.names ctx in let term = term_in ids in
         fatal pos "%a is not typable." term t*)
 
-let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
-  fun pos p ctx t a ->
+let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term -> term =
+  fun ss pos p ctx t a ->
   let die () =
     let ids = Ctxt.names ctx in let term = term_in ids in
     fatal pos "[%a] does not have type [%a]." term t term a
   in
   match Infer.check_noexn p ctx t a with
   | Some t ->
-    if Unif.solve_noexn p then
+    let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+    if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
       begin
         if !p.unsolved = [] then t else
           (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
@@ -65,14 +74,18 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
     else die ()
   | None -> die ()
 
-let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
-  fun pos p ctx t ->
+let check_sort : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term * term =
+  fun ss pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
   | None ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
-      if Unif.solve_noexn p then
+      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
         begin
           if !p.unsolved = [] then (t, s) else
             begin
@@ -221,9 +234,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      let (a, _) = check_sort pos p ctxt a in
+      let (a, _) = check_sort ss pos p ctxt a in
       let result =
-        try ignore (check pos p ctxt t a); true
+        try ignore (check ss pos p ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
