@@ -109,7 +109,6 @@ type token =
   | BACKQUOTE
   | COMMA
   | COLON
-  | DISJUNCTION
   | DOT
   | EQUIV
   | HOOK_ARROW
@@ -270,7 +269,6 @@ let rec token lb =
   | "verbose" -> VERBOSE
   | "why3" -> WHY3
   | "with" -> WITH
-  | "ANND" -> DISJUNCTION
 
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)

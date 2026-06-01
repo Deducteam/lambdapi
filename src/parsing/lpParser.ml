@@ -35,7 +35,6 @@ let string_of_token = function
   | CONSTANT -> "constant"
   | DEBUG -> "debug"
   | DEBUG_FLAGS _ -> "debug flags"
-  | DISJUNCTION -> "ANND"
   | DOT -> "."
   | END -> "end"
   | EQUIV -> "≡"
@@ -1613,8 +1612,8 @@ and csearch (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let aq = asearch lb in
   match current_token() with
-  | COMMA ->
-      let aqs = list (prefix COMMA asearch) lb in
+  | WITH ->
+      let aqs = list (prefix WITH asearch) lb in
       List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
   | _ ->
       aq
@@ -1623,8 +1622,8 @@ and ssearch (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let cq = csearch lb in
   match current_token() with
-  | DISJUNCTION ->
-      let cqs = list (prefix DISJUNCTION csearch) lb in
+  | VBAR ->
+      let cqs = list (prefix VBAR csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
@@ -1632,7 +1631,7 @@ and ssearch (lb:lexbuf): search =
 and search (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
-  let qids = list (prefix VBAR qid) lb in
+  let qids = list (prefix IN qid) lb in
   let path_of_qid qid =
     let p,n = qid.elt in
     if p = [] then n

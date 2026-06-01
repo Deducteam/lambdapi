@@ -265,10 +265,10 @@ let search_base ppf = function
       out ppf "%a%a%a" search_constr c generalize g term t
 
 let op ppf o = string ppf (match o with
-    Union -> " " ^ LpParser.string_of_token DISJUNCTION ^ " "
-  | Intersect -> LpParser.string_of_token COMMA ^ " ")
+    Union -> " | "
+  | Intersect -> " with ")
 
-let filter ppf (Path s) = out ppf " | %s" s
+let filter ppf (Path s) = out ppf " in %s" s
 
 let rec search ppf = function
   | QBase b -> search_base ppf b
