@@ -95,14 +95,14 @@ let msolvec = RawData.Constants.declare_global_symbol "msolve"
 let compilec = RawData.Constants.declare_global_symbol "compile"
 
 (** [embed_goal pos ~depth st m] translates the Lambdapi type of the
-    metavariable [m] to an Elpi term of type [goal], returning the updated 
+    metavariable [m] to an Elpi term of type [goal], returning the updated
     Elpi state [st], the translated Elpi term and an
     (I believe necessarily empty) list of conversion goals. *)
 let embed_goal : Common.Pos.popt -> Term.meta Conversion.embedding = fun pos ~depth st m ->
   let open Term in
   let ty =
     let open Timed in
-    !(m.meta_type) in 
+    !(m.meta_type) in
 
   let open RawData in
   (*let open Utils in*)
@@ -171,7 +171,7 @@ kind goal type.
 external symbol goal : term -> term -> goal = "0".
 
 external pred msolve i:list sealed-goal.
-  
+
 |};
 
   LPDoc "---- Builtin predicates ----";
@@ -182,7 +182,7 @@ external pred msolve i:list sealed-goal.
     Easy "Gives the type of a symbol")),
     (fun s _ ~depth:_ -> !: (Timed.(!) s.Term.sym_type))),
     DocAbove);
-  
+
   MLCode(Pred("lp.wrn",
     VariadicIn(unit_ctx, !> any, "Prints a generic warning message"),
   (fun args ~depth _hyps _constraints state ->
@@ -472,51 +472,6 @@ let solve_with_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) 
       | NoMoreSteps -> assert false
     end done;
   !res
-
-  (*
-(** [tc_solve_problem ?additional_goals ss pos p] tries to solve
-    the unification problem [p], prompting the typeclass solver for
-    goals that could not be solved, returning the goals it could not solve either. *)
-let tc_solve_problem : ?scope: (Parsing.Syntax.p_term -> Term.term * (int * string) list) -> ?additional_goals: Goal.goal list -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Goal.goal list =
-  fun ?scope ?(additional_goals=[]) ss pos p ->
-  let open Goal in
-  let open Term in
-  let open Common.Error in
-  let open Timed in
-  if not (Unif.solve_noexn p) then
-    fatal pos "Unification goals are unsatisfiable.";
-  
-  let try_solvetc g = match g with
-    | Typ gt as g -> let goal_term = mk_Meta(gt.goal_meta,Env.to_terms gt.goal_hyps) in
-      let t = solve_tc ?scope ss pos p goal_term in
-      if match t with Meta _ -> false | _ -> true then
-        begin match Infer.check_noexn p (ctxt g) t gt.goal_type with
-        | Some res when Unif.solve_noexn p ->
-          (*TODO: do I need to do that actually ? or perhaps only once at the end.
-                  Though accidentally, it looks like it is useful. *)
-          p := {!p with recompute = true};
-          gt.goal_meta.meta_value := Some (bind_mvar (Env.vars gt.goal_hyps) res)
-        | _ -> fatal pos "typeclass solver error: could not check %a : %a"
-               Print.term t Print.term gt.goal_type end
-    | _ -> ()
-    in
-  let is_eq_goal_meta m = function
-    | Typ gt -> m == gt.goal_meta
-    | _ -> assert false
-  in
-  let add_goal m gs =
-    if List.exists (is_eq_goal_meta m) additional_goals then gs
-    else Goal.of_meta m :: gs
-  in
-  (* try solving the remaining goals, and in case of progress, re-trigger unification. *)
-  let all_goals = MetaSet.fold add_goal (!p).metas additional_goals in 
-  List.iter try_solvetc all_goals;
-  if not (Unif.solve_noexn p)
-    then Common.Error.fatal pos "typeclass solver error: unification";
-  let f = function
-    | Typ gt -> !(gt.goal_meta.meta_value) = None
-    | Unif _ -> assert false in
-  List.filter f all_goals @ (List.map (fun c -> Unif c) (!p).unsolved)*)
 
 module Sig_state = struct
   let dummy = Sig_state.of_solver tc_solver_prog add_tc_instance

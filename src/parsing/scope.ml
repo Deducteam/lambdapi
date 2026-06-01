@@ -505,7 +505,6 @@ let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
     } in
     let t = (scope ~typ 0 md ss env t) in
     t, List.of_seq (Hashtbl.to_seq names)
-  
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing

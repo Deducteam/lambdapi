@@ -40,12 +40,12 @@ module Loc = struct
       line_starts_at = start_col;
       client_payload = None;
     }
-  
+
   (** [Loc.of_popt pos] translates the optional Lambdapi position [pos] to Elpi *)
   let of_popt = function
     | None -> initial "(lambdapi)"
     | Some x -> of_pos x
-  
+
   (** [Loc.to_pos loc] Translates an the Elpi localisation [loc] to Lambdapi *)
   let to_pos {Ast.Loc.source_name; source_start; source_stop; line; line_starts_at; _} =
   { Common.Pos.fname = Some (source_name)
@@ -121,7 +121,7 @@ let pb = State.declare_component ~name:"elpi:problem"
   ()
 
 (** [embed_term ?pats ?ctx pos ~depth st t] translates the Lambdapi {!type:Term.term} [t] to Elpi,
-    returning the updated Elpi state [st], the translated Elpi term and an 
+    returning the updated Elpi state [st], the translated Elpi term and an
     (I believe necessarily empty) list of conversion goals. *)
 (*  [ctx] stores a map between Lambdapi free variables and Elpi De Bruijn indices.
     [pats] is a map of affectations of pattern variables ($x $y ...) to (the name of) a corresponding
@@ -201,7 +201,7 @@ module IntMap = Map.Make(struct type t = int let compare = compare end)
     back to a lambdapi term, returning the updated Elpi state [st], the translated
     Elpi term and an (I believe necessarily empty) list of conversion goals. *)
 let readback_term_box : ?pp_ctx: Data.pretty_printer_context -> ?ctx : Term.var IntMap.t -> Common.Pos.popt -> Term.term Conversion.readback =
-fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t -> 
+fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t ->
   let open RawData in
   let open Term in
   let gls = ref [] in

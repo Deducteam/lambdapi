@@ -107,7 +107,6 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; open_paths}
 
-
 (** [of_sign_and_solver sign solver add_instance] creates a new sig_state
     with tc-solver [solver], self-update function [add_instance], along with
     signature [sign] and open it and the ghost signature as well, assuming that
@@ -120,7 +119,7 @@ let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program -> (t -> popt -> sym
     ; in_scope = StrMap.empty
     ; alias_path = StrMap.empty
     ; path_alias = Path.Map.empty
-    ; builtins = StrMap.empty  
+    ; builtins = StrMap.empty
     ; active_tc = SymSet.empty
     ; tc_solver_prog = Some prog
     ; add_tc_instance = update
@@ -137,7 +136,7 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; in_scope = StrMap.empty
     ; alias_path = StrMap.empty
     ; path_alias = Path.Map.empty
-    ; builtins = StrMap.empty  
+    ; builtins = StrMap.empty
     ; active_tc = SymSet.empty
     ; tc_solver_prog = None
     ; add_tc_instance = (fun _ pos _ _ -> Common.Error.fatal pos "cannot add instance, tc solver was not initialized")
