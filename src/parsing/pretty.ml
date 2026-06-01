@@ -273,7 +273,7 @@ let filter ppf (Path s) = out ppf " | %s" s
 let rec search ppf = function
   | QBase b -> search_base ppf b
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
-  | QFilter(q,f) -> out ppf "%a%a;" search q filter f
+  | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
