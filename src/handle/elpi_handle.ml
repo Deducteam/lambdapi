@@ -4,6 +4,18 @@ open Elpi.API
 open Core
 open Elpi_lambdapi
 
+(** Typeclasses are stored in the signature state, so make it available
+    in the Elpi state to allow to read them *)
+let ss_component : Sig_state.t State.component =
+  State.declare_component ~name:"elpi:ss"
+    ~pp:(fun _fmt _ -> ()) ~init:(fun () -> Sig_state.dummy) ~start:(fun x -> x) ()
+
+(** Allow elpi access to the position it is called at, so it can raise warnings
+    or errors *)
+let pos_component : Common.Pos.popt State.component =
+  State.declare_component ~name:"elpi:pos"
+    ~pp:Common.Pos.pp ~init:(fun () -> None) ~start:(fun x -> x) ()
+
 (* The following allow to quote lambdapi terms in elpi*)
 
 (** Not sure. *)
@@ -11,8 +23,8 @@ let scope_ref : (Parsing.Syntax.p_term -> Term.term * (int * string) list) ref =
 
 (** similar to [embed_term] but returns an Elpi.API.Ast.Term.t, whatever the difference might be *)
 let embed_qterm
-  : language:Elpi.API.Ast.Scope.language -> pats:(int * string) list -> loc:Ast.Loc.t -> Term.term -> Elpi.API.Ast.Term.t =
-  fun ~language ~pats ~loc t ->
+  : language:Elpi.API.Ast.Scope.language -> loc:Ast.Loc.t -> Data.state -> Term.term -> Elpi.API.Ast.Term.t =
+  fun ~language ~loc st t ->
   let open Ast.Term in
   let open Term in
   (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
@@ -44,15 +56,8 @@ let embed_qterm
         mkAppGlobal ~loc ~hdloc:loc applc hd [arg]
     | Meta _ -> assert false
     | Plac _ -> mkDiscard ~loc
-    | Patt(Some i,_,_) -> begin
-        try
-          let x = List.assoc i pats in
-          mkVar ~loc ~hdloc:loc (Ast.Name.from_string x) []
-        with Not_found ->
-          let pats = List.map (fun (i,n) -> Printf.sprintf "%d :-> %s; " i n) pats in
-          Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: unnamed pattern %d in map: %s" i (String.concat "" pats);
-      end
-    | Patt _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: Patt not implemented"
+    | Patt(_,name,_) ->
+      Quotation.elpi ~language:Quotation.elpi_language st loc name
     | Wild   -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: Wild not implemented"
     | TRef _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: TRef not implemented"
     | LLet _ -> Common.Error.fatal (Some (Loc.to_pos loc)) "embed_qterm: LLet not implemented"
@@ -60,30 +65,18 @@ let embed_qterm
   in
   aux t
 
-let lpq : Quotation.quotation = fun ~language _st loc text ->
+let lpq : Quotation.quotation = fun ~language st loc text ->
   let open Parsing in
   let ast = Parser.Lp.parse_string loc.source_name ("type " ^ text ^ ";") in
   match ast |> Stream.next |> fun x -> x.Common.Pos.elt with
   | Syntax.P_query { Common.Pos.elt = Syntax.P_query_infer(t,_); _ } ->
       (*Printf.eprintf "Q %s\n" text;*)
-      let t, pats = !scope_ref t in
-      let t = embed_qterm ~language ~pats ~loc t in
-      t
+      let ss = State.get ss_component st in
+      let t = Scope.scope_term false ss [] t in
+      embed_qterm ~language ~loc st t
   | _ -> assert false
 
 let () = Quotation.set_default_quotation lpq
-
-(** Typeclasses are stored in the signature state, so make it available
-    in the Elpi state to allow to read them *)
-let ss_component : Sig_state.t State.component =
-  State.declare_component ~name:"elpi:ss"
-    ~pp:(fun _fmt _ -> ()) ~init:(fun () -> Sig_state.dummy) ~start:(fun x -> x) ()
-
-(** Allow elpi access to the position it is called at, so it can raise warnings
-    or errors *)
-let pos_component : Common.Pos.popt State.component =
-  State.declare_component ~name:"elpi:pos"
-    ~pp:Common.Pos.pp ~init:(fun () -> None) ~start:(fun x -> x) ()
 
 (** Elpi constant for the type of goals *)
 let goalc = RawData.Constants.declare_global_symbol "goal"
