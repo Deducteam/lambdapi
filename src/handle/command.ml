@@ -137,19 +137,25 @@ let handle_require compile bo ss {elt=p;_} =
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> prop * expo * match_strat * bool * bool =
+let handle_modifiers :
+  p_modifier list -> prop * expo * match_strat * bool * bool =
   fun ms ->
   let rec get_modifiers ((props, expos, strats,tc,tci) as acc) = function
     | [] -> acc
-    | {elt=P_typeclass;_}::ms -> get_modifiers (props, expos, strats,true, tci) ms
-    | {elt=P_typeclass_instance;_}::ms -> get_modifiers (props, expos, strats,tc, true) ms
-    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats,tc,tci) ms
-    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats,tc,tci) ms
+    | {elt=P_typeclass;_}::ms ->
+      get_modifiers (props, expos, strats,true, tci) ms
+    | {elt=P_typeclass_instance;_}::ms ->
+      get_modifiers (props, expos, strats,tc, true) ms
+    | {elt=P_prop _;_} as p::ms ->
+      get_modifiers (p::props, expos, strats,tc,tci) ms
+    | {elt=P_expo _;_} as e::ms ->
+      get_modifiers (props, e::expos, strats,tc,tci) ms
     | {elt=P_mstrat _;_} as s::ms ->
         get_modifiers (props, expos, s::strats,tc,tci) ms
     | {elt=P_opaq;_}::ms -> get_modifiers acc ms
   in
-  let props, expos, strats, tc, tci = get_modifiers ([],[],[],false,false) ms in
+  let props, expos, strats, tc, tci =
+    get_modifiers ([],[],[],false,false) ms in
   let prop =
     match props with
     | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
@@ -206,8 +212,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.gre "symbol %a : %a") uid name term typ;
-  let r =
-   Sig_state.add_symbol ss expo prop mstrat false id declpos typ impl false false None in
+  let r = Sig_state.add_symbol ss expo prop mstrat false id declpos
+    typ impl false false None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when

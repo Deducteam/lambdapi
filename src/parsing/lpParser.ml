@@ -393,10 +393,10 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
             expected "command keyword missing" []
         | {elt=P_opaq;_}::{pos;_}::_ ->
             expected "an opaque command must be followed by an identifier" []
-        | {elt=P_typeclass;_}::{pos;_}::_ ->
-            expected "a typeclass command must be followed by an identifier" []
-        | {elt=P_typeclass_instance;_}::{pos;_}::_ ->
-            expected "an instance command must be followed by an identifier" []
+        | {elt=P_typeclass;_}::{pos;_}::_ -> expected
+          "a typeclass command must be followed by an identifier" []
+        | {elt=P_typeclass_instance;_}::{pos;_}::_ -> expected
+          "an instance command must be followed by an identifier" []
         | _ ->
             expected "" [SYMBOL]
       end

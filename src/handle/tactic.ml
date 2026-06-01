@@ -75,7 +75,8 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
 (** [tac_solve pos ss ps] tries to simplify the unification goals of the proof
    state [ps] with help from the typeclass solver of [ss] and fails
    if constraints are unsolvable. *)
-let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss ps ->
+let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state =
+  fun pos ss ps ->
   if Logger.log_enabled() then log "tac_solve";
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
@@ -116,9 +117,8 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state = fun pos ss p
   {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
-let tac_refine : ?check:bool ->
-      popt -> Sig_state.t -> proof_state -> goal_typ -> goal list -> problem -> term
-      -> proof_state =
+let tac_refine : ?check:bool -> popt -> Sig_state.t -> proof_state ->
+  goal_typ -> goal list -> problem -> term -> proof_state =
   fun ?(check=true) pos ss ps gt gs p t ->
   if Logger.log_enabled () then log "tac_refine %a" term t;
   let c = Env.to_ctxt gt.goal_hyps in
@@ -162,8 +162,9 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
-let tac_induction : popt -> Sig_state.t -> proof_state -> goal_typ -> goal list
-    -> proof_state = fun pos ss ps ({goal_type;goal_hyps;_} as gt) gs ->
+let tac_induction : popt -> Sig_state.t -> proof_state -> goal_typ ->
+  goal list -> proof_state =
+  fun pos ss ps ({goal_type;goal_hyps;_} as gt) gs ->
   let ctx = Env.to_ctxt goal_hyps in
   match Eval.whnf ctx goal_type with
   | Prod(a,_) ->

@@ -1,10 +1,10 @@
-(** Tools to have Lambdapi interact with Elpi,
-    including converting Lambdapi terms to and back from Elpi terms using a HOAS. *)
+(** Tools to have Lambdapi interact with Elpi, including converting
+    Lambdapi terms to and back from Elpi terms using a HOAS. *)
 open Elpi.API
 
 module Elpi_AUX = struct
-  (** [array_map_fold f st a] is similar to [Array.map f a] but also using and updating
-      the state [st] for each call to [f] *)
+  (** [array_map_fold f st a] is similar to [Array.map f a] but also
+      using and updating the state [st] for each call to [f] *)
   let array_map_fold f st a =
     let len = Array.length a in
     let st = ref st in
@@ -16,16 +16,16 @@ module Elpi_AUX = struct
     done;
     !st, b
 
-  (** [list_map_fold f st a] is similar to [List.map f a] but also using and updating
-      the state [st] for each call to [f] *)
+  (** [list_map_fold f st a] is similar to [List.map f a] but also using
+      and updating the state [st] for each call to [f] *)
   let list_map_fold f s l =
     let f st x = let st, x = f st x in st, x, [] in
     let s, l, _ = Utils.map_acc f s l in
     s, l
 end
 
-(** Tools to convert pos/locs to allow Elpi and Lambdapi to raise errors about
-    each other's files. *)
+(** Tools to convert pos/locs to allow Elpi and Lambdapi to raise errors
+    about each other's files. *)
 module Loc = struct
   open Ast.Loc open Common.Pos
 
@@ -41,13 +41,16 @@ module Loc = struct
       client_payload = None;
     }
 
-  (** [Loc.of_popt pos] translates the optional Lambdapi position [pos] to Elpi *)
+  (** [Loc.of_popt pos] translates the optional Lambdapi position [pos]
+      to Elpi *)
   let of_popt = function
     | None -> initial "(lambdapi)"
     | Some x -> of_pos x
 
-  (** [Loc.to_pos loc] Translates an the Elpi localisation [loc] to Lambdapi *)
-  let to_pos {Ast.Loc.source_name; source_start; source_stop; line; line_starts_at; _} =
+  (** [Loc.to_pos loc] Translates an the Elpi localisation [loc] to
+      Lambdapi *)
+  let to_pos {Ast.Loc.source_name; source_start; source_stop;
+    line; line_starts_at; _} =
   { Common.Pos.fname = Some (source_name)
   ; start_line       = line
   ; start_col        = line_starts_at
@@ -59,8 +62,10 @@ module Loc = struct
 end
 
 (** Tools to store and read {!type:Term.sym}s in Elpi as an opaque data type
-    (no syntax like int or string). APIs are provided to manipulate symbols, eg get their type *)
-let (csym, sym) : Term.sym RawOpaqueData.cdata * Term.sym Conversion.t = RawOpaqueData.declare {
+    (no syntax like int or string). APIs are provided to manipulate symbols,
+    eg get their type *)
+let (csym, sym) : Term.sym RawOpaqueData.cdata * Term.sym Conversion.t =
+  RawOpaqueData.declare {
   OpaqueData.name = "symbol";
   doc = "A symbol";
   pp = Print.sym;
@@ -120,22 +125,25 @@ let pb = State.declare_component ~name:"elpi:problem"
   ) ~init:Term.new_problem ~start:(fun x -> x)
   ()
 
-(** [embed_term ?pats ?ctx pos ~depth st t] translates the Lambdapi {!type:Term.term} [t] to Elpi,
-    returning the updated Elpi state [st], the translated Elpi term and an
-    (I believe necessarily empty) list of conversion goals. *)
-(*  [ctx] stores a map between Lambdapi free variables and Elpi De Bruijn indices.
-    [pats] is a map of affectations of pattern variables ($x $y ...) to (the name of) a corresponding
-    Elpi unification variable, allowing possibly non-linear user written pattern holes.
-    Currently unused, however. It is also not clear how such a map should be obtained in the first place. *)
-let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -> Common.Pos.popt -> Term.term Conversion.embedding = fun ?(pats=[]) ?(ctx=[]) pos ~depth st t ->
+(** [embed_term ?pats ?ctx pos ~depth st t] translates the Lambdapi
+    {!type:Term.term} [t] to Elpi, returning the updated Elpi state [st],
+    the translated Elpi term and an (I believe necessarily empty) list of
+    conversion goals. *)
+(*  [ctx] stores a map between Lambdapi free variables and Elpi De Bruijn
+    indices. [pats] is a map of affectations of pattern variables ($x $y ...)
+    to (the name of) a corresponding Elpi unification variable, allowing
+    possibly non-linear user written pattern holes. Currently unused,
+    however. It is also not clear how such a map should be obtained in the
+    first place. *)
+let embed_term : ?ctx:RawData.constant Term.actxt -> Common.Pos.popt ->
+  Term.term Conversion.embedding =
+  fun ?(ctx=[]) pos ~depth st t ->
   let open RawData in
   let open Term in
-  (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
   let gls = ref [] in
   let call f ~depth s x =
     let s, x, g = f ~depth s x in gls := g @ !gls; s, x in
   let rec aux ~depth ctx st t =
-    (*Common.Console.out 1 "EMBED:@ %d |- %a@\n" (List.length ctx) Print.term t;*)
     match Term.unfold t with
     | Vari v ->
         let d = Ctxt.type_of v ctx in
@@ -168,24 +176,6 @@ let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -
         let st, args = Elpi_AUX.array_map_fold (aux ~depth ctx) st args in
         st, mkUnifVar flex ~args:(Array.to_list args) st
     | Plac _ -> Common.Error.fatal pos "embed_term: Plac not implemented"
-        (*let args = List.map (fun (_,x,_) -> mkBound x) ctx in
-        let st, flex = FlexibleData.Elpi.make st in
-        let st, meta = State.update_return pb st (fun pb ->
-          let m1 = LibMeta.fresh pb mk_Type 0 in
-          let m2 = LibMeta.fresh pb (mk_Meta (m1,[||]))
-            (List.length args) in (* empty context is surely wrong *)
-          pb, m2) in
-        let st = State.update metamap st (MM.add flex meta) in
-        st, mkUnifVar flex ~args st*)
-    | Patt(Some i,_,_) -> begin
-        try
-          let x = List.assoc i pats in
-          let st, flex = FlexibleData.Elpi.make ~name:x st in
-          st, mkUnifVar flex ~args:[] st
-        with Not_found ->
-          let pats = List.map (fun (i,n) -> Printf.sprintf "%d :-> %s; " i n) pats in
-          Common.Error.fatal pos "embed_term: unnamed pattern %d in map: %s" i (String.concat "" pats);
-      end
     | Patt _ -> Common.Error.fatal pos "embed_term: Patt not implemented"
     | Wild   -> Common.Error.fatal pos "embed_term: Wild not implemented"
     | TRef _ -> Common.Error.fatal pos "embed_term: TRef not implemented"
@@ -198,9 +188,12 @@ let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
 (** [readback_term_box ?pp_ctx pos ~depth st t] translates the Elpi term [t]
-    back to a lambdapi term, returning the updated Elpi state [st], the translated
-    Elpi term and an (I believe necessarily empty) list of conversion goals. *)
-let readback_term_box : ?pp_ctx: Data.pretty_printer_context -> ?ctx : Term.var IntMap.t -> Common.Pos.popt -> Term.term Conversion.readback =
+    back to a lambdapi term, returning the updated Elpi state [st],
+    the translated Elpi term and an (I believe necessarily empty)
+    list of conversion goals. *)
+let readback_term_box : ?pp_ctx: Data.pretty_printer_context ->
+  ?ctx : Term.var IntMap.t -> Common.Pos.popt ->
+    Term.term Conversion.readback =
 fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t ->
   let open RawData in
   let open Term in
@@ -249,7 +242,8 @@ fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t ->
         let st, args = Elpi_AUX.list_map_fold (aux ~depth ctx) st args in
         st, mk_Meta (meta, Array.of_list args)
     | _ -> begin match pp_ctx with
-      | Some pp_ctx -> Common.Error.fatal pos "readback term, unexpected term %a" (Pp.term pp_ctx) t
+      | Some pp_ctx -> Common.Error.fatal pos
+        "readback term, unexpected term %a" (Pp.term pp_ctx) t
       | _ -> Common.Error.fatal pos "readback term" end
   and aux_lam ~depth ctx st t =
     match look ~depth t with
@@ -259,15 +253,17 @@ fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t ->
         let st, bo = aux ~depth:(depth+1) ctx st bo in
         st, bind_var v bo
     | _ -> begin match pp_ctx with
-      | Some pp_ctx -> Common.Error.fatal pos "readback term, unexpected term %a" (Pp.term pp_ctx) t
+      | Some pp_ctx -> Common.Error.fatal pos
+        "readback term, unexpected term %a" (Pp.term pp_ctx) t
       | _ -> Common.Error.fatal pos "readback term" end
   in
   let st, t = aux ~depth ctx st t in
   st, t, List.rev !gls
 
 (** [readback_term ?pp_ctx pos ~depth st t] translates the Elpi term [t]
-    back to a lambdapi term, returning the updated Elpi state [st], the translated
-    Elpi term and an (I believe necessarily empty) list of conversion goals. *)
+    back to a lambdapi term, returning the updated Elpi state [st], the
+    translated Elpi term and an (I believe necessarily empty)
+    list of conversion goals. *)
 let readback_term ?pp_ctx pos ~depth st t =
   let st, t, gls = readback_term_box ?pp_ctx pos ~depth st t in
   st, t, gls
@@ -286,7 +282,7 @@ external symbol abst:  term -> (term -> term) -> term = "0".
 external symbol prod:  term -> (term -> term) -> term = "0".
   |});
   readback = readback_term None;
-  embed = embed_term ?ctx:None ?pats:None None;
+  embed = embed_term ?ctx:None None;
 }
 
 (** Assignments to Elpi's unification variables are a spine of lambdas

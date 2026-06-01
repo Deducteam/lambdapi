@@ -7,8 +7,9 @@ open Proof
 open Lplib open Base
 open Timed
 
-let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term * term =
-  fun ?scope ss pos p ctx t ->
+let infer : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
+  term * term =
+  fun ss pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None ->
       let ids = Ctxt.names ctx in let term = term_in ids in
@@ -18,7 +19,7 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
       let ctxtmap =
         MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
       in
-      if Elpi_handle.solve_with_tc ?scope ~ctxtmap ss pos p then
+      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
         begin
           if !p.unsolved = [] then (t, a)
           else
@@ -32,28 +33,8 @@ let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) ->
         let ids = Ctxt.names ctx in let term = term_in ids in
         fatal pos "%a is not typable." term t
 
-      (*if Unif.solve_noexn p then
-        begin
-          if !p. = [] then begin
-            Common.Console.out 1 "starting tc resolution";
-            let t, a = Elpi_handle.solve_tc ?scope ss pos p ctx (t, a) in
-            (try match Infer.infer_noexn p ctx t with
-            | None -> fatal pos "%a is not typable AFTER TC RESOLUTION!!!!" term t
-            | _ -> Common.Console.out 1 "TC RESOLUTION OK!@ " with | m -> wrn pos "fail here!" ; raise m) ;
-               t, a
-          end
-          else
-            begin
-              let ids = Ctxt.names ctx in let term = term_in ids in
-              List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
-              fatal pos "Failed to infer the type of %a." term t
-            end
-        end
-      else
-        let ids = Ctxt.names ctx in let term = term_in ids in
-        fatal pos "%a is not typable." term t*)
-
-let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term -> term =
+let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term ->
+  term =
   fun ss pos p ctx t a ->
   let die () =
     let ids = Ctxt.names ctx in let term = term_in ids in
@@ -74,7 +55,8 @@ let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term -> term =
     else die ()
   | None -> die ()
 
-let check_sort : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term * term =
+let check_sort : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
+  term * term =
   fun ss pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
   | None ->
@@ -267,8 +249,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let scope = Scope.scope_term_w_pats ~typ:false ~mok true ss env in
-      let t = Eval.eval cfg ctxt (snd (infer ss ~scope pt.pos p ctxt t)) in
+      let t = Eval.eval cfg ctxt (snd (infer ss pt.pos p ctxt t)) in
       let ids = Env.names (Proof.focus_env ps) in
       return (term_in ids) t
   | P_query_normalize(pt, cfg) ->

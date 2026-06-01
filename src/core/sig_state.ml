@@ -19,16 +19,17 @@ open Sign
     the tc_solver is an option so that sig_states can be created before
     elpi is initialized. *)
 type sig_state =
-  { signature      : Sign.t                              (** Current signature. *)
-  ; in_scope       : sym StrMap.t                        (** Symbols in scope.  *)
-  ; alias_path     : Path.t StrMap.t                     (** Alias to path map. *)
-  ; path_alias     : string Path.Map.t                   (** Path to alias map. *)
+  { signature      : Sign.t                     (** Current signature. *)
+  ; in_scope       : sym StrMap.t               (** Symbols in scope.  *)
+  ; alias_path     : Path.t StrMap.t            (** Alias to path map. *)
+  ; path_alias     : string Path.Map.t          (** Path to alias map. *)
   ; builtins       : sym StrMap.t                        (** Builtins. *)
   ; active_tc      : SymSet.t                            (** Active TC *)
   ; tc_solver_prog : Elpi.API.Compile.program option     (** TC solver *)
   ; add_tc_instance: sig_state -> popt -> sym ->
     Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update   *)
-  ; open_paths     : Path.Set.t                          (** Open modules. *) }
+  ; open_paths     : Path.Set.t                          (** Open modules. *)
+}
 
 type t = sig_state
 
@@ -52,8 +53,8 @@ let update_solver : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
     optional definition [def]. [pos] is the position of the declaration
     without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
-    -> bool -> strloc -> popt -> term -> bool list -> bool -> bool -> term option ->
-    sig_state * sym =
+    -> bool -> strloc -> popt -> term -> bool list -> bool -> bool ->
+    term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id pos typ impl tc tci def ->
   let sym =
     Sign.add_symbol ss.signature expo prop mstrat opaq id pos typ impl in
@@ -64,8 +65,9 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   end;
     if tc then Sign.add_tc ss.signature sym;
   let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
-  let tc_solver_prog = if tci then Some(ss.add_tc_instance ss pos sym (get_solver ss pos))
-  else ss.tc_solver_prog in
+  let tc_solver_prog = if tci
+    then Some(ss.add_tc_instance ss pos sym (get_solver ss pos))
+    else ss.tc_solver_prog in
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope; active_tc; tc_solver_prog}, sym
 
@@ -109,11 +111,12 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 
 (** [of_sign_and_solver sign solver add_instance] creates a new sig_state
     with tc-solver [solver], self-update function [add_instance], along with
-    signature [sign] and open it and the ghost signature as well, assuming that
-    [sign] has been created using [Sign.create].
+    signature [sign] and open it and the ghost signature as well, assuming
+    that [sign] has been created using [Sign.create].
 *)
-let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program -> (t -> popt -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
-  fun signature prog update ->
+let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program ->
+  (t -> popt -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program)
+  -> sig_state = fun signature prog update ->
   let ss =
     { signature
     ; in_scope = StrMap.empty
@@ -139,7 +142,8 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; builtins = StrMap.empty
     ; active_tc = SymSet.empty
     ; tc_solver_prog = None
-    ; add_tc_instance = (fun _ pos _ _ -> Common.Error.fatal pos "cannot add instance, tc solver was not initialized")
+    ; add_tc_instance = (fun _ pos _ _ -> Common.Error.fatal pos
+        "cannot add instance, tc solver was not initialized")
     ; open_paths = Path.Set.empty }
   in
   open_sign (open_sign ss Ghost.sign) signature
@@ -147,7 +151,8 @@ let of_sign : Sign.t -> sig_state = fun signature ->
 (** [of_sign_and_solver sign solver add_instance] creates a new sig_state
     with tc-solver [solver] and self-update function [add_instance].
 *)
-let of_solver : Elpi.API.Compile.program -> (t -> popt -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
+let of_solver : Elpi.API.Compile.program -> (t -> popt -> sym ->
+  Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
   of_sign_and_solver (Sign.create [])
 
 (** Dummy [sig_state]. *)
