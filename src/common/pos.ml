@@ -34,6 +34,13 @@ let cat : pos -> pos -> pos = fun p1 p2 ->
   ; end_col = p2.end_col
   ; end_offset = p2.end_offset }
 
+(** [file_start fname] is a zero-length position at the start of file [fname],
+    used as a fallback for error reporting when no finer position is known. *)
+let file_start : string -> pos = fun fname ->
+  { fname = Some fname
+  ; start_line = 1; start_col = 0; start_offset = 0
+  ; end_line = 1; end_col = 0; end_offset = 0 }
+
 (** [locate ?fname (p1,p2)] converts the pair of Lexing positions [p1,p2] and
     filename [fname] into a {!type:pos}. *)
 let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =

@@ -21,3 +21,6 @@ libraries/zenon_modulo
 .DS_Store
 *.map
 *.log
+__pycache__/
+*.pyc
+tests/lsp/FEATURES.md
