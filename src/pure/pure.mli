@@ -10,6 +10,7 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_focus_pos : t -> Pos.popt
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
@@ -20,6 +21,7 @@ module Tactic : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_focus_pos : t -> Pos.popt
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
@@ -85,6 +87,17 @@ val end_proof : proof_state -> command_result
 (** [get_symbols st] returns all the symbols defined in the signature at state
     [st]. This can be used for displaying the type of symbols. *)
 val get_symbols : state -> Term.sym Extra.StrMap.t
+
+(** [find_sym st qid] returns the symbol denoted by [qid] in state [st].
+    Handles short names in scope, aliased module paths, and fully-qualified
+    identifiers. Returns [None] if no such symbol is accessible. *)
+val find_sym : state -> Term.qident Pos.loc -> Term.sym option
+
+(** [restore_time st] activates the timed state (loaded signatures, library
+    mappings, ...) captured when [st] was computed. LSP handlers must call
+    this before touching timed globals, otherwise they see whichever
+    document was opened most recently. *)
+val restore_time : state -> unit
 
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise
