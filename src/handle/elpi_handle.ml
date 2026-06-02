@@ -76,7 +76,7 @@ let lpq : Quotation.quotation = fun ~language st loc text ->
   | Syntax.P_query { Common.Pos.elt = Syntax.P_query_infer(t,_); _ } ->
       (*Printf.eprintf "Q %s\n" text;*)
       let ss = State.get ss_component st in
-      let t = Scope.scope_term false ss [] t in
+      let t = Scope.scope_term_w_pats false ss [] t in
       embed_qterm ~language ~loc st t
   | _ -> assert false
 
