@@ -992,6 +992,9 @@ module Raw = struct
 end
 
 let dump_term = Type
+
+let bvar_term = Bvar (InSub 0)
+
 let sym_dump =
 {
     sym_expo      = Privat
@@ -1104,7 +1107,11 @@ module Term_serializable = struct
     | LLet (x, y, z) -> LLet (to_term_serializable x
                                   , to_term_serializable y
                                   , to_binder_serializable z)
-    | _              -> assert false
+    | Meta _ -> print_endline "unpermitted term : Meta!!"; assert false
+    | Plac _ -> print_endline "unpermitted term : Plac!!"; assert false
+    | Wild   -> print_endline "unpermitted term : Wild!!"; assert false
+    | TRef _ -> print_endline "unpermitted term : TRef!!"; assert false
+    | Bvar _ -> print_endline "unpermitted term : Bvar!!"; assert false
 
   and to_binder_serializable (x, y, z) =
     (x, to_term_serializable y, Array.map to_term_serializable z)

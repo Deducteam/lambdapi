@@ -311,7 +311,7 @@ let write : Sign.t -> string -> (module Serialisation) -> unit =
          let sign_json =
           to_yojson_with_version sign (module M) in
          let _pp = Yojson.Safe.pretty_to_string sign_json in
-         Yojson.Safe.to_channel oc sign_json;
+         Yojson.Safe.pretty_to_channel oc sign_json;
          (* Marshal.to_channel oc sign [Marshal.Closures]; *)
          close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
   | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
@@ -404,9 +404,9 @@ let read =
   let open Stdlib in let r = ref Ghost.sign in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
+let%test "test_unlink" =
 
-let%test "rev" =
-  let rule =
+let rule =
     {Term.lhs     = [Term.dump_term]
   ; names    = [|"rule1"|]
   ; rhs      = Term.dump_term
@@ -442,7 +442,66 @@ let%test "rev" =
     ; sign_deps         = Timed.ref
             (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
     ; sign_builtins     = Timed.ref symbols
+    }
+
+  in   let symbols = StrMap.add ""
+    {
+      sym_dump
+    with
+      sym_type = Timed.ref Term.bvar_term;
+      sym_path = ["rep"; "file"]
+    }
+    symbols in
+  let sign = {sign
+      with sign_symbols = Timed.ref symbols
+    ; sign_deps         = Timed.ref
+            (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
+    ; sign_builtins     = Timed.ref symbols
     } in
+
+  write sign "/tmp/test_sign_read_write.json" (module Latest);
+  true
+
+let%test "rev" =
+let rule =
+    {Term.lhs     = [Term.dump_term]
+  ; names    = [|"rule1"|]
+  ; rhs      = Term.dump_term
+  ; arity    = 0
+  ; arities  = [|1; 2|]
+  ; vars_nb  = 5
+  ; xvars_nb = 9
+  ; rule_pos = Some { fname      = Some "file"
+          ; start_line      = 0
+          ; start_col       = 0
+          ; start_offset    = 0
+          ; end_line        = 1
+          ; end_col         = 1
+          ; end_offset      = 1
+          }
+  } in
+  let sym_data:Sign.sym_data = {rules=[rule]; nota=None} in
+  let dep_data:Sign.dep_data =
+    {dep_symbols = (StrMap. add "key1" sym_data StrMap.empty)
+    ; dep_open   = true
+  } in
+  let sign = Ghost.sign in
+  let symbols = Timed.(!) sign.sign_symbols in
+  let symbols = StrMap.add ""
+    {
+      sym_dump
+    with
+      sym_path = ["rep"; "file"]
+    }
+    symbols in
+  let sign = {sign
+      with sign_symbols = Timed.ref symbols
+    ; sign_deps         = Timed.ref
+            (Path.Map.add (Path.ghost "path_here") dep_data Path.Map.empty)
+    ; sign_builtins     = Timed.ref symbols
+    }
+
+  in
   write sign "/tmp/test_sign_read_write.json" (module Latest);
   let r_sign = read "/tmp/test_sign_read_write.json" in
 

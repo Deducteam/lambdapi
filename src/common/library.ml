@@ -182,7 +182,7 @@ let is_valid_src_extension : string -> bool = fun s ->
   || Filename.check_suffix s dk_src_extension
 
 (** [obj_extension] is the expected extension for binary (object) files. *)
-let obj_extension : string = ".lpo"
+let obj_extension : string = ".lpo.json"
 
 (** [valids_extensions] is the list of valid file extensions. *)
 let valid_extensions : string list =

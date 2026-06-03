@@ -475,6 +475,8 @@ type binder_info = {binder_name : string; binder_bound : bool}
 
 val sym_dump : sym
 val dump_term : term
+val bvar_term : term
+
 
 module Term_serializable : sig
 
