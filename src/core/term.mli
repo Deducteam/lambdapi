@@ -491,6 +491,7 @@ type term_serializable =
   | Patt of int option * string * term_serializable array
   | LLet of term_serializable * term_serializable * binder_serializable
   | Bvar of bvar
+  | Meta of meta_serializable * term_serializable array
 
 and binder_serializable =
         binder_info * term_serializable * term_serializable array

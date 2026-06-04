@@ -1041,6 +1041,7 @@ module Term_serializable = struct
     | Patt of int option * string * term_serializable array
     | LLet of term_serializable * term_serializable * binder_serializable
     | Bvar of bvar
+    | Meta of meta_serializable * term_serializable array
     [@@deriving yojson]
 
   and binder_serializable =
@@ -1108,14 +1109,25 @@ module Term_serializable = struct
     | LLet (x, y, z) -> LLet (to_term_serializable x
                                   , to_term_serializable y
                                   , to_binder_serializable z)
-    | Bvar v -> Bvar v
+    | Bvar v         -> Bvar v
+    | Meta (m, t)    -> Meta(to_meta_serializable m, Array.map to_term_serializable t)
     (* FIX ME *)
-    | Meta _ -> print_endline "unpermitted term : Meta!!"; to_term_serializable dump_term
-    | Plac _ -> print_endline "unpermitted term : Plac!!"; to_term_serializable dump_term
-    | Wild   -> print_endline "unpermitted term : Wild!!"; to_term_serializable dump_term
-    | TRef _ -> print_endline "unpermitted term : TRef!!"; to_term_serializable dump_term
+    | Plac _ -> print_endline "unexpected term : Plac!!"; assert false
+    | Wild   -> print_endline "unexpected term : Wild!!"; assert false
+    | TRef _ -> print_endline "unexpected term : TRef!!"; assert false
+
+  and to_meta_serializable m =
+    {
+      meta_key   = m.meta_key
+    ; meta_type  = to_term_serializable (Timed.(!)m.meta_type)
+    ; meta_arity = m.meta_arity
+    ; meta_value = let p = Timed.(!) m.meta_value in  Option.map to_mbinder_serializable p
+    }
 
   and to_binder_serializable (x, y, z) =
+    (x, to_term_serializable y, Array.map to_term_serializable z)
+
+  and to_mbinder_serializable (x, y, z) =
     (x, to_term_serializable y, Array.map to_term_serializable z)
 
   and to_sym_serializable (s:sym) =
@@ -1163,8 +1175,11 @@ module Term_serializable = struct
                               , of_term_serializable y
                               , of_binder_serializable z)
     | Bvar v          -> Bvar v
+    | Meta (m, t)     -> Meta (of_meta_serializable m, Array.map of_term_serializable t)
 
   and of_binder_serializable (x, y, z) =
+    (x, of_term_serializable y, Array.map of_term_serializable z)
+  and of_mbinder_serializable (x, y, z) =
     (x, of_term_serializable y, Array.map of_term_serializable z)
 
   and of_sym_serializable (s:sym_serializable):sym =
@@ -1196,6 +1211,14 @@ module Term_serializable = struct
     xvars_nb = r.xvars_nb;
     rule_pos = r.rule_pos;
   }
+
+  and of_meta_serializable m : meta =
+    {
+      meta_key   = m.meta_key
+    ; meta_type  = Timed.ref (of_term_serializable m.meta_type)
+    ; meta_arity = m.meta_arity
+    ; meta_value = let p = m.meta_value in Timed.ref (Option.map of_mbinder_serializable p)
+    }
 
   let sym_to_yojson s =
     sym_serializable_to_yojson (to_sym_serializable s)
