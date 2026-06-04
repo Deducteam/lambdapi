@@ -1034,12 +1034,13 @@ module Term_serializable = struct
     | Vari of var
     | Type
     | Kind
-    | Symb of sym_serializable
+    | Symb of string
     | Prod of term_serializable * binder_serializable
     | Abst of term_serializable * binder_serializable
     | Appl of term_serializable * term_serializable
     | Patt of int option * string * term_serializable array
     | LLet of term_serializable * term_serializable * binder_serializable
+    | Bvar of bvar
     [@@deriving yojson]
 
   and binder_serializable =
@@ -1096,7 +1097,7 @@ module Term_serializable = struct
     | Vari x         -> Vari x
     | Type           -> Type
     | Kind           -> Kind
-    | Symb x         -> Symb (to_sym_serializable x)
+    | Symb x         -> Symb (x.sym_name)
     | Prod (x, y)    ->Prod
                         (to_term_serializable x, to_binder_serializable y)
     | Abst (x, y)    ->Abst
@@ -1107,11 +1108,12 @@ module Term_serializable = struct
     | LLet (x, y, z) -> LLet (to_term_serializable x
                                   , to_term_serializable y
                                   , to_binder_serializable z)
-    | Meta _ -> print_endline "unpermitted term : Meta!!"; assert false
-    | Plac _ -> print_endline "unpermitted term : Plac!!"; assert false
-    | Wild   -> print_endline "unpermitted term : Wild!!"; assert false
-    | TRef _ -> print_endline "unpermitted term : TRef!!"; assert false
-    | Bvar _ -> print_endline "unpermitted term : Bvar!!"; assert false
+    | Bvar v -> Bvar v
+    (* FIX ME *)
+    | Meta _ -> print_endline "unpermitted term : Meta!!"; to_term_serializable dump_term
+    | Plac _ -> print_endline "unpermitted term : Plac!!"; to_term_serializable dump_term
+    | Wild   -> print_endline "unpermitted term : Wild!!"; to_term_serializable dump_term
+    | TRef _ -> print_endline "unpermitted term : TRef!!"; to_term_serializable dump_term
 
   and to_binder_serializable (x, y, z) =
     (x, to_term_serializable y, Array.map to_term_serializable z)
@@ -1148,7 +1150,7 @@ module Term_serializable = struct
     | Vari x          -> Vari x
     | Type            -> Type
     | Kind            -> Kind
-    | Symb x          -> Symb (of_sym_serializable x)
+    | Symb _x          -> Symb (sym_dump)
     | Prod (x, y)     -> Prod
     (of_term_serializable x, of_binder_serializable y)
     | Abst (x, y)     -> Abst
@@ -1160,6 +1162,7 @@ module Term_serializable = struct
                               (of_term_serializable x
                               , of_term_serializable y
                               , of_binder_serializable z)
+    | Bvar v          -> Bvar v
 
   and of_binder_serializable (x, y, z) =
     (x, of_term_serializable y, Array.map of_term_serializable z)

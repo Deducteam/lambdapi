@@ -484,12 +484,13 @@ type term_serializable =
   | Vari of var
   | Type
   | Kind
-  | Symb of sym_serializable
+  | Symb of string
   | Prod of term_serializable * binder_serializable
   | Abst of term_serializable * binder_serializable
   | Appl of term_serializable * term_serializable
   | Patt of int option * string * term_serializable array
   | LLet of term_serializable * term_serializable * binder_serializable
+  | Bvar of bvar
 
 and binder_serializable =
         binder_info * term_serializable * term_serializable array
