@@ -505,7 +505,7 @@ let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
     | P_SLit _ -> []
     | P_Wrap t
     | P_Expl t -> get_pats t
-    | P_Appl(t,u) 
+    | P_Appl(t,u)
     | P_Arro(t,u) -> merge [get_pats t; get_pats u]
     | P_Abst(ps,t)
     | P_Prod(ps,t) -> merge [of_params ps; get_pats t]

@@ -303,7 +303,7 @@ let add_modifier oc name (md : p_modifier) =
   let with_prefix prefix =
     string oc prefix; qident oc name; string oc ".\n"
   in
-  Option.iter with_prefix prefix 
+  Option.iter with_prefix prefix
 
 let command oc {elt; pos} =
   begin match elt with
