@@ -291,6 +291,20 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let is_lem x = is_opaq x || is_priv x
 
+let pqid_of_pid {elt; pos} = {elt=([],elt); pos}
+
+let add_modifier oc name (md : p_modifier) =
+  let prefix = match md.elt with
+  | P_opaq -> Some "Opaque "
+  | P_typeclass -> Some "Existing Class "
+  | P_typeclass_instance -> Some "Existing Instance "
+  | _ -> None
+  in
+  let with_prefix prefix =
+    string oc prefix; qident oc name; string oc ".\n"
+  in
+  Option.iter with_prefix prefix 
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(true,ps) ->
@@ -330,10 +344,8 @@ let command oc {elt; pos} =
           | true, Some t, _, _ ->
             string oc "Definition "; ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t;
-            if List.exists is_opaq p_sym_mod then
-              (string oc ".\nOpaque "; ident oc p_sym_nam);
-            string oc ".\n"
+            string oc " := "; term oc t; string oc ".\n";
+            List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) p_sym_mod;
           | false, _, [], Some t ->
             string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
             term oc t; string oc ".\n"
@@ -343,6 +355,10 @@ let command oc {elt; pos} =
             string oc ".\n"
           | _ -> wrn pos "Command not translated."
         end
+  | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
+  | P_type_class qid -> add_modifier oc qid {elt=P_typeclass;pos}
+  | P_type_class_instance qid ->
+    add_modifier oc qid {elt=P_typeclass_instance;pos}
   | _ -> wrn pos "Command not translated."
   end
 
