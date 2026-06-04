@@ -48,7 +48,7 @@ let rec term oc t =
     string oc " := "; term oc u; string oc " in "; term oc v
   | P_Wrap u -> term oc u
   | P_Appl _ ->
-      let default h ts = paren oc h; char oc ' '; list paren " " oc ts in
+      let default h ts = paren oc h; char oc ' '; list paren " " oc (prep_list ts h) in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
@@ -59,12 +59,12 @@ let rec term oc t =
             -> prod oc xs u
           | _, _, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
           | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
-              string oc "exists "; raw_params oc x; string oc ", "; term oc u
+              string oc "∃ "; raw_params oc x; string oc ", "; term oc u
           | true, _, Eq, [_;u;v]
           | true, true, Eq, [u;v] -> paren oc u; string oc " = "; paren oc v
-          | true, _, Or, [u;v] -> paren oc u; string oc " \\/ "; paren oc v
-          | true, _, And, [u;v] ->  paren oc u; string oc " /\\ "; paren oc v
-          | true, _, Not, [u] -> string oc "~ "; paren oc u
+          | true, _, Or, [u;v] -> paren oc u; string oc " ∨ "; paren oc v
+          | true, _, And, [u;v] ->  paren oc u; string oc " ∧ "; paren oc v
+          | true, _, Not, [u] -> string oc "¬ "; paren oc u
           | _ -> default h ts)
 
 and arrow oc u v = paren oc u; string oc " -> "; term oc v
@@ -89,8 +89,10 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ -> char oc '{'; raw_params oc x; char oc '}'
-  | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
+  | true, _ -> char oc '{'; raw_params oc x; char oc '}'; 
+               if !stt then add_nonempty oc x
+  | false, Some _ -> char oc '('; raw_params oc x; char oc ')';
+               if !stt then add_nonempty oc x
   | false, None -> param_ids oc ids
 
 (* starts with a space if the list is not empty *)
@@ -104,6 +106,25 @@ and params_list_in_abs oc l =
 
 (* starts with a space if <> None *)
 and typopt oc t = Option.iter (prefix " : " term oc) t
+
+and add_nonempty oc (ids,t,_) =
+  let pos = None in
+    let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+      if t = Some _Set then
+        List.iter (fun id -> string oc " [Nonempty " ; param_id oc id ; char oc ']') ids
+
+and prep_list xs h =
+  match get_type_params h with 
+  | None -> xs
+  | Some n -> let l1,l2 = (List.cut xs (n)) in
+              l1 @ (List.init (n-1) (fun _ -> {elt=P_Wild;pos=None})) @ l2
+
+and get_type_params p = 
+    match p.elt with
+    | P_Iden(qid,true) ->
+        if !stt then StrMap.find_opt (snd (qid.elt)) (StrMap.add "el" 1 !tvs_map) 
+                else None
+    | _ -> None
 
 (** Translation of commands. *)
 
@@ -143,10 +164,10 @@ let command oc {elt; pos} =
                memory only when it is necessary. *)
             string oc "theorem "; ident oc p_sym_nam;
             params_list oc p_sym_arg; string oc " : "; term oc a;
-            string oc " := "; term oc t; string oc "\n"
+            string oc " := by apply "; term oc t; string oc "\n"
           | true, Some t, _, _ ->
             if List.exists is_opaq p_sym_mod then string oc "opaque "
-            else string oc "noncomputable def ";
+            else string oc "@[reducible]\nnoncomputable def ";
             ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t; string oc "\n"
@@ -186,10 +207,16 @@ let print : string -> ast -> unit = fun file s ->
   match handle_requires s with
   | None -> ()
   | Some c ->
-  Option.iter (fun s -> string oc ("open "^s^"\n")) !require;
+  (* Option.iter (fun s -> string oc ("open "^s^"\n")) !require; *)
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
+  Option.iter (fun s -> string oc (try (Filename.chop_extension s)^"." with Invalid_argument _ -> "")) !require ;
   string oc (Filename.chop_extension file);
   string oc "\n\n";
+  (*debugging options*)
+  string oc "set_option linter.style.missingEnd false\n";
+  string oc "set_option linter.unusedVariables false\n";
+  string oc "set_option linter.style.longLine false\n\n";
+  (**)
   command oc c;
-  commands oc s
+  commands oc s;

@@ -89,6 +89,15 @@ let set_mapping : string -> unit = fun f ->
   in
   Stream.iter consume (Parser.parse_file f)
 
+let tvs_map : (int StrMap.t ref) = ref StrMap.empty
+
+(** [read_val f] reads value from file [f]. *)
+let read_val filename =
+   let ic = open_in_bin filename in
+  tvs_map := input_value ic;
+   close_in ic
+(*    ;
+   tvs_map := StrMap.add "ε" 1 !tvs_map *)
 (** Set encoding. *)
 
 let map_qid_builtin = ref QidMap.empty
