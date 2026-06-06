@@ -20,6 +20,16 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
+let typ_arity h =
+  match h.elt with
+  | P_Iden({elt=(_,sym_name);_},true) when !stt ->
+      begin
+        match StrMap.find_opt sym_name !tvs_map with
+        | None -> 0
+        | Some n -> n
+      end
+  | _ -> 0
+
 (** Translation of terms. *)
 
 let rec term oc t =
@@ -49,7 +59,15 @@ let rec term oc t =
   | P_Wrap u -> term oc u
   | P_Appl _ ->
       let default h ts =
-        paren oc h; char oc ' '; list paren " " oc (prep_list ts h) in
+        paren oc h; char oc ' ';
+        let ts =
+          let n = typ_arity h in
+          if n <= 0 then ts else
+            let l1,l2 = List.cut ts n in
+            l1 @ List.init (n-1) (fun _ -> P.wild) @ l2
+        in
+        list paren " " oc ts
+      in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
@@ -115,20 +133,6 @@ and add_nonempty oc (ids,t,_) =
         List.iter
           (fun id -> string oc " [Nonempty " ; param_id oc id ; char oc ']')
           ids
-
-and prep_list xs h =
-  match get_type_params h with
-  | None -> xs
-  | Some n -> let l1,l2 = (List.cut xs (n)) in
-              l1 @ (List.init (n-1) (fun _ -> {elt=P_Wild;pos=None})) @ l2
-
-and get_type_params p =
-    match p.elt with
-    | P_Iden(qid,true) ->
-        if !stt then
-          StrMap.find_opt (snd (qid.elt)) (StrMap.add "el" 1 !tvs_map)
-        else None
-    | _ -> None
 
 (** Translation of commands. *)
 
