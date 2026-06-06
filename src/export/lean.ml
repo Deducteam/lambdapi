@@ -199,7 +199,6 @@ let print : string -> ast -> unit = fun file s ->
   match handle_requires s with
   | None -> ()
   | Some c ->
-  (* Option.iter (fun s -> string oc ("open "^s^"\n")) !require; *)
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
   Option.iter
@@ -213,4 +212,4 @@ let print : string -> ast -> unit = fun file s ->
   string oc "set_option linter.unusedVariables false\n";
   string oc "set_option linter.style.longLine false\n\n";
   command oc c;
-  commands oc s;
+  commands oc s
