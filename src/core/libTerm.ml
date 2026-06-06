@@ -175,11 +175,12 @@ let fold (x:var) (t:term): term -> term =
       match unfold u with
       | Appl(a,b) -> mk_Appl(aux a, aux b)
       | Abst(a,b) ->
-          let x,b = Term.unbind b in mk_Abst(aux a, Term.bind_var x b)
+          let x,b = Term.unbind b in mk_Abst(aux a, Term.bind_var x (aux b))
       | Prod(a,b) ->
-          let x,b = Term.unbind b in mk_Prod(aux a, Term.bind_var x b)
+          let x,b = Term.unbind b in mk_Prod(aux a, Term.bind_var x (aux b))
       | LLet(a,d,b) ->
-          let x,b = Term.unbind b in mk_LLet(aux a, aux d, Term.bind_var x b)
+          let x,b = Term.unbind b in
+          mk_LLet(aux a, aux d, Term.bind_var x (aux b))
       | Meta(m,us) -> mk_Meta(m,Array.map aux us)
       | _ -> u
   in

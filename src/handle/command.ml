@@ -9,7 +9,7 @@ open Proof
 open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
-type compiler = Path.t -> Sign.t
+type compiler = sig_state -> Path.t -> Sign.t
 
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
@@ -94,7 +94,7 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
     else
       begin
         (* Compile [p] (this adds it to [Sign.loaded]). *)
-        let sign = compile p in
+        let sign = compile ss p in
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
@@ -284,15 +284,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
-          Builtin.check ss pos n s;
-          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-          (Sig_state.add_builtin ss n s, None, None)
-      end
+      Builtin.check ss pos n s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
@@ -505,7 +499,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Build proof data. *)
-    let pdata =
+    let pdata, qres =
       (* Type of the symbol. *)
       let t, a =
         match a with
@@ -533,10 +527,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             | Some (t,a) -> Some (Pos.make pos t), a
       in
       (* Get tactics and proof end. *)
-      let pdata_proof, pe =
+      let pdata_proof, pe, qres =
         match p_sym_prf with
-        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end
-        | Some (ts, pe) -> ts, pe
+        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end, None
+        | Some (ts, pe) -> ts, pe, Some (fun () -> "OK")
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
@@ -585,27 +579,30 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = add_goals_of_problem p [] in
-        if p_sym_def then
-          (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p a 0 in
-          let g = Goal.of_meta m in
-          let ps = {proof_name = p_sym_nam; proof_term = Some m;
-                    proof_goals = g :: proof_goals} in
-          match pt, t with
-          | Some pt, Some t ->
-              let gt = match g with Typ gt -> gt | _ -> assert false in
-              Tactic.tac_refine ~check:false pt.pos ps gt proof_goals p t.elt
-          | _, _ -> Tactic.tac_solve pos ps
-        else
-          let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
-          Tactic.tac_solve pos ps
+        let ps =
+          if p_sym_def then
+            (* Add a new focused goal for the definition. *)
+            let m = LibMeta.fresh p a 0 in
+            let proof_goals =
+              match t with
+              | Some t ->
+                  (* Refine the focused goal with the given term. *)
+                  LibMeta.set p m (bind_mvar [||] t.elt);
+                  proof_goals
+              | _ -> Goal.of_meta m :: proof_goals
+            in
+            {proof_name = p_sym_nam; proof_term = Some m; proof_goals}
+          else
+            {proof_name = p_sym_nam; proof_term = None; proof_goals}
+        in
+        Tactic.tac_solve pos ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
-      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
+      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in
-      (ss, Some pdata, None)
+      (ss, Some pdata, qres)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -631,16 +628,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+(** [handle compile ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
-    {!module:Tactic} The function [compile_mod] is used to compile required
+    {!module:Tactic} The function [compile] is used to compile required
     modules recursively. *)
 let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
-  fun compile_mod ss cmd ->
+  fun compile ss cmd ->
   LibMeta.reset_meta_counter ();
-  (* We provide the compilation function to the handle commands, so that
+  (* We provide the compilation function to the handle command, so that
      "require" is able to compile files. *)
-  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  let (ss, p, _) = get_proof_data compile ss cmd in
   match p with
   | None -> ss
   | Some d ->

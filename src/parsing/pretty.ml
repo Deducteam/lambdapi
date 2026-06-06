@@ -125,7 +125,7 @@ let rec term : p_term pp = fun ppf t ->
       match ts with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf ".[%a]" (Array.pp func "; ") ts
+      | Some ts -> out ppf ".[%a]" (Array.pp func ";") ts
     in
     match (t.elt, priority) with
     | (P_Type              , _    ) -> out ppf "TYPE"

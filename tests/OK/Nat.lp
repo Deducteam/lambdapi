@@ -88,7 +88,7 @@ expnMn : (m1 * m2) ^ n = ... The operands of other operators are selected
 using the l/r suffixes.
 */
 
-require open tests.OK.Set tests.OK.Prop tests.OK.FOL tests.OK.Eq tests.OK.Bool;
+require open tests.OK.Bool;
 
 inductive ℕ : TYPE ≔
 | _0 : ℕ
@@ -133,7 +133,7 @@ with ($x +1) ∸1 ↪ $x;
 
 opaque symbol +1_inj [x y] : π (x +1 = y +1) → π (x = y) ≔
 begin
-  assume x y h; refine feq (∸1) h
+  assume x y h; apply feq (∸1) h
 end;
 
 // boolean equality on ℕ
@@ -329,7 +329,7 @@ begin
   }
   { assume x h; induction
     { refine s≠0 }
-    { assume y i j; apply h y; apply +1_inj; apply +1_inj; refine j }
+    { assume y i j; apply h y; apply +1_inj; apply +1_inj; apply j }
   }
 end;
 
@@ -614,7 +614,7 @@ begin
   };
 end;
 
-// order on ℕ
+// Boolean ordering functions
 
 symbol ≤ : ℕ → ℕ → 𝔹; notation ≤ infix left 10;
 
@@ -833,10 +833,6 @@ begin
   }
 end;
 
-opaque symbol ltn_neqAle m n : π (istrue (m < n) ⇔ istrue (m ≤ n) ∧ (m ≠ n)) ≔
-begin
-abort;
-
 opaque symbol leq_add0 m n :
   π (istrue (_0 ≤ m)) → π (istrue (_0 ≤ n)) → π (istrue (_0 ≤ m + n)) ≔
 begin
@@ -847,11 +843,11 @@ opaque symbol leq_add2l p m n : π (istrue (p + m ≤ p + n) ⇔ istrue (m ≤ n
 begin
   assume p m n; apply ∧ᵢ {
     generalize p; induction
-    { assume m n h; refine h }
+    { assume m n h; apply h }
     { assume p h m n i; apply h m n i }
   } {
     generalize p; induction
-    { assume m n h; refine h }
+    { assume m n h; apply h }
     { assume p h m n i; apply h m n i }
   }; 
 end;
@@ -954,7 +950,7 @@ begin
         have t: π (istrue (m < n)) { apply h n j };
         have u: π (istrue (m +1 < n +1))
                   { refine ∧ₑ₂ (ltn_add2r (_0 +1) m n) t };
-        rewrite left addn1 m; rewrite left addn1 n; refine u;
+        rewrite left addn1 m; rewrite left addn1 n; apply u;
       }
     }
   } {
@@ -983,12 +979,12 @@ begin
   assume m n p; apply ∧ᵢ
   { assume h;
     have t: π (((m - (n + p)) = _0)) → π (istrue (m ≤ (n + p)))
-      { refine ∧ₑ₁ (subn_eq0 m (n + p)) };
+      { apply ∧ₑ₁ (subn_eq0 m (n + p)) };
     apply t; rewrite subnDA; apply ∧ₑ₂ (subn_eq0 (m - n) p) h;
   }
   { assume h;
     have t: π (((m - n) - p) = _0) → π (istrue ((m - n) ≤ p))
-      { refine ∧ₑ₁ (subn_eq0 (m - n) p) };
+      { apply ∧ₑ₁ (subn_eq0 (m - n) p) };
     apply t; rewrite left subnDA; apply ∧ₑ₂ (subn_eq0 m (n + p)) h;
   };
 end;
@@ -1008,7 +1004,7 @@ begin
   induction
   { assume n; apply eq_refl n }
   { assume m h; induction
-    { reflexivity }
+    { apply eq_refl (m +1) }
     { assume n i; simplify; apply feq (+1); apply h n }
   }
 end;
@@ -1194,16 +1190,6 @@ opaque symbol leq_maxr m n : π (istrue (n ≤ max m n)) ≔
 begin
   assume m n; rewrite maxnC m n; apply leq_maxl n m;
 end;
-
-opaque symbol gtn_max m n1 n2 :
-  π (istrue (m > max n1 n2) ⇔ istrue (m > n1) ∧ istrue (m > n2)) ≔
-begin
-abort;
-
-opaque symbol geq_max m n1 n2 :
-  π (istrue (m ≥ max n1 n2) ⇔ istrue (m ≥ n1) ∧ istrue (m ≥ n2)) ≔
-begin
-abort;
 
 opaque symbol ltn_predK m n : π (istrue (m < n)) → π (n ∸1 +1 = n) ≔
 begin
@@ -1464,10 +1450,6 @@ begin
     }
   }
 end;
-
-opaque symbol minnE m n : π (min m n = m - (m - n)) ≔
-begin
-abort;
 
 opaque symbol minnn x : π (min x x = x) ≔
 begin
@@ -1747,15 +1729,6 @@ begin
   reflexivity;
 end;
 
-opaque symbol expn_gt0 m n :
-  π ((istrue (_0 < m ^ n)) ⇔ istrue (_0 < m) ∨ (n = _0)) ≔
-begin
-abort;
-
-opaque symbol ltn_expl m n : π (istrue ((_0 +1) < m)) → π (istrue (n < m ^ n)) ≔
-begin
-abort;
-
 // factorial
 
 symbol ! : ℕ → ℕ; notation ! postfix 40;
@@ -1793,6 +1766,11 @@ begin
   { assume n h; rewrite factS n; apply leq_pmulr (n +1) (n !) (fact_gt0 n) }
 end;
 
+// enable printing of natural numbers in decimal notation
+
+builtin "nat_zero" ≔ _0;
+builtin "nat_succ" ≔ +1;
+
 // shortcuts
 
 symbol _1 ≔ _0 +1;
@@ -1805,13 +1783,6 @@ symbol _7 ≔ _6 +1;
 symbol _8 ≔ _7 +1;
 symbol _9 ≔ _8 +1;
 symbol _10 ≔ _9 +1;
-
-// enable printing of natural numbers in decimal notation
-
-builtin "nat_zero" ≔ _0;
-builtin "nat_succ" ≔ +1;
-
-compute _2 + _2;
 
 // enable parsing of natural numbers in decimal notation
 
@@ -1829,5 +1800,3 @@ builtin "10" ≔ _10;
 
 builtin "+" ≔ +;
 builtin "*" ≔ *;
-
-type 42;

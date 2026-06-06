@@ -85,9 +85,9 @@ let to_terms : env -> term array = fun env ->
 (** [to_ctxt e] converts an environment into a context. *)
 let to_ctxt : env -> ctxt = List.map snd
 
-(** [match_prod c t f] returns [f a None b] if [t] matches [Prod(a,b)],
-    and [f a d b] if [t] matches [LLet(a,d,b)], possibly after reduction.
-@raise [Invalid_argument] if the whnf of [t] is not a product. *)
+(** [match_prod c t f] returns [f a None b] if [t] matches [Prod(a,b)], and [f
+    a d b] if [t] matches [LLet(a,d,b)], possibly after reduction. Raises
+    [Invalid_argument] if the whnf of [t] is not a product. *)
 let match_prod : ctxt -> term -> (term -> term option -> binder -> 'a) -> 'a
   = fun c t f ->
   match unfold t with
@@ -131,10 +131,9 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   in build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
-   Array.length xs] except that it replaces unbound variables by those of
-   [xs].
-@raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
-   [n] products. *)
+    Array.length xs] except that it replaces unbound variables by those of
+    [xs]. Raises [Invalid_argument] if [t] does not evaluate to a series of
+    (at least) [n] products. *)
 let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
   let n = Array.length xs in
   let rec build_env i env t =

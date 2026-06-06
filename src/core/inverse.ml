@@ -50,8 +50,7 @@ let const_graph : sym -> (sym * sym) list = fun s ->
 let const_graph : sym -> (sym * sym) list = cache const_graph
 
 (** [inverse_const s s'] returns [s0] if [s] has a rule of the form [s (s0
-   ...) ↪ s' ...].
-@raise [Not_found] otherwise. *)
+   ...) ↪ s' ...]. Raises [Not_found] otherwise. *)
 let inverse_const : sym -> sym -> sym = fun s s' ->
   fst (List.find (fun (_,s1) -> s1 == s') (const_graph s))
 
@@ -99,7 +98,7 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
 let prod_graph : sym -> (sym * sym * sym * bool) list = cache prod_graph
 
 (** [inverse s v] tries to compute a term [u] such that [s(u)] reduces to [v].
-@raise [Not_found] otherwise. *)
+Raises [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
   if Logger.log_enabled () then log "compute %a⁻¹(%a)" sym s term v;
   match get_args v with

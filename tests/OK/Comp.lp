@@ -2,8 +2,7 @@
 
 By Quentin Garchery (May 2021). */
 
-require open tests.OK.Set tests.OK.Prop tests.OK.FOL tests.OK.Eq
-  tests.OK.Bool;
+require open tests.OK.Bool;
 
 inductive Comp : TYPE ≔
 | Eq : Comp
@@ -50,17 +49,17 @@ with isGe Gt ↪ true;
 
 // Discriminate constructors
 
-symbol Lt≠Eq : π (Lt ≠ Eq) ≔
+opaque symbol Lt≠Eq : π (Lt ≠ Eq) ≔
 begin
   assume h; refine ind_eq h (λ n, istrue(isEq n)) ⊤ᵢ
 end;
 
-symbol Gt≠Eq : π (Gt ≠ Eq) ≔
+opaque symbol Gt≠Eq : π (Gt ≠ Eq) ≔
 begin
   assume h; refine ind_eq h (λ n, istrue(isEq n)) ⊤ᵢ
 end;
 
-symbol Gt≠Lt : π (Gt ≠ Lt) ≔
+opaque symbol Gt≠Lt : π (Gt ≠ Lt) ≔
 begin
   assume h; refine ind_eq h (λ n, istrue(isLt n)) ⊤ᵢ
 end;
@@ -73,7 +72,7 @@ rule opp Eq ↪ Eq
 with opp Lt ↪ Gt
 with opp Gt ↪ Lt;
 
-symbol opp_idem c : π (opp (opp c) = c) ≔
+opaque symbol opp_idem c : π (opp (opp c) = c) ≔
 begin
   induction { reflexivity; } { reflexivity; } { reflexivity; }
 end;
