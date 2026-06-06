@@ -2,17 +2,15 @@
 
 There are two modes:
 
-- raw_coq mode (option -o raw_coq): translation of the AST as it is
-  (lambdapi-calculus is a subset system of coq if we ignore rules)
+- raw_coq: translation of the AST as it is (the lambda-pi-calculus is a
+  subsystem of Rocq if we ignore rules).
 
-- stt_coq mode (option -o stt_coq): translation of the AST as an encoding in
-  simple type theory.
+- stt_coq: translation of the AST as an encoding in simple type theory. The
+  encoding can be specified through a lambdapi file with the option
+  --encoding.
 
-  The encoding can be specified through a lambdapi file (option --encoding).
-
-In both modes, a renaming map can be provided to rename some identifiers.
-
-The renaming map can be specified through a lambdapi file (option --renaming).
+In both modes, a renaming map can be provided with the option --renaming to
+rename some identifiers.
 *)
 
 open Lplib open Extra
