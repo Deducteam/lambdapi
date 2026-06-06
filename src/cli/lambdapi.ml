@@ -206,7 +206,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
         Option.iter Export.Stt.set_renaming renaming;
         Option.iter Export.Stt.set_encoding encoding;
         Option.iter Export.Stt.set_mapping mapping;
-        Option.iter Export.Stt.read_val arities;
+        Option.iter Export.Stt.set_tvs_map arities;
         Option.iter Export.Stt.set_requiring requiring;
         Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
