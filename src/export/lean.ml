@@ -48,7 +48,8 @@ let rec term oc t =
     string oc " := "; term oc u; string oc " in "; term oc v
   | P_Wrap u -> term oc u
   | P_Appl _ ->
-      let default h ts = paren oc h; char oc ' '; list paren " " oc (prep_list ts h) in
+      let default h ts =
+        paren oc h; char oc ' '; list paren " " oc (prep_list ts h) in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
@@ -89,7 +90,7 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ -> char oc '{'; raw_params oc x; char oc '}'; 
+  | true, _ -> char oc '{'; raw_params oc x; char oc '}';
                if !stt then add_nonempty oc x
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')';
                if !stt then add_nonempty oc x
@@ -111,19 +112,22 @@ and add_nonempty oc (ids,t,_) =
   let pos = None in
     let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
       if t = Some _Set then
-        List.iter (fun id -> string oc " [Nonempty " ; param_id oc id ; char oc ']') ids
+        List.iter
+          (fun id -> string oc " [Nonempty " ; param_id oc id ; char oc ']')
+          ids
 
 and prep_list xs h =
-  match get_type_params h with 
+  match get_type_params h with
   | None -> xs
   | Some n -> let l1,l2 = (List.cut xs (n)) in
               l1 @ (List.init (n-1) (fun _ -> {elt=P_Wild;pos=None})) @ l2
 
-and get_type_params p = 
+and get_type_params p =
     match p.elt with
     | P_Iden(qid,true) ->
-        if !stt then StrMap.find_opt (snd (qid.elt)) (StrMap.add "el" 1 !tvs_map) 
-                else None
+        if !stt then
+          StrMap.find_opt (snd (qid.elt)) (StrMap.add "el" 1 !tvs_map)
+        else None
     | _ -> None
 
 (** Translation of commands. *)
@@ -210,13 +214,15 @@ let print : string -> ast -> unit = fun file s ->
   (* Option.iter (fun s -> string oc ("open "^s^"\n")) !require; *)
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
-  Option.iter (fun s -> string oc (try (Filename.chop_extension s)^"." with Invalid_argument _ -> "")) !require ;
+  Option.iter
+    (fun s -> string oc
+                (try (Filename.chop_extension s)^"."
+                 with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
   string oc "\n\n";
   (*debugging options*)
   string oc "set_option linter.style.missingEnd false\n";
   string oc "set_option linter.unusedVariables false\n";
   string oc "set_option linter.style.longLine false\n\n";
-  (**)
   command oc c;
   commands oc s;
