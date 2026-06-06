@@ -89,6 +89,16 @@ let set_mapping : string -> unit = fun f ->
   in
   Stream.iter consume (Parser.parse_file f)
 
+(** Map from symbol name to number of type variables (>0). A symbol with no
+    entry is not polymorphic (arity =0). *)
+
+let tvs_map : (int StrMap.t ref) = ref StrMap.empty
+
+let set_tvs_map (fname:string): unit =
+  let ic = open_in_bin fname in
+  tvs_map := StrMap.add "el" 1 (input_value ic);
+  close_in ic
+
 (** Set encoding. *)
 
 let map_qid_builtin = ref QidMap.empty

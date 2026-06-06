@@ -170,7 +170,7 @@ type output =
 
 (** Running the export mode. *)
 let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
-      (mapping:string option) (renaming:string option)
+      (mapping:string option) (renaming:string option) (arities:string option)
       (requiring:string option) (no_implicits:bool) (use_notations:bool)
       (file:string) : unit =
   let run _ =
@@ -206,6 +206,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
         Option.iter Export.Stt.set_renaming renaming;
         Option.iter Export.Stt.set_encoding encoding;
         Option.iter Export.Stt.set_mapping mapping;
+        Option.iter Export.Stt.set_tvs_map arities;
         Option.iter Export.Stt.set_requiring requiring;
         Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
@@ -365,6 +366,15 @@ let mapping : string option CLT.t =
   let doc = "Set config file for the command export -o stt_[coq|lean]." in
   Arg.(value & opt (some mapping) None & info ["mapping"] ~docv:"FILE" ~doc)
 
+let arities : string option CLT.t =
+  let mapping : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
+  Arg.(value & opt (some mapping) None & info ["arities"] ~docv:"FILE" ~doc)
+
 let requiring : string option CLT.t =
   let requiring : string Arg.conv =
     let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
@@ -454,7 +464,8 @@ let export_cmd =
   let doc = "Translate the given files to other formats." in
   Cmd.v (Cmd.info "export" ~doc ~man:man_pkg_file)
     CLT.(const export_cmd $ Config.full $ output $ encoding $ mapping
-         $ renaming $ requiring $ no_implicits $ use_notations $ file)
+         $ renaming $ arities $ requiring $ no_implicits $ use_notations
+         $ file)
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in

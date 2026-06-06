@@ -20,6 +20,16 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
+let typ_arity h =
+  match h.elt with
+  | P_Iden({elt=(_,sym_name);_},true) when !stt ->
+      begin
+        match StrMap.find_opt sym_name !tvs_map with
+        | None -> 0
+        | Some n -> n
+      end
+  | _ -> 0
+
 (** Translation of terms. *)
 
 let rec term oc t =
@@ -48,7 +58,16 @@ let rec term oc t =
     string oc " := "; term oc u; string oc " in "; term oc v
   | P_Wrap u -> term oc u
   | P_Appl _ ->
-      let default h ts = paren oc h; char oc ' '; list paren " " oc ts in
+      let default h ts =
+        paren oc h; char oc ' ';
+        let ts =
+          let n = typ_arity h in
+          if n <= 0 then ts else
+            let l1,l2 = List.cut ts n in
+            l1 @ List.init (n-1) (fun _ -> P.wild) @ l2
+        in
+        list paren " " oc ts
+      in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
@@ -59,12 +78,12 @@ let rec term oc t =
             -> prod oc xs u
           | _, _, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
           | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
-              string oc "exists "; raw_params oc x; string oc ", "; term oc u
+              string oc "∃ "; raw_params oc x; string oc ", "; term oc u
           | true, _, Eq, [_;u;v]
           | true, true, Eq, [u;v] -> paren oc u; string oc " = "; paren oc v
-          | true, _, Or, [u;v] -> paren oc u; string oc " \\/ "; paren oc v
-          | true, _, And, [u;v] ->  paren oc u; string oc " /\\ "; paren oc v
-          | true, _, Not, [u] -> string oc "~ "; paren oc u
+          | true, _, Or, [u;v] -> paren oc u; string oc " ∨ "; paren oc v
+          | true, _, And, [u;v] ->  paren oc u; string oc " ∧ "; paren oc v
+          | true, _, Not, [u] -> string oc "¬ "; paren oc u
           | _ -> default h ts)
 
 and arrow oc u v = paren oc u; string oc " -> "; term oc v
@@ -89,9 +108,16 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ -> char oc '{'; raw_params oc x; char oc '}'
-  | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
+  | true, _ ->
+      char oc '{'; raw_params oc x; char oc '}';
+      if !stt && t = None then List.iter (nonempty_param oc) ids
+  | false, Some _ ->
+      char oc '('; raw_params oc x; char oc ')';
+      if !stt && t = None then List.iter (nonempty_param oc) ids
   | false, None -> param_ids oc ids
+
+and nonempty_param oc id =
+  string oc " [Nonempty "; param_id oc id; char oc ']'
 
 (* starts with a space if the list is not empty *)
 and params_list oc = List.iter (prefix " " params oc)
@@ -123,30 +149,17 @@ let command oc {elt; pos} =
         | _ -> () (*FIXME?*)
       end
   | P_require_as _ -> wrn pos "Command not translated."
-  | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
-      p_sym_trm; p_sym_prf=_; p_sym_def } ->
+  | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
+               p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
-        let p_sym_arg =
-          if !stt then
-            let pos = None in
-            (* Parameters with no type are assumed to be of type [Set]. *)
-            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
-            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
-              p_sym_arg
-          else p_sym_arg
-        in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
-            (* If they have a type, opaque or private defined symbols are
-               translated as Lemma's so that their definition is loaded in
-               memory only when it is necessary. *)
             string oc "theorem "; ident oc p_sym_nam;
             params_list oc p_sym_arg; string oc " : "; term oc a;
-            string oc " := "; term oc t; string oc "\n"
+            string oc " := by apply "; term oc t; string oc "\n"
           | true, Some t, _, _ ->
             if List.exists is_opaq p_sym_mod then string oc "opaque "
-            else string oc "noncomputable def ";
+            else string oc "@[reducible]\nnoncomputable def ";
             ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t; string oc "\n"
@@ -186,10 +199,17 @@ let print : string -> ast -> unit = fun file s ->
   match handle_requires s with
   | None -> ()
   | Some c ->
-  Option.iter (fun s -> string oc ("open "^s^"\n")) !require;
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
+  Option.iter
+    (fun s -> string oc
+                (try (Filename.chop_extension s)^"."
+                 with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
   string oc "\n\n";
+  (*debugging options*)
+  string oc "set_option linter.style.missingEnd false\n";
+  string oc "set_option linter.unusedVariables false\n";
+  string oc "set_option linter.style.longLine false\n\n";
   command oc c;
   commands oc s
