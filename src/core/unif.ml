@@ -83,11 +83,13 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
   try
     let rhs =
       let start = add_args (mk_Symb equiv) [s;t] in
-      let reduced = Eval.whnf c start in
-      if reduced != start then reduced else
-        let start = add_args (mk_Symb equiv) [t;s] in
-        let reduced = Eval.whnf c start in
-        if reduced != start then reduced else raise No_match
+      match Eval.whnf_opt c start with
+      | Some r -> r
+      | None ->
+          let start = add_args (mk_Symb equiv) [t;s] in
+          match Eval.whnf_opt c start with
+          | Some r -> r
+          | None -> raise No_match
     in
     (* Refine generated unification problems to replace holes. *)
     let sanitise (c, t, u) =
