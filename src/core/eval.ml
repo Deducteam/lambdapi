@@ -203,8 +203,7 @@ let depth = Stdlib.ref 0
 let rec whnf : config -> term -> term = fun cfg t ->
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk cfg t [] in
-  let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
-  r
+  if Stdlib.(!steps) <> n then add_args u stk else unfold t
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
@@ -538,8 +537,8 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
   fun ?tags c a b ->
   Timed.pure_test (fun (c,a,b) -> eq_modulo ?tags c a b) (c,a,b)
 
-(** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
-   context [c], and using user-defined rewrite rules if [~rewrite]. *)
+(** [whnf_opt ?tags c t] returns [None] if [t] is in whnf, and [Some u] where
+    [u] is some whnf of [t] otherwise. *)
 let whnf_opt : term option reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
