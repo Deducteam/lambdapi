@@ -546,13 +546,11 @@ commands :ref:`notation` and :ref:`builtin`.
 ``unif_rule``
 -----------------
 
-The unification engine can be guided using
-*unification rules*. Given a unification problem ``t ≡ u``, if the
-engine cannot find a solution, it will try to match the pattern
-``t ≡ u`` against the defined rules (modulo commutativity of ≡)
-and rewrite the problem to the
-right-hand side of the matched rule. Variables of the RHS that do
-not appear in the LHS are replaced by fresh metavariables on rule application.
+The unification engine can be guided by *unification rules* of the
+form ``t ≡ u ↪ [t₁ ≡ u₁; …; tₙ ≡ uₙ]``. The unification engine tries
+to rewrite unsolvable unification problems with user-defined
+unification rules (modulo commutativity of ≡). Variables of the RHS
+that do not appear in the LHS are replaced by fresh metavariables.
 
 Examples:
 

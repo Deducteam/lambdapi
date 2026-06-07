@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
+- Weak head normal form test.
 
 ## 3.0.0 (2025-07-16)
 

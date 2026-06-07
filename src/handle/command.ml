@@ -329,10 +329,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let r = scope_rule true ss h in
-      Sign.add_rule ss.signature r;
+      let (s,r1) as x = scope_rule true ss h in
+      let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
+      let r2 = {r1 with lhs} in
+      Sign.add_rules ss.signature s [r1;r2];
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
