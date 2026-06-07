@@ -76,19 +76,35 @@ let add_constr : problem -> constr -> unit = fun p c ->
 
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
-let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
-  if Logger.log_enabled () then log "check unif_rules";
+let try_unif_rules : problem -> ctxt -> term -> term -> bool =
+  fun p c s t ->
   let exception No_match in
   let open Unif_rule in
   try
     let rhs =
       let start = add_args (mk_Symb equiv) [s;t] in
-      match Eval.whnf_opt c start with
-      | Some r -> r
+      if Logger.log_enabled() then log "check unif_rules %a" term start;
+      let start' =
+        if String.contains (Logger.get_activated_loggers()) 'u' then
+          Logger.log_in "wq" (Eval.whnf_opt c) start
+        else Eval.whnf_opt c start
+      in
+      match start' with
+      | Some r ->
+          if Logger.log_enabled() then log "reduced to: %a" term r;
+          r
       | None ->
           let start = add_args (mk_Symb equiv) [t;s] in
-          match Eval.whnf_opt c start with
-          | Some r -> r
+          if Logger.log_enabled() then log "check unif_rules %a" term start;
+          let start' =
+            if String.contains (Logger.get_activated_loggers()) 'u' then
+              Logger.log_in "wq" (Eval.whnf_opt c) start
+            else Eval.whnf_opt c start
+          in
+          match start' with
+          | Some r ->
+              if Logger.log_enabled() then log "reduced to: %a" term r;
+              r
           | None -> raise No_match
     in
     (* Refine generated unification problems to replace holes. *)
@@ -111,10 +127,10 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
           raise Unsolvable
     in
     let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
-    if Logger.log_enabled () then log "rewrites to: %a" constrs cs;
+    if Logger.log_enabled() then log "rewrites to: %a" constrs cs;
     true
   with No_match ->
-    if Logger.log_enabled () then log "found no unif_rule";
+    if Logger.log_enabled() then log "found no unif_rule";
     false
 
 (** [instantiable c m ts u] tells whether, in a problem [m[ts]=u], [m] can

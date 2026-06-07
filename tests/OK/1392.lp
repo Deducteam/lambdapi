@@ -63,8 +63,7 @@ begin
                 { simplify; assume h1 h2; apply ∧ᵢ h2 ⊤ᵢ}
                 { assume x l h1 h2; simplify sem; assume h3;
                   refine ∧ᵢ (∧ₑ₁ h3) _;
-print; // loop ...
-                  admit; // refine (∧ₑ₁ h2 (∧ₑ₂ h3));
+		  refine (∧ₑ₁ h2 (∧ₑ₂ h3));
                 };
               }
               { generalize l;
@@ -72,9 +71,7 @@ print; // loop ...
                 { simplify; assume h1 h2; apply ∧ₑ₁ h2}
                 { assume x l h1 h2; simplify sem; assume h3;
                   refine ∧ᵢ (∧ₑ₁ h3) _;
-print;
-// loop ...
-                  refine (∧ₑ₂ h2 (∧ₑ₂ h3));
+		  refine (∧ₑ₂ h2 (∧ₑ₂ h3));
                 };
               };
             };

@@ -14,6 +14,7 @@ type logger =
   ; logger_enabled : bool ref (** Is the log enabled? *)
   ; logger_pp : logger_pp (** Type of a logging function. *)
   }
+
 let cmp l1 l2 = Stdlib.compare l1.logger_key l2.logger_key
 
 (** [loggers] contains the registered logging functions. *)
@@ -71,11 +72,11 @@ let is_registered c =
 (** [set_debug value key] enables or disables the loggers corresponding to
    every character of [str] according to [value]. *)
 let set_debug value str =
-  let fn { logger_key; logger_enabled; _ } =
+  let f {logger_key; logger_enabled; _} =
     if String.contains str logger_key then logger_enabled := value
   in
-  List.iter fn Stdlib.(!loggers);
-  update_log_enabled ()
+  List.iter f Stdlib.(!loggers);
+  update_log_enabled()
 
 (** [default_loggers] lists the loggers enabled by default, in a string. *)
 let default_loggers = Stdlib.ref ""
@@ -100,14 +101,13 @@ let get_activated_loggers () =
 
 (** [reset_loggers ~default ()] resets the debug flags to those in default.
    Without the optional argument, use [!default_loggers] *)
-let reset_loggers ?(default=Stdlib.(! default_loggers)) () =
+let reset_loggers ?(default=Stdlib.(!default_loggers)) () =
   let default_value = String.contains default in
-
-  let fn { logger_key; logger_enabled; _ } =
+  let f {logger_key; logger_enabled; _} =
     logger_enabled := default_value logger_key
   in
-  List.iter fn Stdlib.(!loggers);
-  update_log_enabled ()
+  List.iter f Stdlib.(!loggers);
+  update_log_enabled()
 
 (** [log_summary ()] gives the keys and descriptions for logging options. *)
 let log_summary () =
@@ -120,3 +120,21 @@ let set_debug_in : bool -> char -> ('a -> 'b) -> 'a -> 'b = fun b c f x ->
   let s = String.make 1 c in
   set_debug b s;
   try let r = f x in set_debug v s; r with e -> set_debug v s; raise e
+
+(** [log_in d f x] sets loggers in [d] to [true] for evaluating [f x]. *)
+let log_in d f x =
+  let s = get_activated_loggers() in
+  set_debug true d;
+  try let y = f x in reset_loggers ~default:s (); y
+  with e -> reset_loggers ~default:s (); raise e
+
+(** [no_logging f x] deactivates logging while executing [f x]. *)
+let no_logging f x =
+  let s = get_activated_loggers() in
+  if String.contains s 'p' then f x
+  else
+    begin
+      reset_loggers ~default:"" ();
+      try let y = f x in reset_loggers ~default:s (); y
+      with e -> reset_loggers ~default:s (); raise e
+    end
