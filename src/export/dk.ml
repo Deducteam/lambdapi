@@ -169,7 +169,11 @@ let sym_decl_only : sym pp = fun ppf s ->
   out ppf "%s%s%a %a.@."
     (if s.sym_expo = Protec then "private " else "")
     (match s.sym_prop with
-     | AC _ -> "defac " | Injec -> "injective" | _ -> "")
+     | AC _ -> "defac "
+     | Injec -> "injective "
+     | Defin -> if s.sym_expo = Protec then "" else "def "
+     | Assoc _ | Commu -> assert false
+     | Const -> "")
     ident s.sym_name sym_type s
 
 let sym_decl : sym pp = fun ppf s ->

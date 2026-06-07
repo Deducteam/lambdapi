@@ -3,6 +3,7 @@
 open Lplib open Base open Extra
 open Timed
 open Core open Term open Print
+open Common
 
 type goal_typ =
   { goal_meta : meta  (** Goal metavariable. *)
@@ -80,7 +81,7 @@ let simpl : (ctxt -> term -> term) -> goal -> goal = fun f g ->
 let typ_or_def idmap ppf (ty,def) =
   let term = term_in idmap in
   match def with
-  | None -> out ppf ": %a" term (Eval.snf_beta ty)
+  | None -> out ppf ": %a" term (Logger.no_logging Eval.snf_beta ty)
   | Some u -> out ppf " ≔ %a" term u
 
 (** [ctxt_elt idmap ppf x] prints in [ppf] the context element [x]. *)
@@ -108,13 +109,10 @@ let hyps : int StrMap.t -> goal pp =
 (** [concl ppf g] prints on [ppf] the beta-normal form of the conclusion of
     the goal [g]. *)
 let concl : int StrMap.t -> goal pp = fun idmap ppf g ->
-  let term = term_in idmap in
+  let term ppf t = term_in idmap ppf (Logger.no_logging Eval.snf_beta t) in
   match g with
-  | Typ gt ->
-      out ppf "?%d: %a" gt.goal_meta.meta_key
-        term (Eval.snf_beta gt.goal_type)
-  | Unif (_, t, u) ->
-      out ppf "%a ≡ %a" term (Eval.snf_beta t) term (Eval.snf_beta u)
+  | Typ gt -> out ppf "?%d: %a" gt.goal_meta.meta_key term gt.goal_type
+  | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
 (** [pp ppf g] prints on [ppf] the beta-normal form of the goal [g] with its
     hypotheses. *)

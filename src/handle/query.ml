@@ -132,20 +132,20 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           | n -> out ppf "notation %a %a;@." sym s (notation float) n
         in
         (* Function to print rules. *)
-        let rules ppf s =
+        let rules sym_rule ppf s =
           match !(s.sym_rules) with
           | [] -> ()
           | r::rs ->
             let rule ppf r = sym_rule ppf (s,r) in
-            let with_rule ppf r = out ppf "@.with %a" rule r in
-            out ppf "rule %a%a;@." rule r (List.pp with_rule "") rs
+            let with_rule ppf r = out ppf "with %a@." rule r in
+            out ppf "rule %a%a;" rule r (List.pp with_rule "") rs
         in
         (* Function to print a symbol declaration. *)
         let decl ppf s =
           out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
             expo s.sym_expo prop s.sym_prop
             match_strat s.sym_mstrat sym s sym_type s
-            def !(s.sym_def) notation s rules s
+            def !(s.sym_def) notation s (rules sym_rule) s
         in
         (* Function to print constructors and the induction principle if [qid]
            is an inductive type. *)
@@ -162,7 +162,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             decl ppf ind.ind_prop
           with Not_found -> ()
         in
-        if s == Unif_rule.equiv || s == Coercion.coerce then rules ppf s
+        if s == Unif_rule.equiv then
+          let sym_rule ppf r =
+            out ppf "%a ↪ [%a]" term (lhs r) term (rhs r) in
+          rules sym_rule ppf s
+        else if s == Coercion.coerce then rules sym_rule ppf s
         else (decl ppf s; ind ppf s)
       in
       return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)

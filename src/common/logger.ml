@@ -14,12 +14,13 @@ type logger =
   ; logger_enabled : bool ref (** Is the log enabled? *)
   ; logger_pp : logger_pp (** Type of a logging function. *)
   }
+
 let cmp l1 l2 = Stdlib.compare l1.logger_key l2.logger_key
 
 (** [loggers] contains the registered logging functions. *)
-let loggers : logger list Stdlib.ref = Stdlib.ref []
+let loggers : logger list Stdlib.ref = ref []
 
-let add_logger l = Stdlib.(loggers := Lplib.List.insert cmp l !loggers)
+let add_logger l = loggers := Lplib.List.insert cmp l !loggers
 
 (** [log_enabled] is the cached result of whether there exists an enabled
    logging function. Its main use is to guard logging operations to avoid
@@ -28,7 +29,7 @@ let _log_enabled = ref false
 let log_enabled () = !_log_enabled
 let update_log_enabled () =
   _log_enabled :=
-    List.exists (fun logger -> !(logger.logger_enabled)) Stdlib.(!loggers)
+    List.exists (fun logger -> !(logger.logger_enabled)) !loggers
 
 (** [make key name desc] registers a new logger and returns its pp. *)
 let make logger_key logger_name logger_desc =
@@ -43,15 +44,15 @@ let make logger_key logger_name logger_desc =
     if logger_name = data.logger_name then
       invalid_arg "Logger.make: name is already used"
   in
-  List.iter check Stdlib.(!loggers);
+  List.iter check !loggers;
 
   let logger_enabled = ref false in
 
   (* Actual printing function. *)
   let pp fmt =
-    Color.update_with_color Stdlib.(!Error.err_fmt);
+    Color.update_with_color !Error.err_fmt;
     let out = Format.(if !logger_enabled then fprintf else ifprintf) in
-    out Stdlib.(!Error.err_fmt) (Color.cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
+    out !Error.err_fmt (Color.cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
       logger_name
   in
 
@@ -66,57 +67,68 @@ let make logger_key logger_name logger_desc =
 
 (** Check that [c] is a registered key. *)
 let is_registered c =
-  List.exists (fun {logger_key;_} -> logger_key = c) Stdlib.(!loggers)
+  List.exists (fun {logger_key;_} -> logger_key = c) !loggers
 
 (** [set_debug value key] enables or disables the loggers corresponding to
    every character of [str] according to [value]. *)
 let set_debug value str =
-  let fn { logger_key; logger_enabled; _ } =
+  let f {logger_key; logger_enabled; _} =
     if String.contains str logger_key then logger_enabled := value
   in
-  List.iter fn Stdlib.(!loggers);
-  update_log_enabled ()
+  List.iter f !loggers;
+  update_log_enabled()
 
 (** [default_loggers] lists the loggers enabled by default, in a string. *)
 let default_loggers = Stdlib.ref ""
 
 (** [set_default_debug str] declares the debug flags of [str] to be enabled by
    default. *)
-let set_default_debug str =
-  Stdlib.(default_loggers := str);
-  set_debug true str
+let set_default_debug str = default_loggers := str; set_debug true str
 
 (** [get_activated_loggers ()] fetches the list of activated loggers,
       listed in a string *)
 let get_activated_loggers () =
-  Stdlib.(!loggers)
-  |> List.filter_map
-    (fun logger ->
-       if !(logger.logger_enabled) then
-         Some (String.make 1 logger.logger_key)
-       else
-         None)
-  |> String.concat ""
+  if !_log_enabled then
+    !loggers
+    |> List.filter_map
+      (fun logger ->
+         if !(logger.logger_enabled) then
+           Some (String.make 1 logger.logger_key)
+         else
+           None)
+    |> String.concat ""
+  else ""
 
 (** [reset_loggers ~default ()] resets the debug flags to those in default.
    Without the optional argument, use [!default_loggers] *)
-let reset_loggers ?(default=Stdlib.(! default_loggers)) () =
+let reset_loggers ?(default=(!default_loggers)) () =
   let default_value = String.contains default in
-
-  let fn { logger_key; logger_enabled; _ } =
+  let f {logger_key; logger_enabled; _} =
     logger_enabled := default_value logger_key
   in
-  List.iter fn Stdlib.(!loggers);
-  update_log_enabled ()
+  List.iter f !loggers;
+  update_log_enabled()
 
 (** [log_summary ()] gives the keys and descriptions for logging options. *)
 let log_summary () =
-  List.map (fun d -> (d.logger_key, d.logger_desc)) Stdlib.(!loggers)
+  List.map (fun d -> (d.logger_key, d.logger_desc)) !loggers
 
-(** [set_debug_in b c f x] sets [c] logger to [b] for evaluating [f x]. *)
-let set_debug_in : bool -> char -> ('a -> 'b) -> 'a -> 'b = fun b c f x ->
-  let is_activated = String.contains (get_activated_loggers()) in
-  let v = is_activated c in
-  let s = String.make 1 c in
-  set_debug b s;
-  try let r = f x in set_debug v s; r with e -> set_debug v s; raise e
+(** [log_in d f x] sets loggers in [d] to [true] for evaluating [f x]. *)
+let log_in d f x =
+  let s = get_activated_loggers() in
+  set_debug true d;
+  try let y = f x in reset_loggers ~default:s (); y
+  with e -> reset_loggers ~default:s (); raise e
+
+(** [no_logging f x] deactivates logging while executing [f x]. *)
+let no_logging f x =
+  if !_log_enabled then
+    let s = get_activated_loggers() in
+    if String.contains s 'p' then f x
+    else
+      begin
+        reset_loggers ~default:"" ();
+        try let y = f x in reset_loggers ~default:s (); y
+        with e -> reset_loggers ~default:s (); raise e
+      end
+  else f x
