@@ -336,9 +336,9 @@ let read =
   let open Stdlib in let r = ref Ghost.sign in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
-(** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
-    does not correspond to a symbol of signature [sign], it is stored in its
-    dependencies. /!\ does not update the decision tree or the critical
+(** [add_rule sign (s,r)] adds the new rule [r] to the symbol [s]. When the
+    rule does not correspond to a symbol of signature [sign], it is stored in
+    its dependencies. /!\ does not update the decision tree or the critical
     pairs. *)
 let add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
   s.sym_rules := !(s.sym_rules) @ [r];
