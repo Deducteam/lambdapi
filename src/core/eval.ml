@@ -222,8 +222,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   | LLet(_,t,u), stk ->
     Stdlib.incr steps; whnf_stk cfg (subst u t) stk
   | (Symb s as h, stk) as r ->
-    begin
-    match Timed.(!(s.sym_def)) with
+    begin match Timed.(!(s.sym_def)) with
       (* The invariant that defined symbols are subject to no
          rewriting rules is false during indexing for websearch;
          that's the reason for the when in the next line *)
