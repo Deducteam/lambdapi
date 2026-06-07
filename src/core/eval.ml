@@ -227,8 +227,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
          rewriting rules is false during indexing for websearch;
          that's the reason for the when in the next line *)
     | Some t when Tree_type.is_empty (cfg.dtree s) ->
-        if Timed.(!(s.sym_opaq)) || not cfg.Config.expand_defs then r
-        else (Stdlib.incr steps; whnf_stk cfg t stk)
+      if Timed.(!(s.sym_opaq)) || not cfg.Config.expand_defs then r
+      else (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
