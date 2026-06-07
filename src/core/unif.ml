@@ -74,10 +74,11 @@ let add_constr : problem -> constr -> unit = fun p c ->
   if Logger.log_enabled () then log (Color.mag "add constraint %a") constr c;
   p := {!p with to_solve = c::!p.to_solve}
 
-(** [try_unif_rules p c s t] tries to simplify the unification problem [c
-   ⊢ s ≡ t] with the user-defined unification rules. *)
-let try_unif_rules : problem -> ctxt -> term -> term -> bool =
-  fun p c s t ->
+(** If [s ≡ t] or [t ≡ s] can be rewritten by a user-defined unification rule
+    to [t1 ≡ s1; ..; tn ≡ sn] then [try_unif_rules p c s t] adds these
+    constraints to the problem [p], plus contraints stating that ti and si
+    have the same type, and returns [true]. Otherwise, it returns [false]. *)
+let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
   let exception No_match in
   let open Unif_rule in
   try
@@ -91,8 +92,7 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
       in
       match start' with
       | Some r ->
-          if Logger.log_enabled() then log "reduced to: %a" term r;
-          r
+          if Logger.log_enabled() then log "reduced to: %a" term r; r
       | None ->
           let start = add_args (mk_Symb equiv) [t;s] in
           if Logger.log_enabled() then log "check unif_rules %a" term start;
@@ -103,8 +103,7 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
           in
           match start' with
           | Some r ->
-              if Logger.log_enabled() then log "reduced to: %a" term r;
-              r
+              if Logger.log_enabled() then log "reduced to: %a" term r; r
           | None -> raise No_match
     in
     (* Refine generated unification problems to replace holes. *)
@@ -201,7 +200,8 @@ let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
   fun p c t1 t2 ->
   if Eval.pure_eq_modulo c t1 t2 then
     (if Logger.log_enabled () then log "equivalent terms")
-  else if not (try_unif_rules p c t1 t2) then
+  else if !(Unif_rule.equiv.sym_dtree) == Tree_type.empty_dtree
+          || not (try_unif_rules p c t1 t2) then
     (if Logger.log_enabled () then log "move to unsolved";
      p := {!p with unsolved = (c,t1,t2)::!p.unsolved})
 
@@ -351,7 +351,8 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
   match inverse_opt s ts1 t2 with
   | Some (t, u) -> add_constr p (c,t,u)
   | _ ->
-      if not (try_unif_rules p c t1 t2) then
+      if !(Unif_rule.equiv.sym_dtree) == Tree_type.empty_dtree
+         || not (try_unif_rules p c t1 t2) then
         match unfold t2 with
         | Prod _ when is_constant s -> error c t1 t2
         | _ ->
