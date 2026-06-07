@@ -547,10 +547,14 @@ commands :ref:`notation` and :ref:`builtin`.
 -----------------
 
 The unification engine can be guided by *unification rules* of the
-form ``t ≡ u ↪ [t₁ ≡ u₁; …; tₙ ≡ uₙ]``. The unification engine tries
-to rewrite unsolvable unification problems with user-defined
-unification rules (modulo commutativity of ≡). Variables of the RHS
-that do not appear in the LHS are replaced by fresh metavariables.
+form ``t ≡ u ↪ [t₁ ≡ u₁; …; tₙ ≡ uₙ]``. When a unification problem ``t
+≡ u`` cannot be solved with the default unification algorithm, the
+unification engine tries to rewrite that problem with one of the
+user-defined unification rules (modulo commutativity of ≡). If it
+succeeds to rewrite it to ``[t₁ ≡ u₁; …; tₙ ≡ uₙ]``, then the
+unification engine replaces ``t ≡ u`` by ``[t₁ ≡ u₁; …; tₙ ≡ uₙ]``,
+and tries to solve those new unification problems. Variables of the
+RHS that do not appear in the LHS are replaced by fresh metavariables.
 
 Examples:
 
