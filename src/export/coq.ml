@@ -23,6 +23,17 @@ open Core
 let log = Logger.make 'x' "xprt" "export"
 let log = log.pp
 
+(** Valid Rocq identifiers. *)
+
+let is_valid_first_letter =
+  function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
+let is_valid_letter =
+  function 'a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '\'' -> true | _ -> false
+let is_valid_rocq_id s =
+  s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
+let check {elt;pos} =
+  if not (is_valid_rocq_id elt) then fatal pos "invalid Rocq identifier"
+
 (** Symbols necessary to encode STT. *)
 
 type builtin =
@@ -70,11 +81,13 @@ let sym b = builtin.(index_of_builtin b)
 
 let rmap = ref StrMap.empty
 
+let add_renaming id1 id2 = check id2; rmap := StrMap.add id1 id2.elt !rmap
+
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(coq_id,{elt=([],lp_id);_});_} ->
+    | {elt=P_builtin(coq_id,{elt=([],lp_id);_});pos} ->
         if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
-        rmap := StrMap.add lp_id coq_id !rmap
+        add_renaming lp_id {elt=coq_id;pos}
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -90,7 +103,7 @@ let map_erased_qid_coq = ref QidMap.empty
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(coq_id,lp_qid);_} ->
+    | {elt=P_builtin(coq_id,lp_qid);pos} ->
         if Logger.log_enabled() then
           log "rename %a into %s" Pretty.qident lp_qid coq_id;
         let id = snd lp_qid.elt in
@@ -98,8 +111,8 @@ let set_mapping : string -> unit = fun f ->
         erase := StrSet.add id !erase;
         map_erased_qid_coq :=
           QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
-        if fst lp_qid.elt = [] && id <> coq_id then
-          rmap := StrMap.add id coq_id !rmap
+        if fst lp_qid.elt = [] && id <> coq_id
+        then add_renaming id {elt=coq_id;pos};
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -153,13 +166,14 @@ let list elt sep oc xs =
 
 (** Translation of identifiers. *)
 
-let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found ->
-    if StrMap.exists (fun _ id' -> s = id') !rmap then s ^ "__alt__" else s
+let translate_ident : strloc -> string = fun ({elt=s;_} as id) ->
+  try StrMap.find s !rmap
+  with Not_found ->
+    check id;
+    if StrMap.exists (fun _ id2 -> s = id2) !rmap then s ^ "__alt__"
+    else s
 
-let raw_ident oc s = string oc (translate_ident s)
-
-let ident oc {elt;_} = raw_ident oc elt
+let ident oc s = string oc (translate_ident s)
 
 let param_id oc idopt =
   match idopt with
@@ -168,14 +182,13 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let raw_path = list string "."
+let path_elt pos oc s = check {elt=s;pos}; string oc s
 
-let path oc {elt;_} = raw_path oc elt
+let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
-let qident oc {elt=(mp,s);_} =
-  match mp with
-  | [] -> raw_ident oc s
-  | _::_ -> raw_path oc mp; char oc '.'; raw_ident oc s
+let qident oc {elt=(mp,s);pos} =
+  if mp <> [] then (path oc {elt=mp;pos}; char oc '.');
+  ident oc {elt=s;pos}
 
 (** Translation of terms. *)
 
