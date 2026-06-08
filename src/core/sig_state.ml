@@ -126,23 +126,23 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%s." Path.pp mp s
+          try Sign.find sign s
+          with Not_found -> fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
     | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
-          if mp <> ss.signature.sign_path then
-            if not (Path.Map.mem mp !(ss.signature.sign_deps)) then
-              fatal pos "No module %a required." Path.pp mp;
+          if mp <> ss.signature.sign_path
+             && not (Path.Map.mem mp !(ss.signature.sign_deps))
+          then fatal pos "No module %a required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%s." Path.pp mp s
+          try Sign.find sign s
+          with Not_found -> fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
   in
   match (prt, prv, s.sym_expo) with

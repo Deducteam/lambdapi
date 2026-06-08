@@ -57,6 +57,8 @@ do
         683|650|573|565|430);;
         # nested module name
         require_nondkmident);;
+        # module alias
+        alias);;
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change);;
         # "open"

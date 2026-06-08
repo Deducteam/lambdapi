@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
 - Syntactical errors in Dedukti export.
 - Weak head normal form test.
+- Handling of module aliases.
 
 ## 3.0.0 (2025-07-16)
 
