@@ -115,7 +115,7 @@ specification.
 
 ::
 
-  search "spine >= (nat → nat) with hyp >= bool";
+  search spine >= (nat → nat) with hyp >= bool;
 
 .. _type:
 
