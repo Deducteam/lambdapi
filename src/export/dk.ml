@@ -2,7 +2,7 @@
 
 open Lplib open Base open Extra
 open Timed
-open Common
+open Common open Escape open Error
 open Core open Term
 
 (** Translation of identifiers. Lambdapi identifiers that are Dedukti keywords
@@ -64,20 +64,34 @@ let is_mident : string -> bool = fun s ->
   done;
   to_string b*)
 
+(* convert a Lambdapi id into a Dedukti id *)
 let ident : string pp = fun ppf s ->
   string ppf
-    (if s = "" then Escape.escape s
-     else if s.[0] = '{' then s
-     else if is_keyword s then Escape.escape s
+    (if s = "" then escape s
+     else if s.[0] = '{' then
+       begin
+         let s' = unescape s in
+         if Parsing.LpLexer.is_keyword s' then
+           if is_keyword s' then s else s'
+         else s
+       end
+     else if is_keyword s then escape s
      else if is_ident s then s
-     else Escape.escape s)
+     else escape s)
 
-(** Translation of paths. Paths equal to the [!current_path] are not
-   printed. Non-empty paths end with a dot. We assume that the module p1.p2.p3
-   is in the file p1_p2_p3.dk. *)
-
-let path_elt : string pp = fun ppf s ->
-  string ppf (if Escape.is_escaped s then Escape.unescape s else s)
+let mident: string pp = fun ppf s ->
+  let exception Invalid in
+  try
+    string ppf
+      (if s = "" then raise Invalid
+       else if s.[0] = '{' then
+         begin
+           let s' = unescape s in
+           if Parsing.LpLexer.is_keyword s' then s' else raise Invalid
+         end
+       else if is_mident s then s
+       else raise Invalid)
+  with Invalid -> fatal_no_pos "invalid Dedukti module name \"%s\"" s
 
 let current_path = Stdlib.ref []
 
@@ -85,7 +99,7 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p -> out ppf "%s." (List.last p)
+  | p -> out ppf "%a." mident (List.last p)
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i

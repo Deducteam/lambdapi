@@ -92,6 +92,8 @@ let keywords = Extra.StrSet.of_list [
     "why3";
     "with"]
 
+let is_keyword s = Extra.StrSet.mem s keywords
+
 (** Tokens. *)
 type token =
   (* end of file *)
@@ -249,7 +251,7 @@ let escape s = if is_regid s then s else Escape.escape s
    unescape form. *)
 let check_escape : lexbuf -> string -> string = fun lb s ->
   let s' = Escape.unescape s in
-  if is_regid s' && not (Extra.StrSet.mem s' keywords)
+  if is_regid s' && not (is_keyword s')
   then fail lb "Escaped regular identifier"
   else s
 
