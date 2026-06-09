@@ -82,15 +82,20 @@ let sym b = builtin.(index_of_builtin b)
 let rmap = ref StrMap.empty
 let codom = ref StrSet.empty
 
-let add_renaming id1 id2 =
-  rmap := StrMap.add id1 id2.elt !rmap;
-  codom := StrSet.add id2.elt !codom
+let add_renaming pos s1 s2 =
+  let f = function
+    | None -> Some s2
+    | Some s2' ->
+      fatal pos "\"%s\" renamed to both \"%s\" and \"%s\"" s1 s2' s2
+  in
+  rmap := StrMap.update s1 f !rmap;
+  codom := StrSet.add s2 !codom
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
     | {elt=P_builtin(coq_id,{elt=([],lp_id);_});pos} ->
         if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
-        add_renaming lp_id {elt=coq_id;pos}
+        add_renaming pos lp_id coq_id
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -115,7 +120,7 @@ let set_mapping : string -> unit = fun f ->
         map_erased_qid_coq :=
           QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
         if fst lp_qid.elt = [] && id <> coq_id
-        then add_renaming id {elt=coq_id;pos};
+        then add_renaming pos id coq_id
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
