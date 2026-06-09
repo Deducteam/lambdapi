@@ -80,8 +80,11 @@ let sym b = builtin.(index_of_builtin b)
 (** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
+let codom = ref StrSet.empty
 
-let add_renaming id1 id2 = rmap := StrMap.add id1 id2.elt !rmap
+let add_renaming id1 id2 =
+  rmap := StrMap.add id1 id2.elt !rmap;
+  codom := StrSet.add id2.elt !codom
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
@@ -168,10 +171,7 @@ let list elt sep oc xs =
 
 let translate_ident : strloc -> string = fun ({elt=s;_} as id) ->
   try StrMap.find s !rmap
-  with Not_found ->
-    check id;
-    if StrMap.exists (fun _ id2 -> s = id2) !rmap then s ^ "__alt__"
-    else s
+  with Not_found -> if StrSet.mem s !codom then s^"_alt_" else (check id; s)
 
 let ident oc s = string oc (translate_ident s)
 
