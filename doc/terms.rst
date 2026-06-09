@@ -9,13 +9,10 @@ An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
   UTF-8 codepoints not among ``\t\r\n :,;`(){}[]".@$|?/`` that is not
-  an integer number
+  a space, a tabulation, a newline, an integer or a keyword
 
-* an *escaped* identifier: an arbitrary sequence of characters
-  enclosed between ``{|`` and ``|}``
-
-**Remark:** for any regular identifier ``i``, ``{|i|}`` and ``i`` are
-identified.
+* an *escaped* identifier: an arbitrary sequence of characters that is
+  not a regular identifier enclosed between ``{|`` and ``|}``
 
 **Convention:** identifiers starting with an uppercase letter denote
 types (e.g.  ``Nat``, ``List``), and identifiers starting with a

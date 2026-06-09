@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
 - Replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms.
 - Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
+- Syntax: forbid escaping regular identifiers that are not keywords.
 
 ### Fixed
 
