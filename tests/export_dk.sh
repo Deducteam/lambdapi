@@ -52,6 +52,8 @@ do
         *) translate $f.lp;;
     esac
 done
+# remove when Dedukti 2.8 will be released
+rm -f require_symbol.dk
 cd ../..
 
 check() {
