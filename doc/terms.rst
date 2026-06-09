@@ -8,14 +8,12 @@ Identifiers
 An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
-  UTF-8 codepoints not among ``\t\r\n :,;`(){}[]".@$|?/`` that is not
-  an integer number
+  UTF8 characters distinct from ``\t\r\n :,;`(){}[]".@$|?/``, a space,
+  a tabulation, a newline or an integer (except for meta or pattern
+  variable names)
 
 * an *escaped* identifier: an arbitrary sequence of characters
   enclosed between ``{|`` and ``|}``
-
-**Remark:** for any regular identifier ``i``, ``{|i|}`` and ``i`` are
-identified.
 
 **Convention:** identifiers starting with an uppercase letter denote
 types (e.g.  ``Nat``, ``List``), and identifiers starting with a
