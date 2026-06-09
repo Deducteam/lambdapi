@@ -85,7 +85,7 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p -> out ppf "%s." (List.hd (List.rev p))
+  | p -> out ppf "%s." (List.last p)
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
