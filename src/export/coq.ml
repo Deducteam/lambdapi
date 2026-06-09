@@ -23,7 +23,7 @@ open Core
 let log = Logger.make 'x' "xprt" "export"
 let log = log.pp
 
-(** Valid Rocq identifiers. *)
+(** Valid Rocq identifiers (excluding unicode characters). *)
 
 let is_valid_first_letter =
   function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
@@ -81,7 +81,7 @@ let sym b = builtin.(index_of_builtin b)
 
 let rmap = ref StrMap.empty
 
-let add_renaming id1 id2 = check id2; rmap := StrMap.add id1 id2.elt !rmap
+let add_renaming id1 id2 = rmap := StrMap.add id1 id2.elt !rmap
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
