@@ -9,7 +9,8 @@ An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
   UTF8 characters distinct from ``\t\r\n :,;`(){}[]".@$|?/``, a space,
-  a tabulation, a newline or an integer
+  a tabulation, a newline or a (signed) integer with no useless
+  leading ``0``
 
 * an *escaped* identifier: an arbitrary sequence of characters
   enclosed between ``{|`` and ``|}``
