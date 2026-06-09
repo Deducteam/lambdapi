@@ -8,9 +8,8 @@ Identifiers
 An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
-  UTF8 characters distinct from ``\t\r\n :,;`(){}[]".@$|?/``, a space,
-  a tabulation, a newline or a (signed) integer with no useless
-  leading ``0``
+  UTF8 characters not in ``\t\r\n :,;`(){}[]".@$|?/`` that is not a
+  (negative) decimal number
 
 * an *escaped* identifier: an arbitrary sequence of characters
   enclosed between ``{|`` and ``|}``
@@ -59,14 +58,15 @@ A user-defined term can be either:
 * an identifier wrapped in parentheses to access its notationless
   value (e.g. ``(+)``)
 
-* a metavariable application ``?k.[x₁;…;xₙ]`` where ``k`` is a decimal
+* a metavariable application ``?k.[t₁;…;tₙ]`` where ``k`` is a decimal
   number (with no useless leading ``0``) that has been generated
   previously. ``?k`` alone can be used as a short-hand for ``?k.[]``.
 
-* a pattern-variable application ``$P.[x;y]`` (in rules only) where
-  ``P`` is an identifier or a decimal number with no useless leading
-  ``0``. ``$P`` alone can be used as a shorthand for ``$P.[]``, except
-  under binders (to avoid mistakes).
+* a pattern-variable application ``$P.[t₁;…;tₙ]`` (in rules only)
+  where ``P`` is an identifier or a decimal number and, in left
+  hand-sides, ``t₁;…;tₙ`` are distinct bound variables. ``$P`` alone
+  can be used as a shorthand for ``$P.[]``, except under binders (to
+  avoid mistakes).
 
 * ``_`` for an unknown term or a term we don't care about.  It will be
   replaced by a fresh metavariable in terms, or a fresh pattern

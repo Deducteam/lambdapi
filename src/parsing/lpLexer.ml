@@ -135,13 +135,14 @@ type token =
 
 (** Some regexp definitions. *)
 let space = [%sedlex.regexp? Chars " \t\n\r"]
-let positive_digit = [%sedlex.regexp? '1' .. '9']
 let digit = [%sedlex.regexp? '0' .. '9']
-let nat = [%sedlex.regexp? '0' | positive_digit, Star digit]
+let nat = [%sedlex.regexp? Plus digit]
 let int = [%sedlex.regexp? nat | '-', nat]
-let float = [%sedlex.regexp? int, '.', Plus digit]
+let float = [%sedlex.regexp? int, '.', nat]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
+let positive_digit = [%sedlex.regexp? '1' .. '9']
+let strict_nat = [%sedlex.regexp? '0' | positive_digit, Star digit]
 
 (** Identifiers.
 
@@ -179,7 +180,7 @@ let escid = [%sedlex.regexp?
     "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
 let id = [%sedlex.regexp? regid | escid]
-let pid = [%sedlex.regexp? id | nat]
+let pid = [%sedlex.regexp? id | strict_nat]
 
 (** Lexer. *)
 let rec token lb =
