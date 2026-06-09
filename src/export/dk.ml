@@ -85,10 +85,7 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p ->
-      let m = Format.asprintf "%a" (List.pp path_elt "_") p in
-      let m = if is_mident m then m else Escape.escape m in
-      out ppf "%s." m
+  | p -> out ppf "%s." (List.last p)
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
