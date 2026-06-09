@@ -106,7 +106,8 @@ let parse_file :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_file fname);
     List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg, desc) -> List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
+  | Fatal(Some(Some(pos)), msg, desc) ->
+      List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
   | Fatal(Some(None)     , _ , _ ) -> assert false
   | Fatal(None           , _ , _ ) -> assert false
 

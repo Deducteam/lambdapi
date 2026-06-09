@@ -58,7 +58,7 @@ let do_check_text ofmt ~doc =
   let doc, diags =
     try
       Lp_doc.check_text ~doc
-    with Common.Error.Fatal(_pos, msg, cont) ->
+    with Common.Error.Fatal(_pos, msg, err_desc) ->
       let loc : Pos.pos =
         {
           fname = Some(doc.uri);
@@ -69,7 +69,7 @@ let do_check_text ofmt ~doc =
           end_col = 0;
           end_offset  = 0;
         } in
-      (doc, Lp_doc.mk_error ~doc loc (msg ^ "\n" ^ cont))
+      (doc, Lp_doc.mk_error ~doc loc (msg ^ "\n" ^ err_desc))
   in
   Hashtbl.replace doc_table doc.uri doc;
   Hashtbl.replace completed_table doc.uri doc;

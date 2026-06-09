@@ -52,11 +52,11 @@ let fatal_msg : 'a outfmt -> 'a =
     [err_desc] continues the error message and is printed in normal format
     instead of red color*)
 
-let fatal : Pos.popt -> ?cont:string -> ('a,'b) koutfmt -> 'a =
-  fun pos ?(cont="") fmt ->
-  let cont _ =
-    raise (Fatal(Some(pos), Format.flush_str_formatter (), cont)) in
-  Format.kfprintf cont Format.str_formatter fmt
+let fatal : Pos.popt -> ?err_desc:string -> ('a,'b) koutfmt -> 'a =
+  fun pos ?(err_desc="") fmt ->
+  let err_desc _ =
+    raise (Fatal(Some(pos), Format.flush_str_formatter (), err_desc)) in
+  Format.kfprintf err_desc Format.str_formatter fmt
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)

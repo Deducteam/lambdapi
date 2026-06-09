@@ -171,7 +171,7 @@ sig
   include Aux(struct
   type token = LpLexer.token
   let the_current_token = LpParser.the_current_token
-  let get_token x = LpLexer.token x
+  let get_token = LpLexer.token
   end)
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term

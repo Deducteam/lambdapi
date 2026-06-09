@@ -668,12 +668,12 @@ let rec handle :
   | P_tac_try tactic ->
       begin
         try handle ss sym_pos prv ps tactic
-        with Fatal(_, _s, _) -> ps
+        with Fatal _ -> ps
       end
   | P_tac_orelse(t1,t2) ->
       begin
         try handle ss sym_pos prv ps t1
-        with Fatal(_, _s, _) -> handle ss sym_pos prv ps t2
+        with Fatal _ -> handle ss sym_pos prv ps t2
       end
   | P_tac_repeat t ->
       begin
