@@ -57,7 +57,7 @@ constant symbol eqind : Π a x y, P (x = y) → Π p:T a → Prop, P (p y) → P
 constant symbol bot        : Prop;
 constant symbol top        : Prop;
 constant symbol imp        : Prop → Prop → Prop;
-constant symbol {|and|}    : Prop → Prop → Prop;
+constant symbol and    : Prop → Prop → Prop;
 constant symbol or         : Prop → Prop → Prop;
 constant symbol not        : Prop → Prop;
 
@@ -74,9 +74,9 @@ symbol bot_elim         : Π (p : Prop), P bot → P p;
 symbol excl_mid         : Π (p : Prop), P (or p (not p));
 
 // Intro and Elimination of and
-symbol and_intro        : Π (p : Prop) (q : Prop), P p → P q → P ({|and|} p q);
-symbol and_elim1        : Π (p : Prop) (q : Prop), P ({|and|} p q) → P p;
-symbol and_elim2        : Π (p : Prop) (q : Prop), P ({|and|} p q) → P q;
+symbol and_intro        : Π (p : Prop) (q : Prop), P p → P q → P (and p q);
+symbol and_elim1        : Π (p : Prop) (q : Prop), P (and p q) → P p;
+symbol and_elim2        : Π (p : Prop) (q : Prop), P (and p q) → P q;
 
 // Intro and Elimination of or
 symbol or_intro1        : Π (p : Prop) (q : Prop), P p → P (or p q);
@@ -110,7 +110,7 @@ builtin "refl"  ≔ refl;
 builtin "bot"   ≔ bot;
 builtin "top"   ≔ top;
 builtin "imp"   ≔ imp;
-builtin "and"   ≔ {|and|};
+builtin "and"   ≔ and;
 builtin "or"    ≔ or;
 builtin "not"   ≔ not;
 
@@ -118,5 +118,5 @@ constant symbol ex: Π (a : U), (T a → Prop) → Prop;
 builtin "ex" ≔ ex; 
 builtin "all" ≔ all;
 
-symbol eqv p q ≔ {|and|} (imp p q) (imp q p);
+symbol eqv p q ≔ and (imp p q) (imp q p);
 builtin "eqv" ≔ eqv;

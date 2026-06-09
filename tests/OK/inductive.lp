@@ -480,23 +480,23 @@ assert a p q pnode pnil pcons t l ⊢
 
 ////////////////// Type sum - test names between {|...|} too
 
-inductive {|sum|} : Set → Set → TYPE ≔
- | {|inl_sum|} : Π a b, τ a → {|sum|} a b
- | inr : Π a b, τ b → {|sum|} a b;
+inductive sum : Set → Set → TYPE ≔
+ | inl_sum : Π a b, τ a → sum a b
+ | inr : Π a b, τ b → sum a b;
 
-assert ⊢ {|sum|} : Set → Set → TYPE;
-assert ⊢ {|inl_sum|} : Π a b, τ a → {|sum|} a b;
-assert ⊢ inr : Π a b, τ b → {|sum|} a b;
+assert ⊢ sum : Set → Set → TYPE;
+assert ⊢ inl_sum : Π a b, τ a → sum a b;
+assert ⊢ inr : Π a b, τ b → sum a b;
 
-assert ⊢ {|ind_sum|} : Π p,
-(Π a b xa, π(p a b ({|inl_sum|} a b xa))) →
+assert ⊢ ind_sum : Π p,
+(Π a b xa, π(p a b (inl_sum a b xa))) →
 (Π a b xb, π(p a b (inr a b xb))) →
 Π a b s, π(p a b s);
 
 assert pS pinl pinr g d xg
-⊢ {|ind_sum|} pS pinl pinr g d ({|inl_sum|} g d xg) ≡ pinl g d xg;
+⊢ ind_sum pS pinl pinr g d (inl_sum g d xg) ≡ pinl g d xg;
 assert pS pinl pinr g d xd
-⊢ {|ind_sum|} pS pinl pinr g d (inr g d xd) ≡ pinr g d xd;
+⊢ ind_sum pS pinl pinr g d (inr g d xd) ≡ pinr g d xd;
 
 //////////////////// Vectors of natural numbers
 

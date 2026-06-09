@@ -1,5 +1,5 @@
 // Using private symbols in LHSs
-require tests.OK.{|262_parsing|} as D;
+require tests.OK.262_parsing as D;
 
 symbol f : D.A → D.A;
 

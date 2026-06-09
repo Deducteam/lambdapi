@@ -23,12 +23,12 @@ else
 fi
 
 # Escaped identifier with no rule
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|KIND|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.Escaped.{|symbol|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
-    ko 'tests.OK.Escaped.{|KIND|}'
+    ko 'tests.OK.Escaped.{|symbol|}'
 fi
 if [ -z "$out" ]; then
-    ok 'tests.OK.Escaped.{|KIND|}'
+    ok 'tests.OK.Escaped.{|symbol|}'
 fi
 
 # Escaped identifier with dots and no rule
@@ -41,11 +41,11 @@ if [ -z "$out" ]; then
 fi
 
 # Escaped identifier with rules
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|_set|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.Escaped.{|let|}' 2>/dev/null)"
 if [ "$?" = 1 ] || [ -z "$out" ]; then
-    ko 'tests.OK.Escaped.{|_set|}'
+    ko 'tests.OK.Escaped.{|let|}'
 else
-    ok 'tests.OK.Escaped.{|_set|}'
+    ok 'tests.OK.Escaped.{|let|}'
 fi
 
 # Ghost symbol

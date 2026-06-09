@@ -1,0 +1,1 @@
+symbol {|B|}:TYPE;
