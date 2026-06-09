@@ -18,11 +18,9 @@ let re_matches_sym_name re sym_name =
   true
  with Not_found -> false
 
-let name_of_sym s = (s.sym_path, s.sym_name)
+ let (@) = Lplib.List.(@)
 
-(* Tail recursive implementation of List.append for
-   OCaml < 5.1 *)
-let (@) l1 l2 = List.rev_append (List.rev l1) l2
+let name_of_sym s = (s.sym_path, s.sym_name)
 
 let dump_to ~filename i =
  let ch = open_out_bin filename in
