@@ -119,8 +119,7 @@ let set_mapping : string -> unit = fun f ->
         erase := StrSet.add id !erase;
         map_erased_qid_coq :=
           QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
-        if fst lp_qid.elt = [] && id <> coq_id
-        then add_renaming pos id coq_id
+        if fst lp_qid.elt = [] then add_renaming pos id coq_id
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
