@@ -11,11 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- `simplify` now fails if the goal cannot be simplified.
-- Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
-- Change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
-- Replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms.
-- Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
+- Tactic `simplify` now fails if the goal cannot be simplified.
+- Parser: change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
+- Tactic `eval`: Replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms. Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
+- Syntax: do not identify {|a|} with a when a is a regular identifier
+- LSP server: Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 
 ### Fixed
 
