@@ -31,8 +31,8 @@ let is_valid_letter =
   function 'a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '\'' -> true | _ -> false
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
-let check {elt;pos} =
-  if not (is_valid_rocq_id elt) then fatal pos "invalid Rocq identifier"
+let check pos s =
+  if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"
 
 (** Symbols necessary to encode STT. *)
 
@@ -173,9 +173,10 @@ let list elt sep oc xs =
 
 (** Translation of identifiers. *)
 
-let translate_ident : strloc -> string = fun ({elt=s;_} as id) ->
+let translate_ident : strloc -> string = fun {elt=s;pos} ->
   try StrMap.find s !rmap
-  with Not_found -> if StrSet.mem s !codom then s^"_alt_" else (check id; s)
+  with Not_found ->
+    if StrSet.mem s !codom then s^"__alt__" else (check pos s; s)
 
 let ident oc s = string oc (translate_ident s)
 
@@ -186,7 +187,7 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let path_elt pos oc s = check {elt=s;pos}; string oc s
+let path_elt pos oc s = check pos s; string oc s
 
 let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
