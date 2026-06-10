@@ -119,8 +119,6 @@ let lexing_opt (p:popt): Lexing.position =
   | None -> {pos_fname=""; pos_lnum=1; pos_bol=0; pos_cnum=0}
   | Some p -> lexing p
 
-
-
 (** Type constructor extending a type (e.g. a piece of abstract syntax) with a
     an optional source code position. *)
 type 'a loc =
