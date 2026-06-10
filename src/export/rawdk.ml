@@ -6,12 +6,9 @@ open Parsing open Syntax
 open Format
 open Core open Eval open Term
 
-let raw_ident : string pp = fun ppf s -> Dk.ident ppf s
+let ident : p_ident pp = fun ppf {elt;_} -> Dk.ident ppf elt
 
-let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
-
-let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
-  out ppf "%a%a" Dk.path mp raw_ident s
+let qident : p_qident pp = fun ppf {elt;_} -> Dk.qid ppf elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -200,7 +197,7 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   match elt with
   | P_query q -> query ppf q
   | P_require(None,ps) ->
-      List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.path elt) ps
+      List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.mident elt) ps
   | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
       let ms = partition_modifiers p_sym_mod in

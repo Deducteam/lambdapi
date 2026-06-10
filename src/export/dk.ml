@@ -72,26 +72,16 @@ let ident : string pp = fun ppf s ->
      else if is_ident s then s
      else Escape.escape s)
 
-(** Translation of paths. Paths equal to the [!current_path] are not
-   printed. Non-empty paths end with a dot. We assume that the module p1.p2.p3
-   is in the file p1_p2_p3.dk. *)
-
-let path_elt : string pp = fun ppf s ->
-  string ppf (if Escape.is_escaped s then Escape.unescape s else s)
-
 let current_path = Stdlib.ref []
 
-let path : Path.t pp = fun ppf p ->
-  if p <> Stdlib.(!current_path) then
-  match p with
-  | [] -> ()
-  | p ->
-      let m = Format.asprintf "%a" (List.pp path_elt "_") p in
-      let m = if is_mident m then m else Escape.escape m in
-      out ppf "%s." m
-
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
-  out ppf "%a%a" path p ident i
+  let qualif ppf p =
+    if p <> Stdlib.(!current_path) then
+      match p with
+      | [] -> ()
+      | p -> out ppf "%s." (List.last p)
+  in
+  out ppf "%a%a" qualif p ident i
 
 (** Type of Dedukti declarations. *)
 type decl =
@@ -169,7 +159,11 @@ let sym_decl_only : sym pp = fun ppf s ->
   out ppf "%s%s%a %a.@."
     (if s.sym_expo = Protec then "private " else "")
     (match s.sym_prop with
-     | AC _ -> "defac " | Injec -> "injective" | _ -> "")
+     | AC _ -> "defac "
+     | Injec -> "injective "
+     | Defin -> if s.sym_expo = Protec then "" else "def "
+     | Assoc _ | Commu -> assert false
+     | Const -> "")
     ident s.sym_name sym_type s
 
 let sym_decl : sym pp = fun ppf s ->
@@ -216,8 +210,14 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
 
 (** Translation of a signature. *)
 
+let mident : Path.t pp = fun ppf p ->
+  let n = List.last p in
+  if is_mident n then string ppf n
+  else Error.fatal_no_pos "\"%s\" is not a valid module name in Dedukti" n
+
 let require : Path.t -> _ -> unit = fun p _ ->
-  if p <> Sign.Ghost.path then Format.printf "#REQUIRE %a@." path p
+  if p <> Sign.Ghost.path then
+    out Format.std_formatter "#REQUIRE %a.\n" mident p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);
