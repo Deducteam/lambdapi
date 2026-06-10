@@ -30,6 +30,17 @@ let is_prefix : string -> string -> bool =
   let len_s = S.length s in
   len_p <= len_s && S.sub s 0 len_p = p
 
+let remove_prefix (prefix:string) (s:string): string =
+  if is_prefix prefix s then
+    let len_p = S.length prefix in
+    S.sub s len_p (S.length s - len_p)
+  else s
+
+let _ =
+  assert (remove_prefix "" "a" = "a");
+  assert (remove_prefix "a" "ba" = "ba");
+  assert (remove_prefix "a" "ab" = "b")
+
 let for_all : (char -> bool) -> string -> bool =
  fun p s ->
   let len_s = S.length s in
