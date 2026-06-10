@@ -116,9 +116,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
   | Some (lhs_with_metas, ty_lhs) ->
-  (* Try to simplify constraints. *)
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
+  (* Try to simplify constraints. *)
   let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
   let lhs_constrs = List.map norm_constr !p.unsolved in
   if Logger.log_enabled () then
@@ -127,19 +127,22 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       term lhs_with_metas term rhs_with_metas;
   (* Instantiate all uninstantiated metavariables by fresh symbols. *)
   (* map each symbol to its pattern index and arity *)
-  let map = Stdlib.ref SymMap.empty
-  (* map each meta to its symbol *)
+  let s2p = Stdlib.ref SymMap.empty
+  (* map each uninstantiated meta to a new fresh symbol *)
   and m2s = Stdlib.ref MetaMap.empty in
+  let sym_of_meta m =
+    let name = Pos.none @@ Printf.sprintf "#%d" m.meta_key in
+    Term.create_sym (Sign.current_path())
+      Privat Defin Eager false name None !(m.meta_type) []
+  in
   let instantiate m =
     match !(m.meta_value) with
     | Some _ -> assert false
     | None ->
-      let s =
-        let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
-        Term.create_sym (Sign.current_path())
-          Privat Defin Eager false name None !(m.meta_type) []
-      in
-      Stdlib.(map := SymMap.add s None !map; m2s := MetaMap.add m s !m2s);
+      let s = sym_of_meta m in
+      if Logger.log_enabled() then
+        log_subj "%a -> %s -> None" meta m s.sym_name;
+      Stdlib.(s2p := SymMap.add s None !s2p; m2s := MetaMap.add m s !m2s);
       let xs = Array.init m.meta_arity (new_var_ind "x") in
       let s = mk_Symb s in
       let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
@@ -147,13 +150,36 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   in
   MetaSet.iter instantiate !p.metas;
   (* For every [i], if the [i]-th meta is mapped to [s] in [m2s], then it has
-     not been instanciated and we map [s] to [i] and other data in [map]. *)
+     not been instantiated and we map [s] to [i] in [s2p]. *)
   let f i m =
     match MetaMap.find_opt m Stdlib.(!m2s) with
-    | Some s -> Stdlib.(map := SymMap.add s (Some i) !map)
+    | Some s ->
+      if Logger.log_enabled() then log_subj "%s -> Some %d" s.sym_name i;
+      Stdlib.(s2p := SymMap.add s (Some i) !s2p)
     | None -> ()
   in
   Array.iteri f metas;
+  (* map each pattern variable to a symbol if possible *)
+  (*Array.iteri
+    (fun i m -> if Logger.log_enabled() then log_subj "%d" i;
+      match !(m.meta_value) with
+      | None -> ()
+      | Some b ->
+          let ts = Array.init m.meta_arity
+              (fun i -> mk_Vari (new_var_ind "x" i)) in
+          let t = msubst b ts in
+          if Logger.log_enabled() then log_subj "%a" term t;
+          match unfold t with
+          | Symb s ->
+            if Stdlib.(SymMap.mem s !s2p) then
+            begin
+              if Logger.log_enabled() then
+                  log_subj "%s -> Some %d" s.sym_name i;
+                Stdlib.(s2p := SymMap.add s (Some i) !s2p)
+            end
+          | _ -> ()
+    )
+    metas;*)
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
@@ -165,7 +191,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   | None -> fatal pos "The RHS does not have the same type as the LHS."
   | Some rhs_with_metas ->
   if Logger.log_enabled () then
-    log_subj "rule after inference of LHS type:@ %a ↪ %a"
+    log_subj "rule after inference of RHS type:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
@@ -208,11 +234,11 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   if Logger.log_enabled () then
     log_subj "rule after checking that the RHS has the same type:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
-  (* Replace metavariable symbols by Patt's. Here, in [map], a meta is mapped
+  (* Replace metavariable symbols by Patt's. Here, in [s2p], a meta is mapped
      to [Some i] if it is the [i]-th meta and is uninstantiated, and [None]
      otherwise. *)
   try
-    let rhs = symb_to_patt pos Stdlib.(!map) names arities rhs_with_metas in
+    let rhs = symb_to_patt pos Stdlib.(!s2p) names arities rhs_with_metas in
     s, {r with rhs}
   with Meta_with_no_Patt n ->
     (* The symbol comes from a metavariable appearing in the type of a
