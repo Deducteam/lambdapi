@@ -9,7 +9,7 @@ open Proof
 open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
-type compiler = Path.t -> Sign.t
+type compiler = sig_state -> Path.t -> Sign.t
 
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
@@ -94,7 +94,7 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
     else
       begin
         (* Compile [p] (this adds it to [Sign.loaded]). *)
-        let sign = compile p in
+        let sign = compile ss p in
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
@@ -115,14 +115,10 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
 let handle_require_as :
       compiler -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss {elt=p;_} {elt=id;_} ->
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
-  else
-    begin
-      let ss = rec_require compile ss p in
-      let alias_path = StrMap.add id p ss.alias_path in
-      let path_alias = Path.Map.add p id ss.path_alias in
-      {ss with alias_path; path_alias}
-    end
+  let ss = rec_require compile ss p in
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_require compile bo ss p] handles the command [require p] with
     [compile] as compilation function (passed as argument to avoid cyclic
@@ -329,10 +325,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let r = scope_rule true ss h in
-      Sign.add_rule ss.signature r;
+      let (s,r1) as x = scope_rule true ss h in
+      let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
+      let r2 = {r1 with lhs} in
+      Sign.add_rules ss.signature s [r1;r2];
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
@@ -579,20 +578,23 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = add_goals_of_problem p [] in
-        if p_sym_def then
-          (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p a 0 in
-          let g = Goal.of_meta m in
-          let ps = {proof_name = p_sym_nam; proof_term = Some m;
-                    proof_goals = g :: proof_goals} in
-          match pt, t with
-          | Some pt, Some t ->
-              let gt = match g with Typ gt -> gt | _ -> assert false in
-              Tactic.tac_refine ~check:false pt.pos ps gt proof_goals p t.elt
-          | _, _ -> Tactic.tac_solve pos ps
-        else
-          let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
-          Tactic.tac_solve pos ps
+        let ps =
+          if p_sym_def then
+            (* Add a new focused goal for the definition. *)
+            let m = LibMeta.fresh p a 0 in
+            let proof_goals =
+              match t with
+              | Some t ->
+                  (* Refine the focused goal with the given term. *)
+                  LibMeta.set p m (bind_mvar [||] t.elt);
+                  proof_goals
+              | _ -> Goal.of_meta m :: proof_goals
+            in
+            {proof_name = p_sym_nam; proof_term = Some m; proof_goals}
+          else
+            {proof_name = p_sym_nam; proof_term = None; proof_goals}
+        in
+        Tactic.tac_solve pos ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
@@ -625,16 +627,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+(** [handle compile ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
-    {!module:Tactic} The function [compile_mod] is used to compile required
+    {!module:Tactic} The function [compile] is used to compile required
     modules recursively. *)
 let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
-  fun compile_mod ss cmd ->
+  fun compile ss cmd ->
   LibMeta.reset_meta_counter ();
-  (* We provide the compilation function to the handle commands, so that
+  (* We provide the compilation function to the handle command, so that
      "require" is able to compile files. *)
-  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  let (ss, p, _) = get_proof_data compile ss cmd in
   match p with
   | None -> ss
   | Some d ->

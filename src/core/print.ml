@@ -346,8 +346,15 @@ and atom idmap ppf t = pp `Atom idmap ppf t
 and appl idmap ppf t = pp `Appl idmap ppf t
 and func idmap ppf t = pp `Func idmap ppf t
 
-(* we cleanup terms to print non-dependent products are arrow types *)
-let term_in idmap ppf t = func idmap ppf (cleanup t)
+let term_in idmap ppf t =
+  let s = Logger.get_activated_loggers() in
+  if String.contains s 'p' then func idmap ppf t
+  else
+    begin
+      Logger.reset_loggers ~default:"" ();
+      try func idmap ppf t; Logger.reset_loggers ~default:s ()
+      with e -> Logger.reset_loggers ~default:s (); raise e
+    end
 
 let term = term_in StrMap.empty
 

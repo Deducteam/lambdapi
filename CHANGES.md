@@ -22,11 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `simplify` now fails if the goal cannot be simplified.
 - Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
-- Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
+- Change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
+- Replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms.
+- Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
 
 ### Fixed
 
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
+- Syntactical errors in Dedukti export.
+- Weak head normal form test.
+- Handling of module aliases.
 
 ## 3.0.0 (2025-07-16)
 

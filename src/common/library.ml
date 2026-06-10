@@ -242,3 +242,14 @@ let install_path : string -> string = fun fname ->
   match Stdlib.(!lib_root) with
   | None -> assert false
   | Some(p) -> List.fold_left Filename.concat p mp ^ ext
+
+(** Restore library mappings and console state after running [f x]. *)
+let restore_after f x =
+  let lm = Stdlib.ref !lib_mappings in
+  Console.State.push();
+  let restore() =
+    lib_mappings := Stdlib.(!lm);
+    Console.State.pop()
+  in
+  try let res = f x in restore(); res
+  with e -> restore(); raise e

@@ -340,6 +340,23 @@ let read =
   let open Stdlib in let r = ref Ghost.sign in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
+(** [add_rule sign (s,r)] adds the new rule [r] to the symbol [s]. When the
+    rule does not correspond to a symbol of signature [sign], it is stored in
+    its dependencies. /!\ does not update the decision tree or the critical
+    pairs. *)
+let _add_rule : t -> sym_rule -> unit = fun sign (s,r) ->
+  s.sym_rules := !(s.sym_rules) @ [r];
+  if s.sym_path <> sign.sign_path then
+    let d = try Path.Map.find s.sym_path !(sign.sign_deps)
+            with Not_found -> assert false in
+    let f = function
+      | None -> Some{rules=[r]; nota=None}
+      | Some sd -> Some{sd with rules=sd.rules@[r]}
+    in
+    let sm = StrMap.update s.sym_name f d.dep_symbols in
+    let d = {d with dep_symbols=sm} in
+    sign.sign_deps := Path.Map.add s.sym_path d !(sign.sign_deps)
+
 (** [add_rules sign s rs] adds the new rules [rs] to the symbol [s]. When the
     rules do not correspond to a symbol of signature [sign], they are stored
     in its dependencies. /!\ does not update the decision tree or the critical

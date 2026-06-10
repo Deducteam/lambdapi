@@ -20,16 +20,14 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let sig_state_of_require l =
+let sig_state_of_require l : Sig_state.sig_state =
  (* Search for a package from the current working directory. *)
  Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
+ let f ss req =
+    Core.Sig_state.of_sign (Compile.compile ss
+         (Parsing.Parser.path_of_string req)) in
  List.fold_left
-  (fun ss req ->
-    Handle.Command.handle Compile.compile ss
-     (Pos.none
-      (Parsing.Syntax.P_require
-        (Some false, [Pos.none (Parsing.Parser.path_of_string req)]))))
-  Core.Sig_state.dummy l
+  f Core.Sig_state.dummy l
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
@@ -194,7 +192,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
     Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     let sym =
       Timed.(Console.verbose := 0); (* To avoid printing "Checked ..." *)
-      let sign = Compile.compile mp in
+      let sign = Compile.compile Sig_state.dummy mp in
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)

@@ -21,10 +21,9 @@ reset_outdir() {
 reset_outdir
 
 translate() {
-    f=tests/OK/${1%.lp}
-    out=$outdir/`echo $f | sed -e 's/\//_/g'`
-    echo "$f.lp --> $out.dk ..."
-    $lambdapi export -w -v 0 -o dk $1 > $out.dk
+    out=$outdir/${1%.lp}.dk
+    echo "$1 --> $out ..."
+    $lambdapi export -w -v 0 -o dk $1 > $out
     if test $? -ne 0; then echo KO; exit 1; fi
 }
 
@@ -47,7 +46,7 @@ do
         # require escaped module name
         π/utf_path|escape_path|'a b/escape file'|require_nondkmident);;
         # use builtin strings
-        Tactic);;
+        Tactic|1374);;
         # default case
         *) translate $f.lp;;
     esac

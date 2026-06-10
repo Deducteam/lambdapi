@@ -153,8 +153,8 @@
          | <where> <relation> ["generalize"] <term>
          | "(" <search_query> ")"
 
-<conjunction> ::= <base> ("," <base>)*
+<conjunction> ::= <base> ("with" <base>)*
 
-<disjunction> ::= <conjunction> (";" <conjunction>)*
+<disjunction> ::= <conjunction> ("|" <conjunction>)*
 
-<search> ::= <disjunction> | <search> "|" <id>
+<search> ::= <disjunction> | <search> "in" <id>

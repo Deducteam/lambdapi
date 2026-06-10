@@ -85,10 +85,7 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p ->
-      let m = Format.asprintf "%a" (List.pp path_elt "_") p in
-      let m = if is_mident m then m else Escape.escape m in
-      out ppf "%s." m
+  | p -> out ppf "%s." (List.last p)
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
@@ -169,7 +166,11 @@ let sym_decl_only : sym pp = fun ppf s ->
   out ppf "%s%s%a %a.@."
     (if s.sym_expo = Protec then "private " else "")
     (match s.sym_prop with
-     | AC _ -> "defac " | Injec -> "injective" | _ -> "")
+     | AC _ -> "defac "
+     | Injec -> "injective "
+     | Defin -> if s.sym_expo = Protec then "" else "def "
+     | Assoc _ | Commu -> assert false
+     | Const -> "")
     ident s.sym_name sym_type s
 
 let sym_decl : sym pp = fun ppf s ->
