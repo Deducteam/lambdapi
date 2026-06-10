@@ -44,7 +44,7 @@ do
         indind);;
         why3*);;
         # require escaped module name
-        π/utf_path|escape_path|'a b/escape file'|require_nondkmident);;
+        π/utf_path|escape_path|'a b/escape file'|require_nondkmident|262_pair_ex_2|require_symbol);;
         # use builtin strings
         Tactic|1374);;
         # default case
