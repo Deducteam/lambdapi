@@ -1662,7 +1662,7 @@ and search (lb:lexbuf): search =
     (fun x qid ->
         let p,n = qid.elt in
         if p = [""] then
-            QFilter(x,RegExp (Str.regexp n))
+            QFilter(x,RegExp(n))
         else
             QFilter(x,Path(path_of_qid qid))) q qids
 

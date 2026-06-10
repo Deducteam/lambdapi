@@ -269,7 +269,7 @@ let op ppf o = string ppf (match o with Union -> "; " | Intersect -> ", ")
 let filter ppf f =
   match f with
   | Path s -> out ppf " | %s" s
-  | RegExp _ -> out ppf "(;%s;)@." "regular expression" (*FIXME?*)
+  | RegExp s -> out ppf "(;%s;)@." s (*FIXME?*)
 
 let rec search ppf = function
   | QBase b -> search_base ppf b

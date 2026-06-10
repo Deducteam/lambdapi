@@ -860,7 +860,7 @@ module QueryLanguage = struct
   let g ((p',_ as name),_) _ =
    match f with
     | Path p -> is_path_prefix p p'
-    | RegExp re -> re_matches_sym_name re name in
+    | RegExp s -> let re = Str.regexp s in re_matches_sym_name re name in
   ItemSet.filter g set
 
  let answer_query ~mok ss env =
