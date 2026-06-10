@@ -217,8 +217,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   with Meta_with_no_Patt n ->
     (* The symbol comes from a metavariable appearing in the type of a
        metavariable but corresponds to no pattern variable. *)
-    print_implicits_and_domains_in
-      (fatal pos "The rule obtained after typing is:@. %a ↪ %a@.\
-                  But %s cannot be deduced from the declared pattern \
-                  variables. You need to explicit it."
-      term lhs_with_metas term rhs_with_metas) n;
+    fatal pos "The rule obtained after typing is:@.%a@.↪ %a@.\
+               But %s cannot be deduced from the declared pattern \
+               variables.@.You need to explicit it."
+      term lhs_with_metas term rhs_with_metas n
+
+let check_rule p r = print_implicits_and_domains_in (check_rule p) r
