@@ -2,6 +2,8 @@
 
 open Lplib open Base
 
+let cur_dir = Filename.current_dir()
+
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
 type pos =
@@ -64,7 +66,11 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
     if print_fname then
       match fname with
       | None -> ""
-      | Some n -> (if print_dirname then n else Filename.basename n) ^ ":"
+      | Some n ->
+          (if print_dirname
+           then String.remove_prefix (cur_dir^Filename.dir_sep) n
+           else Filename.basename n)
+          ^ ":"
     else ""
   in
   if start_line <> end_line then
@@ -73,8 +79,6 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
     Printf.sprintf "%s%d:%d" fname start_line start_col
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
-
-
 
 (** Type of optional positions. *)
 type popt = pos option
@@ -159,14 +163,11 @@ let pp : popt pp = fun ppf p ->
 
 (** [short ppf pos] prints the optional position [pos] on [ppf]. *)
 let short : popt pp = fun ppf p ->
-  let print_fname=false in
-  string ppf (popt_to_string ~print_fname p)
+  string ppf (popt_to_string ~print_fname:false p)
 
 (** [pp_lexing ppf lps] prints the Lexing.position pair [lps] on [ppf]. *)
 let pp_lexing : (Lexing.position * Lexing.position) pp =
   fun ppf lps -> short ppf (Some (locate lps))
-
-
 
 (** [print_file_contents escape sep delimiters pos] prints the contents of the
     file at position [pos]. [sep] is the separator replacing each newline
