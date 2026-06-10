@@ -34,6 +34,8 @@ let build_meta_type : problem -> int -> term = fun p k ->
   done;
   !res
 
+exception Meta_with_no_Patt of string
+
 (** [symb_to_patt pos map names arities t] replaces in [t] every symbol [f]
     such that [SymMap.find f map = Some(i)] by [Patt(i,names.(i),_)]. *)
 let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
@@ -46,12 +48,7 @@ let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
       match h with
       | Symb(f) ->
         begin match SymMap.find_opt f map with
-          | Some None ->
-            (* A symbol may also come from a metavariable that appeared in the
-               type of a metavariable that was replaced by a symbol. We do not
-               have concrete examples of that happening yet. *)
-            fatal pos "Bug. Introduced symbol [%s] cannot be removed. \
-                       Please contact the developers." f.sym_name
+          | Some None -> raise (Meta_with_no_Patt f.sym_name)
           | Some(Some(i)) ->
             let (ts1, ts2) = List.cut ts arities.(i) in
             (mk_Patt (Some i, names.(i), Array.of_list ts1), ts2)
@@ -167,6 +164,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   match Infer.check_noexn p [] rhs_with_metas ty_lhs with
   | None -> fatal pos "The RHS does not have the same type as the LHS."
   | Some rhs_with_metas ->
+  if Logger.log_enabled () then
+    log_subj "rule after inference of LHS type:@ %a ↪ %a"
+      term lhs_with_metas term rhs_with_metas;
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
@@ -205,8 +205,20 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       List.iter (fatal_msg "Cannot solve %a@." constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
+  if Logger.log_enabled () then
+    log_subj "rule after checking that the RHS has the same type:@ %a ↪ %a"
+      term lhs_with_metas term rhs_with_metas;
   (* Replace metavariable symbols by Patt's. Here, in [map], a meta is mapped
      to [Some i] if it is the [i]-th meta and is uninstantiated, and [None]
      otherwise. *)
-  let rhs = symb_to_patt pos Stdlib.(!map) names arities rhs_with_metas in
-  s, {r with rhs}
+  try
+    let rhs = symb_to_patt pos Stdlib.(!map) names arities rhs_with_metas in
+    s, {r with rhs}
+  with Meta_with_no_Patt n ->
+    (* The symbol comes from a metavariable appearing in the type of a
+       metavariable but corresponds to no pattern variable. *)
+    print_implicits_and_domains_in
+      (fatal pos "The rule obtained after typing is:@. %a ↪ %a@.\
+                  But %s cannot be deduced from the declared pattern \
+                  variables. You need to explicit it."
+      term lhs_with_metas term rhs_with_metas) n;

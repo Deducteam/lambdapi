@@ -34,6 +34,12 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
+let print_implicits_and_domains_in f x =
+  let i = !print_implicits and d = !print_domains in
+  print_implicits := true; print_domains := true;
+  try let r = f x in print_implicits := i; print_domains := d; r
+  with e -> print_implicits := i; print_domains := d; raise e
+
 (*****************************************************************************
 printing functions
 *****************************************************************************)
