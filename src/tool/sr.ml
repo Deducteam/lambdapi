@@ -100,7 +100,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
             pattern variables are types and thus of sort KIND! *)
          LibMeta.fresh p (build_meta_type p arity) arity)
   in
-  (* Replace Patt's by Meta's. *)
+  (* Replace Patt's by Meta's of the same arity. *)
   let f m =
     let xs = Array.init m.meta_arity (new_var_ind "x") in
     let ts = Array.map mk_Vari xs in
@@ -126,7 +126,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       term ty_lhs constrs lhs_constrs
       term lhs_with_metas term rhs_with_metas;
   (* Instantiate all uninstantiated metavariables by fresh symbols. *)
-  (* map each symbol to its pattern index and arity *)
+  (* map each symbol to its pattern index *)
   let s2p = Stdlib.ref SymMap.empty
   (* map each uninstantiated meta to a new fresh symbol *)
   and m2s = Stdlib.ref MetaMap.empty in
@@ -141,8 +141,10 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
     | None ->
       let s = sym_of_meta m in
       if Logger.log_enabled() then
-        log_subj "%a -> %s -> None" meta m s.sym_name;
-      Stdlib.(s2p := SymMap.add s None !s2p; m2s := MetaMap.add m s !m2s);
+        log_subj "%a[%d] -> %s" meta m m.meta_arity s.sym_name;
+      (* We map s to None because we don't know if m is a meta associated to a
+         pattern variable yet. It will be updated in the next block. *)
+      Stdlib.(m2s := MetaMap.add m s !m2s; s2p := SymMap.add s None !s2p);
       let xs = Array.init m.meta_arity (new_var_ind "x") in
       let s = mk_Symb s in
       let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
@@ -151,35 +153,43 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   MetaSet.iter instantiate !p.metas;
   (* For every [i], if the [i]-th meta is mapped to [s] in [m2s], then it has
      not been instantiated and we map [s] to [i] in [s2p]. *)
+  if Logger.log_enabled() then log_subj "---";
   let f i m =
+    if Logger.log_enabled() then log_subj "%d" i;
     match MetaMap.find_opt m Stdlib.(!m2s) with
     | Some s ->
-      if Logger.log_enabled() then log_subj "%s -> Some %d" s.sym_name i;
+      if Logger.log_enabled() then log_subj "%s -> ?%d[%d]"
+          s.sym_name i m.meta_arity;
       Stdlib.(s2p := SymMap.add s (Some i) !s2p)
     | None -> ()
   in
   Array.iteri f metas;
-  (* map each pattern variable to a symbol if possible *)
-  (*Array.iteri
-    (fun i m -> if Logger.log_enabled() then log_subj "%d" i;
-      match !(m.meta_value) with
-      | None -> ()
-      | Some b ->
-          let ts = Array.init m.meta_arity
-              (fun i -> mk_Vari (new_var_ind "x" i)) in
-          let t = msubst b ts in
-          if Logger.log_enabled() then log_subj "%a" term t;
-          match unfold t with
-          | Symb s ->
-            if Stdlib.(SymMap.mem s !s2p) then
-            begin
-              if Logger.log_enabled() then
-                  log_subj "%s -> Some %d" s.sym_name i;
-                Stdlib.(s2p := SymMap.add s (Some i) !s2p)
-            end
+  (* If the meta associated to the pattern i is instantiated to another
+     meta/symbol s which is mapped to the pattern j, then we map s to i. *)
+  if Logger.log_enabled() then log_subj "---";
+  let f i m =
+    if Logger.log_enabled() then log_subj "%d" i;
+    match !(m.meta_value) with
+    | None -> ()
+    | Some b ->
+      let ts = Array.init m.meta_arity
+          (fun i -> mk_Vari (new_var_ind "x" i)) in
+      let t = msubst b ts in
+      if Logger.log_enabled() then log_subj "%a" term t;
+      match unfold t with
+      | Symb s ->
+        begin
+          match Stdlib.(SymMap.find_opt s !s2p) with
+          | Some None ->
+            if Logger.log_enabled() then
+              log_subj "%s[%d] -> ?%d[%d]"
+                s.sym_name m.meta_arity i arities.(i);
+            Stdlib.(s2p := SymMap.add s (Some i) !s2p)
           | _ -> ()
-    )
-    metas;*)
+        end
+      | _ -> ()
+  in
+  Array.iteri f metas;
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
