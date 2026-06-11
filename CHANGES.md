@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Syntax: do not identify {|a|} and a when a is a regular identifier anymore.
 - Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
 - LSP server: Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
+- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction)
 
 ### Fixed
 
