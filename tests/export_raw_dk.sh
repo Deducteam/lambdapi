@@ -37,8 +37,8 @@ do
         ac);;
         # unicode character in module name
         π/utf_path);;
-        # space in module name
-        escape_path|'tests/OK/a b/escape file');;
+        # invalid module name
+        escape_path|'tests/OK/a b/escape file'|require_symbol);;
         # protected symbol in rule LHS argument
         262_private_in_lhs);;
         # dedukti SR algorithm fails

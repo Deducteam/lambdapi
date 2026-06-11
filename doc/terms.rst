@@ -8,14 +8,11 @@ Identifiers
 An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
-  UTF-8 codepoints not among ``\t\r\n :,;`(){}[]".@$|?/`` that is not
-  an integer number
+  UTF8 characters not in ``\t\r\n :,;`(){}[]".@$|?/`` that is not a
+  (negative) decimal number
 
 * an *escaped* identifier: an arbitrary sequence of characters
   enclosed between ``{|`` and ``|}``
-
-**Remark:** for any regular identifier ``i``, ``{|i|}`` and ``i`` are
-identified.
 
 **Convention:** identifiers starting with an uppercase letter denote
 types (e.g.  ``Nat``, ``List``), and identifiers starting with a
@@ -25,11 +22,11 @@ lowercase letter denote constructors, functions and proofs
 Qualified identifiers
 ---------------------
 A qualified identifier is an identifier of the form
-``dir1.`` … ``dirn.file.id`` denoting the function symbol ``id`` defined
-in the file ``dir1/`` … ``/dirn/file.lp``. To be used, ``dir1.`` …
-``dirn.file`` must be required first.
+``dir₁.`` … ``dirₙ.file.id`` denoting the function symbol ``id`` defined
+in the file ``dir₁/`` … ``/dirₙ/file.lp``. To be used, ``dir₁.`` …
+``dirₙ.file`` must be required first.
 
-**Remark**: ``dir1``, …, ``dirn`` cannot be natural numbers.
+**Remark**: ``dir₁``, …, ``dirₙ`` cannot be natural numbers.
 
 Terms
 -----
@@ -61,12 +58,15 @@ A user-defined term can be either:
 * an identifier wrapped in parentheses to access its notationless
   value (e.g. ``(+)``)
 
-* a metavariable application ``?0.[x;y]`` that has been generated
-  previously. ``?0`` alone can be used as a short-hand for ``?0.[]``.
+* a metavariable application ``?k.[t₁;…;tₙ]`` where ``k`` is a decimal
+  number (with no useless leading ``0``) that has been generated
+  previously. ``?k`` alone can be used as a short-hand for ``?k.[]``.
 
-* a pattern-variable application ``$P.[x;y]`` (in rules only). ``$P``
-  alone can be used as a shorthand for ``$P.[]``, except under binders
-  (to avoid mistakes).
+* a pattern-variable application ``$P.[t₁;…;tₙ]`` (in rules only)
+  where ``P`` is an identifier or a decimal number and, in left
+  hand-sides, ``t₁;…;tₙ`` are distinct bound variables. ``$P`` alone
+  can be used as a shorthand for ``$P.[]``, except under binders (to
+  avoid mistakes).
 
 * ``_`` for an unknown term or a term we don't care about.  It will be
   replaced by a fresh metavariable in terms, or a fresh pattern
@@ -84,7 +84,7 @@ A user-defined term can be either:
 
    builtin "String" := …; // : TYPE
 
-* a (qualified) signed decimal number if the following builtins are in defined (in the module path used as qualification):
+* a (qualified) signed decimal number (with no useless leading ``0``) if the following builtins are in defined (in the module path used as qualification):
 
 ::
 
