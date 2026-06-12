@@ -29,8 +29,10 @@ let eq : 'a eq -> 'a option eq = fun eq_elt o1 o2 ->
   | Some e1, Some e2 -> eq_elt e1 e2
   | _ -> false
 
-let pp : 'a pp -> 'a option pp = fun elt ppf o ->
-  match o with None -> () | Some e -> elt ppf e
+let pp : ?none_case:('b -> unit) ->  'a pp -> 'a option pp =
+  fun ?(none_case=fun _ -> ()) elt ppf o ->
+  (* fun ?(none_case=print_string "@") elt ppf o -> *)
+  match o with None -> none_case() | Some e -> elt ppf e
 
 module Monad = struct
   let ( let* ) = Stdlib.Option.bind

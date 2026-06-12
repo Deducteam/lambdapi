@@ -120,13 +120,6 @@ let current_token() : token = let (t,_,_) = !the_current_token in t
 let current_pos() : position * position =
   let (_,p1,p2) = !the_current_token in (p1,p2)
 
-let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
-  let t = !the_current_token in
-  let reset() = the_current_token := t in
-  the_current_token := LpLexer.token lb;
-  try let r = entry lb in begin reset(); r end
-  with e -> begin reset(); raise e end
-
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
   else
@@ -248,6 +241,24 @@ let qid (lb:lexbuf): (string list * string) loc =
       qid_of_path pos1 p
   | _ ->
       expected "" [UID"";QID[]]
+
+let qid_or_regexp (lb:lexbuf): (string list * string) loc =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | UID s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
+  | QID p ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      qid_of_path pos1 p
+  | STRINGLIT s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([""], s)
+  | _ ->
+      expected "" [UID"";QID[];STRINGLIT""]
 
 let qid_expl (lb:lexbuf): (string list * string) loc =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1571,35 +1582,45 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
+    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
+    end
   | UID "concl" ->
+    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
+    end
   | UID "hyp" ->
+    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
+    end
   | UID "lhs" ->
+    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
+    end
   | UID "rhs" ->
+    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
+    end
   | L_PAREN ->
       consume_token lb;
       let q = search lb in
@@ -1631,13 +1652,19 @@ and ssearch (lb:lexbuf): search =
 and search (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
-  let qids = list (prefix IN qid) lb in
+  let qids = list (prefix IN qid_or_regexp) lb in
   let path_of_qid qid =
     let p,n = qid.elt in
     if p = [] then n
     else Format.asprintf "%a.%a" Print.path p Print.uid n
   in
-  List.fold_left (fun x qid -> QFilter(x,Path(path_of_qid qid))) q qids
+  List.fold_left
+    (fun x qid ->
+        let p,n = qid.elt in
+        if p = [""] then
+            QFilter(x,RegExp(n))
+        else
+            QFilter(x,Path(path_of_qid qid))) q qids
 
 let command (lb:lexbuf): p_command =
   if log_enabled() then log "------------------- start reading command";

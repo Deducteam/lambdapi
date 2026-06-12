@@ -74,7 +74,7 @@ let show_form ~from ?(message="") ?output csrf_tag ~hide_description=
   </body>
   </html>
 
-let themes_locations : string list = Mysites.Sites.server_resources
+let themes_locations : string list = Ressources.Mysites.Sites.server_resources
 let start ~header ss ~port ~dbpath ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in

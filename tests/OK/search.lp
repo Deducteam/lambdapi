@@ -1,6 +1,7 @@
-
-//verbose 3;
-symbol C : TYPE;
-search name = C with name = C in tests.OK ;
-search name = C | name = QQ;
-search name = C in tests.OK;
+// Data type of booleans.
+symbol bool : TYPE;
+symbol nat : TYPE;
+search name = B in "est";
+search name = B | name = C;
+search spine >= (nat → nat) | hyp >= bool;
+search hyp = (nat → bool);
