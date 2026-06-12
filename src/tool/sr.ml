@@ -38,8 +38,8 @@ exception Meta_with_no_Patt of string
 
 (** [symb_to_patt pos s2p names arities t] replaces in [t] every symbol [f]
     such that [SymMap.find f s2p = Some(i)] by [Patt(i,names.(i),_)]. *)
-let symb_to_patt: Pos.popt -> int option SymMap.t -> string array
-                  -> int array -> term -> term =
+let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
+                   -> int array -> term -> term =
   fun pos s2p names arities ->
   let rec symb_to_patt t =
     let (h, ts) = get_args t in
