@@ -284,8 +284,10 @@ and head idmap wrap ppf t =
   | Symb(s)     -> sym ppf s
   | Meta(m,e)   -> meta ppf m; if !print_meta_args then env (func idmap) ppf e
   | Plac(_)     -> out ppf "_"
-  | Patt(Some i,_,e) -> out ppf "$%d%a" i (env (func idmap)) e
-  | Patt(None,n,e) -> out ppf "$%a%a" uid n (env (func idmap)) e
+  | Patt(Some i,n,e) ->
+    if n="" then out ppf "$%d%a" i (env (func idmap)) e
+    else out ppf "$%s%a" n (env (func idmap)) e
+  | Patt(None,_,_) -> assert false
   | Bvar _      -> assert false
   (* Product and abstraction (only them can be wrapped). *)
   | Abst(a,b)   ->

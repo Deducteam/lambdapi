@@ -180,7 +180,6 @@ let escid = [%sedlex.regexp?
     "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
 let id = [%sedlex.regexp? regid | escid]
-let pid = [%sedlex.regexp? id | strict_nat]
 
 (** Lexer. *)
 let rec token lb =
@@ -298,7 +297,7 @@ let rec token lb =
   | id -> UID(Utf8.lexeme lb)
   | '@', id -> UID_EXPL(remove_first lb)
   | '?', nat -> UID_META(int_of_string(remove_first lb))
-  | '$', pid -> UID_PATT(remove_first lb)
+  | '$', id -> UID_PATT(remove_first lb)
 
   | id, '.' -> qid false [remove_last lb] lb
   | '@', id, '.' -> qid true [remove_ends lb] lb

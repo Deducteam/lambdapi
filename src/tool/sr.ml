@@ -36,18 +36,18 @@ let build_meta_type : problem -> int -> term = fun p k ->
 
 exception Meta_with_no_Patt of string
 
-(** [symb_to_patt pos map names arities t] replaces in [t] every symbol [f]
-    such that [SymMap.find f map = Some(i)] by [Patt(i,names.(i),_)]. *)
-let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
-                   -> int array -> term -> term =
-  fun pos map names arities ->
+(** [symb_to_patt pos s2p names arities t] replaces in [t] every symbol [f]
+    such that [SymMap.find f s2p = Some i] by [Patt(i,names.(i),_)]. *)
+let symb_to_patt: Pos.popt
+  -> int option SymMap.t -> string array -> int array -> term -> term =
+  fun pos s2p names arities ->
   let rec symb_to_patt t =
     let (h, ts) = get_args t in
     let ts = List.map symb_to_patt ts in
     let (h, ts) =
       match h with
       | Symb(f) ->
-        begin match SymMap.find_opt f map with
+        begin match SymMap.find_opt f s2p with
           | Some None -> raise (Meta_with_no_Patt f.sym_name)
           | Some(Some(i)) ->
             let (ts1, ts2) = List.cut ts arities.(i) in
@@ -126,10 +126,10 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       term ty_lhs constrs lhs_constrs
       term lhs_with_metas term rhs_with_metas;
   (* Instantiate all uninstantiated metavariables by fresh symbols. *)
-  (* map each symbol to its pattern index *)
-  let s2p = Stdlib.ref SymMap.empty
-  (* map each uninstantiated meta to a new fresh symbol *)
-  and m2s = Stdlib.ref MetaMap.empty in
+  (* Map each uninstantiated meta to a fresh symbol. *)
+  let m2s = Stdlib.ref MetaMap.empty
+  (* Map each new symbol to Some pattern index if any, and None otherwise. *)
+  and s2p = Stdlib.ref SymMap.empty in
   let sym_of_meta m =
     let name = Pos.none @@ Printf.sprintf "#%d" m.meta_key in
     Term.create_sym (Sign.current_path())
@@ -140,22 +140,19 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
     | Some _ -> assert false
     | None ->
       let s = sym_of_meta m in
+      let xs = Array.init m.meta_arity (new_var_ind "x") in
+      let t =
+        Array.fold_left (fun t x -> mk_Appl(t,mk_Vari x)) (mk_Symb s) xs in
+      m.meta_value := Some(bind_mvar xs t);
       if Logger.log_enabled() then
         log_subj "%a[%d] -> %s" meta m m.meta_arity s.sym_name;
-      (* We map s to None because we don't know if m is a meta associated to a
-         pattern variable yet. It will be updated in the next block. *)
-      Stdlib.(m2s := MetaMap.add m s !m2s; s2p := SymMap.add s None !s2p);
-      let xs = Array.init m.meta_arity (new_var_ind "x") in
-      let s = mk_Symb s in
-      let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
-      m.meta_value := Some(bind_mvar xs def)
+      Stdlib.(m2s := MetaMap.add m s !m2s);
+      (* We record that this symbol needs to be eliminated. *)
+      Stdlib.(s2p := SymMap.add s None !s2p)
   in
   MetaSet.iter instantiate !p.metas;
-  (* For every [i], if the [i]-th meta is mapped to [s] in [m2s], then it has
-     not been instantiated and we map [s] to [i] in [s2p]. *)
-  if Logger.log_enabled() then log_subj "---";
+  (* Map s to Some i if metas.(i) is mapped to s. *)
   let f i m =
-    if Logger.log_enabled() then log_subj "%d" i;
     match MetaMap.find_opt m Stdlib.(!m2s) with
     | Some s ->
       if Logger.log_enabled() then log_subj "%s -> ?%d[%d]"
@@ -166,7 +163,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   Array.iteri f metas;
   (* If the meta associated to the pattern i is instantiated to another
      meta/symbol s which is mapped to the pattern j, then we map s to i. *)
-  if Logger.log_enabled() then log_subj "---";
+  (*if Logger.log_enabled() then log_subj "---";
   let f i m =
     if Logger.log_enabled() then log_subj "%d" i;
     match !(m.meta_value) with
@@ -189,7 +186,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         end
       | _ -> ()
   in
-  Array.iteri f metas;
+  Array.iteri f metas;*)
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
@@ -244,9 +241,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   if Logger.log_enabled () then
     log_subj "rule after checking that the RHS has the same type:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
-  (* Replace metavariable symbols by Patt's. Here, in [s2p], a meta is mapped
-     to [Some i] if it is the [i]-th meta and is uninstantiated, and [None]
-     otherwise. *)
+  (* Replace metavariable symbols by patterns. *)
   try
     let rhs = symb_to_patt pos Stdlib.(!s2p) names arities rhs_with_metas in
     s, {r with rhs}
