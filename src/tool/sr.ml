@@ -155,8 +155,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   let f i m =
     match MetaMap.find_opt m Stdlib.(!m2s) with
     | Some s ->
-      if Logger.log_enabled() then log_subj "%s -> ?%d[%d]"
-          s.sym_name i m.meta_arity;
+      if Logger.log_enabled() then
+        log_subj "%s -> ?%d[%d]" s.sym_name i m.meta_arity;
       Stdlib.(s2p := SymMap.add s (Some i) !s2p)
     | None -> ()
   in
