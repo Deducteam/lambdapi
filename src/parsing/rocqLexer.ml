@@ -36,6 +36,7 @@ type token =
   | RULE
   | TYPE_QUERY
   | TYPE_TERM
+  | WITH
 
   (* other tokens *)
   | INT of string
@@ -149,6 +150,8 @@ let rec token lb =
   | "rule" -> RULE
   | "type" -> TYPE_QUERY
   | "TYPE" -> TYPE_TERM
+  | "with" -> WITH
+
 
   (* other tokens *)
   | int -> INT(Utf8.lexeme lb)
