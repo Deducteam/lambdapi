@@ -82,8 +82,10 @@ let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
 
 (** Symbol name prefix used in [sr.ml] to recognize the symbols created to
     forbid the instantiation of metavariables generated to replace the pattern
-    variables of a rule left hand-side when checking the right hand-side. *)
-let sym_meta_prefix = '#'
+    variables of a rule left hand-side when checking the type of right
+    hand-side. This prefix should not be a valid first character of an
+    identifier. *)
+let sym_meta_prefix = '$'
 
 (** If [ts] is not made of variables or function symbols prefixed by
     [sym_meta_perfix] only, then [nl_distinct_vars ts] returns
