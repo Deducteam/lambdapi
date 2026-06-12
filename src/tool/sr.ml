@@ -131,9 +131,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   (* Map each new symbol to Some pattern index if any, and None otherwise. *)
   and s2p = Stdlib.ref SymMap.empty in
   let sym_of_meta m =
-    let name = Pos.none @@ Printf.sprintf "#%d" m.meta_key in
+    let name = Printf.sprintf "%c%d" LibTerm.sym_meta_prefix m.meta_key in
     Term.create_sym (Sign.current_path())
-      Privat Defin Eager false name None !(m.meta_type) []
+      Privat Defin Eager false (Pos.none name) None !(m.meta_type) []
   in
   let instantiate m =
     match !(m.meta_value) with

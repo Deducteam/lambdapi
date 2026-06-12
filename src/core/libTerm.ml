@@ -80,16 +80,18 @@ let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
 
-(** If [ts] is not made of variables or function symbols prefixed by ['$']
-   only, then [nl_distinct_vars ts] returns [None]. Otherwise, it returns
-   a pair [(vs, map)] where [vs] is an array of variables made of the linear
-   variables of [ts] and fresh variables for the non-linear variables and the
-   symbols prefixed by ['$'], and [map] records by which variable each linear
-   symbol prefixed by ['$'] is replaced.
+(** Symbol name prefix used in [sr.ml] to recognize the symbols created to
+    forbid the instantiation of metavariables generated to replace the pattern
+    variables of a rule left hand-side when checking the right hand-side. *)
+let sym_meta_prefix = '#'
 
-   The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
-   metavariables into fresh symbols, and those metavariables are introduced by
-   [sr.ml] which replaces pattern variables by metavariables. *)
+(** If [ts] is not made of variables or function symbols prefixed by
+    [sym_meta_perfix] only, then [nl_distinct_vars ts] returns
+    [None]. Otherwise, it returns a pair [(vs, map)] where [vs] is an array of
+    variables (of the same size of [ts]) made of the linear variables of [ts]
+    and fresh variables for the non-linear variables and the symbols prefixed
+    by [sym_meta_prefix], and [map] records by which variable each linear
+    symbol prefixed by [sym_meta_prefix] is replaced. *)
 let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
   fun ts ->
   let exception Not_a_var in
@@ -104,7 +106,7 @@ let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;
         v
-    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
+    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = sym_meta_prefix ->
         (* Symbols replacing pattern variables are considered as variables. *)
         let v =
           try StrMap.find f.sym_name !patt_vars
@@ -115,15 +117,13 @@ let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
         in to_var (mk_Vari v)
     | _ -> raise Not_a_var
   in
-  let replace_nl_var v =
-    if VarSet.mem v !nl_vars then new_var "_" else v
-  in
+  let replace_nl_var v = if VarSet.mem v !nl_vars then new_var "_" else v in
   try
     let vs = Array.map to_var ts in
     let vs = Array.map replace_nl_var vs in
     (* We remove non-linear variables from [!patt_vars] as well. *)
-    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
-    let map = StrMap.fold fn !patt_vars StrMap.empty in
+    let f n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
+    let map = StrMap.fold f !patt_vars StrMap.empty in
     Some (vs, map)
   with Not_a_var -> None
 
