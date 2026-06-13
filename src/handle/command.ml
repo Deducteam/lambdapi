@@ -42,8 +42,8 @@ let _ =
     open. It assumes that [p] and all its dependencies are already
     loaded. Records open modules if [record]. On success, an updated signature
     state is returned. *)
-let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
-  fun record ss p ->
+let rec rec_open : popt -> bool -> sig_state -> Path.t -> sig_state =
+  fun pos record ss p ->
   if Path.Set.mem p ss.open_paths then ss
   else
     begin
@@ -51,7 +51,7 @@ let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
       | None -> assert false
       | Some sign ->
           (* Recursively open the dependencies of [p] declared as open. *)
-          let f p d ss = if d.dep_open then rec_open record ss p else ss in
+          let f p d ss = if d.dep_open then rec_open pos record ss p else ss in
           let ss = Path.Map.fold f !(sign.sign_deps) ss in
           (* Record that [p] must be open if [record]. *)
           if record then
@@ -66,7 +66,7 @@ let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
               deps := Path.Map.update p f !deps
             end;
           (* Add symbols of [p] in scope. *)
-          open_sign ss sign
+          open_sign pos ss sign
     end
 
 let handle_open : bool -> sig_state -> p_path -> sig_state =
@@ -79,7 +79,7 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
       (* Check that [p] has been required. *)
       match Path.Map.find_opt p !loaded with
       | None -> fatal pos "Module \"%a\" needs to be required first." path p
-      | Some _ -> rec_open (not prv) ss p
+      | Some _ -> rec_open pos (not prv) ss p
 
 (** [rec_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument
@@ -125,10 +125,10 @@ let handle_require_as :
     dependencies), [bo=Some(true)] if the command is [require private open p],
     [bo=Some(false)] if the command is [require open p], and [ss] as signature
     state. On success, an updated signature state is returned. *)
-let handle_require compile bo ss {elt=p;_} =
+let handle_require compile bo ss {elt=p;pos} =
   let ss = rec_require compile ss p in
   match bo with
-  | Some prv -> rec_open (not prv) ss p
+  | Some prv -> rec_open pos (not prv) ss p
   | None -> ss
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
@@ -251,11 +251,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (ss, None, None)
   | P_type_class qid ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
-    Sign.add_tc ss.signature sym;
-    { ss with Sig_state.active_tc = SymSet.add sym ss.active_tc }, None, None
+    Sig_state.add_tc ss sym, None, None
   | P_type_class_instance qid ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
-    Sig_state.update_solver ss sym pos, None, None
+    Sig_state.add_tci ss sym pos, None, None
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)

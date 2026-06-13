@@ -33,6 +33,7 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_tc       : SymSet.t ref
+  ; sign_tci      : sym list ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
@@ -68,7 +69,8 @@ module Ghost = struct
     ; sign_deps = ref Path.Map.empty
     ; sign_builtins = ref StrMap.empty
     ; sign_ind = ref SymMap.empty
-    ; sign_tc = ref SymSet.empty
+    ; sign_tc  = ref SymSet.empty
+    ; sign_tci = ref []
     ; sign_cp_pos = ref SymMap.empty }
 
   let _ = loaded := Path.Map.add path sign !loaded
@@ -89,7 +91,8 @@ let create : Path.t -> t = fun sign_path ->
   ; sign_deps
   ; sign_builtins = ref StrMap.empty
   ; sign_ind = ref SymMap.empty
-  ; sign_tc = ref SymSet.empty
+  ; sign_tc  = ref SymSet.empty
+  ; sign_tci = ref []
   ; sign_cp_pos = ref SymMap.empty }
 
 (** [loading] contains the modules that are being processed. They are stored
@@ -442,3 +445,8 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
 let add_tc : t -> sym -> unit =
   fun sign sym ->
     sign.sign_tc := SymSet.add sym !(sign.sign_tc)
+
+(** [add_tci sign sym] registers [sym] as a typeclass instance in [sign] *)
+let add_tci : t -> sym -> unit =
+  fun sign sym ->
+    sign.sign_tci := sym :: !(sign.sign_tci)
