@@ -57,6 +57,7 @@ type token =
   | INDUCTIVE
   | INFIX
   | INJECTIVE
+  | INSTANCE
   | LET
   | NOTATION
   | OPAQUE
@@ -88,6 +89,7 @@ type token =
   | TRY
   | TYPE_QUERY
   | TYPE_TERM
+  | TYPECLASS
   | UNIF_RULE
   | VERBOSE
   | WHY3
@@ -225,6 +227,7 @@ let rec token lb =
   | "inductive" -> INDUCTIVE
   | "infix" -> INFIX
   | "injective" -> INJECTIVE
+  | "instance" -> INSTANCE
   | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
   | "notation" -> NOTATION
@@ -259,6 +262,7 @@ let rec token lb =
   | "symmetry" -> SYMMETRY
   | "try" -> TRY
   | "type" -> TYPE_QUERY
+  | "typeclass" -> TYPECLASS
   | "TYPE" -> TYPE_TERM
   | "unif_rule" -> UNIF_RULE
   | "verbose" -> VERBOSE

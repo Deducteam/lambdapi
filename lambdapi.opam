@@ -41,6 +41,7 @@ depends: [
   "lwt_ppx" {>= "1"}
   "uri" {>= "1.1"}
   "ppx_inline_test"
+  "elpi" { >= "3.7" & < "3.8" }
 ]
 build: [
   ["dune" "subst"] {dev}

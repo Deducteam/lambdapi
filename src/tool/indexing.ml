@@ -386,7 +386,7 @@ let no_implicits_in_term t =
  !res
 
 let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun pr ->
- let ss = Core.Sig_state.dummy in
+ let ss = Sig_state.dummy in
  let (_,r) as sr = Parsing.Scope.scope_rule ~find_sym false ss pr in
  if no_implicits_in_term r.rhs then sr
  else

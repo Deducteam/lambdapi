@@ -8,7 +8,7 @@ let () =
   Library.set_lib_root (Some "/tmp");
   Timed.(Console.verbose := 0);
   let sign = Library.restore_after Compile.compile_file "../OK/boolean.lp" in
-  let ss = Sig_state.of_sign sign in
+  let ss = Elpi_handle.Sig_state.of_sign sign in
   (* Regular symbol *)
   let sym =
     Sig_state.find_sym ~prt:true ~prv:true ss

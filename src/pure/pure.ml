@@ -141,7 +141,7 @@ let initial_state : string -> state = fun fname ->
   Sign.loading := [mp];
   let sign = Sign.create mp in
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
-  (Time.save (), Sig_state.of_sign sign)
+  (Time.save (), Elpi_handle.Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =
   fun (st,ss) cmd ->

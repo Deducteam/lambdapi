@@ -22,13 +22,13 @@ struct
 
 let sig_state_of_require =
  function
-   None -> Core.Sig_state.dummy
+   None -> Elpi_handle.Sig_state.dummy
  | Some req ->
     (* Search for a package from the current working directory. *)
     Package.apply_config (Filename.concat (Sys.getcwd()) ".") ;
-    Core.Sig_state.of_sign
-      (Compile.compile Core.Sig_state.dummy
-         (Parsing.Parser.path_of_string req))
+    Elpi_handle.Sig_state.of_sign
+     (Compile.compile Elpi_handle.Sig_state.dummy
+       (Parsing.Parser.path_of_string req))
 
 let search_cmd cfg rules require s dbpath_opt =
  Config.init cfg;
@@ -121,6 +121,7 @@ let check_cmd : Config.t -> int option -> string list -> unit =
   let run _ =
     let open Timed in
     Config.init cfg;
+    Elpi_handle.init ();
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file =
@@ -214,8 +215,9 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
     Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     let sym =
       Timed.(Console.verbose := 0); (* To avoid printing "Checked ..." *)
-      let sign = Compile.compile Sig_state.dummy mp in
-      let ss = Sig_state.of_sign sign in
+      let sign = Compile.compile
+        Elpi_handle.Sig_state.dummy mp in
+      let ss = Elpi_handle.Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)
         try Sign.find Sign.Ghost.sign sym

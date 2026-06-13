@@ -42,8 +42,8 @@ let _ =
     open. It assumes that [p] and all its dependencies are already
     loaded. Records open modules if [record]. On success, an updated signature
     state is returned. *)
-let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
-  fun record ss p ->
+let rec rec_open : popt -> bool -> sig_state -> Path.t -> sig_state =
+  fun pos record ss p ->
   if Path.Set.mem p ss.open_paths then ss
   else
     begin
@@ -51,7 +51,7 @@ let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
       | None -> assert false
       | Some sign ->
           (* Recursively open the dependencies of [p] declared as open. *)
-          let f p d ss = if d.dep_open then rec_open record ss p else ss in
+          let f p d ss = if d.dep_open then rec_open pos record ss p else ss in
           let ss = Path.Map.fold f !(sign.sign_deps) ss in
           (* Record that [p] must be open if [record]. *)
           if record then
@@ -66,7 +66,7 @@ let rec rec_open : bool -> sig_state -> Path.t -> sig_state =
               deps := Path.Map.update p f !deps
             end;
           (* Add symbols of [p] in scope. *)
-          open_sign ss sign
+          open_sign pos ss sign
     end
 
 let handle_open : bool -> sig_state -> p_path -> sig_state =
@@ -79,7 +79,7 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
       (* Check that [p] has been required. *)
       match Path.Map.find_opt p !loaded with
       | None -> fatal pos "Module \"%a\" needs to be required first." path p
-      | Some _ -> rec_open (not prv) ss p
+      | Some _ -> rec_open pos (not prv) ss p
 
 (** [rec_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument
@@ -125,25 +125,33 @@ let handle_require_as :
     dependencies), [bo=Some(true)] if the command is [require private open p],
     [bo=Some(false)] if the command is [require open p], and [ss] as signature
     state. On success, an updated signature state is returned. *)
-let handle_require compile bo ss {elt=p;_} =
+let handle_require compile bo ss {elt=p;pos} =
   let ss = rec_require compile ss p in
   match bo with
-  | Some prv -> rec_open (not prv) ss p
+  | Some prv -> rec_open pos (not prv) ss p
   | None -> ss
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> prop * expo * match_strat =
+let handle_modifiers :
+  p_modifier list -> prop * expo * match_strat * bool * bool =
   fun ms ->
-  let rec get_modifiers ((props, expos, strats) as acc) = function
+  let rec get_modifiers ((props, expos, strats,tc,tci) as acc) = function
     | [] -> acc
-    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats) ms
-    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats) ms
+    | {elt=P_typeclass;_}::ms ->
+      get_modifiers (props, expos, strats,true, tci) ms
+    | {elt=P_typeclass_instance;_}::ms ->
+      get_modifiers (props, expos, strats,tc, true) ms
+    | {elt=P_prop _;_} as p::ms ->
+      get_modifiers (p::props, expos, strats,tc,tci) ms
+    | {elt=P_expo _;_} as e::ms ->
+      get_modifiers (props, e::expos, strats,tc,tci) ms
     | {elt=P_mstrat _;_} as s::ms ->
-        get_modifiers (props, expos, s::strats) ms
+        get_modifiers (props, expos, s::strats,tc,tci) ms
     | {elt=P_opaq;_}::ms -> get_modifiers acc ms
   in
-  let props, expos, strats = get_modifiers ([],[],[]) ms in
+  let props, expos, strats, tc, tci =
+    get_modifiers ([],[],[],false,false) ms in
   let prop =
     match props with
     | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
@@ -172,7 +180,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
     | [] -> Eager
     | _ -> assert false
   in
-  (prop, expo, strat)
+  (prop, expo, strat, tc, tci)
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -192,7 +200,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let p = new_problem() in
   let typ = scope_term ~typ:true (expo = Privat) ss Env.empty typ in
   (* We check that [typ] is typable by a sort. *)
-  let (typ,  _) = Query.check_sort pos p [] typ in
+  let (typ,  _) = Query.check_sort ss pos p [] typ in
   (* We check that no metavariable remains. *)
   if !p.metas <> MetaSet.empty then begin
     fatal_msg "The type of %a has unsolved metavariables.@." uid name;
@@ -200,8 +208,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.gre "symbol %a : %a") uid name term typ;
-  let r =
-   Sig_state.add_symbol ss expo prop mstrat false id declpos typ impl None in
+  let r = Sig_state.add_symbol ss expo prop mstrat false id declpos
+    typ impl false false None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -241,6 +249,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     if !(s.sym_opaq) then fatal pos "Symbol already opaque.";
     s.sym_opaq := true;
     (ss, None, None)
+  | P_type_class qid ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
+    Sig_state.add_tc ss sym, None, None
+  | P_type_class_instance qid ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
+    Sig_state.add_tci ss sym pos, None, None
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)
@@ -342,7 +356,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
 
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, expo, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat,tc,tci) = handle_modifiers ms in
+      if tc then
+        fatal pos "Property typeclass cannot be used on inductive types.";
+      if tci then
+        fatal pos "Property instance cannot be used on inductive types.";
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
@@ -412,7 +430,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let id = Pos.make pos rec_name in
           let r =
             Sig_state.add_symbol ss expo Defin Eager false id
-             None rec_typ [] None
+             None rec_typ [] false false None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -454,7 +472,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | _ -> ()
     end;
     (* Verify modifiers. *)
-    let prop, expo, mstrat = handle_modifiers p_sym_mod in
+    let prop, expo, mstrat, tc, tci = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
     let pdata_prv = opaq || expo = Privat in
     (match p_sym_def, opaq, prop, mstrat with
@@ -560,7 +578,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl tc tci d)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
@@ -573,7 +591,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl tc tci d)
       in
       (* Create the proof state. *)
       let pdata_state =
@@ -594,7 +612,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           else
             {proof_name = p_sym_nam; proof_term = None; proof_goals}
         in
-        Tactic.tac_solve pos ps
+        Tactic.tac_solve pos ss ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
