@@ -61,7 +61,7 @@ let init : config -> unit = fun cfg ->
   (* Log some configuration data. *)
   if Logger.log_enabled () then
     begin
-      Library.log "running directory: %s" (Filename.current_dir ());
+      Library.log "running directory: %s" Pos.cur_dir;
       Library.log "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
       let f = Library.log "mapping: %a → %s" Path.pp in
