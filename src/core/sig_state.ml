@@ -104,20 +104,21 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   let builtins = StrMap.add b s ss.builtins in
   {ss with builtins}
 
-(** [open_sign ss sign] extends the signature state [ss] with every symbol,
-   typeclass and instance of the signature [sign]. This has the effect of
-   putting these symbols in the scope, possibly masking symbols with
+(** [open_sign pos ss sign] extends the signature state [ss] with every
+   symbol, typeclass and instance of the signature [sign]. This has the effect
+   of putting these symbols in the scope, possibly masking symbols with
    the same name. *)
 let open_sign : popt -> sig_state -> Sign.t -> sig_state = fun pos ss sign ->
   let f _key _v1 v2 = Some v2 in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   let active_tc = SymSet.union ss.active_tc !(sign.sign_tc) in
+  let ss = {ss with active_tc} in
   let accumulate_all =
     List.fold_right (ss.add_tc_instance ss pos) !(sign.sign_tci)
   in
   let tc_solver_prog = Option.map accumulate_all ss.tc_solver_prog in
-  {ss with in_scope; open_paths; active_tc; tc_solver_prog}
+  {ss with in_scope; open_paths; tc_solver_prog}
 
 (** [of_sign_and_solver sign solver add_instance] creates a new sig_state
     with tc-solver [solver], self-update function [add_instance], along with
