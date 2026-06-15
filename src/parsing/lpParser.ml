@@ -109,6 +109,8 @@ let string_of_token = function
   | VERBOSE -> "verbose"
   | WHY3 -> "why3"
   | WITH -> "with"
+  | TYPECLASS -> "typeclass"
+  | INSTANCE -> "instance"
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
@@ -363,6 +365,8 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
   | ASSOCIATIVE
   | COMMUTATIVE
   | CONSTANT
+  | TYPECLASS
+  | INSTANCE
   | INJECTIVE
   | SEQUENTIAL
   | PRIVATE
@@ -379,10 +383,20 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
         | [{elt=P_opaq;_}] ->
             let i = qid lb in
             extend_pos (*__FUNCTION__*) pos1 (P_opaque i)
+        | [{elt=P_typeclass;_}] ->
+            let i = qid lb in
+            extend_pos (*__FUNCTION__*) pos1 (P_type_class i)
+        | [{elt=P_typeclass_instance;_}] ->
+            let i = qid lb in
+            extend_pos (*__FUNCTION__*) pos1 (P_type_class_instance i)
         | [] ->
             expected "command keyword missing" []
         | {elt=P_opaq;_}::{pos;_}::_ ->
             expected "an opaque command must be followed by an identifier" []
+        | {elt=P_typeclass;_}::{pos;_}::_ -> expected
+          "a typeclass command must be followed by an identifier" []
+        | {elt=P_typeclass_instance;_}::{pos;_}::_ -> expected
+          "an instance command must be followed by an identifier" []
         | _ ->
             expected "" [SYMBOL]
       end
@@ -634,6 +648,14 @@ and modifier (lb:lexbuf): p_modifier =
       let pos1 = current_pos() in
       consume_token lb;
       extend_pos (*__FUNCTION__*) pos1 (P_mstrat Term.Sequen)
+  | TYPECLASS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      extend_pos (*__FUNCTION__*) pos1 P_typeclass
+  | INSTANCE ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      extend_pos (*__FUNCTION__*) pos1 P_typeclass_instance
   | _ ->
       exposition lb
 

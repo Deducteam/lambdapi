@@ -40,7 +40,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)
     snd (Sig_state.add_symbol ss
-           Public Defin Eager true id None !(m.meta_type) [] None)
+           Public Defin Eager true id None !(m.meta_type) [] false false None)
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be
@@ -72,21 +72,27 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
   fun ss sym_pos ps gt ->
   admit_meta ss sym_pos gt.goal_meta; remove_solved_goals ps
 
-(** [tac_solve pos ps] tries to simplify the unification goals of the proof
-   state [ps] and fails if constraints are unsolvable. *)
-let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
+(** [tac_solve pos ss ps] tries to simplify the unification goals of the proof
+   state [ps] with help from the typeclass solver of [ss] and fails
+   if constraints are unsolvable. *)
+let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state =
+  fun pos ss ps ->
   if Logger.log_enabled() then log "tac_solve";
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
+  let ctxtmap = ref Elpi_lambdapi.IntMap.empty in
   let add_meta ms = function
     | Unif _ -> ms
-    | Typ gt -> MetaSet.add gt.goal_meta ms
+    | Typ gt as g ->
+      ctxtmap := Elpi_lambdapi.IntMap.add gt.goal_meta.meta_key
+        (Env.to_ctxt (Goal.env g)) !ctxtmap;
+      MetaSet.add gt.goal_meta ms
   in
+  let ctxtmap = !ctxtmap in
   p := {!p with metas = List.fold_left add_meta MetaSet.empty gs_typ
               ; to_solve = List.rev_map get_constr gs_unif};
-  (* try to solve the problem *)
-  if not (Unif.solve_noexn p) then
+  if not (Elpi_handle.solve_with_tc ~ctxtmap ss pos p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* compute the new list of goals by preserving the order of initial goals
      and adding the new goals at the end *)
@@ -111,10 +117,9 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
-let tac_refine : ?check:bool ->
-      popt -> proof_state -> goal_typ -> goal list -> problem -> term
-      -> proof_state =
-  fun ?(check=true) pos ps gt gs p t ->
+let tac_refine : ?check:bool -> popt -> Sig_state.t -> proof_state ->
+  goal_typ -> goal list -> problem -> term -> proof_state =
+  fun ?(check=true) pos ss ps gt gs p t ->
   if Logger.log_enabled () then log "tac_refine %a" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   (* Check that [t] has the required type. *)
@@ -132,7 +137,7 @@ let tac_refine : ?check:bool ->
     log (Color.gre "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  tac_solve pos {ps with proof_goals = add_goals_of_problem p gs}
+  tac_solve pos ss {ps with proof_goals = add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
@@ -157,8 +162,9 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
-let tac_induction : popt -> proof_state -> goal_typ -> goal list
-    -> proof_state = fun pos ps ({goal_type;goal_hyps;_} as gt) gs ->
+let tac_induction : popt -> Sig_state.t -> proof_state -> goal_typ ->
+  goal list -> proof_state =
+  fun pos ss ps ({goal_type;goal_hyps;_} as gt) gs ->
   let ctx = Env.to_ctxt goal_hyps in
   match Eval.whnf ctx goal_type with
   | Prod(a,_) ->
@@ -174,7 +180,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
         List.(rev (init (n - 1) fresh_meta))
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
-      tac_refine pos ps gt gs p t
+      tac_refine pos ss ps gt gs p t
   | _ ->
       let ids = Ctxt.names ctx in let term = term_in ids in
       fatal pos "[%a] is not a product." term goal_type
@@ -448,7 +454,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end
-  | P_tac_solve -> tac_solve pos ps
+  | P_tac_solve -> tac_solve pos ss ps
   | _ ->
   (* Tactics that apply to typing goals only: *)
   match g with
@@ -464,7 +470,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   let assume idopts =
     match idopts with
     | [] -> ps
-    | _ -> tac_refine pos ps gt gs (new_problem())
+    | _ -> tac_refine pos ss ps gt gs (new_problem())
              (scope (P.abst_list idopts P.wild))
   in
   (* Function for checking that an identifier is not already in use. *)
@@ -489,7 +495,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
-      tac_refine pos ps gt gs (new_problem()) t
+      tac_refine pos ss ps gt gs (new_problem()) t
   | P_tac_assume idopts ->
       (* Check that no idopt is None. *)
       if List.exists ((=) None) idopts then
@@ -507,7 +513,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       let idbody = Pos.make pos (P_Iden(varg,false)) in
       let id =  Pos.make pos (P_Abst(vparam,idbody)) in
       let pt = Pos.make pos (P_Appl(id,Pos.make pos P_Wild)) in
-      tac_refine pos ps gt gs (new_problem()) (scope pt)
+      tac_refine pos ss ps gt gs (new_problem()) (scope pt)
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -523,7 +529,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
               me1 (x :: List.rev e2)
           in
-          tac_refine pos ps gt gs p t
+          tac_refine pos ss ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
       end
   | P_tac_have(id, pt) ->
@@ -549,7 +555,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
         let ts = Env.to_terms env in
         let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
-        tac_refine pos ps gt gs p u
+        tac_refine pos ss ps gt gs p u
       end
   | P_tac_set(id,pt) ->
       (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,x:b≔t ⊢ ?1[e,x]:a],
@@ -580,8 +586,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             end else fatal pos "The unification constraints for %a \
                             to be typable are not satisfiable." term t
       end
-  | P_tac_induction -> tac_induction pos ps gt gs
-  | P_tac_refine pt -> tac_refine pos ps gt gs (new_problem()) (scope pt)
+  | P_tac_induction -> tac_induction pos ss ps gt gs
+  | P_tac_refine pt -> tac_refine pos ss ps gt gs (new_problem()) (scope pt)
   | P_tac_refl ->
       begin
         let cfg = Rewrite.get_eq_config ss pos in
@@ -595,7 +601,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let cfg = Rewrite.get_eq_config ss pos in
             let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
             let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
-            tac_refine pos ps gt gs (new_problem()) prf
+            tac_refine pos ss ps gt gs (new_problem()) prf
       end
   | P_tac_remove ids ->
       (* Remove hypothesis [id] in goal [g]. *)
@@ -652,7 +658,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rwpatt ss env) pat in
       let p = new_problem() in
-      tac_refine pos ps gt gs p
+      tac_refine pos ss ps gt gs p
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
@@ -665,7 +671,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
         Rewrite.swap cfg a r l meta_term
       in
-      tac_refine pos ps gt gs p prf
+      tac_refine pos ss ps gt gs p prf
   | P_tac_why3 cfg ->
       begin
         let ids = get_prod_ids env false gt.goal_type in

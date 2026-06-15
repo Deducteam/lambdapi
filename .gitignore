@@ -21,3 +21,4 @@ libraries/zenon_modulo
 .DS_Store
 *.map
 *.log
+_opam

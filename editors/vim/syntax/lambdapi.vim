@@ -58,6 +58,7 @@ syntax keyword KeywordOK contained induction
 syntax keyword KeywordOK contained inductive
 syntax keyword KeywordOK contained infix
 syntax keyword KeywordOK contained injective
+syntax keyword KeywordOK contained instance
 syntax keyword KeywordOK contained left
 syntax keyword KeywordOK contained let
 syntax keyword KeywordOK contained locate
@@ -93,6 +94,7 @@ syntax keyword KeywordOK contained symbol
 syntax keyword KeywordOK contained symmetry
 syntax keyword KeywordOK contained try
 syntax keyword KeywordOK contained type
+syntax keyword KeywordOK contained typeclass
 syntax keyword KeywordOK contained TYPE
 syntax keyword KeywordOK contained unif_rule
 syntax keyword KeywordOK contained verbose
@@ -130,6 +132,7 @@ syntax keyword KeywordKO contained induction
 syntax keyword KeywordKO contained inductive
 syntax keyword KeywordKO contained infix
 syntax keyword KeywordKO contained injective
+syntax keyword KeywordKO contained instance
 syntax keyword KeywordKO contained left
 syntax keyword KeywordKO contained let
 syntax keyword KeywordKO contained location
@@ -165,6 +168,7 @@ syntax keyword KeywordKO contained symbol
 syntax keyword KeywordKO contained symmetry
 syntax keyword KeywordKO contained try
 syntax keyword KeywordKO contained type
+syntax keyword KeywordKO contained typeclass
 syntax keyword KeywordKO contained TYPE
 syntax keyword KeywordKO contained unif_rule
 syntax keyword KeywordKO contained verbose

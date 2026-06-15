@@ -316,6 +316,8 @@ type p_modifier_aux =
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
+  | P_typeclass (** typeclass *)
+  | P_typeclass_instance (** typeclass instance *)
 
 type p_modifier = p_modifier_aux loc
 
@@ -344,6 +346,8 @@ type p_command_aux =
   | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
   | P_open of (*private?*)bool * p_path list
+  | P_type_class of p_qident
+  | P_type_class_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
@@ -696,7 +700,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     match elt with
     | P_require (_, _)
     | P_require_as (_, _)
-    | P_open _ -> a
+    | P_open _
+    | P_type_class _
+    | P_type_class_instance _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_opaque qid
     | P_builtin (_, qid)
