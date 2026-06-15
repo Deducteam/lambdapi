@@ -252,13 +252,10 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
     let rhs = symb_to_patt pos Stdlib.(!s2p) names arities rhs_with_metas in
     s, {r with rhs}
   with Meta_with_no_Patt n ->
-    (* The symbol comes from a metavariable appearing in the type of a
-       metavariable but corresponds to no pattern variable. *)
-    fatal pos "Cannot prove that@.%a@.preserves typing. \
-               The rule obtained after typing is:@.%a ↪ %a@.\
-               But %s cannot be deduced from the declared pattern \
-               variables.@.Some pattern variable possibly needs to be \
-               explicited."
-      sym_rule sr term lhs_with_metas term rhs_with_metas n
+    fatal pos
+      "Cannot prove that@.%a@.preserves typing. The rule obtained after \
+       typing is:@.%a ↪ %a@.But %s cannot be deduced from the declared \
+       pattern variables.@.Some pattern variable possibly needs to be \
+       explicited." sym_rule sr term lhs_with_metas term rhs_with_metas n
 
 let check_rule p r = print_implicits_and_domains_in (check_rule p) r
