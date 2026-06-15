@@ -34,11 +34,26 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
+let print_pattern_names : bool ref = ref true
+
 let print_implicits_and_domains_in f x =
-  let i = !print_implicits and d = !print_domains in
-  print_implicits := true; print_domains := true;
-  try let r = f x in print_implicits := i; print_domains := d; r
-  with e -> print_implicits := i; print_domains := d; raise e
+  let i = !print_implicits
+  and d = !print_domains
+  and p = !print_pattern_names in
+  print_implicits := true;
+  print_domains := true;
+  print_pattern_names := false;
+  try
+    let r = f x in
+    print_implicits := i;
+    print_domains := d;
+    print_pattern_names := p;
+    r
+  with e ->
+    print_implicits := i;
+    print_domains := d;
+    print_pattern_names := p;
+    raise e
 
 (*****************************************************************************
 printing functions
@@ -285,8 +300,9 @@ and head idmap wrap ppf t =
   | Meta(m,e)   -> meta ppf m; if !print_meta_args then env (func idmap) ppf e
   | Plac(_)     -> out ppf "_"
   | Patt(Some i,n,e) ->
-    if n="" then out ppf "$%d%a" i (env (func idmap)) e
-    else out ppf "$%s%a" n (env (func idmap)) e
+    if !print_pattern_names && n<>"" then
+      out ppf "$%s%a" n (env (func idmap)) e
+    else out ppf "$%d%a" i (env (func idmap)) e
   | Patt(None,_,_) -> assert false
   | Bvar _      -> assert false
   (* Product and abstraction (only them can be wrapped). *)

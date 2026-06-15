@@ -80,15 +80,14 @@ let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
 
-(** Symbol name prefix used in [sr.ml] to recognize the symbols created to
-    forbid the instantiation of metavariables generated to replace the pattern
-    variables of a rule left hand-side when checking the type of right
-    hand-side. This prefix should not be a valid first character of an
-    identifier. *)
+(** Symbol name prefix used in [sr.ml] to replace metavariables that must not
+    be instantiated when type checking the right hand-side of a rule. /!\ This
+    prefix must not be a valid first character of an identifier to not clash
+    with user-defined symbols. *)
 let sym_meta_prefix = '$'
 
 (** If [ts] is not made of variables or function symbols prefixed by
-    [sym_meta_perfix] only, then [nl_distinct_vars ts] returns
+    [sym_meta_prefix] only, then [nl_distinct_vars ts] returns
     [None]. Otherwise, it returns a pair [(vs, map)] where [vs] is an array of
     variables (of the same size of [ts]) made of the linear variables of [ts]
     and fresh variables for the non-linear variables and the symbols prefixed

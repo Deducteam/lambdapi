@@ -37,8 +37,8 @@ let build_meta_type : problem -> int -> term = fun p k ->
 exception Meta_with_no_Patt of string
 
 (** [symb_to_patt pos s2p names arities t] replaces in [t] every symbol [f]
-    such that [SymMap.find f s2p = Some(i)] by [Patt(i,names.(i),_)]. *)
-let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
+    such that [SymMap.find f s2p = Some(_,i)] by [Patt(i,names.(i),_)]. *)
+let symb_to_patt : Pos.popt -> (int * int option) SymMap.t -> string array
                    -> int array -> term -> term =
   fun pos s2p names arities ->
   let rec symb_to_patt t =
@@ -48,8 +48,8 @@ let symb_to_patt : Pos.popt -> int option SymMap.t -> string array
       match h with
       | Symb(f) ->
         begin match SymMap.find_opt f s2p with
-          | Some None -> raise (Meta_with_no_Patt f.sym_name)
-          | Some(Some(i)) ->
+          | Some(_,None) -> raise (Meta_with_no_Patt f.sym_name)
+          | Some(_,Some i) ->
             let (ts1, ts2) = List.cut ts arities.(i) in
             (mk_Patt (Some i, names.(i), Array.of_list ts1), ts2)
           | None -> (mk_Symb f, ts)
@@ -98,7 +98,10 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
          let arity = arities.(i) in
          (*FIXME: build_meta_type should take a sort as argument as some
             pattern variables are types and thus of sort KIND! *)
-         LibMeta.fresh p (build_meta_type p arity) arity)
+         let m = LibMeta.fresh p (build_meta_type p arity) arity in
+         if Logger.log_enabled () then
+           log_subj "pat $%d -> meta %a:%a" i meta m term !(m.meta_type);
+         m)
   in
   (* Replace Patt's by Meta's of the same arity. *)
   let f m =
@@ -145,25 +148,24 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         Array.fold_left (fun t x -> mk_Appl(t,mk_Vari x)) (mk_Symb s) xs in
       m.meta_value := Some(bind_mvar xs t);
       if Logger.log_enabled() then
-        log_subj "%a[%d] -> %s" meta m m.meta_arity s.sym_name;
+        log_subj "meta %a -> sym %s" meta m s.sym_name;
       Stdlib.(m2s := MetaMap.add m s !m2s);
       (* We record that this symbol needs to be eliminated. *)
-      Stdlib.(s2p := SymMap.add s None !s2p)
+      Stdlib.(s2p := SymMap.add s (m.meta_arity, None) !s2p)
   in
   MetaSet.iter instantiate !p.metas;
   (* Map s to Some i if metas.(i) is mapped to s. *)
   let f i m =
     match MetaMap.find_opt m Stdlib.(!m2s) with
     | Some s ->
-      if Logger.log_enabled() then
-        log_subj "%s -> ?%d[%d]" s.sym_name i m.meta_arity;
-      Stdlib.(s2p := SymMap.add s (Some i) !s2p)
+      if Logger.log_enabled() then log_subj "sym %s -> pat ?%d" s.sym_name i;
+      Stdlib.(s2p := SymMap.add s (m.meta_arity, Some i) !s2p)
     | None -> ()
   in
   Array.iteri f metas;
   (* If the meta associated to the pattern i is instantiated to another
-     meta/symbol s which is mapped to the pattern j, then we map s to i. *)
-  (*if Logger.log_enabled() then log_subj "---";
+     meta/symbol s mapped to the pattern j, then we map s to i. *)
+  if Logger.log_enabled() then log_subj "---";
   let f i m =
     if Logger.log_enabled() then log_subj "%d" i;
     match !(m.meta_value) with
@@ -177,16 +179,20 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       | Symb s ->
         begin
           match Stdlib.(SymMap.find_opt s !s2p) with
-          | Some None ->
-            if Logger.log_enabled() then
-              log_subj "%s[%d] -> ?%d[%d]"
-                s.sym_name m.meta_arity i arities.(i);
-            Stdlib.(s2p := SymMap.add s (Some i) !s2p)
+          | Some (a, None) ->
+            if a = m.meta_arity then
+              begin
+                if Logger.log_enabled() then
+                  log_subj "sym %s -> pat $%d" s.sym_name i;
+                Stdlib.(s2p := SymMap.add s (a, Some i) !s2p)
+              end
+            else wrn pos "%s of arity %d cannot be mapped to $%d of arity %d."
+                s.sym_name a i m.meta_arity
           | _ -> ()
         end
       | _ -> ()
   in
-  Array.iteri f metas;*)
+  Array.iteri f metas;
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
@@ -248,9 +254,11 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   with Meta_with_no_Patt n ->
     (* The symbol comes from a metavariable appearing in the type of a
        metavariable but corresponds to no pattern variable. *)
-    fatal pos "The rule obtained after typing is:@.%a@.↪ %a@.\
+    fatal pos "Cannot prove that@.%a@.preserves typing. \
+               The rule obtained after typing is:@.%a ↪ %a@.\
                But %s cannot be deduced from the declared pattern \
-               variables.@.You need to explicit it."
-      term lhs_with_metas term rhs_with_metas n
+               variables.@.Some pattern variable possibly needs to be \
+               explicited."
+      sym_rule sr term lhs_with_metas term rhs_with_metas n
 
 let check_rule p r = print_implicits_and_domains_in (check_rule p) r
