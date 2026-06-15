@@ -165,16 +165,14 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   Array.iteri f metas;
   (* If the meta associated to the pattern i is instantiated to another
      meta/symbol s mapped to no pattern, then we map s to i. *)
-  if Logger.log_enabled() then log_subj "---";
   let f i m =
-    if Logger.log_enabled() then log_subj "%d" i;
     match !(m.meta_value) with
     | None -> ()
     | Some b ->
       let ts = Array.init m.meta_arity
           (fun i -> mk_Vari (new_var_ind "x" i)) in
       let t = msubst b ts in
-      if Logger.log_enabled() then log_subj "%a" term t;
+      if Logger.log_enabled() then log_subj "%d: %a" i term t;
       match unfold t with
       | Symb s ->
         begin
