@@ -56,14 +56,7 @@ let current_token() : token = let (t,_,_) = !the_current_token in t
 
 let current_pos() : position * position =
   let (_,p1,p2) = !the_current_token in (p1,p2)
-(*
-let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
-  let t = !the_current_token in
-  let reset() = the_current_token := t in
-  the_current_token := LpLexer.token lb;
-  try let r = entry lb in begin reset(); r end
-  with e -> begin reset(); raise e end
- *)
+
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
   else
@@ -621,7 +614,7 @@ and binder (lb:lexbuf): p_params list * p_term =
         | UNDERSCORE
         | L_PAREN
         | L_SQ_BRACKET ->
-            let ps = list params lb in
+            let ps = nelist params lb in
             consume COMMA lb;
             let p = [s], None, false in
             p::ps, term lb
@@ -827,7 +820,7 @@ and csearch (lb:lexbuf): search =
   let aq = asearch lb in
   match current_token() with
   | WITH ->
-      let aqs = list (prefix WITH asearch) lb in
+      let aqs = nelist (prefix WITH asearch) lb in
       List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
   | _ ->
       aq
@@ -837,7 +830,7 @@ and ssearch (lb:lexbuf): search =
   let cq = csearch lb in
   match current_token() with
   | VBAR ->
-      let cqs = list (prefix VBAR csearch) lb in
+      let cqs = nelist (prefix VBAR csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
