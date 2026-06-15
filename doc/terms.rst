@@ -63,10 +63,9 @@ A user-defined term can be either:
   previously. ``?k`` alone can be used as a short-hand for ``?k.[]``.
 
 * a pattern-variable application ``$P.[t₁;…;tₙ]`` (in rules only)
-  where ``P`` is an identifier or a decimal number and, in left
-  hand-sides, ``t₁;…;tₙ`` are distinct bound variables. ``$P`` alone
-  can be used as a shorthand for ``$P.[]``, except under binders (to
-  avoid mistakes).
+  where ``P`` is an identifier and, in left hand-sides, ``t₁;…;tₙ``
+  are distinct bound variables. ``$P`` alone can be used as a
+  shorthand for ``$P.[]``, except under binders (to avoid mistakes).
 
 * ``_`` for an unknown term or a term we don't care about.  It will be
   replaced by a fresh metavariable in terms, or a fresh pattern
