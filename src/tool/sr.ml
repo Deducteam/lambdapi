@@ -164,7 +164,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   in
   Array.iteri f metas;
   (* If the meta associated to the pattern i is instantiated to another
-     meta/symbol s mapped to the pattern j, then we map s to i. *)
+     meta/symbol s mapped to no pattern, then we map s to i. *)
   if Logger.log_enabled() then log_subj "---";
   let f i m =
     if Logger.log_enabled() then log_subj "%d" i;
