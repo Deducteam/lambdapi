@@ -19,8 +19,7 @@ where
 * parentheses can be used as usual to force a different precedence order
 * ``anywhere`` can be paired only with ``>=`` and ``name`` can be paired only with ``>=`` and no ``generalize``
 * a pattern should be wrapped in parentheses, unless it is atomic (e.g. an identifier or a placeholder)
-* a pattern is expressed using the Lambdapi terms syntax. Additionaly, the search engine allows the use of a basic Rocq syntax to express terms.
-   Specifically, ``fun``, ``forall``, ``exists``, ``/\`` and ``~`` are supported to express terms inside the pattern.
+* a pattern is expressed using the Lambdapi terms syntax. However, one can use ``forall`` and ``fun`` instead of Π and → respectively. Rocq symbols ``exists``, ``/\`` and ``~`` are also supported for commodity.
 
 The semantics of the query language is the following:
 
