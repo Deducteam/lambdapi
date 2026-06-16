@@ -109,7 +109,7 @@ beginning, the timeout is set to 2s.
 ``search``
 ------------------
 
-Runs a query between double quotes against the index file updated
+Runs a query against the index file updated
 with the assets defined in the file under development including the
 assets imported by the `require` commands.
 See :doc:`query_language` for the query language
