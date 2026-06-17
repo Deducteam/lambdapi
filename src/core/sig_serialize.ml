@@ -59,7 +59,7 @@ module Latest : Serialisation = struct
             aux (Path.Map.add (Path.Path.make k) v acc) lt
           | Error e -> Error e
           end
-        | _ -> Error "pas list"
+        | _ -> Error "Error reading list"
       in
       aux Path.Map.empty lst
     | _ -> Error "pathmap_of_yojson: expected list"

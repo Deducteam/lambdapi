@@ -16,11 +16,15 @@ let gen_obj = Stdlib.ref false
    exist, or it must be updated, or [~force] is [true]. In that case, the
    produced signature is stored in the corresponding object file if the option
    [--gen_obj] or [-c] is set. *)
+
+
 let rec compile_with :
   handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
   -> force:bool -> Command.compiler =
   fun ~handle ~force mp ->
-  if mp = Ghost.path then Ghost.sign else
+    print_endline (Path.string_of_path mp);
+    print_endline (Path.string_of_path Ghost.path);
+  if Path.string_of_path mp = Path.string_of_path Ghost.path then Ghost.sign else
   let base = file_of_path mp in
   let src =
     let lp_src = base ^ lp_src_extension in

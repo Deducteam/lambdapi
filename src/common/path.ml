@@ -12,6 +12,8 @@ module Path =
        escaped. *)
     let pp : t pp = Lplib.List.pp string "."
 
+    let string_of_path p = Format.asprintf "%a" pp p
+
     (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare
 
@@ -20,7 +22,7 @@ module Path =
       else
         s
         |> String.split_on_char '.'
-        |> List.filter (fun x -> x <> "")
+        (*|> List.filter (fun x -> x <> "")*)
   end
 
 include Path

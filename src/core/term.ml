@@ -1098,7 +1098,7 @@ module Term_serializable = struct
     | Vari x         -> Vari x
     | Type           -> Type
     | Kind           -> Kind
-    | Symb x         -> Symb (x.sym_name)
+    | Symb x         -> Symb ((Format.asprintf "%a" Path.Path.pp x.sym_path) ^ "." ^ x.sym_name)
     | Prod (x, y)    ->Prod
                         (to_term_serializable x, to_binder_serializable y)
     | Abst (x, y)    ->Abst
