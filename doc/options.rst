@@ -29,14 +29,21 @@ extension) are not present.
 
 **Input files:**
 
-The commands ``check``, ``parse``, ``export`` and ``index`` expect input files
-with either the ``.lp`` extension or the ``.dk`` extension.
-The appropriate parser is selected automatically. The ``export`` command accept only one file as argument.
+If a command takes several files as argument, the files are handled
+independently in the order they are given. The program immediately
+stops on the first failure, without going to the next file (if any).
 
-If a command takes several files as argument, the files are
-handled independently in the order they are given. The program
-immediately stops on the first failure, without going to the next file
-(if any).
+The commands ``check``, ``parse``, ``export`` and ``index`` expect
+input files with either the ``.lp`` extension or the ``.dk``
+extension.  The appropriate parser is selected automatically. The
+``export`` command accept only one file as argument.
+
+Remark: the checking of Dedukti files requires to use the option
+``--lib-root=.``.
+
+Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
+file can depend on a Lambdapi file (but the Dedukti grammar does not
+accept qualified names for module paths).
 
 **Remark on index:**
 
