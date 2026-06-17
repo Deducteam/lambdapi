@@ -1582,45 +1582,35 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
-    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
-    end
   | UID "concl" ->
-    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
-    end
   | UID "hyp" ->
-    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
-    end
   | UID "lhs" ->
-    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
-    end
   | UID "rhs" ->
-    begin
       consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
-    end
   | L_PAREN ->
       consume_token lb;
       let q = search lb in

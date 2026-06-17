@@ -95,7 +95,6 @@ module Aux(Lexer:
   type token
   val the_current_token : (token * position * position) ref
   val get_token : Sedlexing.lexbuf
-  (* -> unit *)
     -> token * Lexing.position * Lexing.position
   end)=
 struct
@@ -201,25 +200,12 @@ end
   let get_token x = RocqLexer.token x
   end)
   (* exported functions *)
-(*
-  let parse =
-        MenhirLib.Convert.Simplified.traditional2revised
-         RocqParser.search_query_alone
-  let token lb = RocqLexer.token lb
-  let parse_lexbuf lb = parse (token lb)
-  let parse_search_string pos s = parse_entry_string parse_lexbuf pos s *)
-
   let parse_term_string = parse_entry_string RocqParser.term
   let parse_rwpatt_string = parse_entry_string RocqParser.rwpatt
   let parse_search_string = parse_entry_string RocqParser.search
-  (* let parse_search_string =
-    parse_entry_string LpParser.search *)
-    (* parse_string ~grammar_entry:RocqParser.search_query_alone *)
 end
 
-
 include Lp
-
 open Error
 
 (** [path_of_string s] converts the string [s] into a path. *)
