@@ -18,7 +18,6 @@ where
 * the precedence order is ``with`` > ``|`` > ``in``
 * parentheses can be used as usual to force a different precedence order
 * ``anywhere`` can be paired only with ``>=`` and ``name`` can be paired only with ``>=`` and no ``generalize``
-* a pattern should be wrapped in parentheses, unless it is atomic (e.g. an identifier or a placeholder)
 * a pattern is expressed using the Lambdapi syntax except with :ref:`search <search>` and :ref:`websearch <websearch>` where, for convenience, ``forall`` is interpreted as ``Π``, ``->`` as ``→``, ``exists x:A, t`` as ``∃ (λ x:A, t)``, and ``fun x:A => t`` as ``λ x:A, t``.
 
 The semantics of the query language is the following:
