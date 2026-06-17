@@ -80,8 +80,8 @@ let handle_exceptions : (unit -> unit) -> unit = fun f ->
       (Color.red (fmt ^^ "@."))
   in
   try f () with
-  | Fatal(None,    msg, cnt) -> exit_with cnt "%s" msg
-  | Fatal(Some(p), msg, cnt) -> exit_with cnt "[%a] %s" Pos.pp p msg
+  | Fatal(None,    msg, desc) -> exit_with desc "%s" msg
+  | Fatal(Some(p), msg, desc) -> exit_with desc "[%a] %s" Pos.pp p msg
   | e ->
       exit_with "" "Uncaught [%s].\n%s"
         (Printexc.to_string e)

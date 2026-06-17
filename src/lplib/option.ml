@@ -31,7 +31,6 @@ let eq : 'a eq -> 'a option eq = fun eq_elt o1 o2 ->
 
 let pp : ?none_case:('b -> unit) ->  'a pp -> 'a option pp =
   fun ?(none_case=fun _ -> ()) elt ppf o ->
-  (* fun ?(none_case=print_string "@") elt ppf o -> *)
   match o with None -> none_case() | Some e -> elt ppf e
 
 module Monad = struct
