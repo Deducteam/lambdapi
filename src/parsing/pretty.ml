@@ -243,18 +243,24 @@ let assertion : p_assertion pp = fun ppf a ->
   | P_assert_typing (t, a) -> out ppf "@[%a@ : %a@]" term t term a
   | P_assert_conv (t, u)   -> out ppf "@[%a@ ≡ %a@]" term t term u
 
-let relation ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
+let relation ppf s =
+  string ppf (match s with Exact -> " = " | Inside -> " > ")
 
 let where elt ppf = function
   | Spine x -> out ppf "spine%a" elt x
   | Conclusion x -> out ppf "concl%a" elt x
   | Hypothesis x -> out ppf "hyp%a" elt x
 
+  let f ppf x = string ppf x
 let search_constr ppf = function
-  | QType x -> out ppf "type%a" (Option.pp (where (Option.pp relation))) x
-  | QXhs(i,None) -> out ppf "rule%a" (Option.pp relation) i
-  | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp relation) i
-  | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp relation) i
+  | QType x -> out ppf "%a" (Option.pp
+    (where (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation))) x
+  | QXhs(i,None) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Lhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Rhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
 
 let generalize ppf b = if b then string ppf " generalize"
 
@@ -268,7 +274,10 @@ let op ppf o = string ppf (match o with
     Union -> " | "
   | Intersect -> " with ")
 
-let filter ppf (Path s) = out ppf " in %s" s
+let filter ppf f =
+  match f with
+  | Path s -> out ppf " in %s" s
+  | RegExp s -> out ppf " in \"%s\"" s
 
 let rec search ppf = function
   | QBase b -> search_base ppf b

@@ -677,9 +677,9 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         | _ -> assert false
       end
   | P_tac_try t ->
-      begin try handle ps t with Fatal(_, _s) -> ps end
+      begin try handle ps t with Fatal _ -> ps end
   | P_tac_orelse(t1,t2) ->
-      begin try handle ps t1 with Fatal(_, _s) -> handle ps t2 end
+      begin try handle ps t1 with Fatal _ -> handle ps t2 end
   | P_tac_repeat t ->
       begin
         try
@@ -687,7 +687,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           let ps = handle ps t in
           if List.length ps.proof_goals < nb_goals then ps
           else handle ps tac
-        with Fatal(_, _s) -> ps
+        with Fatal _ -> ps
       end
   | P_tac_and(t1,t2) -> handle (handle ps t1) t2
   | P_tac_eval pt ->
