@@ -227,7 +227,12 @@ let unlink : t -> unit = fun sign ->
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
 
+(** [add_symbol_callback] is used to index symbols in the document currently
+    edited in Spl mode*)
 let add_symbol_callback = Stdlib.ref (fun _ -> ())
+
+(** [add_rules_callback] is used to index rules in the document currently
+    edited in Spl mode*)
 let add_rules_callback = Stdlib.ref (fun _ _ -> ())
 
 (** [add_symbol sign expo prop mstrat opaq name pos typ impl notation] adds in
