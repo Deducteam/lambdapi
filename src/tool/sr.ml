@@ -237,14 +237,14 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   in
   let is_lhs_constr rc = List.exists (fun lc -> is_inst lc rc) lhs_constrs in
   let cs = List.filter (fun rc -> not (is_lhs_constr rc)) rhs_constrs in
-  if cs <> [] then
-    begin
-      List.iter (fatal_msg "Cannot solve %a@." constr) cs;
-      fatal pos "Unable to prove type preservation."
-    end;
   if Logger.log_enabled () then
     log_subj "rule after checking that the RHS has the same type:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
+  if cs <> [] then
+    begin
+      List.iter (fatal_msg "Cannot solve %a.@." constr) cs;
+      fatal pos "Unable to prove type preservation."
+    end;
   (* Replace metavariable symbols by patterns. *)
   try
     let rhs = symb_to_patt pos Stdlib.(!s2p) names arities rhs_with_metas in
