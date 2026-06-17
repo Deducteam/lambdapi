@@ -108,16 +108,11 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ ->
-      char oc '{'; raw_params oc x; char oc '}';
-      if !stt && t = None then List.iter (nonempty_param oc) ids
-  | false, Some _ ->
-      char oc '('; raw_params oc x; char oc ')';
-      if !stt && t = None then List.iter (nonempty_param oc) ids
+  | true, _ -> char oc '{'; raw_params oc x; char oc '}';
+               if !stt then add_nonempty oc x
+  | false, Some _ -> char oc '('; raw_params oc x; char oc ')';
+               if !stt then add_nonempty oc x
   | false, None -> param_ids oc ids
-
-and nonempty_param oc id =
-  string oc " [Nonempty "; param_id oc id; char oc ']'
 
 (* starts with a space if the list is not empty *)
 and params_list oc = List.iter (prefix " " params oc)
@@ -130,6 +125,14 @@ and params_list_in_abs oc l =
 
 (* starts with a space if <> None *)
 and typopt oc t = Option.iter (prefix " : " term oc) t
+
+and add_nonempty oc (ids,t,_) =
+  let pos = None in
+    let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+      if t = Some _Set then
+        List.iter
+          (fun id -> string oc " [Nonempty " ; param_id oc id ; char oc ']')
+          ids
 
 (** Translation of commands. *)
 
@@ -149,11 +152,24 @@ let command oc {elt; pos} =
         | _ -> () (*FIXME?*)
       end
   | P_require_as _ -> wrn pos "Command not translated."
-  | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
-               p_sym_prf=_; p_sym_def } ->
+  | P_symbol
+    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+      p_sym_trm; p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
+        let p_sym_arg =
+          if !stt then
+            let pos = None in
+            (* Parameters with no type are assumed to be of type [Set]. *)
+            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
+              p_sym_arg
+          else p_sym_arg
+        in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
+            (* If they have a type, opaque or private defined symbols are
+               translated as Lemma's so that their definition is loaded in
+               memory only when it is necessary. *)
             string oc "theorem "; ident oc p_sym_nam;
             params_list oc p_sym_arg; string oc " : "; term oc a;
             string oc " := by apply "; term oc t; string oc "\n"
