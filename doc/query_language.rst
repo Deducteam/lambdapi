@@ -19,7 +19,7 @@ where
 * parentheses can be used as usual to force a different precedence order
 * ``anywhere`` can be paired only with ``>=`` and ``name`` can be paired only with ``>=`` and no ``generalize``
 * a pattern should be wrapped in parentheses, unless it is atomic (e.g. an identifier or a placeholder)
-* a pattern is expressed using the Lambdapi terms syntax. However, one can use ``forall`` and ``fun`` instead of Π and → respectively. Rocq symbols ``exists``, ``/\`` and ``~`` are also supported for commodity.
+* a pattern is expressed using the Lambdapi syntax except with :ref:`search <search>` and :ref:`websearch <websearch>` where, for convenience, ``forall`` is interpreted as ``Π``, ``->`` as ``→``, ``exists x:A, t`` as ``∃ (λ x:A, t)``, and ``fun x:A => t`` as ``λ x:A, t``.
 
 The semantics of the query language is the following:
 

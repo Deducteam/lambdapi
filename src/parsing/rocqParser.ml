@@ -469,13 +469,11 @@ and bterm (lb:lexbuf): p_term =
               extend_pos pos1 (P_Abst([bin], res)))) in
        (List.fold_right f (fst b) (snd b))
   | FORALL ->
-    (* { make_pos $sloc (P_Prod(fst b, snd b)) }  *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = rocqbinder lb COMMA in
       extend_pos (*__FUNCTION__*) pos1 (P_Prod(fst b, snd b))
   | PI ->
-    (* { make_pos $sloc (P_Prod(fst b, snd b)) }  *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = binder lb in
