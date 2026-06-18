@@ -152,6 +152,15 @@ let command oc {elt; pos} =
   | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
                p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
+        let p_sym_arg =
+          if !stt then
+            let pos = None in
+            (* Parameters with no type are assumed to be of type [Set]. *)
+            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
+              p_sym_arg
+          else p_sym_arg
+        in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             string oc "theorem "; ident oc p_sym_nam;
