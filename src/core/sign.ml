@@ -102,7 +102,10 @@ let current_path : unit -> Path.t =
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let link_symb s =
-    if s.sym_path = sign.sign_path then s
+    if s.sym_path = sign.sign_path then
+      try
+        let sym = find sign s.sym_name in sym
+      with Not_found -> assert false
     else
       try find (Path.Map.find s.sym_path !loaded) s.sym_name
       with Not_found ->

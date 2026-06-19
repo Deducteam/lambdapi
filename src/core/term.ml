@@ -1098,7 +1098,9 @@ module Term_serializable = struct
     | Vari x         -> Vari x
     | Type           -> Type
     | Kind           -> Kind
-    | Symb x         -> Symb ((Format.asprintf "%a" Path.Path.pp x.sym_path) ^ "." ^ x.sym_name)
+    | Symb x         -> Symb
+                        ((Format.asprintf "%a" Path.Path.pp x.sym_path)
+                          ^ "." ^ x.sym_name)
     | Prod (x, y)    ->Prod
                         (to_term_serializable x, to_binder_serializable y)
     | Abst (x, y)    ->Abst
@@ -1107,10 +1109,11 @@ module Term_serializable = struct
                         (to_term_serializable x, to_term_serializable y)
     | Patt (x, y, z) -> Patt (x, y, Array.map to_term_serializable z)
     | LLet (x, y, z) -> LLet (to_term_serializable x
-                                  , to_term_serializable y
-                                  , to_binder_serializable z)
+                              , to_term_serializable y
+                              , to_binder_serializable z)
     | Bvar v         -> Bvar v
-    | Meta (m, t)    -> Meta(to_meta_serializable m, Array.map to_term_serializable t)
+    | Meta (m, t)    -> Meta(to_meta_serializable m
+                            , Array.map to_term_serializable t)
     (* FIX ME *)
     | Plac _ -> print_endline "unexpected term : Plac!!"; assert false
     | Wild   -> print_endline "unexpected term : Wild!!"; assert false
@@ -1121,7 +1124,8 @@ module Term_serializable = struct
       meta_key   = m.meta_key
     ; meta_type  = to_term_serializable (Timed.(!)m.meta_type)
     ; meta_arity = m.meta_arity
-    ; meta_value = let p = Timed.(!) m.meta_value in  Option.map to_mbinder_serializable p
+    ; meta_value = let p = Timed.(!) m.meta_value in
+      Option.map to_mbinder_serializable p
     }
 
   and to_binder_serializable (x, y, z) =
@@ -1162,7 +1166,9 @@ module Term_serializable = struct
     | Vari x          -> Vari x
     | Type            -> Type
     | Kind            -> Kind
-    | Symb _x          -> Symb (sym_dump)
+    | Symb x          -> let l = String.split_on_char '.' x in
+                         let (path, x) = List.split_last l in
+                         Symb ({sym_dump with sym_name = x; sym_path = path})
     | Prod (x, y)     -> Prod
     (of_term_serializable x, of_binder_serializable y)
     | Abst (x, y)     -> Abst
@@ -1175,7 +1181,9 @@ module Term_serializable = struct
                               , of_term_serializable y
                               , of_binder_serializable z)
     | Bvar v          -> Bvar v
-    | Meta (m, t)     -> Meta (of_meta_serializable m, Array.map of_term_serializable t)
+    | Meta (m, t)     -> Meta
+                              (of_meta_serializable m
+                              , Array.map of_term_serializable t)
 
   and of_binder_serializable (x, y, z) =
     (x, of_term_serializable y, Array.map of_term_serializable z)
@@ -1217,7 +1225,8 @@ module Term_serializable = struct
       meta_key   = m.meta_key
     ; meta_type  = Timed.ref (of_term_serializable m.meta_type)
     ; meta_arity = m.meta_arity
-    ; meta_value = let p = m.meta_value in Timed.ref (Option.map of_mbinder_serializable p)
+    ; meta_value = let p = m.meta_value in
+      Timed.ref (Option.map of_mbinder_serializable p)
     }
 
   let sym_to_yojson s =

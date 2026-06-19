@@ -22,21 +22,21 @@ let rec compile_with :
   handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
   -> force:bool -> Command.compiler =
   fun ~handle ~force mp ->
-    print_endline (Path.string_of_path mp);
-    print_endline (Path.string_of_path Ghost.path);
-  if Path.string_of_path mp = Path.string_of_path Ghost.path then Ghost.sign else
-  let base = file_of_path mp in
-  let src =
-    let lp_src = base ^ lp_src_extension in
-    let dk_src = base ^ dk_src_extension in
-    match (Sys.file_exists lp_src, Sys.file_exists dk_src) with
-    | (false, false) ->
-        fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
-    | (true , true ) ->
-        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
-          lp_src dk_src lp_src; lp_src
-    | (true , false) -> lp_src
-    | (false, true ) -> dk_src
+  if Path.string_of_path mp =
+    Path.string_of_path Ghost.path then Ghost.sign
+  else
+    let base = file_of_path mp in
+    let src =
+      let lp_src = base ^ lp_src_extension in
+      let dk_src = base ^ dk_src_extension in
+      match (Sys.file_exists lp_src, Sys.file_exists dk_src) with
+      | (false, false) ->
+          fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
+      | (true , true ) ->
+          wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+            lp_src dk_src lp_src; lp_src
+      | (true , false) -> lp_src
+      | (false, true ) -> dk_src
   in
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
