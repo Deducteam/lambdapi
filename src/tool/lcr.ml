@@ -392,12 +392,12 @@ let iter_cps_of_rules : cp_fun -> Pos.popt -> sym_rule list -> unit =
 (** [typability_constraints pos t] returns [None] if [t] is not typable, and
    [Some s] where [s] is a substitution implied by the typability of [t]. *)
 let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
+  if Logger.log_enabled() then log_cp "typability_constraints %a" term t;
   (* Replace Patt's by Meta's. *)
   let open Stdlib in
   let p = new_problem()
   and p2m : meta IntMap.t ref = ref IntMap.empty
   and m2p : (int * string) MetaMap.t ref = ref MetaMap.empty in
-  if Logger.log_enabled() then log_cp "typability_constraints %a" term t;
   let rec patt_to_meta : term -> term = fun t ->
     match unfold t with
     | Patt(Some i,n,[||]) ->
@@ -552,6 +552,7 @@ let check_cp : cp_fun = fun pos _ l r p l_p _ g d s ->
    all the subterms of the [sr1] LHS and all the possible rule LHS's. *)
 let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
   fun pos ((_,x) as lr) ->
+  if Logger.log_enabled() then log_cp "check_cps_subterms_eq";
   (*if Logger.log_enabled() then
     log_cp "check_cps_subterms_eq@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = shift (lhs lr) and r = shift (rhs lr) in
@@ -577,15 +578,18 @@ let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
     between all the rules of the signature and [sym_map]. *)
 let check_cps_sign_with : Pos.popt -> Sign.t -> rule list SymMap.t -> unit =
   fun pos sign sym_map ->
+  if Logger.log_enabled() then log_cp "check_cps_sign_with";
   let f s' rs' =
     match SymMap.find_opt s' !(sign.Sign.sign_cp_pos) with
     | None -> ()
     | Some cps ->
       let h (i,l,r,p,l_p) =
         let h' r' =
-          let i = match i with Some p -> p | None -> assert false in
-          let gd = (s',r') in let j = id_sym_rule gd in
-          cp_cand_fun check_cp pos i l r p l_p j (lhs gd) (rhs gd)
+          if not (is_ho r') then
+            let i = match i with Some p -> p | None -> assert false in
+            let gd = (s',r') in
+            let j = id_sym_rule gd in
+            cp_cand_fun check_cp pos i l r p l_p j (lhs gd) (rhs gd)
         in List.iter h' rs'
       in
       List.iter h cps
@@ -597,6 +601,7 @@ let check_cps_sign_with : Pos.popt -> Sign.t -> rule list SymMap.t -> unit =
 let check_cps :
   Pos.popt -> Sign.t -> sym_rule list -> rule list SymMap.t -> unit =
   fun pos sign srs sym_map ->
+  if Logger.log_enabled() then log_cp "check_cps";
   (* Verification of CP*(S,S). *)
   iter_cps_of_rules check_cp pos srs;
   (* Verification of CP*(S,R). /!\ Here, we use the fact that decision trees
@@ -625,6 +630,7 @@ let update_cp_pos : Pos.popt -> cp_pos list SymMap.t -> rule list SymMap.t ->
     SymMap.update s h map
   in
   fun pos cp_pos_map rules_map ->
+  if Logger.log_enabled() then log_cp "update_cp_pos";
   let open Stdlib in
   let map = ref cp_pos_map in
   let f s rs =

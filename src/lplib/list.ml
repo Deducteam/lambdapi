@@ -238,6 +238,12 @@ let split_last : 'a list -> 'a list * 'a = fun l ->
   | hd::tl -> (rev tl, hd)
   | [] -> invalid_arg "split_last: empty list"
 
+(** [last l] returns the last element of [l] if [l] is not empty, and raises
+    [Invalid_argument] otherwise. *)
+let last =
+  let rec aux x l = match l with [] -> x | y::l -> aux y l in
+  function x::l -> aux x l | [] -> invalid_arg "last"
+
 (** [rev_mapi f [x1;..;xn]] returns [f (n-1) xn; ..; f 0 x1]. *)
 let rev_mapi f =
   let rec aux acc i l =
@@ -308,3 +314,7 @@ let pos : ('a -> bool) -> 'a list -> int = fun f ->
     | [] -> raise Not_found
     | x::xs -> if f x then k else pos (k+1) xs
   in pos 0
+
+(* Tail recursive implementation of List.append for
+   OCaml < 5.1 *)
+let (@) l1 l2 = rev_append (rev l1) l2

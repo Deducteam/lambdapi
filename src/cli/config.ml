@@ -61,7 +61,7 @@ let init : config -> unit = fun cfg ->
   (* Log some configuration data. *)
   if Logger.log_enabled () then
     begin
-      Library.log "running directory: %s" (Filename.current_dir ());
+      Library.log "running directory: %s" Pos.cur_dir;
       Library.log "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
       let f = Library.log "mapping: %a → %s" Path.pp in
@@ -109,7 +109,7 @@ let map_dir : (Path.t * string) list CLT.t =
   let mod_path : Path.t Arg.conv =
     let parse (s: string) : (Path.t, [>`Msg of string]) result =
       try Ok(Parser.path_of_string s)
-      with Error.Fatal(_,s) -> Error(`Msg(s))
+      with Error.Fatal(_,s, err_desc) -> Error(`Msg(s ^ "\n" ^ err_desc))
     in
     let print fmt p = Path.pp fmt p in
     Arg.conv (parse, print)

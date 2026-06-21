@@ -115,14 +115,10 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
 let handle_require_as :
       compiler -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss {elt=p;_} {elt=id;_} ->
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
-  else
-    begin
-      let ss = rec_require compile ss p in
-      let alias_path = StrMap.add id p ss.alias_path in
-      let path_alias = Path.Map.add p id ss.path_alias in
-      {ss with alias_path; path_alias}
-    end
+  let ss = rec_require compile ss p in
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_require compile bo ss p] handles the command [require p] with
     [compile] as compilation function (passed as argument to avoid cyclic
@@ -624,10 +620,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
+  | Timeout                   as e                    -> raise e
+  | Fatal(Some(Some(_)),_, _) as e                    -> raise e
+  | Fatal(None         ,m, err_desc)      -> fatal pos ~err_desc "%s" m
+  | Fatal(Some(None)   ,m, err_desc)      -> fatal pos ~err_desc "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
