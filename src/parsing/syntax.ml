@@ -268,11 +268,13 @@ type p_tactic_aux =
   | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_assumption
   | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
+  | P_tac_iassumption
   | P_tac_induction
   | P_tac_orelse of p_tactic * p_tactic
   | P_tac_query of p_query
@@ -464,7 +466,9 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
+  | P_tac_assumption, P_tac_assumption
   | P_tac_induction, P_tac_induction
+  | P_tac_iassumption, P_tac_iassumption
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
   | P_tac_refl, P_tac_refl
@@ -661,6 +665,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_set(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
     | P_tac_simpl (SimpSym qid) -> (vs, f a qid)
     | P_tac_simpl _
+    | P_tac_assumption
+    | P_tac_iassumption
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym

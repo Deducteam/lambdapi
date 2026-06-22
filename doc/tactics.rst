@@ -31,6 +31,13 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with each ``xᵢ`` replaced by
 ``hᵢ``.
 
+.. _assumption:
+
+``assumption``
+--------------
+
+Proves the current goal if it is present in the hypotheses
+
 .. _fail:
 
 ``change``
@@ -60,6 +67,14 @@ If the focused goal is of the form ``x₁:A₁, …, xₙ:Aₙ, y₁:B₁, …, 
 
 ``have x: t`` generates a new goal for ``t`` and then let the user prove
 the focused typing goal assuming ``x: t``.
+
+.. _iassumption:
+
+``iassumption``
+--------------
+
+Proves the current goal if it is an instance of an hypothesis
+
 
 .. _induction:
 
