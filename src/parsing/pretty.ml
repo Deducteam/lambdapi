@@ -39,7 +39,6 @@ let _ = let open LpLexer in
     ; "flag", FLAG
     ; "generalize", GENERALIZE
     ; "have", HAVE
-    ; "assumption", IASSUMPTION
     ; "in", IN
     ; "induction", INDUCTION
     ; "inductive", INDUCTIVE
@@ -318,7 +317,6 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
-  | P_tac_iassumption -> out ppf "iassumption"
   | P_tac_induction -> out ppf "induction"
   | P_tac_orelse(t1,t2) -> out ppf "orelse %a %a" tactic t1 tactic t2
   | P_tac_query q -> query ppf q

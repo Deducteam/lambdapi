@@ -15,5 +15,5 @@ end;
 symbol test2 a: (Π x, π (P x)) → π (P a) ≔
 begin
   assume a h;
-  iassumption;
+  assumption;
 end;

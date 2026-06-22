@@ -97,6 +97,7 @@
            | "admit"
            | "apply" <term>
            | "assume" <param>+
+           | "assumption"
            | "change" <term>
            | "eval" <term>
            | "fail"

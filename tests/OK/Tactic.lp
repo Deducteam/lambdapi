@@ -19,6 +19,9 @@ builtin "apply" ≔ #apply;
 constant symbol #assume : String → Tactic;
 builtin "assume" ≔ #assume;
 
+constant symbol #assumption : Tactic;
+builtin "assumption" ≔ #assumption;
+
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 

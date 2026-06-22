@@ -46,7 +46,6 @@ let string_of_token = function
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
   | HOOK_ARROW -> "↪"
-  | IASSUMPTION -> "iassumption"
   | IN -> "in"
   | INDUCTION -> "induction"
   | INDUCTIVE -> "inductive"
@@ -917,7 +916,6 @@ and steps (lb:lexbuf): p_proofstep list =
   | FAIL
   | GENERALIZE
   | HAVE
-  | IASSUMPTION
   | INDUCTION
   | ORELSE
   | REFINE
@@ -1028,10 +1026,6 @@ and tactic (lb:lexbuf): p_tactic =
       consume COLON lb;
       let t = term lb in
       extend_pos (*__FUNCTION__*) pos1 (P_tac_have(i,t))
-  | IASSUMPTION ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 P_tac_iassumption
   | INDUCTION ->
       let pos1 = current_pos() in
       consume_token lb;
