@@ -843,10 +843,14 @@ and search (lb:lexbuf): search =
     if p = [] then n
     else Format.asprintf "%a.%a" Print.path p Print.uid n
   in
-  List.fold_left
+  let res = List.fold_left
     (fun x qid ->
         let p,n = qid.elt in
         if p = [""] then
             QFilter(x,RegExp(n))
         else
             QFilter(x,Path(path_of_qid qid))) q qids
+  in if current_token() = EOF then
+    res
+  else
+    expected "" [VBAR; IN; WITH]

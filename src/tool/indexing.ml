@@ -880,7 +880,7 @@ include QueryLanguage
 module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many
-  ~(fail:?err_desc:string -> string -> string)
+  ~(fail:Pos.popt option -> ?err_desc:string -> string -> string)
   ~pp_results ~tag:(hb,he) q fmt s =
   try
    let mok _ = None in
@@ -896,34 +896,36 @@ module UserLevelQueries = struct
   with
    | Stream.Failure ->
       Lplib.Base.out fmt "%s"
-       (fail (Format.asprintf "Syntax error: a query was expected@."))
-   | Common.Error.Fatal(_,msg, _) ->
-      Lplib.Base.out fmt "%s" (fail (Format.asprintf "Error: %s@." msg))
+       (fail None (Format.asprintf "Syntax error: a query was expected@."))
+   | Common.Error.Fatal(pos,msg, _) ->
+      Lplib.Base.out fmt "%s" (fail pos (Format.asprintf "Error: %s@." msg))
    | Overloaded(name,res) ->
-      Lplib.Base.out fmt "%s" (fail (Format.asprintf
+      Lplib.Base.out fmt "%s" (fail None (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
         with a fully qualified identifier among the following:@."
         name name)
         ~err_desc:(Format.asprintf "%a@." pp_results (ItemSet.bindings res))
         )
    | Stack_overflow ->
-      Lplib.Base.out fmt "%s" (fail
+      Lplib.Base.out fmt "%s" (fail None
        (Format.asprintf
          "Error: too many results. Please refine your query.@." ))
    | exn ->
       Lplib.Base.out fmt "%s"
-       (fail (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
+       (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
   let search_cmd_txt_string ss ~dbpath s =
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
+   ~fail:(fun pos ?err_desc x ->
+    Common.Error.fatal_optional_position pos ?err_desc "%s" x)
    ~pp_results:pp_results_list ~tag:("","") None) s
 
   let search_cmd_txt_query ss ~dbpath q =
   Stdlib.(the_dbpath := dbpath);
   Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
+   ~fail:(fun pos ?err_desc x ->
+    Common.Error.fatal_optional_position pos ?err_desc "%s" x)
    ~pp_results:pp_results_list ~tag:("","") (Some q)) ""
 
 
@@ -946,7 +948,8 @@ module UserLevelQueries = struct
   Stdlib.(the_dbpath := dbpath);
     Format.asprintf "%a"
     (search_cmd_gen ss ~from ~how_many
-      ~fail:(fun ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
+      ~fail:(fun pos ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
+          ^ (match pos with | None ->"" | Some p -> popt_to_string p)
           ^ (Option.value err_desc ~default:"")
    )
       ~pp_results:(html_of_results_list from)
