@@ -36,7 +36,7 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assumption``
 --------------
 
-Proves the current goal if it is (an instance of) an hypothesis
+Proves the current goal if it is (an instance of) an hypothesis.
 
 .. _fail:
 

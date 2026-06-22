@@ -557,14 +557,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       end
   | P_tac_assumption ->
      let rec find_assumption = function
-         [] -> fatal pos "no matching assumption for %a" term gt.goal_type
+       | [] -> fatal pos "no matching assumption for %a" term gt.goal_type
        | (_,(v,_t,_))::al ->
-(*
           let idmap = get_names g in
-          let v0 = mk_Vari v in
-          let v1 = p_term pos idmap v0 in
-*)
-          let v = P.var v in
+          let v = mk_Vari v in
+          let v = p_term pos idmap v in
           try
             let h = handle ps (Pos.make pos (P_tac_apply v)) in
             (*  if List.exists is_unif h.proof_goals then *)
