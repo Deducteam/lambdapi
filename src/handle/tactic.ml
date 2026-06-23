@@ -455,6 +455,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         | None -> fatal pos "Could not simplify the goal."
       end
   | P_tac_solve -> tac_solve pos ps
+  | P_tac_focus n ->
+      let n = int_of_string n in
+      if n < 2 || n > List.length ps.proof_goals then
+        fatal pos "focus index out of bound"
+      else {ps with proof_goals = List.move_nth (n-1) ps.proof_goals}
   | _ ->
   (* Tactics that apply to typing goals only: *)
   match g with
@@ -480,7 +485,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_fail
   | P_tac_query _
   | P_tac_simpl _
-  | P_tac_solve -> assert false (* done before *)
+  | P_tac_solve
+  | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
       let t = scope pt in
@@ -514,17 +520,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       let id =  Pos.make pos (P_Abst(vparam,idbody)) in
       let pt = Pos.make pos (P_Appl(id,Pos.make pos P_Wild)) in
       tac_refine pos ps gt gs (new_problem()) (scope pt)
-  | P_tac_focus n ->
-      let gs = ps.proof_goals in
-      let n =
-        try int_of_string n with
-        | Failure _ ->
-            fatal pos "Focus index string (%s) should contain an integer." n
-      in
-      if n < 1 || n > List.length gs then
-        fatal pos "Focus index (%d) should be in 1..#goals." n
-      else
-        {ps with proof_goals = List.move_nth (n-1) gs}
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
