@@ -129,7 +129,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let notation ppf s =
           match !(s.sym_nota) with
           | NoNotation -> ()
-          | n -> out ppf "notation %a %a;@." sym s (notation float) n
+          | n -> out ppf "notation %a %a;" sym s (notation float) n
         in
         (* Function to print rules. *)
         let rules sym_rule ppf s =
@@ -137,12 +137,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           | [] -> ()
           | r::rs ->
             let rule ppf r = sym_rule ppf (s,r) in
-            let with_rule ppf r = out ppf "with %a@." rule r in
+            let with_rule ppf r = out ppf "@.with %a" rule r in
             out ppf "rule %a%a;" rule r (List.pp with_rule "") rs
         in
         (* Function to print a symbol declaration. *)
         let decl ppf s =
-          out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
+          out ppf "%a%a%asymbol %a : %a%a;@.%a@.%a@."
             expo s.sym_expo prop s.sym_prop
             match_strat s.sym_mstrat sym s sym_type s
             def !(s.sym_def) notation s (rules sym_rule) s
