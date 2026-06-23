@@ -1025,7 +1025,7 @@ and tactic (lb:lexbuf): p_tactic =
         | INT n ->
             consume_token lb;
             extend_pos (*__FUNCTION__*) pos1 (P_tac_focus n)
-        | _ -> expected "" [INT "<int>"]
+        | _ -> expected "" [INT ""]
       end
   | GENERALIZE ->
       let pos1 = current_pos() in

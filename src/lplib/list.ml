@@ -324,9 +324,14 @@ let move_nth (n:int) (l:'a list): 'a list =
      | x::l -> if n <= 0 then x :: rev_append acc l
                else move (x::acc) (n-1) l
   in move [] n l
+
+(* unit tests *)
 let _ =
-  let r = move_nth 2 [0;3;2;1;4] in
-  assert (r = [2;0;3;1;4])
+  let l = [0;3;2;1;4] in
+  assert (
+      move_nth 2 l = [2;0;3;1;4]
+      && move_nth 1 l = [0;3;2;1;4]
+      && move_nth 4 l = [4;0;3;2;1])
 
 (* Tail recursive implementation of List.append for
    OCaml < 5.1 *)

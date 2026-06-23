@@ -102,7 +102,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("change" sterm)
               ("eval" sterm)
               ("fail")
-              ("focus" int)
+              ("focus" sterm)
               ("generalize" ident)
               ("have" ident ":" sterm)
               ("induction")
