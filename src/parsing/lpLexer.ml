@@ -38,6 +38,7 @@ type token =
   | ASSERT of bool (* true for "assertnot" *)
   | ASSOCIATIVE
   | ASSUME
+  | ASSUMPTION
   | BEGIN
   | BUILTIN
   | CHANGE
@@ -205,6 +206,7 @@ let rec token lb =
   | "assertnot" -> ASSERT true
   | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
+  | "assumption" -> ASSUMPTION
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
   | "change" -> CHANGE

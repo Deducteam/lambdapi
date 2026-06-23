@@ -27,6 +27,7 @@ let _ = let open LpLexer in
     ; "assertnot", ASSERT true
     ; "associative", ASSOCIATIVE
     ; "assume", ASSUME
+    ; "assumption", ASSUMPTION
     ; "begin", BEGIN
     ; "builtin", BUILTIN
     ; "commutative", COMMUTATIVE
@@ -310,6 +311,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_assumption -> out ppf "assumption"
   | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"

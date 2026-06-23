@@ -23,6 +23,7 @@ let string_of_token = function
   | ASSIGN -> "≔"
   | ASSOCIATIVE -> "associative"
   | ASSUME -> "assume"
+  | ASSUMPTION -> "assumption"
   | BACKQUOTE -> "`"
   | BEGIN -> "begin"
   | BUILTIN -> "builtin"
@@ -909,6 +910,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | ADMIT
   | APPLY
   | ASSUME
+  | ASSUMPTION
   | CHANGE
   | EVAL
   | FAIL
@@ -994,6 +996,10 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist param lb in
       extend_pos (*__FUNCTION__*) pos1 (P_tac_assume xs)
+  | ASSUMPTION ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 P_tac_assumption
   | CHANGE ->
       let pos1 = current_pos() in
       consume_token lb;

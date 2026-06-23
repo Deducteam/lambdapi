@@ -200,6 +200,7 @@ type tactic =
   | T_and
   | T_apply
   | T_assume
+  | T_assumption
   | T_change
   | T_fail
   | T_generalize
@@ -232,6 +233,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "and" T_and;
   add "apply" T_apply;
   add "assume" T_assume;
+  add "assumption" T_assumption;
   add "change" T_change;
   add "fail" T_fail;
   add "generalize" T_generalize;
@@ -374,6 +376,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
             | T_assume, _ -> assert false
+            | T_assumption, [] -> P_tac_assumption
+            | T_assumption, _ -> assert false
             | T_change, [_;t] -> P_tac_apply (p_term t)
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
@@ -551,6 +555,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end
+  | P_tac_assumption ->
+     let rec find_assumption = function
+       | [] -> fatal pos "no matching assumption for %a" term gt.goal_type
+       | (_,(v,_t,_))::al ->
+          let idmap = get_names g in
+          let v = mk_Vari v in
+          let v = p_term pos idmap v in
+          try
+            let h = handle ps (Pos.make pos (P_tac_apply v)) in
+            (*  if List.exists is_unif h.proof_goals then *)
+            if List.length h.proof_goals >= List.length ps.proof_goals then
+              fatal pos "assumption: not a matching assumption"
+            else h
+          with Fatal _ -> find_assumption al
+     in find_assumption gt.goal_hyps
   | P_tac_set(id,pt) ->
       (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,x:b≔t ⊢ ?1[e,x]:a],
          where [b] is the type of [t], and refine [?[e]] with [?1[e,t]]. *)
