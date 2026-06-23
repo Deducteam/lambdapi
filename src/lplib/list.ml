@@ -327,7 +327,7 @@ let move_nth (n:int) (l:'a list): 'a list =
 let _ =
   let r = move_nth 2 [0;3;2;1;4] in
   assert (r = [2;0;3;1;4])
-  
+
 (* Tail recursive implementation of List.append for
    OCaml < 5.1 *)
 let (@) l1 l2 = rev_append (rev l1) l2
