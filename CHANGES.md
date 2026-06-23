@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Supporting `Plac` in rewriting rules.
 - Fixed Stack_overflow exception due large number of search results.
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
-- Added tactic assumption which proves a goal if it is an instance of an assumption.
+- Added tactic `assumption` which proves a goal if it is an instance of an assumption.
+- Added tactic `focus n` which makes goal n the current goal.
 
 ### Changed
 

@@ -272,6 +272,7 @@ type p_tactic_aux =
   | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
+  | P_tac_focus of int
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
   | P_tac_induction
@@ -464,6 +465,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
+  | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
   | P_tac_admit, P_tac_admit
   | P_tac_assumption, P_tac_assumption
   | P_tac_induction, P_tac_induction
@@ -670,6 +672,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
+    | P_tac_focus _
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
     | P_tac_try t

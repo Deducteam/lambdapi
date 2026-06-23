@@ -43,6 +43,7 @@ let string_of_token = function
   | FAIL -> "fail"
   | FLAG -> "flag"
   | FLOAT _ -> "float"
+  | FOCUS -> "focus"
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
   | HOOK_ARROW -> "↪"
@@ -854,6 +855,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -914,6 +916,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -1014,6 +1017,16 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_fail
+  | FOCUS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      begin
+        match current_token() with
+        | INT n ->
+            consume_token lb;
+            extend_pos (*__FUNCTION__*) pos1 (P_tac_focus(int_of_string n))
+        | _ -> expected "" [INT "<int>"]
+      end
   | GENERALIZE ->
       let pos1 = current_pos() in
       consume_token lb;

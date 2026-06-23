@@ -40,6 +40,14 @@ Proves the current goal if it is (an instance of) an hypothesis.
 
 .. _fail:
 
+
+.. _focus:
+
+``focus <n>``
+-------------
+
+Makes the nth goal become the current goal.
+
 ``change``
 ----------
 
