@@ -903,15 +903,6 @@ module UserLevelQueries = struct
       Lplib.Base.out fmt "%s"
         (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
-  let search_cmd_txt_string ss ~dbpath s =
-    Stdlib.(the_dbpath := dbpath);
-    Format.asprintf "%a"
-      (search_cmd_gen ss ~from:0 ~how_many:999999
-         ~fail:(fun pos ?err_desc x ->
-           Common.Error.fatal_optional_position pos ?err_desc "%s" x)
-         ~pp_results:pp_results_list ~tag:("", "") None)
-      s
-
   let search_cmd_txt_query ss ~dbpath q =
     Stdlib.(the_dbpath := dbpath);
     Format.asprintf "%a"
@@ -948,10 +939,13 @@ module UserLevelQueries = struct
          ~tag:("<h1>", "</h1") None)
       s
 
-  let search_cmd_txt ss ~dbpath (fmt : Format.formatter) s =
+  let search_cmd_txt ss ~dbpath fmt s =
+    let s = transform_ascii_to_unicode s in
     Stdlib.(the_dbpath := dbpath);
-    Lplib.Base.string fmt
-      (search_cmd_txt_string ss ~dbpath (transform_ascii_to_unicode s))
+    search_cmd_gen ss ~from:0 ~how_many:999999
+      ~fail:(fun pos ?err_desc x -> Common.Error.fatal_optional_position pos ?err_desc "%s" x)
+      ~pp_results:pp_results_list ~tag:("", "") None fmt s
+
 end
 
 (* let's flatten the interface *)
