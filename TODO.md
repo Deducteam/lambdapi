@@ -8,7 +8,6 @@ Minor fixes after indexing_BO merge
 [X] notation was not working any more (Pratter was) because of bad way of requiring
   files in cli/lambdapi.ml
 [X] added position in error messages from query commands
-[] Error: End_of_file with query hyp = (forall x, _)
 [] Unexpected search result for query hyp >= (\Pi x:T, (U x -> T)) (but working for (\Pi _, _))
 
 
