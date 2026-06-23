@@ -342,9 +342,9 @@ let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
            Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
   | _ -> fatal pos "not a string literal"
 
-(** [p_int_of_string pos t] returns the int contained in a string literal
+(** [int_of_term pos t] returns the int contained in a string literal
     term [t]. *)
-let p_int_of_string : popt -> term -> int = fun pos t ->
+let int_of_term : popt -> term -> int = fun pos t ->
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       begin
@@ -352,6 +352,14 @@ let p_int_of_string : popt -> term -> int = fun pos t ->
         try int_of_string string
         with _ -> fatal pos "string should contain an int"
       end
+  | _ -> fatal pos "not a string literal"
+
+(** [string_of_term pos t] returns the string contained in a string literal
+    term [t]. *)
+let string_of_term : popt -> term -> string = fun pos t ->
+  match t with
+  | Symb s when String.is_string_literal s.sym_name ->
+      remove_quotes s.sym_name
   | _ -> fatal pos "not a string literal"
 
 let is_right (pos:popt) (t:term): bool =
@@ -395,7 +403,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_change, [_;t] -> P_tac_apply (p_term t)
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
-            | T_focus, [t] -> P_tac_focus (p_int_of_string pos t)
+            | T_focus, [t] -> P_tac_focus (string_of_term pos t)
             | T_focus, _ -> assert false
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
@@ -528,18 +536,17 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       let id =  Pos.make pos (P_Abst(vparam,idbody)) in
       let pt = Pos.make pos (P_Appl(id,Pos.make pos P_Wild)) in
       tac_refine pos ps gt gs (new_problem()) (scope pt)
-  | P_tac_focus n -> begin
-      let rec extract n l =
-        match l with
-        | [] -> raise Not_found
-        | x::l' -> if n = 0 then x,l'
-                   else let (y,r) = extract (n-1) l' in (y,x::r) in
-      try
-        let (x,gs) = extract n ps.proof_goals in
-        {ps with proof_goals = x::gs}
-      with
-        Not_found -> ps
-    end
+  | P_tac_focus n ->
+      let gs = ps.proof_goals in
+      let n =
+        try int_of_string n with
+        | Failure _ ->
+            fatal pos "Focus index string (%s) should contain an integer." n
+      in
+      if n < 1 || n > List.length gs then
+        fatal pos "Focus index (%d) should be in 1..#goals." n
+      else
+        {ps with proof_goals = List.move_nth (n-1) gs}
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)

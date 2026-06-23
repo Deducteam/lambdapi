@@ -1024,7 +1024,7 @@ and tactic (lb:lexbuf): p_tactic =
         match current_token() with
         | INT n ->
             consume_token lb;
-            extend_pos (*__FUNCTION__*) pos1 (P_tac_focus(int_of_string n))
+            extend_pos (*__FUNCTION__*) pos1 (P_tac_focus n)
         | _ -> expected "" [INT "<int>"]
       end
   | GENERALIZE ->

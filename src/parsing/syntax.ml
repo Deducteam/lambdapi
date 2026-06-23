@@ -272,7 +272,7 @@ type p_tactic_aux =
   | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
-  | P_tac_focus of int
+  | P_tac_focus of string
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
   | P_tac_induction

@@ -10,11 +10,12 @@ constant symbol ∃ᵢ [a p] (x:τ a) : π (p x) → π (∃ p);
 symbol T: Set;
 constant symbol P: τ T → Prop;
 
+
 symbol test a: π (P a) → π (`∃ x, P x) ≔
 begin
   assume a h;
   apply ∃ᵢ {} {};
-  focus 1;
+  focus 2;
   assumption
 end;
 

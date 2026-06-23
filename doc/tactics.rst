@@ -46,7 +46,7 @@ Proves the current goal if it is (an instance of) an hypothesis.
 ``focus <n>``
 -------------
 
-Makes the nth goal become the current goal.
+Makes the nth goal (starting from 1) become the current goal.
 
 ``change``
 ----------

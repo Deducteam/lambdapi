@@ -101,7 +101,7 @@
            | "change" <term>
            | "eval" <term>
            | "fail"
-           | "focus" <int>
+           | "focus" <integer>
            | "generalize" <uid>
            | "have" <uid> ":" <term>
            | "induction"
