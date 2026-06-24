@@ -23,6 +23,7 @@ let string_of_token = function
   | ASSIGN -> "≔"
   | ASSOCIATIVE -> "associative"
   | ASSUME -> "assume"
+  | ASSUMPTION -> "assumption"
   | BACKQUOTE -> "`"
   | BEGIN -> "begin"
   | BUILTIN -> "builtin"
@@ -42,6 +43,7 @@ let string_of_token = function
   | FAIL -> "fail"
   | FLAG -> "flag"
   | FLOAT _ -> "float"
+  | FOCUS -> "focus"
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
   | HOOK_ARROW -> "↪"
@@ -773,9 +775,15 @@ and query (lb:lexbuf): p_query =
   | FLAG ->
       let pos1 = current_pos() in
       consume_token lb;
-      let s = consume_STRINGLIT lb in
-      let b = consume_SWITCH lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      begin
+        match current_token() with
+        | SEMICOLON ->
+            extend_pos (*__FUNCTION__*) pos1 (P_query_flag("",true))
+        | _ ->
+          let s = consume_STRINGLIT lb in
+          let b = consume_SWITCH lb in
+          extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      end
   | PROVER ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -853,6 +861,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -909,9 +918,11 @@ and steps (lb:lexbuf): p_proofstep list =
   | ADMIT
   | APPLY
   | ASSUME
+  | ASSUMPTION
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -994,6 +1005,10 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist param lb in
       extend_pos (*__FUNCTION__*) pos1 (P_tac_assume xs)
+  | ASSUMPTION ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 P_tac_assumption
   | CHANGE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -1008,6 +1023,16 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_fail
+  | FOCUS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      begin
+        match current_token() with
+        | INT n ->
+            consume_token lb;
+            extend_pos (*__FUNCTION__*) pos1 (P_tac_focus n)
+        | _ -> expected "" [INT ""]
+      end
   | GENERALIZE ->
       let pos1 = current_pos() in
       consume_token lb;

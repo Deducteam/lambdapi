@@ -200,8 +200,10 @@ type tactic =
   | T_and
   | T_apply
   | T_assume
+  | T_assumption
   | T_change
   | T_fail
+  | T_focus
   | T_generalize
   | T_have
   | T_induction
@@ -232,8 +234,10 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "and" T_and;
   add "apply" T_apply;
   add "assume" T_assume;
+  add "assumption" T_assumption;
   add "change" T_change;
   add "fail" T_fail;
+  add "focus" T_focus;
   add "generalize" T_generalize;
   add "have" T_have;
   add "induction" T_induction;
@@ -280,16 +284,16 @@ let p_term (pos:popt): int StrMap.t -> term -> p_term =
     | _ -> fatal pos "Unhandled term expression: %a." Print.term t
   in term
 
-let remove_quotes s = String.sub s 1 (String.length s - 2)
-
-let _ = assert (remove_quotes "\"\"" = "" && remove_quotes "\"ab\"" = "ab")
-
-let p_ident_of_sym (pos:popt) (t:term) :p_ident =
+(** [string_of_term pos t] returns the string contained in a string literal
+    term [t]. *)
+let string_of_term : popt -> term -> string = fun pos t ->
   match unfold t with
-  | Symb s when s.sym_path = Sign.Ghost.path
-                && String.is_string_literal s.sym_name ->
-      Pos.make pos (remove_quotes s.sym_name)
-  | _ -> fatal pos "Not a string: %a." term t
+  | Symb s when String.is_string_literal s.sym_name ->
+      String.remove_quotes s.sym_name
+  | _ -> fatal pos "not a string literal"
+
+let p_ident_of_sym (pos:popt) (t:term): p_ident =
+  Pos.make pos (string_of_term pos t)
 
 let p_ident_of_var (pos:popt) (t:term) :p_ident =
   match unfold t with
@@ -311,44 +315,42 @@ let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
     | Symb s, ts -> p_query c pos s ts
     | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
-(** [p_term_of_string pos t] turns into a p_term a string literal term [t]
-    that is part of a bigger term obtained by scoping and normalizing of a
+(** [p_term_of_string_term pos t] turns into a p_term a string literal term
+    [t] that is part of a bigger term obtained by scoping and normalizing of a
     p_term at position [pos]. *)
-let p_term_of_string (pos:popt) (t:term): p_term =
+let p_term_of_string_term (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
-      begin
-        let string = remove_quotes s.sym_name in
-        let p = lexing_opt (after s.sym_pos) in
-        Parsing.Parser.Lp.parse_term_string p string
-      end
+    let p = lexing_opt (after s.sym_pos) in
+    Parsing.Parser.Lp.parse_term_string p (String.remove_quotes s.sym_name)
   | _ -> fatal pos "not a string literal"
 
-(** [p_rwpatt_of_string pos t] turns into a p_rwpatt option a string literal
-    term [t] that is part of a bigger term obtained by scoping and normalizing
-    of a p_term at position [pos]. *)
-let p_rwpatt_of_string (pos:popt) (t:term): p_rwpatt option =
+(** [p_rwpatt_of_string_term pos t] turns into a p_rwpatt option a string
+    literal term [t] that is part of a bigger term obtained by scoping and
+    normalizing of a p_term at position [pos]. *)
+let p_rwpatt_of_string_term (pos:popt) (t:term): p_rwpatt option =
   (*if Logger.log_enabled() then
-    log "p_rwpatt_of_string %a %a" Pos.short pos term t;*)
+    log "p_rwpatt_of_string_term %a %a" Pos.short pos term t;*)
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
-      let string = remove_quotes s.sym_name in
+      let string = String.remove_quotes s.sym_name in
       if string = "" then None
       else let p = lexing_opt (after s.sym_pos) in
            Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
   | _ -> fatal pos "not a string literal"
 
+(** [int_of_term pos t] returns the int contained in a string literal
+    term [t]. *)
+let int_of_term : popt -> term -> int = fun pos t ->
+  try int_of_string (string_of_term pos t)
+  with Failure _ -> fatal pos "too big integer"
+
+(** [is_right pos t] returns [true] iff [t] is ["right"]. *)
 let is_right (pos:popt) (t:term): bool =
-  match t with
-  | Symb s when String.is_string_literal s.sym_name ->
-      begin
-        match remove_quotes s.sym_name with
-        | "left" -> false
-        | "" | "right" -> true
-        | _ ->
-            fatal pos "rewrite tactic not applied to side string literal"
-      end
-  | _ -> fatal pos "rewrite tactic not applied to a side string literal"
+  match string_of_term pos t with
+  | "left" -> false
+  | "" | "right" -> true
+  | _ -> fatal pos "invalid side literal"
 
 (** [p_tactic ss g env pos t] weak head normalizes [t] and convert the result
     into a p_tactic. *)
@@ -374,9 +376,13 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
             | T_assume, _ -> assert false
+            | T_assumption, [] -> P_tac_assumption
+            | T_assumption, _ -> assert false
             | T_change, [_;t] -> P_tac_apply (p_term t)
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
+            | T_focus, [t] -> P_tac_focus (string_of_term pos t)
+            | T_focus, _ -> assert false
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
             | T_generalize, _ -> assert false
             | T_have, [t1;t2] ->
@@ -388,7 +394,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac_eval t1, tac_eval t2)
             | T_orelse, _ -> assert false
-            | T_refine, [t] -> P_tac_refine(p_term_of_string pos t)
+            | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
             | T_remove, [_;t] -> P_tac_remove [p_ident_of_var pos t]
@@ -397,7 +403,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_repeat, _ -> assert false
             | T_rewrite, [side;pat;_;t] ->
                 P_tac_rewrite(is_right pos side,
-                              p_rwpatt_of_string pos pat, p_term t)
+                              p_rwpatt_of_string_term pos pat, p_term t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
                 P_tac_set(p_ident_of_sym pos t1, p_term t2)
@@ -449,6 +455,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         | None -> fatal pos "Could not simplify the goal."
       end
   | P_tac_solve -> tac_solve pos ps
+  | P_tac_focus n ->
+      let n = int_of_string n in
+      if n < 2 || n > List.length ps.proof_goals then
+        fatal pos "focus index out of bound"
+      else {ps with proof_goals = List.move_nth (n-1) ps.proof_goals}
   | _ ->
   (* Tactics that apply to typing goals only: *)
   match g with
@@ -474,7 +485,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_fail
   | P_tac_query _
   | P_tac_simpl _
-  | P_tac_solve -> assert false (* done before *)
+  | P_tac_solve
+  | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_apply pt ->
       let t = scope pt in
@@ -551,6 +563,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end
+  | P_tac_assumption ->
+     let rec find_assumption = function
+       | [] -> fatal pos "no matching assumption for %a" term gt.goal_type
+       | (_,(v,_t,_))::al ->
+          let idmap = get_names g in
+          let v = mk_Vari v in
+          let v = p_term pos idmap v in
+          try
+            let h = handle ps (Pos.make pos (P_tac_apply v)) in
+            (*  if List.exists is_unif h.proof_goals then *)
+            if List.length h.proof_goals >= List.length ps.proof_goals then
+              fatal pos "assumption: not a matching assumption"
+            else h
+          with Fatal _ -> find_assumption al
+     in find_assumption gt.goal_hyps
   | P_tac_set(id,pt) ->
       (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,x:b≔t ⊢ ?1[e,x]:a],
          where [b] is the type of [t], and refine [?[e]] with [?1[e,t]]. *)

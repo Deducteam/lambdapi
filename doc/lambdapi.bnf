@@ -97,9 +97,11 @@
            | "admit"
            | "apply" <term>
            | "assume" <param>+
+           | "assumption"
            | "change" <term>
            | "eval" <term>
            | "fail"
+           | "focus" <integer>
            | "generalize" <uid>
            | "have" <uid> ":" <term>
            | "induction"
@@ -134,10 +136,8 @@
           | "compute" <term>
           | "print" [<id> | "unif_rule" | "coerce_rule"]
           | "proofterm"
-          | "debug"
-          | "debug" ("+"|"-") <char>+
-          | "flag"
-          | "flag" <string> <switch>
+          | "debug" [("+"|"-") <char>+]
+          | "flag" [string> <switch>]
           | "prover" <string>
           | "prover_timeout" <integer>
           | "verbose" <integer>
