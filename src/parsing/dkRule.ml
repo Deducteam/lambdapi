@@ -2,6 +2,9 @@ open Syntax
 open Common open Pos open Error
 open Lplib
 
+let log = Logger.make 'b' "dkpr" "dk parsing"
+let log = log.pp
+
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
     of all its arguments.  The arguments are stored together with the position
@@ -44,29 +47,25 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)       -> assert false (* Cannot happen. *)
-      | P_Iden(x,_)       ->
+      | P_Appl _ -> assert false
+      | P_Iden(x,_) ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
-              try
-                let n = Hashtbl.find arity x in
+              try let n = Hashtbl.find arity x in
                 if nb_args > n then Hashtbl.replace arity x nb_args
               with Not_found -> Hashtbl.add arity x nb_args
             end
-      | P_Wild            -> ()
-      | P_Type            -> fatal h.pos "Matching on Type."
-      | P_Prod(_,_)       -> fatal h.pos "Matching on product."
-      | P_Abst(xs,t)      ->
+      | P_Wild -> ()
+      | P_Type -> fatal h.pos "Matching on Type."
+      | P_Prod _ -> fatal h.pos "Matching on product."
+      | P_Abst(xs,t) ->
           begin
             match xs with
-            | [(_       ,Some(a),_)] ->
-                fatal a.pos "Matching on type annotation."
-            | [([Some x],None   ,_)] ->
-                compute_arities (x.elt::env) t
-            | [([None  ],None   ,_)] ->
-                compute_arities env t
-            | _                      -> assert false
+            | [_,Some a,_] -> fatal a.pos "Matching on type annotation."
+            | [[Some x],None,_] -> compute_arities (x.elt::env) t
+            | [[None],None,_] -> compute_arities env t
+            | _ -> assert false
           end
       | P_Arro(_,_)       -> fatal h.pos "Matching on product."
       | P_LLet(_,_,_,_,_) -> fatal h.pos "Matching on let."
@@ -133,9 +132,9 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
         mk(P_Patt(None, Some (Array.of_list lts)))
     | _ ->
     match t.elt with
-    | P_Iden _
-    | P_Type
-    | P_Wild -> t
+    | P_Iden _ -> t
+    | P_Wild -> assert false
+    | P_Type -> assert false
     | P_Prod([[Some x],Some a,false],b) ->
       mk(P_Prod([[Some x],Some(build env a),false], build (x.elt::env) b))
     | P_Prod _ -> assert false
