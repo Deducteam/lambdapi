@@ -377,15 +377,10 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
             | T_assume, [u;_;Abst (_, bi)] ->
-               let uname = string_of_term pos u in
-               let nv = new_var uname in
-               let uname = uniq_name nv in
-               let nv = new_var uname in
-               let uname = Pos.make pos uname in
-               let uvar = mk_Vari nv in
-               let t' = subst bi uvar in
+               let uname = uniq_name (new_var (string_of_term pos u)) in
+               let nv = new_var uname and uname = Pos.make pos uname in
                P_tac_and (Pos.make pos (P_tac_assume [Some uname]),
-                          tac_eval t')
+                          tac_eval (subst bi (mk_Vari nv)))
             | T_assume, _ -> assert false
             | T_assumption, [] -> P_tac_assumption
             | T_assumption, _ -> assert false

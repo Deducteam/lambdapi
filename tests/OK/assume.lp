@@ -11,8 +11,8 @@ symbol test [T:Set] (a: τ T) (b: τ T): π OK ≔
 begin
   assume T;
   eval (#assume "x" (λ (a1: τ T),
-                     /*#print "assume1" &*/
-                                      (#assume "x" (λ (a2: τ T), 
-                       /*#print "assume2" &*/
+                     #print "assume1" &
+                                      (#assume "x" (λ (a2: τ T),
+                       #print "assume2" &
                                         #apply isOK))));
 end;
