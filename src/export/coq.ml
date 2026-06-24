@@ -93,9 +93,10 @@ let add_renaming pos s1 s2 =
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(coq_id,{elt=([],lp_id);_});pos} ->
-        if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
-        add_renaming pos lp_id coq_id
+    | {elt=P_builtin(coq_id,{elt=(p,lp_id);_});pos} ->
+      if p <> [] then fatal pos "Qualified identifiers are forbidden here";
+      if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
+      add_renaming pos lp_id coq_id
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -111,15 +112,16 @@ let map_erased_qid_coq = ref QidMap.empty
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(coq_id,lp_qid);pos} ->
-        if Logger.log_enabled() then
-          log "rename %a into %s" Pretty.qident lp_qid coq_id;
-        let id = snd lp_qid.elt in
-        if Logger.log_enabled() then log "erase %s" id;
-        erase := StrSet.add id !erase;
-        map_erased_qid_coq :=
-          QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
-        if fst lp_qid.elt = [] then add_renaming pos id coq_id
+    | {elt=P_builtin(coq_id,({elt=(p,id);_} as lp_qid));pos} ->
+      if Logger.log_enabled() then log "erase %s" id;
+      erase := StrSet.add id !erase;
+      map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
+      if p = [] then
+        begin
+          if Logger.log_enabled() then
+            log "rename %a into %s" Pretty.raw_ident id coq_id;
+          add_renaming pos id coq_id
+        end
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
