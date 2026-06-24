@@ -40,7 +40,7 @@ debug mode for some functionalities as follows:
    debug -s;
 
 Each functionality is represented by a single character. To get the
-list of all available flags, use the command ``debug`` with no
+list of all available debug flags, use the command ``debug`` with no
 argument.
 
 .. _flag:
