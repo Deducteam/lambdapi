@@ -55,21 +55,21 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
               with Not_found -> Hashtbl.add arity x nb_args
             end
       | P_Wild            -> ()
-      | P_Type            -> fatal h.pos "Type in dk pattern."
-      | P_Prod(_,_)       -> fatal h.pos "Product in dk pattern."
+      | P_Type            -> fatal h.pos "Matching on Type."
+      | P_Prod(_,_)       -> fatal h.pos "Matching on product."
       | P_Abst(xs,t)      ->
           begin
             match xs with
             | [(_       ,Some(a),_)] ->
-                fatal a.pos "Annotation in dk pattern."
+                fatal a.pos "Matching on type annotation."
             | [([Some x],None   ,_)] ->
                 compute_arities (x.elt::env) t
             | [([None  ],None   ,_)] ->
                 compute_arities env t
             | _                      -> assert false
           end
-      | P_Arro(_,_)       -> fatal h.pos "Implication in dk pattern."
-      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
+      | P_Arro(_,_)       -> fatal h.pos "Matching on product."
+      | P_LLet(_,_,_,_,_) -> fatal h.pos "Matching on let."
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
@@ -126,11 +126,11 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
           (* Build the abstraction. *)
           let xs = Array.map (fun x -> Some(Pos.none x)) vars in
           Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
-    | P_Wild when lts = [] && env = []                   -> t
-    | P_Wild                                             ->
-        let lts = List.map (fun (_, t) -> build env t) lts in
+    | P_Wild ->
+      if lts = [] && env = [] then t
+      else let lts = List.map (fun (_, t) -> build env t) lts in
         Pos.make t.pos (P_Patt(None, Some (Array.of_list lts)))
-    | _                                                  ->
+    | _ ->
     match t.elt with
     | P_Iden(_)
     | P_Type
@@ -157,13 +157,19 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
         in
         Pos.make t.pos (P_Abst([([x],a,false)], u))
     | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_Meta(_,_)       -> fatal t.pos "Invalid dk rule syntax."
-    | P_Patt(_,_)       -> fatal h.pos "Pattern in dk rule."
-    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
-    | P_NLit(_)         -> fatal h.pos "Nat literal in dk rule."
-    | P_SLit(_)         -> fatal h.pos "String literal in dk rule."
-    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in dk rule."
-    | P_Expl(_)         -> fatal h.pos "Explicit argument in dk rule."
+    | P_LLet(x,xs,a,t,u) ->
+      let mk = Pos.make t.pos in
+      let typ = Option.map (fun a -> mk(P_Prod(xs,a))) a in
+      let params_list = [[Some x],typ,false] in
+      let abs = mk(P_Abst(params_list,u)) in
+      let arg = mk(P_Abst(xs,t)) in
+      mk(P_Appl(abs,arg))
+    | P_Meta(_,_)       -> assert false
+    | P_Patt(_,_)       -> assert false
+    | P_NLit(_)         -> assert false
+    | P_SLit(_)         -> assert false
+    | P_Wrap(_)         -> assert false
+    | P_Expl(_)         -> assert false
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
