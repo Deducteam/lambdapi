@@ -47,7 +47,7 @@ do
         π/utf_path|escape_path|'a b/escape file'|require_nondkmident|262_pair_ex_2|require_symbol);;
         # use builtin strings
         Tactic|1374);;
-        # use #print tactic
+        # requires an excluded file
         assume);;
         # default case
         *) translate $f.lp;;
