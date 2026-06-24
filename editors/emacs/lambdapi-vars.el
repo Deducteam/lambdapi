@@ -12,6 +12,7 @@
     "assumption"
     "change"
     "eval"
+    "focus"
     "generalize"
     "have"
     "orelse"

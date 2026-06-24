@@ -25,6 +25,9 @@ builtin "assumption" ≔ #assumption;
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
+constant symbol #focus : String → Tactic;
+builtin "focus" ≔ #focus;
+
 constant symbol #generalize : Π [a], τ a → Tactic;
 builtin "generalize" ≔ #generalize;
 

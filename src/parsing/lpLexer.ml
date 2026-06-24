@@ -51,6 +51,7 @@ type token =
   | EVAL
   | FAIL
   | FLAG
+  | FOCUS
   | GENERALIZE
   | HAVE
   | IN
@@ -219,6 +220,7 @@ let rec token lb =
   | "eval" -> EVAL
   | "fail" -> FAIL
   | "flag" -> FLAG
+  | "focus" -> FOCUS
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
