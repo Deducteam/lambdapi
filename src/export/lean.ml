@@ -108,19 +108,14 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ ->
-      char oc '{'; raw_params oc x; char oc '}';
-      if !stt && t = None then List.iter (nonempty_param oc) ids
-  | false, Some _ ->
-      char oc '('; raw_params oc x; char oc ')';
-      if !stt && t = None then List.iter (nonempty_param oc) ids
+  | true, _ -> char oc '{'; raw_params oc x; char oc '}'
+  | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
 
 and top_params oc ((ids,_,_) as x) =
-  params oc x; List.iter (nonempty_param oc) ids
-
-and nonempty_param oc id =
-  string oc " [Nonempty "; param_id oc id; char oc ']'
+  params oc x;
+  let nonempty oc id = string oc " [Nonempty "; param_id oc id; char oc ']' in
+  List.iter (nonempty oc) ids
 
 and params_list oc = List.iter (prefix " " params oc)
 
