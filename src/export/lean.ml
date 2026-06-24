@@ -64,7 +64,7 @@ let rec term oc t =
           let n = typ_arity h in
           if n <= 0 then ts else
             let l1,l2 = List.cut ts n in
-            l1 @ List.init (n-1) (fun _ -> {elt=P_Wild;pos=None}) @ l2
+            l1 @ List.init (n-1) (fun _ -> P.wild) @ l2
         in
         list paren " " oc ts
       in
