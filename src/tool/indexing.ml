@@ -866,14 +866,9 @@ include QueryLanguage
 module UserLevelQueries = struct
   let search_cmd_gen ss ~from ~how_many
       ~(fail : Pos.popt option -> ?err_desc:string -> string -> string)
-      ~pp_results ~tag:(hb, he) q fmt s =
+      ~pp_results ~tag:(hb, he) fmt q =
     try
       let mok _ = None in
-      let q =
-        match q with
-        | None -> Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s
-        | Some q -> q
-      in
       let items = ItemSet.bindings (answer_query ~mok ss [] q) in
       let resultsno = List.length items in
       let _, items = Lplib.List.cut items from in
@@ -905,12 +900,14 @@ module UserLevelQueries = struct
 
   let search_cmd_txt_query ss ~dbpath q =
     Stdlib.(the_dbpath := dbpath);
-    Format.asprintf "%a"
-      (search_cmd_gen ss ~from:0 ~how_many:999999
-         ~fail:(fun pos ?err_desc x ->
-           Common.Error.fatal_optional_position pos ?err_desc "%s" x)
-         ~pp_results:pp_results_list ~tag:("", "") (Some q))
-      ""
+    search_cmd_gen ss ~from:0 ~how_many:999999
+      ~fail:(fun pos ?err_desc x ->
+        Common.Error.fatal_optional_position pos ?err_desc "%s" x)
+      ~pp_results:pp_results_list ~tag:("", "") q
+
+  let search_cmd_gen_string ss ~from ~how_many ~fail ~pp_results ~tag fmt s =
+   search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag fmt
+    (Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s)
 
   (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
       ["forall"] with ["→"] and ["Π"] in the search query [s] *)
@@ -927,24 +924,22 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
-  let search_cmd_html ss ~from ~how_many s ~dbpath =
+  let search_cmd_html ss ~from ~how_many ~dbpath fmt s =
     Stdlib.(the_dbpath := dbpath);
-    Format.asprintf "%a"
-      (search_cmd_gen ss ~from ~how_many
-         ~fail:(fun pos ?err_desc x ->
-           "<font color=\"red\">" ^ x ^ "</font>"
-           ^ (match pos with None -> "" | Some p -> popt_to_string p)
-           ^ Option.value err_desc ~default:"")
-         ~pp_results:(html_of_results_list from)
-         ~tag:("<h1>", "</h1") None)
-      s
+    search_cmd_gen_string ss ~from ~how_many
+      ~fail:(fun pos ?err_desc x ->
+        "<font color=\"red\">" ^ x ^ "</font>"
+        ^ (match pos with None -> "" | Some p -> popt_to_string p)
+        ^ Option.value err_desc ~default:"")
+      ~pp_results:(html_of_results_list from)
+      ~tag:("<h1>", "</h1") fmt s
 
   let search_cmd_txt ss ~dbpath fmt s =
     let s = transform_ascii_to_unicode s in
     Stdlib.(the_dbpath := dbpath);
-    search_cmd_gen ss ~from:0 ~how_many:999999
+    search_cmd_gen_string ss ~from:0 ~how_many:999999
       ~fail:(fun pos ?err_desc x -> Common.Error.fatal_optional_position pos ?err_desc "%s" x)
-      ~pp_results:pp_results_list ~tag:("", "") None fmt s
+      ~pp_results:pp_results_list ~tag:("", "") fmt s
 
 end
 
