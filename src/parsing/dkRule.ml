@@ -83,7 +83,7 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
   (* Check that all context variables occur in the LHS. *)
   let check_here x =
     try ignore (Hashtbl.find arity x.elt) with Not_found ->
-      fatal x.pos "Variable [%s] does not occur in the LHS." x.elt
+      wrn x.pos "Variable [%s] does not occur in the LHS." x.elt
   in
   List.iter check_here ctx;
   (* Actually process the LHS and RHS. *)
