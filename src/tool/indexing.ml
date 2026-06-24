@@ -869,6 +869,8 @@ module UserLevelQueries = struct
       ~pp_results ~tag:(hb, he) fmt q =
     try
       let mok _ = None in
+      (* Let's do the parsing here to capture the exceptions here *)
+      let q = Lazy.force q in
       let items = ItemSet.bindings (answer_query ~mok ss [] q) in
       let resultsno = List.length items in
       let _, items = Lplib.List.cut items from in
@@ -898,16 +900,17 @@ module UserLevelQueries = struct
       Lplib.Base.out fmt "%s"
         (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
-  let search_cmd_txt_query ss ~dbpath q =
+  let search_cmd_txt_query ss ~dbpath fmt q =
     Stdlib.(the_dbpath := dbpath);
     search_cmd_gen ss ~from:0 ~how_many:999999
       ~fail:(fun pos ?err_desc x ->
         Common.Error.fatal_optional_position pos ?err_desc "%s" x)
-      ~pp_results:pp_results_list ~tag:("", "") q
+      ~pp_results:pp_results_list ~tag:("", "") fmt (lazy q)
 
   let search_cmd_gen_string ss ~from ~how_many ~fail ~pp_results ~tag fmt s =
    search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag fmt
-    (Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s)
+    (* Let's do the parsing later to capture the exceptions later *)
+    (lazy (Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s))
 
   (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
       ["forall"] with ["→"] and ["Π"] in the search query [s] *)

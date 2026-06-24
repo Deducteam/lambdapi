@@ -8,7 +8,7 @@ Minor fixes after indexing_BO merge
 [X] notation was not working any more (Pratter was) because of bad way of requiring
   files in cli/lambdapi.ml
 [X] added position in error messages from query commands
-[] in case of syntax error the websearch now does not return the page
+[X] in case of syntax error the websearch now does not return the page
 
 
 Index and search
