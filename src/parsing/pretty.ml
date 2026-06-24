@@ -317,7 +317,6 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
   | P_tac_focus n -> out ppf "focus %s" n
-  | P_tac_print n -> out ppf "print %s" n
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"

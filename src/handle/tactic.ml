@@ -294,6 +294,13 @@ let string_of_term : popt -> term -> string = fun pos t ->
       String.remove_quotes s.sym_name
   | _ -> fatal pos "not a string literal"
 
+(** [qstring_of_term pos t] returns the qid string contained in a
+    term [t]. *)
+let qstring_of_term : popt -> term -> qident = fun pos t ->
+  match unfold t with
+  | Symb s -> ([], s.sym_name)
+  | _ -> fatal pos "not a string literal"
+
 let p_ident_of_sym (pos:popt) (t:term): p_ident =
   Pos.make pos (string_of_term pos t)
 
@@ -400,7 +407,9 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac_eval t1, tac_eval t2)
             | T_orelse, _ -> assert false
-            | T_print, [t] -> P_tac_print (string_of_term pos t)
+            | T_print, [t] ->
+                let s = Pos.make pos (qstring_of_term pos t) in
+                P_tac_query (Pos.make pos (P_query_print (Some s)))
             | T_print, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
@@ -441,6 +450,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | g::gs ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
+  | P_tac_query {elt=P_query_print _ as q;pos} ->
+      let _ = Query.handle ss (Some ps) (Pos.make pos q) in ps
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl SimpAll ->
@@ -496,12 +507,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_solve
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
-  | P_tac_print s ->
-      Format.fprintf Format.std_formatter "\n%s:\n" s;
-      Format.fprintf Format.std_formatter "\nCurrent Goal:\n";
-      Proof.goals Format.std_formatter ps;
-      Format.fprintf Format.std_formatter "\n";
-      ps
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
