@@ -107,14 +107,6 @@ and paren oc t =
 and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
-<<<<<<< Updated upstream
-  match b, t with
-  | true, _ -> char oc '{'; raw_params oc x; char oc '}';
-               if !stt then add_nonempty oc x
-  | false, Some _ -> char oc '('; raw_params oc x; char oc ')';
-               if !stt then add_nonempty oc x
-  | false, None -> param_ids oc ids
-=======
   let pos = None in
   (* Parameters with no type are assumed to be of type [Set]. *)
     let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
@@ -126,7 +118,9 @@ and params oc ((ids,t,b) as x) =
           char oc '('; raw_params oc x; char oc ')';
           if !stt && t = Some _Set then List.iter (nonempty_param oc) ids
       | false, None -> param_ids oc ids
->>>>>>> Stashed changes
+
+and nonempty_param oc id =
+  string oc " [Nonempty "; param_id oc id; char oc ']'
 
 (* starts with a space if the list is not empty *)
 and params_list oc = List.iter (prefix " " params oc)
