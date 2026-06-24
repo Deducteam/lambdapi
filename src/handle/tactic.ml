@@ -208,6 +208,7 @@ type tactic =
   | T_have
   | T_induction
   | T_orelse
+  | T_print
   | T_refine
   | T_reflexivity
   | T_remove
@@ -242,6 +243,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "have" T_have;
   add "induction" T_induction;
   add "orelse" T_orelse;
+  add "print" T_print;
   add "refine" T_refine;
   add "reflexivity" T_reflexivity;
   add "remove" T_remove;
@@ -374,7 +376,16 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_and, _ -> assert false
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
-            | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
+            | T_assume, [u;_;Abst (_, bi)] ->
+               let uname = string_of_term pos u in
+               let nv = new_var uname in
+               let uname = uniq_name nv in
+               let nv = new_var uname in
+               let uname = Pos.make pos uname in
+               let uvar = mk_Vari nv in
+               let t' = subst bi uvar in
+               P_tac_and (Pos.make pos (P_tac_assume [Some uname]),
+                          tac_eval t')
             | T_assume, _ -> assert false
             | T_assumption, [] -> P_tac_assumption
             | T_assumption, _ -> assert false
@@ -394,6 +405,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac_eval t1, tac_eval t2)
             | T_orelse, _ -> assert false
+            | T_print, [t] -> P_tac_print (string_of_term pos t)
+            | T_print, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
@@ -488,6 +501,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_solve
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
+  | P_tac_print s ->
+      Format.fprintf Format.std_formatter "\n%s:\n" s;
+      Format.fprintf Format.std_formatter "\nCurrent Goal:\n";
+      Proof.goals Format.std_formatter ps;
+      Format.fprintf Format.std_formatter "\n";
+      ps
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)

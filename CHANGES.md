@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
 - Added tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Added tactic `focus n` which makes goal n the current goal.
+- Added term `#print` allowing to print the current goal inside `eval`.
 
 ### Changed
 
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
 - LSP server: Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction)
-
+- Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
 ### Fixed
 
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
