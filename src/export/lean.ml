@@ -112,10 +112,12 @@ and params oc ((ids,t,b) as x) =
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
 
-and top_params oc ((ids,_,_) as x) =
+and top_params oc ((ids,a,_) as x) =
   params oc x;
-  let nonempty oc id = string oc " [Nonempty "; param_id oc id; char oc ']' in
-  List.iter (nonempty oc) ids
+  if a = None then
+    let nonempty oc id =
+      string oc " [Nonempty "; param_id oc id; char oc ']'
+    in List.iter (nonempty oc) ids
 
 and params_list oc = List.iter (prefix " " params oc)
 
