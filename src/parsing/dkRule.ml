@@ -2,9 +2,6 @@ open Syntax
 open Common open Pos open Error
 open Lplib
 
-let log = Logger.make 'b' "dkpr" "dk parsing"
-let log = log.pp
-
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
     of all its arguments.  The arguments are stored together with the position
