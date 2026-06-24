@@ -157,11 +157,14 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
         in
         Pos.make t.pos (P_Abst([([x],a,false)], u))
     | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_LLet(x,[],a,t,u) ->
+      let mk = Pos.make t.pos in
+      let abs = mk(P_Abst([[Some x],a,false],u)) in
+      mk(P_Appl(abs,t))
     | P_LLet(x,xs,a,t,u) ->
       let mk = Pos.make t.pos in
       let typ = Option.map (fun a -> mk(P_Prod(xs,a))) a in
-      let params_list = [[Some x],typ,false] in
-      let abs = mk(P_Abst(params_list,u)) in
+      let abs = mk(P_Abst([[Some x],typ,false],u)) in
       let arg = mk(P_Abst(xs,t)) in
       mk(P_Appl(abs,arg))
     | P_Meta(_,_)       -> assert false
