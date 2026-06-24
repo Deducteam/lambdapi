@@ -88,7 +88,8 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
   List.iter check_here ctx;
   (* Actually process the LHS and RHS. *)
   let rec build env t =
-    let (h, lts) = get_args t in
+    let mk = Pos.make t.pos in
+    let h,lts = get_args t in
     match h.elt with
     | P_Iden({elt = ([],x); _}, _) when is_pat_var env x ->
         let lts = List.map (fun (p, t) -> (p, build env t)) lts in
@@ -129,50 +130,31 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
     | P_Wild ->
       if lts = [] && env = [] then t
       else let lts = List.map (fun (_, t) -> build env t) lts in
-        Pos.make t.pos (P_Patt(None, Some (Array.of_list lts)))
+        mk(P_Patt(None, Some (Array.of_list lts)))
     | _ ->
     match t.elt with
-    | P_Iden(_)
+    | P_Iden _
     | P_Type
-    | P_Wild            -> t
-    | P_Prod(xs,b)      ->
-        let (x,a) =
-          match xs with
-          | [([Some x],Some(a),_)] -> (x, build env a)
-          | _                      -> assert false (* Unreachable. *)
-        in
-        let b = build (x.elt::env) b in
-        Pos.make t.pos (P_Prod([([Some x],Some(a),false)], b))
-    | P_Arro(a,b)       -> Pos.make t.pos (P_Arro(build env a, build env b))
-    | P_Abst(xs,u)      ->
-        let (x,a) =
-          match xs with
-          | [([x],ao,_)] -> (x, Option.map (build env) ao)
-          | _            -> assert false (* Unreachable. *)
-        in
-        let u =
-          match x with
-          | Some(x) -> build (x.elt::env) u
-          | None    -> build env u
-        in
-        Pos.make t.pos (P_Abst([([x],a,false)], u))
-    | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_LLet(x,[],a,t,u) ->
-      let mk = Pos.make t.pos in
-      let abs = mk(P_Abst([[Some x],a,false],u)) in
-      mk(P_Appl(abs,t))
-    | P_LLet(x,xs,a,t,u) ->
-      let mk = Pos.make t.pos in
-      let typ = Option.map (fun a -> mk(P_Prod(xs,a))) a in
-      let abs = mk(P_Abst([[Some x],typ,false],u)) in
-      let arg = mk(P_Abst(xs,t)) in
-      mk(P_Appl(abs,arg))
-    | P_Meta(_,_)       -> assert false
-    | P_Patt(_,_)       -> assert false
-    | P_NLit(_)         -> assert false
-    | P_SLit(_)         -> assert false
-    | P_Wrap(_)         -> assert false
-    | P_Expl(_)         -> assert false
+    | P_Wild -> t
+    | P_Prod([[Some x],Some a,false],b) ->
+      mk(P_Prod([[Some x],Some(build env a),false], build (x.elt::env) b))
+    | P_Prod _ -> assert false
+    | P_Arro(a,b) -> mk(P_Arro(build env a, build env b))
+    | P_Abst([[x],a,false],u) ->
+      let a = Option.map (build env) a in
+      let env' = match x with Some x -> x.elt::env | None -> env in
+      mk(P_Abst([[x],a,false], build env' u))
+    | P_Abst _ -> assert false
+    | P_Appl(t1,t2) -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_LLet(x,[],Some a,t,u) ->
+      mk(P_LLet(x,[],Some(build env a), build env t, build (x.elt::env) u))
+    | P_LLet _ -> assert false
+    | P_Meta _ -> assert false
+    | P_Patt _ -> assert false
+    | P_NLit _ -> assert false
+    | P_SLit _ -> assert false
+    | P_Wrap _ -> assert false
+    | P_Expl _ -> assert false
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
