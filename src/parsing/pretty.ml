@@ -154,7 +154,7 @@ let rec term : p_term pp = fun ppf t ->
           ident x params_list xs typ a func t func u
     | (P_NLit([],i)        , _    ) -> out ppf "%s" i
     | (P_NLit(p,i)         , _    ) -> out ppf "%a.%s" raw_path p i
-    | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
+    | (P_SLit(s)           , _    ) -> string ppf s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (P_Appl _, `Atom)
