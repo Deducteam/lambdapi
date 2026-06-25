@@ -78,8 +78,8 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
 type result = (unit -> string) option
 (** Result of query displayed on hover in the editor. *)
 
-(** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose level
-    1 and returns a function for printing [x] on a string using [pp]. *)
+(** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
+level 1 and returns a function for printing [x] on a string using [pp]. *)
 let return : 'a pp -> 'a -> result =
  fun pp x ->
   Console.out 1 "%a" pp x;
@@ -167,8 +167,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       (* Function to print a symbol declaration. *)
       let decl ppf s =
         out ppf "%a%a%asymbol %a : %a%a;%a%a" expo s.sym_expo prop s.sym_prop
-          match_strat s.sym_mstrat sym s sym_type s def !(s.sym_def) notation s
-          (rules sym_rule) s
+          match_strat s.sym_mstrat sym s sym_type s def !(s.sym_def)
+          notation s (rules sym_rule) s
       in
       let new_decl ppf s = out ppf "@.%a" decl s in
       (* Function to print constructors and the induction principle if [qid]
@@ -253,13 +253,14 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         else begin
           List.iter (wrn pos "Cannot solve [%a]." constr) !p.unsolved;
           fatal pos
-            "[%a] has type [%a],@ [%a] has type [%a].@.Those two types are not \
-             unifiable."
+            "[%a] has type [%a],@ [%a] has type [%a].@.\
+            Those two types are not unifiable."
             term t term a term u term b
         end
       else
         fatal pos
-          "[%a] has type [%a],@ [%a] has type [%a].@.Those two types are not \
+          "[%a] has type [%a],@ [%a] has type [%a].@.\
+          Those two types are not \
            unifiable."
           term t term a term u term b;
       None

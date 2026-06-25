@@ -153,7 +153,8 @@ module Index = struct
       IRigid (r, insert_index i (s' @ s) v)
     | _, _ -> raise NoMatch
 
-  let insert (namemap, index) term v = (namemap, insert_index index [ term ] v)
+  let insert (namemap, index) term v =
+    (namemap, insert_index index [ term ] v)
 
   let insert_name (namemap, index) name v =
     let vs =
@@ -200,7 +201,8 @@ module Index = struct
     match (node, term) with
     | _, Patt _ ->
       List.concat
-        (List.map (fun i -> search_index ~generalize i s) (match_flexible node))
+        (List.map (fun i -> search_index ~generalize i s)
+        (match_flexible node))
     | IHOLE i, _ when generalize -> search_index ~generalize i s
     | IHOLE i, t -> search_node ~generalize (IRigid (IVar, i)) t s
     | IRigid (r, i), t -> (
@@ -278,9 +280,8 @@ module DB = struct
   let restore_from_disk () =
     try restore_from ~filename:Stdlib.(!the_dbpath)
     with Sys_error msg ->
-      Common.Error.wrn None
-        "%s.\nType \"lambdapi index --help\" to learn how to create the index."
-        msg;
+      Common.Error.wrn None "%s.\n\
+       Type \"lambdapi index --help\" to learn how to create the index." msg;
       (Sym_nameMap.empty, Index.empty)
 
   (* The persistent database *)
@@ -315,7 +316,9 @@ module DB = struct
     let idx =
       Index.remove ~what:(fun (((sym_path, _), _), _) -> keep sym_path) idx
     in
-    let sidx = Sym_nameMap.filter (fun (sym_path, _) _ -> keep sym_path) sidx in
+    let sidx = Sym_nameMap.filter (fun (sym_path, _) _ ->
+      keep sym_path) sidx
+    in
     db := lazy (sidx, idx)
 
   let set_of_list ~generalize k l =
@@ -359,7 +362,8 @@ module DB = struct
            let start_line = int_of_string start_line in
            let end_line = int_of_string end_line in
            sidx :=
-             Sym_nameMap.add lpid (sourceid, fname, start_line, end_line) !sidx
+             Sym_nameMap.add lpid (sourceid, fname, start_line, end_line)
+             !sidx
          | _ ->
            raise
              (Common.Error.Fatal
@@ -371,7 +375,8 @@ module DB = struct
       raise
         (Common.Error.Fatal
            ( None,
-             "wrong file format for source map file: " ^ Printexc.to_string exn,
+             "wrong file format for source map file: "
+             ^ Printexc.to_string exn,
              "" ))
     | End_of_file -> close_in ch);
     db := lazy (!sidx, idx)
@@ -519,7 +524,8 @@ let elim_duplicates_up_to_normalization res =
       (fun ((((mp, name), sympos), l) as inp) ->
         let s = mk_bogus_sym mp name sympos in
         match !normalize_fun (Core.Term.mk_Symb s) with
-        | Symb { sym_path; sym_name; _ } -> (((sym_path, sym_name), sympos), l)
+        | Symb { sym_path; sym_name; _ } ->
+          (((sym_path, sym_name), sympos), l)
         | _ -> inp)
       resl
   in
@@ -542,10 +548,12 @@ let find_sym ~prt ~prv sig_state ({ elt = mp, name; pos } as s) =
       | [] -> (
         let res_orig = DB.locate_name name in
         let res = elim_duplicates_up_to_normalization res_orig in
-        if DB.ItemSet.cardinal res > 1 then raise (Overloaded (name, res_orig));
+        if DB.ItemSet.cardinal res > 1 then
+          raise (Overloaded (name, res_orig));
         match DB.ItemSet.choose_opt res with
         | None -> Common.Error.fatal pos "Unknown symbol %s." name
-        | Some (((mp, name), sympos), [ (_, _, DB.Name) ]) -> (sympos, mp, name)
+        | Some (((mp, name), sympos), [ (_, _, DB.Name) ]) ->
+          (sympos, mp, name)
         | Some _ -> assert false
         (* locate only returns DB.Name*))
       | _ :: _ -> (None, mp, name)
@@ -616,7 +624,8 @@ let _ = normalize_fun := normalize
 let search_pterm ~generalize ~mok ss env pterm =
   let env = ("V#", (new_var "V#", Term.mk_Type, None)) :: env in
   Dream.log "QUERY before scoping: %a@." Parsing.Pretty.term pterm;
-  let query = Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
+  let query =
+    Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
   Dream.log "QUERY before normalize: %a" Core.Print.term query;
   let query = normalize query in
   Dream.log "QUERY to be executed: %a" Core.Print.term query;
@@ -674,13 +683,14 @@ let subterms_to_index ~is_spine t =
       match where with
       | Spine _ ->
         let t2 = subst b (Core.Term.mk_Patt (None, "dummy", [||])) in
-        aux ~where:(enter_pi_source where) t
-        @ aux ~where:(enter_pi_target ~is_prod:(Core.Term.is_prod t2) where) t2
+        aux ~where:(enter_pi_source where) t @ aux
+        ~where:(enter_pi_target ~is_prod:(Core.Term.is_prod t2) where) t2
       | _ ->
         let _, t2 = unbind b in
         aux ~where:(enter_pi_source where) t
         @ aux ~where:(enter_pi_target ~is_prod:false where) t2)
-    | Appl (t1, t2) -> aux ~where:(enter where) t1 @ aux ~where:(enter where) t2
+    | Appl (t1, t2) ->
+        aux ~where:(enter where) t1 @ aux ~where:(enter where) t2
     | Patt (_var, _varname, args) ->
       List.concat (List.map (aux ~where:(enter where)) (Array.to_list args))
     | LLet (t1, t2, b) ->
@@ -890,7 +900,8 @@ module UserLevelQueries = struct
               "Overloaded symbol %s. Please rewrite the query replacing %s \
                with a fully qualified identifier among the following:@."
               name name)
-           ~err_desc:(Format.asprintf "%a@." pp_results (ItemSet.bindings res)))
+           ~err_desc:(Format.asprintf "%a@." pp_results
+            (ItemSet.bindings res)))
     | Stack_overflow ->
       Lplib.Base.out fmt "%s"
         (fail None
@@ -941,7 +952,8 @@ module UserLevelQueries = struct
     let s = transform_ascii_to_unicode s in
     Stdlib.(the_dbpath := dbpath);
     search_cmd_gen_string ss ~from:0 ~how_many:999999
-      ~fail:(fun pos ?err_desc x -> Common.Error.fatal_optional_position pos ?err_desc "%s" x)
+      ~fail:(fun pos ?err_desc x ->
+          Common.Error.fatal_optional_position pos ?err_desc "%s" x)
       ~pp_results:pp_results_list ~tag:("", "") fmt s
 
 end

@@ -19,6 +19,7 @@ val lsp_input : ((*uri*)string * (*text*)string) ref
 val search_cmd_txt_query: sig_state -> dbpath:string -> search Lplib.Base.pp
 
 (* search command used by websearch *)
-val search_cmd_html: sig_state -> from:int -> how_many:int -> dbpath:string -> string Lplib.Base.pp
+val search_cmd_html: sig_state -> from:int -> how_many:int -> dbpath:string
+    -> string Lplib.Base.pp
 
 val search_cmd_txt: sig_state -> dbpath:string -> string Lplib.Base.pp
