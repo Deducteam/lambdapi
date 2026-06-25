@@ -21,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
 - Export to Lean.
 
->>>>>>> dk/master
 ### Changed
 
 - Tactic `simplify` now fails if the goal cannot be simplified.
