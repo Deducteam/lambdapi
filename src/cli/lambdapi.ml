@@ -141,17 +141,18 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   Error.handle_exceptions run
 
 (** Possible outputs for the export command. *)
-type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
+type output =
+  Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq | RawLean | SttLean
 
 (** Running the export mode. *)
 let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
-      (mapping:string option) (renaming:string option)
+      (mapping:string option) (renaming:string option) (arities:string option)
       (requiring:string option) (no_implicits:bool) (use_notations:bool)
       (file:string) : unit =
   let run _ =
     Config.init {cfg with verbose = Some 0};
-    Export.Coq.use_implicits := not no_implicits;
-    Export.Coq.use_notations := use_notations;
+    Export.Stt.use_implicits := not no_implicits;
+    Export.Stt.use_notations := use_notations;
     match output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
@@ -162,16 +163,28 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
     | Some RawCoq ->
-        Export.Coq.stt := false;
-        Option.iter Export.Coq.set_renaming renaming;
+        Export.Stt.stt := false;
+        Option.iter Export.Stt.set_renaming renaming;
         Export.Coq.print (Parser.parse_file file)
     | Some SttCoq ->
-        Export.Coq.stt := true;
-        Option.iter Export.Coq.set_renaming renaming;
-        Option.iter Export.Coq.set_encoding encoding;
-        Option.iter Export.Coq.set_mapping mapping;
-        Option.iter Export.Coq.set_requiring requiring;
+        Export.Stt.stt := true;
+        Option.iter Export.Stt.set_renaming renaming;
+        Option.iter Export.Stt.set_encoding encoding;
+        Option.iter Export.Stt.set_mapping mapping;
+        Option.iter Export.Stt.set_requiring requiring;
         Export.Coq.print (Parser.parse_file file)
+    | Some RawLean ->
+        Export.Stt.stt := false;
+        Option.iter Export.Stt.set_renaming renaming;
+        Export.Lean.print file (Parser.parse_file file)
+    | Some SttLean ->
+        Export.Stt.stt := true;
+        Option.iter Export.Stt.set_renaming renaming;
+        Option.iter Export.Stt.set_encoding encoding;
+        Option.iter Export.Stt.set_mapping mapping;
+        Option.iter Export.Stt.set_tvs_map arities;
+        Option.iter Export.Stt.set_requiring requiring;
+        Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
@@ -279,6 +292,8 @@ let output : output option CLT.t =
       | "xtc" -> Ok Xtc
       | "raw_coq" -> Ok RawCoq
       | "stt_coq" -> Ok SttCoq
+      | "raw_lean" -> Ok RawLean
+      | "stt_lean" -> Ok SttLean
       | _ -> Error(`Msg "Invalid format")
     in
     let print fmt o =
@@ -290,14 +305,16 @@ let output : output option CLT.t =
          | Hrs -> "hrs"
          | Xtc -> "xtc"
          | RawCoq -> "raw_coq"
-         | SttCoq -> "stt_coq")
+         | SttCoq -> "stt_coq"
+         | RawLean -> "raw_lean"
+         | SttLean -> "stt_lean")
     in
     Arg.conv (parse, print)
   in
   let doc =
     "Set the output format of the export command. The value of $(docv) \
-     must be `lp' (default), `raw_dk`, `dk`, `hrs`, `xtc`, `raw_coq` or \
-     `stt_coq`."
+     must be `lp' (default), `raw_dk`, `dk`, `hrs`, `xtc`, `raw_coq`, \
+     `stt_coq`, `raw_lean` or `stt_lean`."
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 
@@ -307,7 +324,7 @@ let encoding : string option CLT.t =
     let print fmt s = string fmt s in
     Arg.conv (parse, print)
   in
-  let doc = "Set config file for the command export -o stt_coq." in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
   Arg.(value & opt (some encoding) None & info ["encoding"] ~docv:"FILE" ~doc)
 
 let renaming : string option CLT.t =
@@ -316,7 +333,7 @@ let renaming : string option CLT.t =
     let print fmt s = string fmt s in
     Arg.conv (parse, print)
   in
-  let doc = "Set config file for the command export -o stt_coq." in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
   Arg.(value & opt (some renaming) None & info ["renaming"] ~docv:"FILE" ~doc)
 
 let mapping : string option CLT.t =
@@ -325,8 +342,17 @@ let mapping : string option CLT.t =
     let print fmt s = string fmt s in
     Arg.conv (parse, print)
   in
-  let doc = "Set config file for the command export -o stt_coq." in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
   Arg.(value & opt (some mapping) None & info ["mapping"] ~docv:"FILE" ~doc)
+
+let arities : string option CLT.t =
+  let mapping : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
+  Arg.(value & opt (some mapping) None & info ["arities"] ~docv:"FILE" ~doc)
 
 let requiring : string option CLT.t =
   let requiring : string Arg.conv =
@@ -334,7 +360,7 @@ let requiring : string option CLT.t =
     let print fmt s = string fmt s in
     Arg.conv (parse, print)
   in
-  let doc = "Set config file for the command export -o stt_coq." in
+  let doc = "Set config file for the command export -o stt_[coq|lean]." in
   Arg.(value & opt (some requiring) None
        & info ["requiring"] ~docv:"FILE" ~doc)
 
@@ -343,7 +369,7 @@ let no_implicits : bool CLT.t =
   Arg.(value & flag & info ["no-implicits"] ~doc)
 
 let use_notations : bool CLT.t =
-  let doc = "Generate Coq code using notations." in
+  let doc = "Generate code using notations." in
   Arg.(value & flag & info ["use-notations"] ~doc)
 
 (** Remaining arguments: source files. *)
@@ -417,7 +443,8 @@ let export_cmd =
   let doc = "Translate the given files to other formats." in
   Cmd.v (Cmd.info "export" ~doc ~man:man_pkg_file)
     CLT.(const export_cmd $ Config.full $ output $ encoding $ mapping
-         $ renaming $ requiring $ no_implicits $ use_notations $ file)
+         $ renaming $ arities $ requiring $ no_implicits $ use_notations
+         $ file)
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in

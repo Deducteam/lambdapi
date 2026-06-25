@@ -776,9 +776,15 @@ and query (lb:lexbuf): p_query =
   | FLAG ->
       let pos1 = current_pos() in
       consume_token lb;
-      let s = consume_STRINGLIT lb in
-      let b = consume_SWITCH lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      begin
+        match current_token() with
+        | SEMICOLON ->
+            extend_pos (*__FUNCTION__*) pos1 (P_query_flag("",true))
+        | _ ->
+          let s = consume_STRINGLIT lb in
+          let b = consume_SWITCH lb in
+          extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      end
   | PROVER ->
       let pos1 = current_pos() in
       consume_token lb;
