@@ -497,7 +497,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         match ps.proof_goals with
         | [] -> fatal pos "all_hyps calls with empty goal list"
         | g :: _ ->
-            let v = mk_Vari v in
+            let v = unfold (mk_Vari v) in
             let t = mk_Appl (mk_Appl (t, p), v) in
             if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
             try handle ps (p_tactic ss g env pos t) with Fatal _ -> ps
