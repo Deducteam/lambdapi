@@ -258,7 +258,7 @@ let qid_or_regexp (lb:lexbuf): (string list * string) loc =
   | STRINGLIT s ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 ([""], s)
+      make_pos pos1 (Sign.Ghost.path, s)
   | _ ->
       expected "" [UID"";QID[];STRINGLIT""]
 
@@ -321,9 +321,6 @@ let float_or_int (lb:lexbuf): string =
 let path (lb:lexbuf): string list loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
-  (*| UID s ->
-      let pos1 = current_pos() in
-      LpLexer.syntax_error pos1 "Unqualified identifier"*)
   | QID p ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -342,6 +339,10 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
       let pos1 = current_pos() in
       consume_token lb;
       qid_of_path pos1 p
+  | STRINGLIT s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 (Sign.Ghost.path, String.add_quotes s)
   | UNIF_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -351,7 +352,7 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
       consume_token lb;
       make_pos pos1 (Sign.Ghost.path, Coercion.coerce.sym_name)
   | _ ->
-      expected "" [UID"";QID[];UNIF_RULE;COERCE_RULE]
+      expected "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE]
 
 let term_id (lb:lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1670,7 +1671,7 @@ and search (lb:lexbuf): search =
   List.fold_left
     (fun x qid ->
         let p,n = qid.elt in
-        if p = [""] then
+        if p = Sign.Ghost.path then
             QFilter(x,RegExp(n))
         else
             QFilter(x,Path(path_of_qid qid))) q qids

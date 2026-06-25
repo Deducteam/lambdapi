@@ -354,6 +354,7 @@ and head idmap wrap ppf t =
           out ppf " ≔ %a in %a" (func idmap) t (func idmap) u
         end;
       if wrap then out ppf ")"
+
 and abstractions idmap ppf t =
   match unfold t with
   | Abst(_,b) ->

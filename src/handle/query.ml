@@ -123,8 +123,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       end
   | P_query_print(Some qid) ->
     let m = snd qid.elt in
-    if String.is_string_literal m then
-      return string (String.remove_quotes m^"\n")
+    if String.is_string_literal m then return string (String.remove_quotes m)
     else
       let sym_info ppf s =
         (* Function to print a definition. *)
