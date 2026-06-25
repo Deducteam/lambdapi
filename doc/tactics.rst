@@ -38,26 +38,21 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 
 Proves the current goal if it is (an instance of) an hypothesis.
 
-.. _fail:
-
-.. _first_hyp:
-
-``first_hyp <t>``
--------------
-
-Iterates the application of parameterized term tactic t on all hypotheses starting from the most recent one until success.
-
 .. _focus:
 
 ``focus <n>``
 -------------
 
-Makes the nth goal (starting from 1) become the current goal.
+Move the n-th goal (n≥2) to position 1.
+
+.. _change:
 
 ``change``
 ----------
 
 ``change t`` replaces the current goal ``u`` by ``t``, if ``t ≡ u``.
+
+.. _fail:
 
 ``fail``
 --------

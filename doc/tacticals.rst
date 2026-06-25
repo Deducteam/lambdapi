@@ -63,23 +63,30 @@ An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/
      eval 2 * #rewrite "" "" addnA & #reflexivity
    end;
 
+.. _first_hyp:
+
+``first_hyp``
+-------------
+
+In a context with ``n`` assumptions ``x₁``, …, ``xₙ``, ``first_hyp t`` applies the tactic ``t xₙ``. If the goal is solved, then it stops. Otherwise, it tries with the next assumption until one succeeds, or fail.
+
 .. _orelse:
 
 ``orelse``
 ----------
 
-``orelse T1 T2`` applies ``T1``. If ``T1`` succeeds, then ``orelse T1 T2`` stops. Otherwise, ``orelse T1 T2`` applies ``T2``.
+``orelse t1 t2`` applies ``t1``. If ``t1`` succeeds, then ``orelse t1 t2`` stops. Otherwise, ``orelse t1 t2`` applies ``t2``.
 
 .. _repeat:
 
 ``repeat``
 ----------
 
-``repeat T`` applies ``T`` on the first goal until the number of goals decreases.
+``repeat t`` applies ``t`` on the first goal until the number of goals decreases.
 
 .. _try:
 
 ``try``
 -------
 
-``try T`` applies ``T``. If ``T`` fails, then ``try T`` leaves the goal unchanged.
+``try t`` applies ``t``. If ``t`` fails, then ``try t`` leaves the goal unchanged.

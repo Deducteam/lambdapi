@@ -544,18 +544,17 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_first_hyp t ->
       let t = scope t in
       let rec find_assumption = function
-          [] -> fatal pos "tactic [%a] fails on all assumptions" term t
-       | (_,(v,p,_))::env ->
-          let v = mk_Vari v in
+        | [] -> fatal pos "tactic [%a] fails on all assumptions" term t
+        | (_,(v,a,_))::env ->
           try
-            let t = mk_Appl (mk_Appl (t, p), v) in
+            let t = mk_Appl(mk_Appl(t,a), mk_Vari v) in
             if Logger.log_enabled() then log "FIRST_HYP %a\n" term t;
             let h = handle ps (p_tactic ss g env pos t) in
             if List.length h.proof_goals >= List.length ps.proof_goals then
-              fatal pos "tactic fails on assumption"
+              fatal pos "no progress"
             else h
           with Fatal _ -> find_assumption env
-     in find_assumption gt.goal_hyps
+      in find_assumption gt.goal_hyps
   | P_tac_have(id, pt) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
