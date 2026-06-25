@@ -44,32 +44,28 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)       -> assert false (* Cannot happen. *)
-      | P_Iden(x,_)       ->
+      | P_Appl _ -> assert false
+      | P_Iden(x,_) ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
-              try
-                let n = Hashtbl.find arity x in
+              try let n = Hashtbl.find arity x in
                 if nb_args > n then Hashtbl.replace arity x nb_args
               with Not_found -> Hashtbl.add arity x nb_args
             end
-      | P_Wild            -> ()
-      | P_Type            -> fatal h.pos "Type in dk pattern."
-      | P_Prod(_,_)       -> fatal h.pos "Product in dk pattern."
-      | P_Abst(xs,t)      ->
+      | P_Wild -> ()
+      | P_Type -> fatal h.pos "Matching on Type."
+      | P_Prod _ -> fatal h.pos "Matching on product."
+      | P_Abst(xs,t) ->
           begin
             match xs with
-            | [(_       ,Some(a),_)] ->
-                fatal a.pos "Annotation in dk pattern."
-            | [([Some x],None   ,_)] ->
-                compute_arities (x.elt::env) t
-            | [([None  ],None   ,_)] ->
-                compute_arities env t
-            | _                      -> assert false
+            | [_,Some a,_] -> fatal a.pos "Matching on type annotation."
+            | [[Some x],None,_] -> compute_arities (x.elt::env) t
+            | [[None],None,_] -> compute_arities env t
+            | _ -> assert false
           end
-      | P_Arro(_,_)       -> fatal h.pos "Implication in dk pattern."
-      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
+      | P_Arro(_,_)       -> fatal h.pos "Matching on product."
+      | P_LLet(_,_,_,_,_) -> fatal h.pos "Matching on let."
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
@@ -88,7 +84,8 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
   List.iter check_here ctx;
   (* Actually process the LHS and RHS. *)
   let rec build env t =
-    let (h, lts) = get_args t in
+    let mk = Pos.make t.pos in
+    let h,lts = get_args t in
     match h.elt with
     | P_Iden({elt = ([],x); _}, _) when is_pat_var env x ->
         let lts = List.map (fun (p, t) -> (p, build env t)) lts in
@@ -126,44 +123,34 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
           (* Build the abstraction. *)
           let xs = Array.map (fun x -> Some(Pos.none x)) vars in
           Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
-    | P_Wild when lts = [] && env = []                   -> t
-    | P_Wild                                             ->
-        let lts = List.map (fun (_, t) -> build env t) lts in
-        Pos.make t.pos (P_Patt(None, Some (Array.of_list lts)))
-    | _                                                  ->
+    | P_Wild ->
+      if lts = [] && env = [] then t
+      else let lts = List.map (fun (_, t) -> build env t) lts in
+        mk(P_Patt(None, Some (Array.of_list lts)))
+    | _ ->
     match t.elt with
-    | P_Iden(_)
-    | P_Type
-    | P_Wild            -> t
-    | P_Prod(xs,b)      ->
-        let (x,a) =
-          match xs with
-          | [([Some x],Some(a),_)] -> (x, build env a)
-          | _                      -> assert false (* Unreachable. *)
-        in
-        let b = build (x.elt::env) b in
-        Pos.make t.pos (P_Prod([([Some x],Some(a),false)], b))
-    | P_Arro(a,b)       -> Pos.make t.pos (P_Arro(build env a, build env b))
-    | P_Abst(xs,u)      ->
-        let (x,a) =
-          match xs with
-          | [([x],ao,_)] -> (x, Option.map (build env) ao)
-          | _            -> assert false (* Unreachable. *)
-        in
-        let u =
-          match x with
-          | Some(x) -> build (x.elt::env) u
-          | None    -> build env u
-        in
-        Pos.make t.pos (P_Abst([([x],a,false)], u))
-    | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_Meta(_,_)       -> fatal t.pos "Invalid dk rule syntax."
-    | P_Patt(_,_)       -> fatal h.pos "Pattern in dk rule."
-    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
-    | P_NLit(_)         -> fatal h.pos "Nat literal in dk rule."
-    | P_SLit(_)         -> fatal h.pos "String literal in dk rule."
-    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in dk rule."
-    | P_Expl(_)         -> fatal h.pos "Explicit argument in dk rule."
+    | P_Iden _ -> t
+    | P_Wild -> assert false
+    | P_Type -> assert false
+    | P_Prod([[Some x],Some a,false],b) ->
+      mk(P_Prod([[Some x],Some(build env a),false], build (x.elt::env) b))
+    | P_Prod _ -> assert false
+    | P_Arro(a,b) -> mk(P_Arro(build env a, build env b))
+    | P_Abst([[x],a,false],u) ->
+      let a = Option.map (build env) a in
+      let env' = match x with Some x -> x.elt::env | None -> env in
+      mk(P_Abst([[x],a,false], build env' u))
+    | P_Abst _ -> assert false
+    | P_Appl(t1,t2) -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_LLet(x,[],Some a,t,u) ->
+      mk(P_LLet(x,[],Some(build env a), build env t, build (x.elt::env) u))
+    | P_LLet _ -> assert false
+    | P_Meta _ -> assert false
+    | P_Patt _ -> assert false
+    | P_NLit _ -> assert false
+    | P_SLit _ -> assert false
+    | P_Wrap _ -> assert false
+    | P_Expl _ -> assert false
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
