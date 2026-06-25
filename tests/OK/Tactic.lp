@@ -28,6 +28,9 @@ builtin "fail" ≔ #fail;
 constant symbol #focus : String → Tactic;
 builtin "focus" ≔ #focus;
 
+constant symbol #first_hyp : (Π P, π P → Tactic) → Tactic;
+builtin "first_hyp" ≔ #first_hyp;
+
 constant symbol #generalize : Π [a], τ a → Tactic;
 builtin "generalize" ≔ #generalize;
 

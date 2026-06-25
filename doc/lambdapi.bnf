@@ -101,6 +101,7 @@
            | "change" <term>
            | "eval" <term>
            | "fail"
+           | "first_hyp" <term>
            | "focus" <integer>
            | "generalize" <uid>
            | "have" <uid> ":" <term>

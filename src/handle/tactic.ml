@@ -203,6 +203,7 @@ type tactic =
   | T_assumption
   | T_change
   | T_fail
+  | T_first_hyp
   | T_focus
   | T_generalize
   | T_have
@@ -237,6 +238,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "assumption" T_assumption;
   add "change" T_change;
   add "fail" T_fail;
+  add "first_hyp" T_first_hyp;
   add "focus" T_focus;
   add "generalize" T_generalize;
   add "have" T_have;
@@ -381,6 +383,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_change, [_;t] -> P_tac_apply (p_term t)
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
+            | T_first_hyp, [t] -> P_tac_first_hyp (p_term t)
+            | T_first_hyp, _ -> assert false
             | T_focus, [t] -> P_tac_focus (string_of_term pos t)
             | T_focus, _ -> assert false
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
@@ -538,6 +542,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           tac_refine pos ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
       end
+  | P_tac_first_hyp tac ->
+      let tac = scope tac in
+      let rec find_assumption = function
+          [] -> fatal pos "tactic %a fails on all assumptions" term tac
+       | (_,(v,p,_))::al ->
+          let v = mk_Vari v in
+          try
+            let t = mk_Appl (mk_Appl (tac, p), v) in
+            log "FIRST_HYP %a\n" term t;
+            let h = handle ps (p_tactic ss g env pos t) in
+            if List.length h.proof_goals >= List.length ps.proof_goals then
+              fatal pos "tactic fails on assumption"
+            else h
+          with Fatal _ -> find_assumption al
+     in find_assumption gt.goal_hyps
   | P_tac_have(id, pt) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)

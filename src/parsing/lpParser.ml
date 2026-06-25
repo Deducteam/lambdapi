@@ -41,6 +41,7 @@ let string_of_token = function
   | EQUIV -> "≡"
   | EVAL -> "eval"
   | FAIL -> "fail"
+  | FIRST_HYP -> "first_hyp"
   | FLAG -> "flag"
   | FLOAT _ -> "float"
   | FOCUS -> "focus"
@@ -1023,6 +1024,11 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_fail
+  | FIRST_HYP ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = term lb in
+      extend_pos (*__FUNCTION__*) pos1 (P_tac_first_hyp t)
   | FOCUS ->
       let pos1 = current_pos() in
       consume_token lb;

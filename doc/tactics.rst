@@ -40,6 +40,12 @@ Proves the current goal if it is (an instance of) an hypothesis.
 
 .. _fail:
 
+.. _first_hyp:
+
+``first_hyp <t>``
+-------------
+
+Iterates the application of parameterized term tactic t on all hypotheses until success.
 
 .. _focus:
 
