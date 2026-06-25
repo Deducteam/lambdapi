@@ -15,7 +15,7 @@ Adds in the environment new symbols (axioms) proving the focused goal.
 ``all_hyps``
 ------------
 
-``all_hyps t`` runs the parameterized tactic term t on all hypotheses, ignoring failing calls.
+``all_hyps t`` runs the parameterized tactic term t on all hypotheses, starting from the most recent one, ignoring failing calls. Fails if all calls fail.
 
 .. _apply:
 

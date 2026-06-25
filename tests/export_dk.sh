@@ -48,7 +48,7 @@ do
         # use builtin strings
         Tactic|1374);;
         # use Tactic
-        all_hyps,first_hyp);;
+        all_hyps|first_hyp|all_hyps);;
         # requires an excluded file
         assume);;
         # default case

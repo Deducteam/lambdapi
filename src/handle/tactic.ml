@@ -491,21 +491,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_solve
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
-  | P_tac_all_hyps tac ->
-      let tac = scope tac in
-      let rec all_assumptions ps = function
-       |  [] -> ps
-       | (_,(v,p,_))::al ->
-          match ps.proof_goals with
-            | [] -> ps
-            | g :: _ ->
-                let v = mk_Vari v in
-                let t = mk_Appl (mk_Appl (tac, p), v) in
-                log "ALL_HYPS on %a\n" term v;
-                let h = try handle ps (p_tactic ss g env pos t)
-                        with Fatal _ -> ps in
-                all_assumptions h al
-     in all_assumptions ps gt.goal_hyps
+  | P_tac_all_hyps t ->
+      let t = scope t in
+      let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
+        match ps.proof_goals with
+        | [] -> fatal pos "all_hyps calls with empty goal list"
+        | g :: _ ->
+            let v = mk_Vari v in
+            let t = mk_Appl (mk_Appl (t, p), v) in
+            if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
+            try handle ps (p_tactic ss g env pos t) with Fatal _ -> ps
+      in
+      let ps' = List.fold_left try_assumption ps gt.goal_hyps in
+      if ps' == ps then
+        fatal pos "tactic all_hyps has failed on all assumptions"
+      else ps'
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
