@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Tactic `focus n` which makes goal n the current goal.
 - Export to Lean.
+- Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
 
 ### Changed
 

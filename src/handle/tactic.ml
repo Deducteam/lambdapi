@@ -198,6 +198,7 @@ let get_prod_ids env =
 type tactic =
   | T_admit
   | T_and
+  | T_all_hyps
   | T_apply
   | T_assume
   | T_assumption
@@ -232,6 +233,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   in
   add "admit" T_admit;
   add "and" T_and;
+  add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
   add "assumption" T_assumption;
@@ -372,6 +374,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_admit, _ -> P_tac_admit
             | T_and, [t1;t2] -> P_tac_and(tac_eval t1, tac_eval t2)
             | T_and, _ -> assert false
+            | T_all_hyps, [t] -> P_tac_all_hyps (p_term t)
+            | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
             | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
@@ -488,6 +492,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_solve
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
+  | P_tac_all_hyps tac ->
+      let tac = scope tac in
+      let rec all_assumptions ps = function
+       |  [] -> ps
+       | (_,(v,p,_))::al ->
+          match ps.proof_goals with
+            | [] -> ps
+            | g :: _ ->
+                let v = mk_Vari v in
+                let t = mk_Appl (mk_Appl (tac, p), v) in
+                log "ALL_HYPS on %a\n" term v;
+                let h = try handle ps (p_tactic ss g env pos t)
+                        with Fatal _ -> ps in
+                all_assumptions h al
+     in all_assumptions ps gt.goal_hyps
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)

@@ -95,6 +95,7 @@
 
 <tactic> ::= <query>
            | "admit"
+           | "all_hyps" <term>
            | "apply" <term>
            | "assume" <param>+
            | "assumption"

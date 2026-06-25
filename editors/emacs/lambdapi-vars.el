@@ -7,7 +7,8 @@
 ;;; Code:
 
 (defconst lambdapi-tactics
-  '("apply"
+  '("all_hyps"
+    "apply"
     "assume"
     "assumption"
     "change"

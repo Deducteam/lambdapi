@@ -16,6 +16,7 @@ let string_of_token = function
   | ABORT -> "abort"
   | ADMIT -> "admit"
   | ADMITTED -> "admitted"
+  | ALL_HYPS -> "all_hyps"
   | APPLY -> "apply"
   | ARROW -> "→"
   | AS -> "as"
@@ -856,6 +857,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | VERBOSE
   (*tactics*)
   | ADMIT
+  | ALL_HYPS
   | APPLY
   | ASSUME
   | CHANGE
@@ -916,6 +918,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | VERBOSE
   (*tactics*)
   | ADMIT
+  | ALL_HYPS
   | APPLY
   | ASSUME
   | ASSUMPTION
@@ -995,6 +998,11 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_admit
+  | ALL_HYPS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = term lb in
+      extend_pos (*__FUNCTION__*) pos1 (P_tac_all_hyps t)
   | APPLY ->
       let pos1 = current_pos() in
       consume_token lb;

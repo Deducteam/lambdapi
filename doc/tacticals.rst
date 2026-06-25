@@ -14,6 +14,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
    builtin "admit" ≔ …; // : T
    builtin "and" ≔ …; // : T → T → T (stands for ";")
+   builtin "all_hyps" ≔ …; // : (Π p, Prf p → T) → T
    builtin "apply" ≔ …; // : Π [p], Prf p → T
    builtin "assume" ≔ …; // : String → T
    builtin "assumption" ≔ …; // : T

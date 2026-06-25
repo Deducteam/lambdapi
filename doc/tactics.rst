@@ -10,6 +10,13 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
 Adds in the environment new symbols (axioms) proving the focused goal.
 
+.. _all_hyps:
+
+``all_hyps``
+------------
+
+``all_hyps t`` runs the parameterized tactic term t on all hypotheses, ignoring failing calls.
+
 .. _apply:
 
 ``apply``
