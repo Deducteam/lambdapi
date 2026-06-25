@@ -122,6 +122,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         | Some ps -> return Proof.goals ps
       end
   | P_query_print(Some qid) ->
+    let m = snd qid.elt in
+    if String.is_string_literal m then
+      return string (String.remove_quotes m^"\n")
+    else
       let sym_info ppf s =
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
@@ -170,17 +174,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         else if s == Coercion.coerce then rules sym_rule ppf s
         else (decl ppf s; ind ppf s)
       in
-      if String.is_string_literal (snd qid.elt) then
-        let mess = String.remove_quotes (snd qid.elt) in
-        begin
-          let sprint ppf s = out ppf "\n%s\n" s in
-          match ps with
-          | None -> fatal pos "Not in a proof."
-          | Some ps -> return (fun ppf (s,ps) ->
-                           sprint ppf s; Proof.goals ppf ps) (mess,ps)
-        end
-      else
-        return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
+      return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
       (match ps with
        | None -> fatal pos "Not in a proof"

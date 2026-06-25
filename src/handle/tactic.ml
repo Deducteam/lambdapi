@@ -292,17 +292,7 @@ let string_of_term : popt -> term -> string = fun pos t ->
   match unfold t with
   | Symb s when String.is_string_literal s.sym_name ->
       String.remove_quotes s.sym_name
-  | _ -> fatal pos "not a string literal"
-
-(** [qstring_of_term pos t] returns the qid string contained in a
-    term [t]. *)
-let qstring_of_term : popt -> term -> qident = fun pos t ->
-  match unfold t with
-  | Symb s -> ([], s.sym_name)
-  | _ -> fatal pos "not a string literal"
-
-let p_ident_of_sym (pos:popt) (t:term): p_ident =
-  Pos.make pos (string_of_term pos t)
+  | _ -> fatal pos "not a string literal: %a" term t
 
 let p_ident_of_var (pos:popt) (t:term) :p_ident =
   match unfold t with
@@ -383,11 +373,11 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_and, _ -> assert false
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
-            | T_assume, [u;_;Abst (_, bi)] ->
-               let uname = uniq_name (new_var (string_of_term pos u)) in
-               let nv = new_var uname and uname = Pos.make pos uname in
-               P_tac_and (Pos.make pos (P_tac_assume [Some uname]),
-                          tac_eval (subst bi (mk_Vari nv)))
+            | T_assume, [prefix;_;Abst (_, t)] ->
+              let v = new_var (string_of_term pos prefix) in
+              let n = Pos.make pos (uniq_name v) in
+              P_tac_and (Pos.make pos (P_tac_assume [Some n]),
+                         tac_eval (subst t (mk_Vari v)))
             | T_assume, _ -> assert false
             | T_assumption, [] -> P_tac_assumption
             | T_assumption, _ -> assert false
@@ -402,14 +392,21 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
-                P_tac_have(p_ident_of_sym pos t1, t2)
+                P_tac_have(Pos.make pos (string_of_term pos t1), t2)
             | T_have, _ -> assert false
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac_eval t1, tac_eval t2)
             | T_orelse, _ -> assert false
             | T_print, [t] ->
-                let s = Pos.make pos (qstring_of_term pos t) in
-                P_tac_query (Pos.make pos (P_query_print (Some s)))
+              let arg =
+                match unfold t with
+                | Symb s ->
+                  let n = s.sym_name in
+                  if n = "\"\"" then None (* print the current goal *)
+                  else Some(Pos.make pos (s.sym_path, n))
+                | _ -> fatal pos "not a symbol or string literal: %a" term t
+              in
+              P_tac_query (Pos.make pos (P_query_print arg))
             | T_print, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
@@ -423,7 +420,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
                               p_rwpatt_of_string_term pos pat, p_term t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
-                P_tac_set(p_ident_of_sym pos t1, p_term t2)
+                P_tac_set(Pos.make pos (string_of_term pos t1), p_term t2)
             | T_set, _ -> assert false
             | T_simplify, _ -> P_tac_simpl SimpAll
             | T_simplify_beta, _ -> P_tac_simpl SimpBetaOnly
