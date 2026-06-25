@@ -495,7 +495,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       let t = scope t in
       let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
         match ps.proof_goals with
-        | [] -> fatal pos "all_hyps calls with empty goal list"
+        | [] -> fatal pos "all_hyps called with empty goal list"
         | g :: _ ->
             let v = unfold (mk_Vari v) in
             let t = mk_Appl (mk_Appl (t, p), v) in
@@ -504,7 +504,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       in
       let ps' = List.fold_left try_assumption ps gt.goal_hyps in
       if ps' == ps then
-        fatal pos "tactic all_hyps has failed on all assumptions"
+        fatal pos "tactic all_hyps [%a] has failed on all assumptions" term t
       else ps'
   | P_tac_apply pt ->
       let t = scope pt in
