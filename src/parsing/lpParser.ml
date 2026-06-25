@@ -130,9 +130,7 @@ let expected (msg:string) (tokens:token list): 'a =
     | t::ts ->
       let soft t = String.add_quotes (string_of_token t) in
       syntax_error (current_pos())
-        (List.fold_left (fun s t -> s^", "^soft t)
-           ("Expected: "^soft t)
-           ts
+        (List.fold_left (fun s t -> s^", "^soft t) ("Expected: "^soft t) ts
         ^".")
 
 let consume_token (lb:lexbuf) : unit =
