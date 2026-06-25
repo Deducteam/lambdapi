@@ -9,25 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - CLI command `deindex` to remove constants from the index.
 - In interactive mode, indexing of symbols from current development (as well as currently required files) and their deindexing when files are closed are now automatically supported.
-- Added filtering of search results using regular expressions.
-- Added support for basic Rocq syntax when interpreting queries with the `search` or `websearch` commands (forall, ->, fun, exists).
+- Filtering of search results using regular expressions.
+- Support for basic Rocq syntax when interpreting queries with the `search` or `websearch` commands (forall, ->, fun, exists).
 - Allow the `--require` flag to be used multiple times with the `search` and `websearch` commands.
 - Ambiguity due to overloaded symbols is now solved by normalisation.
-- Added streaming of results in command line search.
-- Supporting `Plac` in rewriting rules.
-- Fixed Stack_overflow exception due large number of search results.
+- Streaming of results in command line search.
+- Support `Plac` in rewriting rules.
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
-- Added tactic `assumption` which proves a goal if it is an instance of an assumption.
-- Added tactic `focus n` which makes goal n the current goal.
-- Added tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
+- Tactic `assumption` which proves a goal if it is an instance of an assumption.
+- Tactic `focus n` which makes goal n the current goal.
+- Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
+- Export to Lean.
+
+>>>>>>> dk/master
 ### Changed
 
 - Tactic `simplify` now fails if the goal cannot be simplified.
 - Parser: change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
-- Tactic `eval`: Replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms. Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
+- Tactic `eval`: replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms. Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
 - Syntax: do not identify {|a|} and a when a is a regular identifier anymore.
 - Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
-- LSP server: Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
+- LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction)
 
 ### Fixed
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Weak head normal form test.
 - Handling of module aliases.
 - Dedukti export.
+- Stack_overflow exception due large number of search results.
 
 ## 3.0.0 (2025-07-16)
 
