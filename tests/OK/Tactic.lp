@@ -19,8 +19,11 @@ builtin "all_hyps" ≔ #all_hyps;
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : String → Tactic;
+constant symbol #assume : String → Π [a:Set], (τ a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
+
+constant symbol #print: String → Tactic;
+builtin "print" ≔ #print;
 
 constant symbol #assumption : Tactic;
 builtin "assumption" ≔ #assumption;

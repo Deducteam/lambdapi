@@ -49,6 +49,8 @@ do
         Tactic|1374);;
         # use Tactic
         all_hyps);;
+        # requires an excluded file
+        assume);;
         # default case
         *) translate $f.lp;;
     esac

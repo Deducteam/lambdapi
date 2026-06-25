@@ -275,7 +275,7 @@ let rec token lb =
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | int -> INT(Utf8.lexeme lb)
   | float -> FLOAT(Utf8.lexeme lb)
-  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
+  | string -> STRINGLIT(Utf8.lexeme lb)
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN

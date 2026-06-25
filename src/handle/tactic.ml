@@ -209,6 +209,7 @@ type tactic =
   | T_have
   | T_induction
   | T_orelse
+  | T_print
   | T_refine
   | T_reflexivity
   | T_remove
@@ -244,6 +245,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "have" T_have;
   add "induction" T_induction;
   add "orelse" T_orelse;
+  add "print" T_print;
   add "refine" T_refine;
   add "reflexivity" T_reflexivity;
   add "remove" T_remove;
@@ -292,30 +294,12 @@ let string_of_term : popt -> term -> string = fun pos t ->
   match unfold t with
   | Symb s when String.is_string_literal s.sym_name ->
       String.remove_quotes s.sym_name
-  | _ -> fatal pos "not a string literal"
-
-let p_ident_of_sym (pos:popt) (t:term): p_ident =
-  Pos.make pos (string_of_term pos t)
+  | _ -> fatal pos "not a string literal: %a" term t
 
 let p_ident_of_var (pos:popt) (t:term) :p_ident =
   match unfold t with
   | Vari v -> Pos.make pos (base_name v)
   | _ -> fatal pos "Not a variable of the proof context: %a." term t
-
-(*let p_query_aux (c:config) (pos:popt) (s:sym) (ts:term list) :p_query_aux =
-  match Hashtbl.find c s.sym_name, ts with
-  | Q_compute, [_;t] ->
-      P_query_normalize(p_term pos t,{strategy=SNF;steps=None})
-  | Q_compute, _ -> assert false
-  | _ -> assert false
-
-let p_query (c:config) (pos:popt) (s:sym) (ts:term list) :p_query =
-  Pos.make pos (p_query_aux c pos s ts)
-
-let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
-  match get_args t with
-    | Symb s, ts -> p_query c pos s ts
-    | _ -> fatal pos "Unhandled query expression: %a." term t*)
 
 (** [p_term_of_string_term pos t] turns into a p_term a string literal term
     [t] that is part of a bigger term obtained by scoping and normalizing of a
@@ -378,7 +362,11 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
-            | T_assume, [t] -> P_tac_assume [Some(p_ident_of_sym pos t)]
+            | T_assume, [prefix;_;Abst (_, t)] ->
+              let v = new_var (string_of_term pos prefix) in
+              let n = Pos.make pos (uniq_name v) in
+              P_tac_and (Pos.make pos (P_tac_assume [Some n]),
+                         tac_eval (subst t (mk_Vari v)))
             | T_assume, _ -> assert false
             | T_assumption, [] -> P_tac_assumption
             | T_assumption, _ -> assert false
@@ -393,11 +381,22 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
-                P_tac_have(p_ident_of_sym pos t1, t2)
+                P_tac_have(Pos.make pos (string_of_term pos t1), t2)
             | T_have, _ -> assert false
             | T_induction, _ -> P_tac_induction
             | T_orelse, [t1;t2] -> P_tac_orelse(tac_eval t1, tac_eval t2)
             | T_orelse, _ -> assert false
+            | T_print, [t] ->
+              let arg =
+                match unfold t with
+                | Symb s ->
+                  let n = s.sym_name in
+                  if n = String.add_quotes "" then None
+                  else Some(Pos.make pos (s.sym_path, n))
+                | _ -> fatal pos "not a symbol or string literal: %a" term t
+              in
+              P_tac_query (Pos.make pos (P_query_print arg))
+            | T_print, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> P_tac_refl
@@ -410,7 +409,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
                               p_rwpatt_of_string_term pos pat, p_term t)
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
-                P_tac_set(p_ident_of_sym pos t1, p_term t2)
+                P_tac_set(Pos.make pos (string_of_term pos t1), p_term t2)
             | T_set, _ -> assert false
             | T_simplify, _ -> P_tac_simpl SimpAll
             | T_simplify_beta, _ -> P_tac_simpl SimpBetaOnly
@@ -437,7 +436,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | g::gs ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
-  | P_tac_query _ -> assert false (* done before *)
+  | P_tac_query q -> let _ = Query.handle ss (Some ps) q in ps
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl SimpAll ->
       begin

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
 - Tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Tactic `focus n` which makes goal n the current goal.
+- Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
 
@@ -29,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Syntax: do not identify {|a|} and a when a is a regular identifier anymore.
 - Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
 - LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
-- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction)
+- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
+- Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
 
 ### Fixed
 
