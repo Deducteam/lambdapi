@@ -299,21 +299,6 @@ let p_ident_of_var (pos:popt) (t:term) :p_ident =
   | Vari v -> Pos.make pos (base_name v)
   | _ -> fatal pos "Not a variable of the proof context: %a." term t
 
-(*let p_query_aux (c:config) (pos:popt) (s:sym) (ts:term list) :p_query_aux =
-  match Hashtbl.find c s.sym_name, ts with
-  | Q_compute, [_;t] ->
-      P_query_normalize(p_term pos t,{strategy=SNF;steps=None})
-  | Q_compute, _ -> assert false
-  | _ -> assert false
-
-let p_query (c:config) (pos:popt) (s:sym) (ts:term list) :p_query =
-  Pos.make pos (p_query_aux c pos s ts)
-
-let p_query_of_term (c:config) (pos:popt) (t:term) :p_query =
-  match get_args t with
-    | Symb s, ts -> p_query c pos s ts
-    | _ -> fatal pos "Unhandled query expression: %a." term t*)
-
 (** [p_term_of_string_term pos t] turns into a p_term a string literal term
     [t] that is part of a bigger term obtained by scoping and normalizing of a
     p_term at position [pos]. *)
@@ -402,7 +387,7 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
                 match unfold t with
                 | Symb s ->
                   let n = s.sym_name in
-                  if n = "\"\"" then None (* print the current goal *)
+                  if n = String.add_quotes "" then None
                   else Some(Pos.make pos (s.sym_path, n))
                 | _ -> fatal pos "not a symbol or string literal: %a" term t
               in
@@ -447,9 +432,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | g::gs ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
-  | P_tac_query {elt=P_query_print _ as q;pos} ->
-      let _ = Query.handle ss (Some ps) (Pos.make pos q) in ps
-  | P_tac_query _ -> assert false (* done before *)
+  | P_tac_query q -> let _ = Query.handle ss (Some ps) q in ps
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl SimpAll ->
       begin
