@@ -1,7 +1,7 @@
 TODO
 ====
 
-Minor fixes after indexing_BO merge
+Minor fixes after [indexing_BO](https://github.com/Deducteam/lambdapi/pull/1290) merge 
 ----------------
 
 [X] parsing was ignoring trailing characters after query
