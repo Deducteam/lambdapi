@@ -258,7 +258,7 @@ let qid_or_regexp (lb:lexbuf): (string list * string) loc =
   | STRINGLIT s ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, s)
+      make_pos pos1 ([], s)
   | _ ->
       expected "" [UID"";QID[];STRINGLIT""]
 
@@ -342,15 +342,15 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
   | STRINGLIT s ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, String.add_quotes s)
+      make_pos pos1 ([], String.add_quotes s)
   | UNIF_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Unif_rule.equiv.sym_name)
+      make_pos pos1 ([], Unif_rule.equiv.sym_name)
   | COERCE_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Coercion.coerce.sym_name)
+      make_pos pos1 ([], Coercion.coerce.sym_name)
   | _ ->
       expected "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE]
 

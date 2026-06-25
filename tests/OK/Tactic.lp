@@ -16,7 +16,7 @@ notation & infix right 10;
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : String → Π [T:Set], (τ T → Tactic) → Tactic;
+constant symbol #assume : String → Π [a:Set], (τ a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
 
 constant symbol #print: String → Tactic;
