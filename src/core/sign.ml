@@ -106,8 +106,7 @@ let link : t -> unit = fun sign ->
     else
       try find (Path.Map.find s.sym_path !loaded) s.sym_name
       with Not_found ->
-        if s.sym_path = Ghost.path
-           && String.is_string_literal s.sym_name then
+        if String.is_string_literal s.sym_name then
           begin
             Ghost.sign.sign_symbols :=
               StrMap.add s.sym_name s !(Ghost.sign.sign_symbols);

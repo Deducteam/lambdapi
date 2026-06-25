@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Tactic `focus n` which makes goal n the current goal.
 - Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
+- Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 
 ### Changed
@@ -29,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Syntax: do not identify {|a|} and a when a is a regular identifier anymore.
 - Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
 - LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
-- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction)
+- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
+- Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
 
 ### Fixed
 

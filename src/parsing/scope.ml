@@ -282,7 +282,6 @@ and scope_head : ?find_sym:find_sym ->
 
   | (P_SLit s, _) ->
       begin
-        let s = "\""^s^"\"" in
         let sym =
           try Sign.find Sign.Ghost.sign s
           with Not_found ->
