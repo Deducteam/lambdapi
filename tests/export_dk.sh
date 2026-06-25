@@ -48,7 +48,7 @@ do
         # use builtin strings
         Tactic|1374);;
         # requires an excluded file
-        assume);;
+        assume|first_hyp);;
         # default case
         *) translate $f.lp;;
     esac

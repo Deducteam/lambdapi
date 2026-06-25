@@ -45,7 +45,7 @@ Proves the current goal if it is (an instance of) an hypothesis.
 ``first_hyp <t>``
 -------------
 
-Iterates the application of parameterized term tactic t on all hypotheses until success.
+Iterates the application of parameterized term tactic t on all hypotheses starting from the most recent one until success.
 
 .. _focus:
 
