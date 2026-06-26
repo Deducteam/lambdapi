@@ -122,8 +122,11 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
   (* Try to simplify constraints. *)
-  let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
-  let lhs_constrs = List.map norm_constr !p.unsolved in
+  let norm_constr (c,t,u) =
+    (c, Eval.snf [] (cleanup t), Eval.snf [] (cleanup u)) in
+  let lhs_constrs =
+    List.filter (fun (_,t,u) -> Term.cmp t u <> 0)
+      (List.map norm_constr !p.unsolved) in
   if Logger.log_enabled () then
     log_subj "@[<v>LHS type: %a@ LHS constraints: %a@ rule: %a ↪ %a@]"
       term ty_lhs constrs lhs_constrs
@@ -207,7 +210,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
-  let rhs_constrs = List.map norm_constr !p.unsolved in
+  let rhs_constrs =
+    List.filter (fun (_,t,u) -> Term.cmp t u <> 0)
+      (List.map norm_constr !p.unsolved) in
   (* [matches p t] says if [t] is an instance of [p]. *)
   let matches p t =
     let rec matches s l =
