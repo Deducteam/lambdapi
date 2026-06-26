@@ -203,6 +203,7 @@ type tactic =
   | T_assumption
   | T_change
   | T_fail
+  | T_first_hyp
   | T_focus
   | T_generalize
   | T_have
@@ -238,6 +239,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "assumption" T_assumption;
   add "change" T_change;
   add "fail" T_fail;
+  add "first_hyp" T_first_hyp;
   add "focus" T_focus;
   add "generalize" T_generalize;
   add "have" T_have;
@@ -259,7 +261,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   t
 
 (** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
-let p_term (pos:popt): int StrMap.t -> term -> p_term =
+let p_term (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_term =
   let rec term idmap (t:term) :p_term =
     (*if Logger.log_enabled() then log "p_term %a" Print.term t;*)
     Pos.make pos (term_aux idmap t)
@@ -269,8 +271,10 @@ let p_term (pos:popt): int StrMap.t -> term -> p_term =
     match unfold t with
     | Type -> P_Type
     | Symb s ->
-        let t = P_Iden(Pos.make pos (s.sym_path,s.sym_name),true) in
-        if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
+      let mp = if StrMap.mem s.sym_name ss.in_scope then [] else s.sym_path in
+      let expl = s.sym_impl <> [] in
+      let t = P_Iden(Pos.make pos (mp,s.sym_name),expl) in
+      if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
     | Vari v -> P_Iden(Pos.make pos ([],base_name v),false)
     | Appl(u,v) -> P_Appl(term idmap u, term idmap v)
     | Prod(a,b) ->
@@ -343,11 +347,11 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
   let idmap = get_names g
   and ctx = Env.to_ctxt env in
   let c = get_config ss pos in
-  let p_term = p_term pos idmap in
+  let p_term = p_term ss pos idmap in
   let tac_eval t = Pos.make pos (P_tac_eval (p_term t)) in
   let tac t =
     let t = Eval.whnf ctx t in
-    if Logger.log_enabled() then log "%a" term t;
+    if Logger.log_enabled() then log "reduces to: %a" term t;
     match get_args t with
     | Symb s, ts ->
         begin
@@ -369,6 +373,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_change, [_;t] -> P_tac_apply (p_term t)
             | T_change, _ -> assert false
             | T_fail, _ -> P_tac_fail
+            | T_first_hyp, [t] -> P_tac_first_hyp (p_term t)
+            | T_first_hyp, _ -> assert false
             | T_focus, [t] -> P_tac_focus (string_of_term pos t)
             | T_focus, _ -> assert false
             | T_generalize, [_;t] -> P_tac_generalize(p_ident_of_var pos t)
@@ -425,8 +431,16 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
    [ps] and returns the new proof state. *)
 let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     :proof_state -> p_tactic -> proof_state =
-  let rec handle ps ({elt;pos} as tac) =
-  if Logger.log_enabled () then log "%a" Pretty.tactic tac;
+
+  let rec progress (ps:proof_state) (ptac: p_tactic): proof_state option =
+    try let new_ps = handle ps ptac in
+      if List.length new_ps.proof_goals < List.length ps.proof_goals
+      then Some new_ps
+      else None
+    with Fatal _ -> None
+
+  and handle ps ({elt;pos} as tac) =
+  if Logger.log_enabled() then log "%a" Pretty.tactic tac;
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
@@ -537,6 +551,14 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           tac_refine pos ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
       end
+  | P_tac_first_hyp pt ->
+    let t = scope pt in
+    let f (_,(v,a,_)) =
+      progress ps (p_tactic ss g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v))) in
+    begin match List.find_map f gt.goal_hyps with
+    | None -> fatal pos "tactic [%a] fails on all assumptions" term t
+    | Some new_ps -> new_ps
+    end
   | P_tac_have(id, pt) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
@@ -563,20 +585,15 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         tac_refine pos ps gt gs p u
       end
   | P_tac_assumption ->
-     let rec find_assumption = function
-       | [] -> fatal pos "no matching assumption for %a" term gt.goal_type
-       | (_,(v,_t,_))::al ->
-          let idmap = get_names g in
-          let v = mk_Vari v in
-          let v = p_term pos idmap v in
-          try
-            let h = handle ps (Pos.make pos (P_tac_apply v)) in
-            (*  if List.exists is_unif h.proof_goals then *)
-            if List.length h.proof_goals >= List.length ps.proof_goals then
-              fatal pos "assumption: not a matching assumption"
-            else h
-          with Fatal _ -> find_assumption al
-     in find_assumption gt.goal_hyps
+    let idmap = get_names g in
+    let f (_,(v,_,_)) =
+      let v = p_term ss pos idmap (mk_Vari v) in
+      progress ps (Pos.make pos (P_tac_apply v))
+    in
+    begin match List.find_map f gt.goal_hyps with
+      | None -> fatal pos "tactic assumption failed"
+      | Some ps -> ps
+    end
   | P_tac_set(id,pt) ->
       (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,x:b≔t ⊢ ?1[e,x]:a],
          where [b] is the type of [t], and refine [?[e]] with [?1[e,t]]. *)
@@ -598,9 +615,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               let m = LibMeta.fresh (new_problem()) (Env.to_prod e' v) n in
               let ts = Env.to_terms env in
               let u = mk_Meta (m, Array.append ts [|t|]) in
-              (*tac_refine pos ps gt gs p u*)
               LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
-              (*let g = Goal.of_meta m in*)
               let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
               {ps with proof_goals = g :: add_goals_of_problem p gs}
             end else fatal pos "The unification constraints for %a \
@@ -707,12 +722,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_orelse(t1,t2) ->
       begin try handle ps t1 with Fatal _ -> handle ps t2 end
   | P_tac_repeat t ->
-      begin
-        try
-          let nb_goals = List.length ps.proof_goals in
-          let ps = handle ps t in
-          if List.length ps.proof_goals < nb_goals then ps
-          else handle ps tac
+      begin try
+        let new_ps = handle ps t in
+        if List.length new_ps.proof_goals < List.length ps.proof_goals
+        then new_ps
+        else handle new_ps tac
         with Fatal _ -> ps
       end
   | P_tac_and(t1,t2) -> handle (handle ps t1) t2
@@ -725,8 +739,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           let term = term_in (Ctxt.names c) in
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
-          if Unif.solve_noexn p then
-            handle ps (p_tactic ss g env pos t)
+          if Unif.solve_noexn p then handle ps (p_tactic ss g env pos t)
           else fatal pos "Cannot solve typing constraints for [%a]" term t
   in handle
 
