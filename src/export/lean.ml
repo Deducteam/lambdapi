@@ -114,10 +114,17 @@ and params oc ((ids,t,b) as x) =
 
 and top_params oc ((ids,a,_) as x) =
   params oc x;
-  if a = None then
-    let nonempty oc id =
-      string oc " [Nonempty "; param_id oc id; char oc ']'
-    in List.iter (nonempty oc) ids
+  match a with
+  | Some{elt=P_Iden(id,_);_} ->
+    begin
+      match QidMap.find_opt id.elt !map_qid_builtin with
+      | Some Set ->
+        let nonempty oc id =
+          string oc " [Nonempty "; param_id oc id; char oc ']'
+        in List.iter (nonempty oc) ids
+      | _ -> ()
+    end
+  | _ -> ()
 
 and params_list oc = List.iter (prefix " " params oc)
 
