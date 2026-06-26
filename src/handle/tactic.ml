@@ -507,6 +507,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
       let t = scope t in
+      (* the tactic is not required to prove the goal *)
+      (* effects are superposed *)
       let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
         match ps.proof_goals with
         | [] -> fatal pos "all_hyps called with empty goal list"

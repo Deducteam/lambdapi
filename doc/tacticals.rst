@@ -3,6 +3,14 @@ Tacticals
 
 The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
 
+.. _all_hyps:
+
+``all_hyps``
+-------------
+
+``all_hyps`` takes as argument a term of type ``Π p, Prf p → T``. In a context with ``n`` assumptions ``x₁:Prf p₁``, …, ``xₙ:Prf pₙ``, ``all_hyps t``,  applies the tactic ``try (t pₙ xₙ)`` and chains with the next assumption, and so on. If all the tactis fail, it fails.
+
+
 .. _eval:
 
 ``eval``
