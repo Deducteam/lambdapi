@@ -153,7 +153,7 @@ let init tkp = [],[tkp]
      is deactivated). This is done for performance reasons
 
 *)
-let the_current_token_pos : (token_pos list list * token_pos list) Stdlib.ref =
+let the_current_token_pos: (token_pos list list * token_pos list) Stdlib.ref=
   Stdlib.ref (init dummy_token)
 
 let current_token_pos () =
@@ -193,7 +193,8 @@ let consume_token (lb:lexbuf) : unit =
    log "read new token %a %a" Pos.short (Some p) pp_token t
 
 let succeed_or_reset_stream f x =
- the_current_token_pos := []::fst !the_current_token_pos, snd !the_current_token_pos ;
+ the_current_token_pos :=
+  []::fst !the_current_token_pos, snd !the_current_token_pos ;
  try
   let res = f x in
   match !the_current_token_pos with
@@ -265,7 +266,9 @@ let ident_of_term pos1 {elt; _} =
 let list (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
-  (try while true do acc := succeed_or_reset_stream elt lb :: !acc done with SyntaxError _ -> ());
+  (try
+    while true do acc := succeed_or_reset_stream elt lb :: !acc done
+   with SyntaxError _ -> ());
   List.rev !acc
 
 let nelist (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
