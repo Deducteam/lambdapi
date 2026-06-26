@@ -66,6 +66,10 @@ let fatal_no_pos : ?err_desc:string -> ('a,'b) koutfmt -> 'a =
       raise (Fatal(None, Format.flush_str_formatter (), err_desc)) in
     Format.kfprintf cont Format.str_formatter fmt
 
+let fatal_optional_position pos = match pos with
+  | None -> fatal_no_pos
+  | Some p -> fatal p
+
 (** [handle_exceptions f] runs [f ()] in an exception handler and handles both
     expected and unexpected exceptions by displaying a graceful error message.
     In case of an error, the program is (irrecoverably) stopped with exit code

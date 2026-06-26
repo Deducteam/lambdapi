@@ -165,6 +165,24 @@ let qid (lb:lexbuf): (string list * string) loc =
   | _ ->
       expected "" [UID"";QID[]]
 
+let qid_or_regexp (lb:lexbuf): (string list * string) loc =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | UID s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
+  | QID p ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      qid_of_path pos1 p
+  | STRINGLIT s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
+  | _ ->
+      expected "" [UID"";QID[];STRINGLIT""]
+
 let qid_expl (lb:lexbuf): (string list * string) loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
@@ -766,45 +784,35 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
-    begin
-        consume_token lb;
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
-    end
   | UID "concl" ->
-    begin
-        consume_token lb;
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
-    end
   | UID "hyp" ->
-    begin
-        consume_token lb;
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
-    end
   | UID "lhs" ->
-    begin
-        consume_token lb;
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
-    end
   | UID "rhs" ->
-    begin
-        consume_token lb;
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Rhs))))
-    end
   | L_PAREN ->
       consume_token lb;
       let q = search lb in
@@ -834,19 +842,16 @@ and ssearch (lb:lexbuf): search =
       cq
 
 and search (lb:lexbuf): search =
-  (*  expected "prbolem " []*)
    if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
-  let qids = list (prefix IN qid) lb in
-  let path_of_qid qid =
-    let p,n = qid.elt in
-    if p = [] then n
-    else Format.asprintf "%a.%a" Print.path p Print.uid n
-  in
-  List.fold_left
+  let qids = list (prefix IN qid_or_regexp) lb in
+  let res =
+    List.fold_left
     (fun x qid ->
-        let p,n = qid.elt in
-        if p = [""] then
-            QFilter(x,RegExp(n))
-        else
-            QFilter(x,Path(path_of_qid qid))) q qids
+       let n = snd qid.elt in
+       if String.is_string_literal n then
+         QFilter(x,RegExp(String.remove_quotes n))
+       else QFilter(x,Path(Format.asprintf "%a" Pretty.qident qid)))
+    q qids
+  in
+  if current_token() = EOF then res else expected "" [VBAR; IN; WITH]
