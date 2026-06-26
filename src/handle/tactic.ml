@@ -274,7 +274,7 @@ let p_term (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_term =
       let mp = if StrMap.mem s.sym_name ss.in_scope then [] else s.sym_path in
       let expl = s.sym_impl <> [] in
       let t = P_Iden(Pos.make pos (mp,s.sym_name),expl) in
-        if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
+      if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
     | Vari v -> P_Iden(Pos.make pos ([],base_name v),false)
     | Appl(u,v) -> P_Appl(term idmap u, term idmap v)
     | Prod(a,b) ->
@@ -557,7 +557,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       progress ps (p_tactic ss g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v))) in
     begin match List.find_map f gt.goal_hyps with
     | None -> fatal pos "tactic [%a] fails on all assumptions" term t
-    | Some ps -> ps
+    | Some new_ps -> new_ps
     end
   | P_tac_have(id, pt) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
