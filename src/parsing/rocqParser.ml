@@ -49,13 +49,107 @@ let string_of_token = function
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
-let the_current_token : (token * position * position) Stdlib.ref =
-  Stdlib.ref dummy_token
+module ZipperToken :
+sig
+  val current_token : unit -> token
+  val current_pos : unit -> position * position
+  val consume_token :  lexbuf -> unit
+  val new_parsing : (lexbuf -> 'a) -> lexbuf -> 'a
+  val succeed_or_reset_stream : ('a -> 'b) -> 'a -> 'b
+end =
+struct
 
-let current_token() : token = let (t,_,_) = !the_current_token in t
+type token_pos = token * position * position
 
-let current_pos() : position * position =
-  let (_,p1,p2) = !the_current_token in (p1,p2)
+type zipper = token_pos list list * token_pos list
+(* A zipper to represent the token (and its position) stream
+      l1 :: ... ln :: [], tkps
+   represents the stream
+      List.rev (l1 @ ... @ ln) @ tkps @ the_yet_unread_stream
+   where the current stream position is just before tkps,
+   i.e. tkps are the next tokens to be consumed while
+   (l1 @ ... @ ln) are tokens already consumed.
+
+   consume_token moves the next token from tkps to the top of l1,
+   it it exists
+
+   an l1 is pushed on the stack of stacks of already consumed
+   terms when succeed_or_reset_stream is called; in case of
+   failures all tokens in l1 are moved back to tkps
+
+   Invariants on a zipper z:
+   - snd z is never empty: a token is fetch from the stream when
+     consuming the last entry of snd z to maintain the invariant
+   - fst z is empty iff we have not entered any
+     succeed_or_reset_stream and thus the consumed tokens need not
+     be preserved (the zipper functionality is deactivated).
+     This is an optimization for performance reasons *)
+
+let init tkp = [],[tkp]
+
+let the_current_token_pos: zipper Stdlib.ref=
+  Stdlib.ref (init dummy_token)
+
+let current_token_pos () =
+ match !the_current_token_pos with
+ | _, [] -> assert false
+ | _, tkp::_ -> tkp
+
+let current_token () : token =
+  let (t,_,_) = current_token_pos () in t
+
+let current_pos () : position * position =
+  let (_,p1,p2) = current_token_pos () in (p1,p2)
+
+let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
+  let t = !the_current_token_pos in
+  let reset() = the_current_token_pos := t in
+  the_current_token_pos := init (RocqLexer.token lb) ;
+  try let r = entry lb in begin reset(); r end
+  with e -> begin reset(); raise e end
+
+let consume_token (lb:lexbuf) : unit =
+ begin
+  match !the_current_token_pos with
+  | _, [] -> assert false
+  | [], [_] ->
+     the_current_token_pos := [], [RocqLexer.token lb]
+  | l::ll, [x] ->
+     the_current_token_pos := (x::l)::ll, [RocqLexer.token lb]
+  | [], _::tkps ->
+     the_current_token_pos := [], tkps
+  | l::ll, tkp::tkps ->
+     the_current_token_pos := (tkp::l)::ll, tkps
+ end ;
+ if log_enabled() then
+   let (t,p1,p2) = current_token_pos () in
+   let p = locate (p1,p2) in
+   log "read new token %a %a" Pos.short (Some p) pp_token t
+
+let succeed_or_reset_stream f x =
+ the_current_token_pos :=
+  []::fst !the_current_token_pos, snd !the_current_token_pos ;
+ try
+  let res = f x in
+  match !the_current_token_pos with
+  | [], _ -> assert false
+  | _::[], tkps ->
+     the_current_token_pos := [], tkps ;
+     res
+  | l1::l2::ll, tkps ->
+     the_current_token_pos := (l1@l2)::ll, tkps ;
+     res
+ with
+  SyntaxError _ as e ->
+   match !the_current_token_pos with
+   | [], _ -> assert false
+   | l::ll, tkps ->
+      the_current_token_pos := ll, List.rev l @ tkps ;
+      raise e
+
+end
+
+include ZipperToken
 
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
@@ -67,13 +161,6 @@ let expected (msg:string) (tokens:token list): 'a =
       syntax_error (current_pos())
         (List.fold_left (fun s t -> s^", "^soft t) ("Expected: "^soft t) ts
         ^".")
-
-let consume_token (lb:lexbuf) : unit =
-  the_current_token := RocqLexer.token lb;
-  if log_enabled() then
-    let (t,p1,p2) = !the_current_token in
-    let p = locate (p1,p2) in
-    log "read new token %a %a" Pos.short (Some p) pp_token t
 
 (* building positions and terms *)
 
@@ -113,7 +200,9 @@ let ident_of_term pos1 {elt; _} =
 let list (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
-  (try while true do acc := elt lb :: !acc done with SyntaxError _ -> ());
+  (try
+    while true do acc := succeed_or_reset_stream elt lb :: !acc done
+   with SyntaxError _ -> ());
   List.rev !acc
 
 let nelist (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
@@ -842,7 +931,7 @@ and ssearch (lb:lexbuf): search =
       cq
 
 and search (lb:lexbuf): search =
-   if log_enabled() then log "%s" __FUNCTION__;
+  if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
   let qids = list (prefix IN qid_or_regexp) lb in
   let res =
