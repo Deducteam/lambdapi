@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Handling of module aliases.
 - Dedukti export.
 - Stack_overflow exception due large number of search results.
+- Parser fix: the (ne)list combinator did not backtrack the stream in case of
+  failure in the middle of the parsing of a list item
 
 ## 3.0.0 (2025-07-16)
 
