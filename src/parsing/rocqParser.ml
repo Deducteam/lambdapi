@@ -61,15 +61,14 @@ struct
 
 type token_pos = token * position * position
 
-let init tkp = [],[tkp]
-
+type zipper = token_pos list list * token_pos list
 (* A zipper to represent the token (and its position) stream
       l1 :: ... ln :: [], tkps
    represents the stream
       List.rev (l1 @ ... @ ln) @ tkps @ the_yet_unread_stream
    where the current stream position is just before tkps,
    i.e. tkps are the next tokens to be consumed while
-   (l1 @ ... @n) are tokens already consumed.
+   (l1 @ ... @ ln) are tokens already consumed.
 
    consume_token moves the next token from tkps to the top of l1,
    it it exists
@@ -78,16 +77,17 @@ let init tkp = [],[tkp]
    terms when succeed_or_reset_stream is called; in case of
    failures all tokens in l1 are moved back to tkps
 
-   Invariants:
-   - tkps is never empty: a token is fetch from the stream when
-     consuming the last entry of tkps to maintain the invariant
-   - an empty l1 :: ... :: ln :: [] stack of stacks means that
-     we have not entered any succeed_or_reset_stream and thus
-     the consumed tokens are not preserved (the zipper functionality
-     is deactivated). This is done for performance reasons
+   Invariants on a zipper z:
+   - snd z is never empty: a token is fetch from the stream when
+     consuming the last entry of snd z to maintain the invariant
+   - fst z is empty iff we have not entered any
+     succeed_or_reset_stream and thus the consumed tokens need not
+     be preserved (the zipper functionality is deactivated).
+     This is an optimization for performance reasons *)
 
-*)
-let the_current_token_pos: (token_pos list list * token_pos list) Stdlib.ref=
+let init tkp = [],[tkp]
+
+let the_current_token_pos: zipper Stdlib.ref=
   Stdlib.ref (init dummy_token)
 
 let current_token_pos () =
