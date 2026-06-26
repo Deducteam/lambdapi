@@ -179,7 +179,7 @@ let qid_or_regexp (lb:lexbuf): (string list * string) loc =
   | STRINGLIT s ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 ([""], s)
+      make_pos pos1 ([], s)
   | _ ->
       expected "" [UID"";QID[];STRINGLIT""]
 
@@ -842,23 +842,16 @@ and ssearch (lb:lexbuf): search =
       cq
 
 and search (lb:lexbuf): search =
-  (*  expected "prbolem " []*)
    if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
   let qids = list (prefix IN qid_or_regexp) lb in
-  let path_of_qid qid =
-    let p,n = qid.elt in
-    if p = [] then n
-    else Format.asprintf "%a.%a" Print.path p Print.uid n
-  in
-  let res = List.fold_left
+  let res =
+    List.fold_left
     (fun x qid ->
-        let p,n = qid.elt in
-        if p = [""] then
-            QFilter(x,RegExp(n))
-        else
-            QFilter(x,Path(path_of_qid qid))) q qids
-  in if current_token() = EOF then
-    res
-  else
-    expected "" [VBAR; IN; WITH]
+       let n = snd qid.elt in
+       if String.is_string_literal n then
+         QFilter(x,RegExp(String.remove_quotes n))
+       else QFilter(x,Path(Format.asprintf "%a" Pretty.qident qid)))
+    q qids
+  in
+  if current_token() = EOF then res else expected "" [VBAR; IN; WITH]
