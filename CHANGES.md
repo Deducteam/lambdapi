@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
 - Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
+- Tactic `#with_goal t` which calls term tactic t with current goal of type Prop as parameter.
 
 ### Changed
 
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
 - Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
+- Type of `#refine' is in fact `String -> Tactic`
 
 ### Fixed
 

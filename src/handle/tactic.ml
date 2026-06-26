@@ -194,6 +194,54 @@ let get_prod_ids env =
         else List.rev acc
   in aux []
 
+(** [get_goal pos ps gt] tries to build a goal [g] such as typing goal 
+   [gt] = [Prf p]. It uses builtins P, T, imp and all.
+*)
+let get_goal: popt -> Sig_state.t -> goal_typ -> Term.term = fun pos ss gt ->
+  let cfg = Gconf.get_config ss pos in
+  let imp = mk_Symb (cfg.symb_imp) in
+  let all = mk_Symb (cfg.symb_all) in
+
+  (* Extract the term from the goal type (get “u” from “Prf u”). *)
+  let is_prf g =
+    match get_args g with
+    | t, (u::_) when is_symb cfg.symb_P t -> Some u
+    | _ -> None
+  in
+  let is_set g =
+    match get_args g with
+    | t, (u::_) when is_symb cfg.symb_T t -> Some u
+    | _ -> None
+  in
+  let rec as_prop g =
+    match is_prf g with
+    | Some u -> u
+    | None -> match g with
+              | Prod(p,bi) when binder_name bi = "_" ->
+                  begin
+                    let (_,q) = unbind bi in
+                    match is_prf p with
+                      Some u -> mk_Appl(mk_Appl (imp,u), as_prop q)
+                    | None ->
+                        fatal pos "Goal %a not of the form (%a _ [-> ...])."
+                          term gt.goal_type sym cfg.symb_P
+                  end
+              | Prod(p,bi) ->
+                  begin
+                    let (v,q) = unbind bi in
+                    match is_set p with
+                      Some u ->
+                        let q = as_prop q in
+                        mk_Appl(mk_Appl(all, u), mk_Abst(p,bind_var v q))
+                    | None ->
+                        fatal pos "Goal %a not of the form (%a _ [-> ...])." term gt.goal_type sym cfg.symb_P
+                  end
+              | _ -> fatal pos "Goal %a not of the form (%a _ [-> ...])." term gt.goal_type sym cfg.symb_P
+  in
+  let r = as_prop gt.goal_type in
+  (* wrn None "goal [%a]" term r; *)
+  r
+
 (** Builtin tactic names. *)
 type tactic =
   | T_admit
@@ -222,6 +270,7 @@ type tactic =
   | T_symmetry
   | T_try
   | T_why3
+  | T_with_goal
 
 type config = (string,tactic) Hashtbl.t
 
@@ -258,6 +307,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "symmetry" T_symmetry;
   add "try" T_try;
   add "why3" T_why3;
+  add "with_goal" T_with_goal;
   t
 
 (** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
@@ -363,8 +413,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
             | T_assume, [prefix;_;Abst (_, t)] ->
-              let v = new_var (string_of_term pos prefix) in
-              let n = Pos.make pos (uniq_name v) in
+              let v = uniq_name (new_var (string_of_term pos prefix)) in
+              let n = Pos.make pos v and v = new_var v in
               P_tac_and (Pos.make pos (P_tac_assume [Some n]),
                          tac_eval (subst t (mk_Vari v)))
             | T_assume, _ -> assert false
@@ -420,6 +470,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_try, [t] -> P_tac_try(tac_eval t)
             | T_try, _ -> assert false
             | T_why3, _ -> P_tac_why3 None
+            | T_with_goal, [t] -> P_tac_with_goal (p_term t)
+            | T_with_goal, _ -> assert false
           with Not_found ->
             fatal pos "Unhandled tactic expression: %a." term t
         end
@@ -717,6 +769,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
         | _ -> assert false
       end
+  | P_tac_with_goal t ->
+      let goal = get_goal pos ss gt in
+      let t = scope t in
+      let t = mk_Appl (t, goal) in
+      if (Logger.log_enabled ()) then log "WITH_GOAL [%a]\n" term t;
+      handle ps (p_tactic ss g env pos t)
   | P_tac_try t ->
       begin try handle ps t with Fatal _ -> ps end
   | P_tac_orelse(t1,t2) ->
