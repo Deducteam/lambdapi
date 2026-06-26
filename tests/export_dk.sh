@@ -50,7 +50,7 @@ do
         # use Tactic
         first_hyp|all_hyps);;
         # requires an excluded file
-        assume);;
+        assume|first_hyp);;
         # default case
         *) translate $f.lp;;
     esac

@@ -92,22 +92,9 @@ open Sedlexing
 
 module Aux(Lexer:
   sig
-  type token
-  val the_current_token : (token * position * position) ref
-  val get_token : Sedlexing.lexbuf
-    -> token * Lexing.position * Lexing.position
+  val new_parsing : (lexbuf -> 'a) -> lexbuf -> 'a
   end)=
 struct
-
-let current_pos() : position * position =
-  let (_,p1,p2) = !Lexer.the_current_token in (p1,p2)
-
-let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
-  let t = !Lexer.the_current_token in
-  let reset() = Lexer.the_current_token := t in
-  Lexer.the_current_token := Lexer.get_token lb;
-  try let r = entry lb in begin reset(); r end
-  with e -> begin reset(); raise e end
 
   let handle_error (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
@@ -144,7 +131,7 @@ let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
     let lb = Utf8.from_string s in
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
-    Stream.next (parse_lexbuf None (new_parsing entry) lb)
+    Stream.next (parse_lexbuf None (Lexer.new_parsing entry) lb)
 end
 
 (** Parsing lp syntax. *)
@@ -169,8 +156,7 @@ sig
 
   include Aux(struct
   type token = LpLexer.token
-  let the_current_token = LpParser.the_current_token
-  let get_token = LpLexer.token
+  let new_parsing = LpParser.new_parsing
   end)
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
@@ -196,8 +182,7 @@ end
 
   include Aux(struct
   type token = RocqLexer.token
-  let the_current_token = RocqParser.the_current_token
-  let get_token x = RocqLexer.token x
+  let new_parsing = RocqParser.new_parsing
   end)
   (* exported functions *)
   let parse_term_string = parse_entry_string RocqParser.term

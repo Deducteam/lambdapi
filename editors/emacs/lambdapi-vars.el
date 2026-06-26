@@ -13,6 +13,7 @@
     "assumption"
     "change"
     "eval"
+    "first_hyp"
     "focus"
     "generalize"
     "have"

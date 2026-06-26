@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
 - Tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Tactic `focus n` which makes goal n the current goal.
+- Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
 - Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
@@ -41,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Handling of module aliases.
 - Dedukti export.
 - Stack_overflow exception due large number of search results.
+- Parser fix: the (ne)list combinator did not backtrack the stream in case of
+  failure in the middle of the parsing of a list item
 
 ## 3.0.0 (2025-07-16)
 

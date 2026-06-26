@@ -51,6 +51,7 @@ type token =
   | END
   | EVAL
   | FAIL
+  | FIRST_HYP
   | FLAG
   | FOCUS
   | GENERALIZE
@@ -221,6 +222,7 @@ let rec token lb =
   | "end" -> END
   | "eval" -> EVAL
   | "fail" -> FAIL
+  | "first_hyp" -> FIRST_HYP
   | "flag" -> FLAG
   | "focus" -> FOCUS
   | "generalize" -> GENERALIZE
