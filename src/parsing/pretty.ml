@@ -285,7 +285,7 @@ let rec search ppf = function
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
   | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
-let rec query : p_query pp = fun ppf { elt; _ } ->
+let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
   | P_query_assert(false,a) -> out ppf "assert ⊢ %a" assertion a
@@ -304,14 +304,6 @@ let rec query : p_query pp = fun ppf { elt; _ } ->
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search q -> out ppf "search %a" search q
 
-and wrap_query ppf q =
-  match q.elt with
-  | P_query_debug(_,"")
-  | P_query_print None
-  | P_query_proofterm
-    -> query ppf q
-  | _ -> out ppf "(%a)" query q
-
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
@@ -323,19 +315,17 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
-  | P_tac_first_hyp t -> out ppf "first_hyp %a" term t
   | P_tac_focus n -> out ppf "focus %s" n
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
-  | P_tac_orelse(t1,t2) ->
-    out ppf "orelse %a %a" wrap_tactic t1 wrap_tactic t2
+  | P_tac_orelse(t1,t2) -> out ppf "orelse %a %a" tactic t1 tactic t2
   | P_tac_query q -> query ppf q
   | P_tac_refine t -> out ppf "refine %a" term t
   | P_tac_refl -> out ppf "reflexivity"
   | P_tac_remove ids ->
       out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
-  | P_tac_repeat t -> out ppf "repeat %a" wrap_tactic t
+  | P_tac_repeat t -> out ppf "repeat %a" tactic t
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " .[%a]" rwpatt p in
@@ -351,20 +341,6 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
   end
-
-and wrap_tactic ppf t =
-  match t.elt with
-  | P_tac_query q -> wrap_query ppf q
-  | P_tac_admit
-  | P_tac_assumption
-  | P_tac_fail
-  | P_tac_induction
-  | P_tac_refl
-  | P_tac_simpl SimpAll
-  | P_tac_solve
-  | P_tac_sym
-    -> tactic ppf t
-  | _ -> out ppf "(%a)" tactic t
 
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
