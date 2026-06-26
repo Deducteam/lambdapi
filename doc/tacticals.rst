@@ -68,7 +68,7 @@ An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/
 ``first_hyp``
 -------------
 
-In a context with ``n`` assumptions ``x₁``, …, ``xₙ``, ``first_hyp t`` applies the tactic ``t xₙ``. If the goal is solved, then it stops. Otherwise, it tries with the next assumption until one succeeds, or fail.
+In a context with ``n`` assumptions ``x₁``, …, ``xₙ``, ``first_hyp t`` applies the tactic ``t xₙ``. If the goal is solved, then it stops. Otherwise, it tries with the next assumption, and so on, until one succeeds, or fails.
 
 .. _orelse:
 
