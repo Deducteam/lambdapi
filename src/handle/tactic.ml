@@ -194,7 +194,7 @@ let get_prod_ids env =
         else List.rev acc
   in aux []
 
-(** [get_goal pos ps gt] tries to build a goal [g] such as typing goal 
+(** [get_goal pos ps gt] tries to build a goal [g] such as typing goal
    [gt] = [Prf p]. It uses builtins P, T, imp and all.
 *)
 let get_goal: popt -> Sig_state.t -> goal_typ -> Term.term = fun pos ss gt ->
@@ -234,9 +234,11 @@ let get_goal: popt -> Sig_state.t -> goal_typ -> Term.term = fun pos ss gt ->
                         let q = as_prop q in
                         mk_Appl(mk_Appl(all, u), mk_Abst(p,bind_var v q))
                     | None ->
-                        fatal pos "Goal %a not of the form (%a _ [-> ...])." term gt.goal_type sym cfg.symb_P
+                        fatal pos "Goal %a not of the form (%a _ [-> ...])."
+                          term gt.goal_type sym cfg.symb_P
                   end
-              | _ -> fatal pos "Goal %a not of the form (%a _ [-> ...])." term gt.goal_type sym cfg.symb_P
+              | _ -> fatal pos "Goal %a not of the form (%a _ [-> ...])."
+                       term gt.goal_type sym cfg.symb_P
   in
   let r = as_prop gt.goal_type in
   (* wrn None "goal [%a]" term r; *)
