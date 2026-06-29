@@ -57,9 +57,9 @@ let rmap = ref StrMap.empty
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(target_id,{elt=([],lp_id);_});_} ->
-        if Logger.log_enabled() then log "rename %s into %s" lp_id target_id;
-        rmap := StrMap.add lp_id target_id !rmap
+    | {elt=P_builtin(string,{elt=([],lp_id);_});_} ->
+        if Logger.log_enabled() then log "rename %s into %s" lp_id string;
+        rmap := StrMap.add lp_id string !rmap
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -75,11 +75,11 @@ let map_erased = ref QidMap.empty
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(expr,({elt=(p,id);pos} as lp_qid));_} ->
+    | {elt=P_builtin(string,({elt=(p,id);pos} as lp_qid));_} ->
       if p = [] then fatal pos "Unqualified identifier";
       if Logger.log_enabled() then log "erase %a" Pretty.qident lp_qid;
       erase := StrSet.add id !erase;
-      map_erased := QidMap.add lp_qid.elt expr !map_erased
+      map_erased := QidMap.add lp_qid.elt string !map_erased
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)

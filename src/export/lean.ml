@@ -148,7 +148,7 @@ let command oc {elt; pos} =
         | Some true -> openings := List.rev_append ps !openings
         | _ -> () (*FIXME?*)
       end
-  | P_require_as _ -> wrn pos "Command not translated."
+  | P_require_as(p,i) -> Stt.alias := StrMap.add i.elt p.elt !Stt.alias
   | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
                p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
