@@ -77,19 +77,18 @@ let set_renaming : string -> unit = fun f ->
 
 (** Set symbols whose declarations have to be erased. *)
 
-let erase = ref StrSet.empty
-
 module Qid = struct type t = Term.qident let compare = Stdlib.compare end
 module QidMap = Map.Make(Qid)
 
 let map_erased = ref QidMap.empty
 
+let erase qid string =
+  if Logger.log_enabled() then log "erase %a" Pretty.qident qid;
+  map_erased := QidMap.add qid.elt string !map_erased
+
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(string,({elt=(_,id);_} as lp_qid));_} ->
-      if Logger.log_enabled() then log "erase %a" Pretty.qident lp_qid;
-      erase := StrSet.add id !erase;
-      map_erased := QidMap.add lp_qid.elt string !map_erased
+    | {elt=P_builtin(string,lp_qid);_} -> erase lp_qid string
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -111,18 +110,16 @@ let map_qid_builtin = ref QidMap.empty
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,lp_qid);pos} ->
+    | {elt=P_builtin(n,({elt=qid;_} as lp_qid));pos} ->
         begin match index_of_name n with
         | Some i ->
             if Logger.log_enabled() then
               log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
-            builtin.(i) <- lp_qid.elt;
+            builtin.(i) <- qid;
             found.(i) <- true;
             let b = builtin_of_index i in
-            map_qid_builtin := QidMap.add lp_qid.elt b !map_qid_builtin;
-            if b = El || b = Prf then
-              (if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
-               erase := StrSet.add (snd lp_qid.elt) !erase)
+            map_qid_builtin := QidMap.add qid b !map_qid_builtin;
+            if b = El || b = Prf then erase lp_qid n
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."

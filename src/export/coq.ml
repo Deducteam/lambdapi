@@ -131,7 +131,7 @@ let command oc {elt; pos} =
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (StrSet.mem p_sym_nam.elt !erase) then
+      if not (QidMap.mem (!current_mp,p_sym_nam.elt) !map_erased) then
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are
