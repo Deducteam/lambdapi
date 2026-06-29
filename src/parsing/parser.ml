@@ -194,8 +194,7 @@ end
   let lexer_ = LpLexer.token ~allow_rocq_syntax:true
   end)
   (* exported functions *)
-  let parse_search_string _ =
-   assert false (*parse_entry_string RocqParser.search*)
+  let parse_search_string = parse_entry_string LpParser.alone_search
 end
 
 include Lp
