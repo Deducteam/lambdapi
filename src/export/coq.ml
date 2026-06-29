@@ -31,13 +31,7 @@ let rec term oc t =
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_Iden(qid,b) ->
-      if b then char oc '@';
-      if !stt then
-        match QidMap.find_opt qid.elt !map_erased_qid with
-        | Some s -> string oc s
-        | None -> qident oc qid
-      else qident oc qid
+  | P_Iden(qid,b) -> if b then char oc '@'; qident oc qid
   | P_Arro(u,v) -> arrow oc u v
   | P_Abst(xs,u) -> abst oc xs u
   | P_Prod(xs,u) -> prod oc xs u
@@ -124,15 +118,6 @@ let command oc {elt; pos} =
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
-        let p_sym_arg =
-          if !stt then
-            let pos = None in
-            (* Parameters with no type are assumed to be of type [Set]. *)
-            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
-            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
-              p_sym_arg
-          else p_sym_arg
-        in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are

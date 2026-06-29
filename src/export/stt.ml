@@ -57,9 +57,9 @@ let rmap = ref StrMap.empty
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(lean_id,{elt=([],lp_id);_});_} ->
-        if Logger.log_enabled() then log "rename %s into %s" lp_id lean_id;
-        rmap := StrMap.add lp_id lean_id !rmap
+    | {elt=P_builtin(target_id,{elt=([],lp_id);_});_} ->
+        if Logger.log_enabled() then log "rename %s into %s" lp_id target_id;
+        rmap := StrMap.add lp_id target_id !rmap
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -71,20 +71,15 @@ let erase = ref StrSet.empty
 module Qid = struct type t = Term.qident let compare = Stdlib.compare end
 module QidMap = Map.Make(Qid)
 
-let map_erased_qid = ref QidMap.empty
+let map_erased = ref QidMap.empty
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(lean_id,lp_qid);_} ->
-        if Logger.log_enabled() then
-          log "rename %a into %s" Pretty.qident lp_qid lean_id;
-        let id = snd lp_qid.elt in
-        if Logger.log_enabled() then log "erase %s" id;
-        erase := StrSet.add id !erase;
-        map_erased_qid :=
-          QidMap.add lp_qid.elt lean_id !map_erased_qid;
-        if fst lp_qid.elt = [] && id <> lean_id then
-          rmap := StrMap.add id lean_id !rmap
+    | {elt=P_builtin(expr,({elt=(p,id);pos} as lp_qid));_} ->
+      if p = [] then fatal pos "Unqualified identifier";
+      if Logger.log_enabled() then log "erase %a" Pretty.qident lp_qid;
+      erase := StrSet.add id !erase;
+      map_erased := QidMap.add lp_qid.elt expr !map_erased
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -164,10 +159,25 @@ let raw_path = list string "."
 
 let path oc {elt;_} = raw_path oc elt
 
-let qident oc {elt=(mp,s);_} =
+let current_mp = Stdlib.ref []
+
+let qident oc {elt=((mp,id) as qid);_} =
   match mp with
-  | [] -> raw_ident oc s
-  | _::_ -> raw_path oc mp; char oc '.'; raw_ident oc s
+  | [] ->
+    begin match QidMap.find_opt (!current_mp,id) !map_erased with
+      | None -> raw_ident oc id
+      | Some s -> string oc s
+    end
+  | [_] ->
+    begin match QidMap.find_opt qid !map_erased with
+    | None -> raw_path oc mp; char oc '.'; raw_ident oc id
+    | Some s -> string oc s
+    end
+  | _::mp ->
+    begin match QidMap.find_opt (mp,id) !map_erased with
+    | None -> raw_path oc mp; char oc '.'; raw_ident oc id
+    | Some s -> string oc s
+    end
 
 (** Translation of terms. *)
 

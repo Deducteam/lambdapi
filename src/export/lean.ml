@@ -43,13 +43,7 @@ let rec term oc t =
   | P_Wild -> char oc '_'
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
-  | P_Iden(qid,b) ->
-      if b then char oc '@';
-      if !stt then
-        match QidMap.find_opt qid.elt !map_erased_qid with
-        | Some s -> string oc s
-        | None -> qident oc qid
-      else qident oc qid
+  | P_Iden(qid,b) -> if b then char oc '@'; qident oc qid
   | P_Arro(u,v) -> arrow oc u v
   | P_Abst(xs,u) -> abst oc xs u
   | P_Prod(xs,u) -> prod oc xs u

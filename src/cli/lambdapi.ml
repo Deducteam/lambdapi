@@ -152,9 +152,16 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
       (requiring:string option) (no_implicits:bool) (use_notations:bool)
       (file:string) : unit =
   let run _ =
-    Config.init {cfg with verbose = Some 0};
+    Config.init cfg (*{cfg with verbose = Some 0}*);
     Export.Stt.use_implicits := not no_implicits;
     Export.Stt.use_notations := use_notations;
+    Export.Stt.current_mp :=
+      if Filename.extension file = lp_src_extension then
+        begin
+          Package.apply_config file;
+          List.tl (Library.path_of_file LpLexer.escape file)
+        end
+      else [Filename.basename (Filename.chop_extension file)];
     match output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)

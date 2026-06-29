@@ -79,12 +79,15 @@ let find_config : string -> string option = fun fname ->
   in
   find fname
 
+let root_path = Stdlib.ref []
+
 (** [apply_config fname] attempts to find a configuration file from the
    directory or file [fname], and applies the corresponding configuration. *)
 let apply_config : string -> unit = fun fname ->
   match find_config fname with
   | None           -> ()
   | Some(cfg_file) ->
-  let {root_path; _} = read cfg_file in
+  let {root_path=p; _} = read cfg_file in
+  root_path := p;
   let root = Filename.dirname cfg_file in
-  Library.add_mapping (root_path, root)
+  Library.add_mapping (p, root)
