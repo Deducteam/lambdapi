@@ -89,15 +89,32 @@ end
 
 open Sedlexing
 
-module Aux(Lexer:
-  sig
-  type token
-  val pp: Format.formatter -> token -> unit
-  val lexer_: Sedlexing.lexbuf -> token * Lexing.position * Lexing.position
-  end)=
-struct
+(** Parsing lp syntax. *)
+module Lp :
+sig
+  include PARSER with type lexbuf := Sedlexing.lexbuf
 
-  type zlexbuf = Lexer.token ZipperTokenLexbuf.lexbuf
+  val parse_term_string: Lexing.position -> string -> Syntax.p_term
+  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
+      [s] starts at position [p]. *)
+
+  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
+  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
+      string [s] assuming that [s] starts at position [p]. *)
+
+  val parse_search_string:
+    allow_rocq_syntax:bool -> alone:bool -> Lexing.position -> string ->
+     Syntax.search
+  (** [parse_search_string ~allow_rocq_syntax ~alone p s] parses a query
+      from string [s] assuming that [s] starts at position [p].
+      [~allow_rocq_syntax] to allow a subset of Rocq syntax
+       (fun/forall/exists)
+      [~alone] to parse the query only if followed by EOF. *)
+
+  end
+= struct
+
+  type zlexbuf = LpLexer.token ZipperTokenLexbuf.lexbuf
 
   let handle_error (icopt: in_channel option)
         (entry: zlexbuf -> 'a) (lb: zlexbuf): 'a option =
@@ -108,13 +125,18 @@ struct
     | LpLexer.SyntaxError{pos=Some pos; elt} ->
         parser_fatal pos "Syntax error. %s" elt
 
-  let parse_lexbuf (icopt: in_channel option)
+  let parse_lexbuf' ~allow_rocq_syntax (icopt: in_channel option)
         (entry: zlexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
     Stream.from
      (fun _ ->
        handle_error icopt entry
         (ZipperTokenLexbuf.new_parser
-          ~pp:Lexer.pp ~lexer_:(fun () -> Lexer.lexer_ lb)))
+          ~pp:LpParser.pp_token
+           ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax lb)))
+
+  let parse_lexbuf (icopt: in_channel option)
+       (entry: zlexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
+   parse_lexbuf' ~allow_rocq_syntax:false icopt entry lb
 
   let parse_string (entry: zlexbuf -> 'a) (fname: string) (s: string)
       : 'a Stream.t =
@@ -131,68 +153,28 @@ struct
   let parse_file (entry: zlexbuf -> 'a) (fname: string): 'a Stream.t =
     parse_in_channel entry fname (open_in fname)
 
-  let parse_entry_string (entry: zlexbuf -> 'a) (lexpos:Lexing.position)
-        (s:string): 'a =
+  let parse_entry_string ~allow_rocq_syntax (entry: zlexbuf -> 'a)
+   (lexpos:Lexing.position) (s:string): 'a =
     let lb = Utf8.from_string s in
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
-    Stream.next (parse_lexbuf None entry lb)
-end
+    Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
 
-(** Parsing lp syntax. *)
-module Lp :
-sig
-  include PARSER with type lexbuf := Sedlexing.lexbuf
 
-  val parse_term_string: Lexing.position -> string -> Syntax.p_term
-  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
-      [s] starts at position [p]. *)
-
-  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
-  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
-      string [s] assuming that [s] starts at position [p]. *)
-
-  val parse_search_string: Lexing.position -> string -> Syntax.search
-  (** [parse_search_string f s] parses a query from string [s] assuming
-      that [s] starts at position [p]. *)
-
-  end
-= struct
-
-  include Aux(struct
-  type token = LpLexer.token
-  let pp = LpParser.pp_token
-  let lexer_ = LpLexer.token ~allow_rocq_syntax:false
-  end)
   (* exported functions *)
-  let parse_term_string = parse_entry_string LpParser.term
-  let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
-  let parse_search_string = parse_entry_string LpParser.search
+  let parse_term_string =
+    parse_entry_string ~allow_rocq_syntax:false LpParser.term
+  let parse_rwpatt_string =
+    parse_entry_string ~allow_rocq_syntax:false LpParser.rwpatt
+  let parse_search_string ~allow_rocq_syntax ~alone =
+   parse_entry_string ~allow_rocq_syntax
+    (if alone then LpParser.alone_search else LpParser.search)
 
   let parse_in_channel = parse_in_channel LpParser.command
   let parse_file = parse_file LpParser.command
   let parse_string = parse_string LpParser.command
   let parse_lexbuf = parse_lexbuf None LpParser.command
 
-end
-
-module Rocq :
-sig
-  val parse_search_string :
-     Lexing.position -> string -> Syntax.search
-     (* TODO update the next comment *)
-  (** [parse_search_query_string f s] returns a stream of parsed terms from
-      string [s] which comes from file [f] ([f] can be anything). *)
-end
-= struct
-
-  include Aux(struct
-  type token = LpLexer.token
-  let pp = LpParser.pp_token
-  let lexer_ = LpLexer.token ~allow_rocq_syntax:true
-  end)
-  (* exported functions *)
-  let parse_search_string = parse_entry_string LpParser.alone_search
 end
 
 include Lp

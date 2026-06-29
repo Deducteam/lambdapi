@@ -1299,9 +1299,9 @@ and term (lb:'token lexbuf): p_term =
   match current_token lb with
   (* bterm *)
   | BACKQUOTE
-  | EXISTS (* not in Rocq *)
-  | FORALL (* not in Rocq *)
-  | FUN    (* not in Rocq *)
+  | EXISTS (* only in Rocq *)
+  | FORALL (* only in Rocq *)
+  | FUN    (* only in Rocq *)
   | PI
   | LAMBDA
   | LET ->
