@@ -75,8 +75,7 @@ let map_erased = ref QidMap.empty
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(string,({elt=(p,id);pos} as lp_qid));_} ->
-      if p = [] then fatal pos "Unqualified identifier";
+    | {elt=P_builtin(string,({elt=(_,id);_} as lp_qid));_} ->
       if Logger.log_enabled() then log "erase %a" Pretty.qident lp_qid;
       erase := StrSet.add id !erase;
       map_erased := QidMap.add lp_qid.elt string !map_erased
