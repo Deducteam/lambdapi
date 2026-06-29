@@ -104,9 +104,7 @@ struct
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
-    | RocqLexer.SyntaxError{pos=None; _}
     | LpLexer.SyntaxError{pos=None; _} -> assert false
-    | RocqLexer.SyntaxError{pos=Some pos; elt}
     | LpLexer.SyntaxError{pos=Some pos; elt} ->
         parser_fatal pos "Syntax error. %s" elt
 
@@ -210,8 +208,7 @@ let path_of_string : string -> Path.t = fun s ->
       | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
   with
-      LpLexer.SyntaxError _
-    | RocqLexer.SyntaxError _ ->
+      LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a path." s
 
 
@@ -226,7 +223,6 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
           fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
   with
-    | RocqLexer.SyntaxError _
     | LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
