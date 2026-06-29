@@ -18,6 +18,19 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
+(** Valid Rocq identifiers (excluding unicode characters). *)
+
+let is_valid_first_letter =
+  function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
+let is_valid_letter =
+  function 'a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '\'' -> true | _ -> false
+let is_valid_rocq_id s =
+  s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
+
+let _ =
+  Stt.check := fun pos s ->
+    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"
+
 (** Translation of terms. *)
 
 let rec term oc t =

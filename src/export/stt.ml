@@ -54,12 +54,23 @@ let sym b = builtin.(index_of_builtin b)
 (** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
+let codom = ref StrSet.empty
+
+let add_renaming pos s1 s2 =
+  let f = function
+    | None -> Some s2
+    | Some s2' ->
+      fatal pos "\"%s\" renamed to both \"%s\" and \"%s\"" s1 s2' s2
+  in
+  if Logger.log_enabled() then log "rename %s into %s" s1 s2;
+  rmap := StrMap.update s1 f !rmap;
+  codom := StrSet.add s2 !codom
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(string,{elt=([],lp_id);_});_} ->
-        if Logger.log_enabled() then log "rename %s into %s" lp_id string;
-        rmap := StrMap.add lp_id string !rmap
+    | {elt=P_builtin(string,{elt=(p,lp_id);pos=pos_id});pos} ->
+      if p = [] then add_renaming pos lp_id string
+      else fatal pos_id "Qualified identifier."
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -140,12 +151,14 @@ let list elt sep oc xs =
 
 (** Translation of identifiers. *)
 
-let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found -> s
+let check : (popt -> string -> unit) Stdlib.ref = ref (fun _ _ -> ())
 
-let raw_ident oc s = string oc (translate_ident s)
+let translate_ident {elt=s;pos}: string =
+  try StrMap.find s !rmap
+  with Not_found ->
+    if StrSet.mem s !codom then s^"__alt__" else (!check pos s; s)
 
-let ident oc {elt;_} = raw_ident oc elt
+let ident oc id = string oc (translate_ident id)
 
 let param_id oc idopt =
   match idopt with
@@ -154,9 +167,9 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let raw_path = list string "."
+let path_elt pos oc id = !check pos id; string oc id
 
-let path oc {elt;_} = raw_path oc elt
+let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
 let current_mp = Stdlib.ref []
 
@@ -166,21 +179,24 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
   match mp with
   | [] ->
     begin match QidMap.find_opt (!current_mp,id) !map_erased with
-      | None -> raw_ident oc id
+      | None ->
+        begin match QidMap.find_opt ([],id) !map_erased with
+          | None -> ident oc {elt=id;pos}
+          | Some s -> string oc s
+        end
       | Some s -> string oc s
     end
   | [p] ->
-    begin
-      match StrMap.find_opt p !alias with
+    begin match StrMap.find_opt p !alias with
       | Some mp -> qident oc {elt=(mp,id);pos}
       | None ->
         match QidMap.find_opt qid !map_erased with
-        | None -> raw_path oc mp; char oc '.'; raw_ident oc id
+        | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
         | Some s -> string oc s
     end
   | _::mp ->
     begin match QidMap.find_opt (mp,id) !map_erased with
-    | None -> raw_path oc mp; char oc '.'; raw_ident oc id
+    | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
     | Some s -> string oc s
     end
 
