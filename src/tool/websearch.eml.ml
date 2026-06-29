@@ -124,8 +124,9 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
           if Timed.(!Common.Console.verbose) >= 2 then
             Dream.log "Received request = %s" message;
           let output =
-            Indexing.search_cmd_html ss ~from ~how_many:100
-            message ~dbpath in
+            Format.asprintf "%a"
+            (Indexing.search_cmd_html ss ~from ~how_many:100 ~dbpath) message
+          in
           if Timed.(!Common.Console.verbose) >= 3 then
             Dream.log "sending response: %s" output;
           let header = match hideDescritionSection with

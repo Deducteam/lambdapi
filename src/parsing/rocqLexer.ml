@@ -155,7 +155,7 @@ let rec token lb =
 
   (* other tokens *)
   | int -> INT(Utf8.lexeme lb)
-  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
+  | string -> STRINGLIT(Utf8.lexeme lb)
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN

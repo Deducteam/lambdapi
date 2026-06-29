@@ -122,6 +122,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         | Some ps -> return Proof.goals ps
       end
   | P_query_print(Some qid) ->
+    let m = snd qid.elt in
+    if String.is_string_literal m then return string (String.remove_quotes m)
+    else
       let sym_info ppf s =
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
@@ -193,7 +196,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   match elt with
   | P_query_search q ->
       let dbpath = Path.default_dbpath in
-      return string (Tool.Indexing.search_cmd_txt_query ss q ~dbpath)
+      return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)

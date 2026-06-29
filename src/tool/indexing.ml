@@ -477,7 +477,7 @@ module DB = struct
       ("%s%a.%s"
       ^^
       (colorizer "%s")
-      ^^ "%s@%s%s%a%s%s%s%a%s%a%s%a%s%s%s%s@.")
+      ^^ "%s@%s%s%a%s%s%s%a%s%s%a%s%s%a%s%s%s%s@.")
       lisb (escaper.run Core.Print.path) p boldb n bolde
       (popt_to_string ~print_dirname:false pos)
       separator (generic_pp_of_position_list ~escaper ~sep) positions
@@ -485,11 +485,13 @@ module DB = struct
       (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
       ~complain_if_location_unknown:true) pos
       separator
+      codee
       (fun ppf opt ->
         match opt with
         | None -> Lplib.Base.string ppf ""
         | Some sourceid ->
           Lplib.Base.string ppf ("Translated to " ^ sourceid)) sourceid
+      codeb
           separator
           (Common.Pos.print_file_contents ~parse_file ~escape ~delimiters
           ~complain_if_location_unknown:false) sourcepos
@@ -880,13 +882,12 @@ include QueryLanguage
 module UserLevelQueries = struct
 
  let search_cmd_gen ss ~from ~how_many
-  ~(fail:?err_desc:string -> string -> string)
-  ~pp_results ~tag:(hb,he) q fmt s =
+  ~(fail:Pos.popt option -> ?err_desc:string -> string -> string)
+  ~pp_results ~tag:(hb,he) fmt q =
   try
    let mok _ = None in
-   let q = match q with
-   | None -> Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s
-   | Some q -> q in
+  (* Let's do the parsing here to capture the exceptions here *)
+   let q = Lazy.force q in
    let items = ItemSet.bindings (answer_query ~mok ss [] q) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
@@ -896,36 +897,35 @@ module UserLevelQueries = struct
   with
    | Stream.Failure ->
       Lplib.Base.out fmt "%s"
-       (fail (Format.asprintf "Syntax error: a query was expected@."))
-   | Common.Error.Fatal(_,msg, _) ->
-      Lplib.Base.out fmt "%s" (fail (Format.asprintf "Error: %s@." msg))
+       (fail None (Format.asprintf "Syntax error: a query was expected@."))
+   | Common.Error.Fatal (pos, msg, _) ->
+      Lplib.Base.out fmt "%s" (fail pos (Format.asprintf "Error: %s@." msg))
    | Overloaded(name,res) ->
-      Lplib.Base.out fmt "%s" (fail (Format.asprintf
+      Lplib.Base.out fmt "%s" (fail None (Format.asprintf
        "Overloaded symbol %s. Please rewrite the query replacing %s \
         with a fully qualified identifier among the following:@."
         name name)
         ~err_desc:(Format.asprintf "%a@." pp_results (ItemSet.bindings res))
         )
    | Stack_overflow ->
-      Lplib.Base.out fmt "%s" (fail
+      Lplib.Base.out fmt "%s" (fail None
        (Format.asprintf
          "Error: too many results. Please refine your query.@." ))
    | exn ->
       Lplib.Base.out fmt "%s"
-       (fail (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
+       (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
-  let search_cmd_txt_string ss ~dbpath s =
+  let search_cmd_txt_query ss ~dbpath fmt q =
   Stdlib.(the_dbpath := dbpath);
-  Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
-   ~pp_results:pp_results_list ~tag:("","") None) s
+  search_cmd_gen ss ~from:0 ~how_many:999999
+   ~fail:(fun pos ?err_desc x ->
+          Common.Error.fatal_optional_position pos ?err_desc "%s" x)
+   ~pp_results:pp_results_list ~tag:("", "") fmt (lazy q)
 
-  let search_cmd_txt_query ss ~dbpath q =
-  Stdlib.(the_dbpath := dbpath);
-  Format.asprintf "%a" (search_cmd_gen ss ~from:0 ~how_many:999999
-   ~fail:(fun ?err_desc x -> Common.Error.fatal_no_pos ?err_desc "%s" x)
-   ~pp_results:pp_results_list ~tag:("","") (Some q)) ""
-
+  let search_cmd_gen_string ss ~from ~how_many ~fail ~pp_results ~tag fmt s =
+    search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag fmt
+     (* Let's do the parsing later to capture the exceptions later *)
+     (lazy (Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s))
 
  (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
      ["forall"] with ["→"] and ["Π"] in the search query [s] *)
@@ -942,23 +942,25 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
- let search_cmd_html ss ~from ~how_many s ~dbpath =
+ let search_cmd_html ss ~from ~how_many ~dbpath fmt s =
   Stdlib.(the_dbpath := dbpath);
-    Format.asprintf "%a"
-    (search_cmd_gen ss ~from ~how_many
-      ~fail:(fun ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
-          ^ (Option.value err_desc ~default:"")
-   )
+    search_cmd_gen_string ss ~from ~how_many
+      ~fail:(fun pos ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
+          ^ (match pos with None -> "" | Some p -> popt_to_string p)
+          ^ Option.value err_desc ~default:"")
       ~pp_results:(html_of_results_list from)
       ~tag:("<h1>","</h1")
-      None)
+      fmt
       s
 
  let search_cmd_txt ss ~dbpath (fmt:Format.formatter) s =
+    let s = transform_ascii_to_unicode s in
   Stdlib.(the_dbpath := dbpath);
-  Lplib.Base.string fmt
-    (search_cmd_txt_string ss ~dbpath
-      (transform_ascii_to_unicode s))
+    search_cmd_gen_string ss ~from:0 ~how_many:999999
+      ~fail:(fun pos ?err_desc x ->
+          Common.Error.fatal_optional_position pos ?err_desc "%s" x)
+      ~pp_results:pp_results_list ~tag:("", "") fmt s
+
 end
 
 (* let's flatten the interface *)

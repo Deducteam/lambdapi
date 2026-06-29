@@ -16,8 +16,11 @@ notation & infix right 10;
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : String → Tactic;
+constant symbol #assume : String → Π [a:Set], (τ a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
+
+constant symbol #print: String → Tactic;
+builtin "print" ≔ #print;
 
 constant symbol #assumption : Tactic;
 builtin "assumption" ≔ #assumption;
@@ -27,6 +30,9 @@ builtin "fail" ≔ #fail;
 
 constant symbol #focus : String → Tactic;
 builtin "focus" ≔ #focus;
+
+constant symbol #first_hyp : (Π a, π a → Tactic) → Tactic;
+builtin "first_hyp" ≔ #first_hyp;
 
 constant symbol #generalize : Π [a], τ a → Tactic;
 builtin "generalize" ≔ #generalize;
