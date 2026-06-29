@@ -41,11 +41,14 @@ let string_of_token = function
   | END -> "end"
   | EQUIV -> "≡"
   | EVAL -> "eval"
+  | EXISTS -> "exists" (* only in Rocq *)
   | FAIL -> "fail"
   | FIRST_HYP -> "first_hyp"
   | FLAG -> "flag"
   | FLOAT _ -> "float"
   | FOCUS -> "focus"
+  | FORALL -> "forall" (* only in Rocq *)
+  | FUN -> "fun"       (* only in Rocq *)
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
   | HOOK_ARROW -> "↪"
@@ -99,6 +102,7 @@ let string_of_token = function
   | SWITCH true -> "on or off"
   | SYMBOL -> "symbol"
   | SYMMETRY -> "symmetry"
+  | THICKARROW -> "=>" (* only in Rocq *)
   | TRY -> "try"
   | TURNSTILE -> "⊢"
   | TYPE_QUERY -> "type"
@@ -1295,6 +1299,9 @@ and term (lb:'token lexbuf): p_term =
   match current_token lb with
   (* bterm *)
   | BACKQUOTE
+  | EXISTS (* not in Rocq *)
+  | FORALL (* not in Rocq *)
+  | FUN    (* not in Rocq *)
   | PI
   | LAMBDA
   | LET ->
@@ -1363,6 +1370,20 @@ and bterm (lb:'token lexbuf): p_term =
       let b = binder lb in
       let b = extend_pos lb (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b)) in
       extend_pos lb (*__FUNCTION__*) pos1 (P_Appl(q, b))
+  | EXISTS -> (* only in Rocq *)
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let b = rocqbinder lb COMMA in
+          let f = fun bin res ->
+            extend_pos lb pos1 (P_Appl(
+              extend_pos lb pos1 (P_Iden(extend_pos lb pos1 ([],"∃"), false)),
+              extend_pos lb pos1 (P_Abst([bin], res)))) in
+       (List.fold_right f (fst b) (snd b))
+  | FORALL -> (* only in Rocq *)
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let b = rocqbinder lb COMMA in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_Prod(fst b, snd b))
   | PI ->
       let pos1 = current_pos lb in
       consume_token lb;
@@ -1372,6 +1393,11 @@ and bterm (lb:'token lexbuf): p_term =
       let pos1 = current_pos lb in
       consume_token lb;
       let b = binder lb in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b))
+  | FUN -> (* only in Rocq *)
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let b = rocqbinder lb THICKARROW in
       extend_pos lb (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b))
   | LET ->
       let pos1 = current_pos lb in
@@ -1543,6 +1569,56 @@ and binder (lb:'token lexbuf): p_params list * p_term =
   | _ ->
       expected "" [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET] lb
 
+and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token lb with
+  | UID _
+  | UNDERSCORE ->
+      let s = param lb in
+      begin
+        match current_token lb with
+        | UID _
+        | UNDERSCORE
+        | L_PAREN ->
+            let ps = list params lb in
+            consume terminator lb;
+            let p = [s], None, false in
+            p::ps, term lb
+        | COLON ->
+            consume_token lb;
+            let a = term lb in
+            consume terminator lb;
+            let p = [s], Some a, false in
+            [p], term lb
+        (* | terminator *)
+        | _ ->
+            if current_token lb = terminator then
+                begin
+                    consume_token lb;
+                    let p = [s], None, false in
+                    [p], term lb
+                end
+            else
+            expected "parameter list"
+              [UID"";UNDERSCORE;L_PAREN;terminator] lb
+      end
+  | L_PAREN ->
+      let ps = nelist params lb in
+      begin
+        match current_token lb with
+        | _ ->
+            if current_token lb = terminator then
+                begin
+                    consume_token lb;
+                    ps, term lb
+                end
+            else
+            expected "" [terminator] lb
+      end
+  | _ ->
+      expected "" [UID"";UNDERSCORE;L_PAREN;] lb
+
+
 (* search *)
 
 and generalize (lb:'token lexbuf): bool =
@@ -1674,6 +1750,11 @@ and search (lb:'token lexbuf): search =
          QFilter(x,RegExp(String.remove_quotes n))
        else QFilter(x,Path(Format.asprintf "%a" Pretty.qident qid)))
     q qids
+
+and alone_search (lb:'token lexbuf) : search =
+ let res = search lb in
+ if current_token lb = EOF then res else expected "" [VBAR; IN; WITH] lb
+
 
 let command (lb:'token lexbuf): p_command =
   if log_enabled() then log "------------------- start reading command";

@@ -114,6 +114,9 @@ type token =
   | COLON
   | DOT
   | EQUIV
+  | EXISTS  (* only in Rocq *)
+  | FORALL  (* only in Rocq *)
+  | FUN     (* only in Rocq *)
   | HOOK_ARROW
   | LAMBDA
   | L_CU_BRACKET
@@ -124,6 +127,7 @@ type token =
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
+  | THICKARROW (* only in Rocq *)
   | TURNSTILE
   | UNDERSCORE
   | VBAR
@@ -209,6 +213,7 @@ let rec qid expl ids lb =
 
 (** Lexer. *)
 let rec token ~allow_rocq_syntax lb =
+  let ifrocq t = if allow_rocq_syntax then t else UID(Utf8.lexeme lb) in
   match%sedlex lb with
 
   (* end of file *)
@@ -242,10 +247,13 @@ let rec token ~allow_rocq_syntax lb =
   | "debug" -> DEBUG
   | "end" -> END
   | "eval" -> EVAL
+  | "exists" -> ifrocq EXISTS (* only in Rocq *)
   | "fail" -> FAIL
   | "first_hyp" -> FIRST_HYP
   | "flag" -> FLAG
   | "focus" -> FOCUS
+  | "forall" -> ifrocq FORALL  (* only in Rocq *)
+  | "fun" -> ifrocq FUN        (* only in Rocq *)
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
@@ -303,6 +311,8 @@ let rec token ~allow_rocq_syntax lb =
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
   | 0x2192 (* → *) -> ARROW
+  | "->" -> ifrocq ARROW       (* only in Rocq *)
+  | "=>" -> ifrocq THICKARROW  (* only in Rocq *)
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON

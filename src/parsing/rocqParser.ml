@@ -497,9 +497,9 @@ and term (lb:lexbuf): p_term =
   match current_token() with
   (* bterm *)
   | BACKQUOTE
-  | EXISTS
-  | FORALL
-  | FUN
+  | EXISTS (* only in Rocq *)
+  | FORALL (* only in Rocq *)
+  | FUN    (* only in Rocq *)
   | PI
   | LAMBDA
   | LET ->
@@ -566,7 +566,7 @@ and bterm (lb:lexbuf): p_term =
       let b = binder lb in
       let b = extend_pos (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b)) in
       extend_pos (*__FUNCTION__*) pos1 (P_Appl(q, b))
-  | EXISTS ->
+  | EXISTS -> (* only in Rocq *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = rocqbinder lb COMMA in
@@ -575,7 +575,7 @@ and bterm (lb:lexbuf): p_term =
               extend_pos pos1 (P_Iden(extend_pos pos1 ([],"∃"), false)),
               extend_pos pos1 (P_Abst([bin], res)))) in
        (List.fold_right f (fst b) (snd b))
-  | FORALL ->
+  | FORALL -> (* only in Rocq *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = rocqbinder lb COMMA in
@@ -590,7 +590,7 @@ and bterm (lb:lexbuf): p_term =
       consume_token lb;
       let b = binder lb in
       extend_pos (*__FUNCTION__*) pos1 (P_Abst(fst b, snd b))
-  | FUN ->
+  | FUN -> (* only in Rocq *)
       let pos1 = current_pos() in
       consume_token lb;
       let b = rocqbinder lb THICKARROW in
