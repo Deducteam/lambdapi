@@ -112,6 +112,7 @@ let command oc {elt; pos} =
   | P_require (Some false, ps) ->
       string oc "Require Export "; list path " " oc ps; string oc ".\n"
   | P_require_as (p,i) ->
+    Stt.alias := StrMap.add i.elt p.elt !Stt.alias;
     string oc "Module "; ident oc i; string oc " := "; path oc p;
     string oc ".\n"
   | P_symbol

@@ -162,6 +162,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
           Package.apply_config file;
           let p = Library.path_of_file LpLexer.escape file in
           Timed.Time.restore t;
+          (* remove the root_path from the module path *)
           List.tl p
         end
       else [Filename.basename (Filename.chop_extension file)];

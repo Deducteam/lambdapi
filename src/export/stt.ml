@@ -161,17 +161,23 @@ let path oc {elt;_} = raw_path oc elt
 
 let current_mp = Stdlib.ref []
 
-let qident oc {elt=((mp,id) as qid);_} =
+let alias = Stdlib.ref StrMap.empty
+
+let rec qident oc {elt=((mp,id) as qid);pos} =
   match mp with
   | [] ->
     begin match QidMap.find_opt (!current_mp,id) !map_erased with
       | None -> raw_ident oc id
       | Some s -> string oc s
     end
-  | [_] ->
-    begin match QidMap.find_opt qid !map_erased with
-    | None -> raw_path oc mp; char oc '.'; raw_ident oc id
-    | Some s -> string oc s
+  | [p] ->
+    begin
+      match StrMap.find_opt p !alias with
+      | Some mp -> qident oc {elt=(mp,id);pos}
+      | None ->
+        match QidMap.find_opt qid !map_erased with
+        | None -> raw_path oc mp; char oc '.'; raw_ident oc id
+        | Some s -> string oc s
     end
   | _::mp ->
     begin match QidMap.find_opt (mp,id) !map_erased with
