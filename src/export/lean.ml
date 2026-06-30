@@ -144,6 +144,33 @@ let open_mod oc p = string oc "open "; path oc p; string oc "\n"
 
 let openings = ref []
 
+let export_types oc p_sym_nam t =
+  let rec set_to_type t =            
+    begin match t with 
+      | {elt=P_Iden(id,_);_} as a  ->
+          begin
+            match QidMap.find_opt id.elt !map_qid_builtin with
+            | Some Set -> {elt=P_Type;pos=a.pos}
+            | _ -> a
+          end
+      | {elt=P_Arro(u,v);_} as a -> 
+          let u' = set_to_type u in 
+            let v' = set_to_type v in
+            {elt=P_Arro(u',v');pos=a.pos}
+      | _ -> t
+    end 
+  in 
+  let t' = (set_to_type t) in
+    term oc t' ; 
+    begin
+      match t' with 
+      | {elt=P_Type;_} -> 
+        string oc "\n@[instance]\naxiom ne_";ident oc p_sym_nam;
+        string oc " : Nonempty " ; ident oc p_sym_nam;
+      | _ -> ()
+    end ;
+    string oc "\n"
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,ps) -> List.iter (open_mod oc) ps
@@ -171,7 +198,7 @@ let command oc {elt; pos} =
             string oc " := "; term oc t; string oc "\n"
           | false, _, [], Some t ->
             string oc "axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc "\n"
+            export_types oc p_sym_nam t
           | false, _, _, Some t ->
             string oc "axiom "; ident oc p_sym_nam;
             string oc " : ∀"; top_params_list oc p_sym_arg; string oc ", ";
@@ -213,7 +240,8 @@ let print : string -> ast -> unit = fun file s ->
                  with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
   string oc "\n\n";
-  (*debugging options*)
+  (*to erase style-warnings on generated code*)
+  string oc "set_option linter.style.header false\n";
   string oc "set_option linter.style.missingEnd false\n";
   string oc "set_option linter.unusedVariables false\n";
   string oc "set_option linter.style.longLine false\n\n";
