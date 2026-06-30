@@ -115,14 +115,10 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
 let handle_require_as :
       compiler -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss {elt=p;_} {elt=id;_} ->
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
-  else
-    begin
-      let ss = rec_require compile ss p in
-      let alias_path = StrMap.add id p ss.alias_path in
-      let path_alias = Path.Map.add p id ss.path_alias in
-      {ss with alias_path; path_alias}
-    end
+  let ss = rec_require compile ss p in
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_require compile bo ss p] handles the command [require p] with
     [compile] as compilation function (passed as argument to avoid cyclic
@@ -329,10 +325,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let r = scope_rule true ss h in
-      Sign.add_rule ss.signature r;
+      let (s,r1) as x = scope_rule true ss h in
+      let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
+      let r2 = {r1 with lhs} in
+      Sign.add_rules ss.signature s [r1;r2];
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
@@ -621,10 +620,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
+  | Timeout                   as e                    -> raise e
+  | Fatal(Some(Some(_)),_, _) as e                    -> raise e
+  | Fatal(None         ,m, err_desc)      -> fatal pos ~err_desc "%s" m
+  | Fatal(Some(None)   ,m, err_desc)      -> fatal pos ~err_desc "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

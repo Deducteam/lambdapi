@@ -48,8 +48,8 @@ type rw_tag =
 (** [whnf ?tags c t] computes a whnf of the term [t] in context [c]. *)
 val whnf : ?tags:rw_tag list -> ctxt -> term -> term
 
-(** [whnf ?tags c t] returns some whnf of the term [t] in context [c] if it is
-    different from [t]. *)
+(** [whnf_opt ?tags c t] returns [None] if [t] is in whnf, and [Some u] where
+    [u] is some whnf of [t] otherwise. *)
 val whnf_opt : ?tags:rw_tag list -> ctxt -> term -> term option
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context

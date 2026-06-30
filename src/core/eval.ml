@@ -203,8 +203,7 @@ let depth = Stdlib.ref 0
 let rec whnf : config -> term -> term = fun cfg t ->
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk cfg t [] in
-  let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
-  r
+  if Stdlib.(!steps) <> n then add_args u stk else unfold t
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
@@ -228,8 +227,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
          rewriting rules is false during indexing for websearch;
          that's the reason for the when in the next line *)
     | Some t when Tree_type.is_empty (cfg.dtree s) ->
-      if Timed.(!(s.sym_opaq)) || not cfg.Config.expand_defs then r else
-        (Stdlib.incr steps; whnf_stk cfg t stk)
+      if Timed.(!(s.sym_opaq)) || not cfg.Config.expand_defs then r
+      else (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
@@ -246,8 +245,9 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
             snd (get_args (add_args h stk'))
         else stk
       in
-      match tree_walk cfg (cfg.dtree s) stk with
-      | None -> h, stk
+      let n = Stdlib.(!steps) in
+      match tree_walk cfg s stk with
+      | None -> Stdlib.(steps := n); h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
           log_whnf "%aapply rewrite rule" D.depth !depth;
@@ -280,15 +280,15 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
     3. a {!constructor:Tree_type.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
 
-(** [tree_walk cfg dt stk] tries to apply a rewrite rule by matching the stack
-    [stk] against the decision tree [dt].  The resulting state of the abstract
-    machine is returned in case of success.  Even if matching fails, the stack
-    [stk] may be imperatively updated since a reduction step taken in elements
-    of the stack is preserved (this is done using
+(** [tree_walk cfg s stk] tries to apply a rewrite rule by matching the stack
+    [stk] against the decision tree of [s]. The resulting state of the
+    abstract machine is returned in case of success. Even if matching fails,
+    the stack [stk] may be imperatively updated since a reduction step taken
+    in elements of the stack is preserved (this is done using
     {!constructor:Term.term.TRef}). *)
-and tree_walk : config -> dtree -> stack -> (term * stack) option =
-  fun cfg tree stk ->
-  let (lazy capacity, lazy tree) = tree in
+and tree_walk : config -> sym -> stack -> (term * stack) option =
+  fun cfg s stk ->
+  let (lazy capacity, lazy tree) = cfg.dtree s in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
   let bound = Array.make capacity None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
@@ -299,7 +299,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
      of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
     if Logger.log_enabled() then
-      log_rew "%atree_walk %a %d %a" D.depth !depth (D.list term) stk cursor
+      log_rew "%awalk %a %a %d %a" D.depth !depth
+        sym s (D.list term) stk cursor
         (D.map VarMap.iter Raw.var "," D.int ";") vars_id;
     let open Tree_type in
     match tree with
@@ -535,8 +536,8 @@ let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
   fun ?tags c a b ->
   Timed.pure_test (fun (c,a,b) -> eq_modulo ?tags c a b) (c,a,b)
 
-(** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
-   context [c], and using user-defined rewrite rules if [~rewrite]. *)
+(** [whnf_opt ?tags c t] returns [None] if [t] is in whnf, and [Some u] where
+    [u] is some whnf of [t] otherwise. *)
 let whnf_opt : term option reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
@@ -585,9 +586,9 @@ let unfold_sym_opt : sym -> term -> term option =
           match Timed.(!(s.sym_rules)) with
           | [] -> fun t -> t
           | _ ->
-              let cfg = Config.make [] and dt = Timed.(!(s.sym_dtree)) in
+              let cfg = Config.make [] in
               let unfold_sym_app args =
-                match tree_walk cfg dt args with
+                match tree_walk cfg s args with
                 | Some(r,ts) -> add_args r ts
                 | None -> add_args (mk_Symb s) args
               in unfold_sym s unfold_sym_app

@@ -38,6 +38,7 @@ type token =
   | ASSERT of bool (* true for "assertnot" *)
   | ASSOCIATIVE
   | ASSUME
+  | ASSUMPTION
   | BEGIN
   | BUILTIN
   | CHANGE
@@ -49,7 +50,9 @@ type token =
   | END
   | EVAL
   | FAIL
+  | FIRST_HYP
   | FLAG
+  | FOCUS
   | GENERALIZE
   | HAVE
   | IN
@@ -138,25 +141,22 @@ let space = [%sedlex.regexp? Chars " \t\n\r"]
 let digit = [%sedlex.regexp? '0' .. '9']
 let nat = [%sedlex.regexp? Plus digit]
 let int = [%sedlex.regexp? nat | '-', nat]
-let float = [%sedlex.regexp? int, '.', Plus digit]
+let float = [%sedlex.regexp? int, '.', nat]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
+let positive_digit = [%sedlex.regexp? '1' .. '9']
+let strict_nat = [%sedlex.regexp? '0' | positive_digit, Star digit]
 
 (** Identifiers.
 
    There are two kinds of identifiers: regular identifiers and escaped
-   identifiers of the form ["{|...|}"].
+   identifiers of the form [{|...|}].
 
    Modulo those surrounding brackets, escaped identifiers allow to use as
    identifiers keywords or filenames that are not regular identifiers.
 
    An escaped identifier denoting a filename or directory is unescaped before
-   accessing to it. Hence, the module ["{|a b|}"] refers to the file ["a b"].
-
-   Identifiers need to be normalized so that an escaped identifier, once
-   unescaped, is not regular. To this end, every identifier of the form
-   ["{|s|}"] with s regular, is understood as ["s"] (function
-   [remove_useless_escape] below).
+   accessing to it. Hence, the module [{|a b|}] refers to the file [a b].
 
    Finally, identifiers must not be empty, so that we can use the empty string
    for the path of ghost signatures. *)
@@ -172,20 +172,17 @@ let is_regid : string -> bool = fun s ->
   | regid, eof -> true
   | _ -> false
 
+(** [escape s] escapes [s] if [s] is not regular. This is used to convert
+    irregular module path elements to valid identifiers. *)
+let escape (s:string): string = if is_regid s then s else Escape.escape s
+
 (** Unqualified escaped identifiers are any non-empty sequence of characters
     (except "|}") between "{|" and "|}". *)
 let nobars = [%sedlex.regexp? Star (Compl '|')]
 let escid = [%sedlex.regexp?
     "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
-(** [escape s] converts a string [s] into an escaped identifier if it is not
-   regular. We do not check whether [s] contains ["|}"]. FIXME? *)
-let escape s = if is_regid s then s else Escape.escape s
-
-(** [remove_useless_escape s] replaces escaped regular identifiers by their
-   unescape form. *)
-let remove_useless_escape : string -> string = fun s ->
-  let s' = Escape.unescape s in if is_regid s' then s' else s
+let id = [%sedlex.regexp? regid | escid]
 
 (** Lexer. *)
 let rec token lb =
@@ -211,6 +208,7 @@ let rec token lb =
   | "assertnot" -> ASSERT true
   | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
+  | "assumption" -> ASSUMPTION
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
   | "change" -> CHANGE
@@ -222,7 +220,9 @@ let rec token lb =
   | "end" -> END
   | "eval" -> EVAL
   | "fail" -> FAIL
+  | "first_hyp" -> FIRST_HYP
   | "flag" -> FLAG
+  | "focus" -> FOCUS
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
@@ -275,7 +275,7 @@ let rec token lb =
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | int -> INT(Utf8.lexeme lb)
   | float -> FLOAT(Utf8.lexeme lb)
-  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
+  | string -> STRINGLIT(Utf8.lexeme lb)
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
@@ -300,19 +300,13 @@ let rec token lb =
   | '_' -> UNDERSCORE
 
   (* identifiers *)
-  | regid -> UID(Utf8.lexeme lb)
-  | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
-  | '@', regid -> UID_EXPL(remove_first lb)
-  | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
+  | id -> UID(Utf8.lexeme lb)
+  | '@', id -> UID_EXPL(remove_first lb)
   | '?', nat -> UID_META(int_of_string(remove_first lb))
-  | '$', regid -> UID_PATT(remove_first lb)
-  | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
-  | '$', nat -> UID_PATT(remove_first lb)
+  | '$', id -> UID_PATT(remove_first lb)
 
-  | regid, '.' -> qid false [remove_last lb] lb
-  | escid, '.' -> qid false [remove_useless_escape(remove_last lb)] lb
-  | '@', regid, '.' -> qid true [remove_ends lb] lb
-  | '@', escid, '.' -> qid true [remove_useless_escape(remove_ends lb)] lb
+  | id, '.' -> qid false [remove_last lb] lb
+  | '@', id, '.' -> qid true [remove_ends lb] lb
 
   (* invalid character *)
   | _ -> invalid_character lb
@@ -323,13 +317,13 @@ and qid expl ids lb =
   | "/*" -> comment (qid expl ids) 0 lb
   | int -> QINT(List.rev ids, Utf8.lexeme lb)
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
-  | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
+  | escid, '.' -> qid expl (remove_last lb :: ids) lb
   | regid ->
     if expl then QID_EXPL(Utf8.lexeme lb :: ids)
     else QID(Utf8.lexeme lb :: ids)
   | escid ->
-    if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
-    else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
   | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
 
 and comment next i lb =

@@ -90,32 +90,20 @@ end
 open LpLexer
 open Sedlexing
 
-(** Parsing lp syntax. *)
-module Lp :
-sig
-  include PARSER with type lexbuf := Sedlexing.lexbuf
-
-  val parse_term_string: Lexing.position -> string -> Syntax.p_term
-  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
-      [s] starts at position [p]. *)
-
-  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
-  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
-      string [s] assuming that [s] starts at position [p]. *)
-
-  val parse_search_string: Lexing.position -> string -> Syntax.search
-  (** [parse_search_string f s] parses a query from string [s] assuming
-      that [s] starts at position [p]. *)
-
-  end
-= struct
+module Aux(Lexer:
+  sig
+  val new_parsing : (lexbuf -> 'a) -> lexbuf -> 'a
+  end)=
+struct
 
   let handle_error (icopt: in_channel option)
         (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
+    | RocqLexer.SyntaxError{pos=None; _}
     | SyntaxError{pos=None; _} -> assert false
+    | RocqLexer.SyntaxError{pos=Some pos; elt}
     | SyntaxError{pos=Some pos; elt} ->
         parser_fatal pos "Syntax error. %s" elt
 
@@ -143,8 +131,33 @@ sig
     let lb = Utf8.from_string s in
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
-    Stream.next (parse_lexbuf None (LpParser.new_parsing entry) lb)
+    Stream.next (parse_lexbuf None (Lexer.new_parsing entry) lb)
+end
 
+(** Parsing lp syntax. *)
+module Lp :
+sig
+  include PARSER with type lexbuf := Sedlexing.lexbuf
+
+  val parse_term_string: Lexing.position -> string -> Syntax.p_term
+  (** [parse_rwpatt_string p s] parses a term from string [s] assuming that
+      [s] starts at position [p]. *)
+
+  val parse_rwpatt_string: Lexing.position -> string -> Syntax.p_rwpatt
+  (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
+      string [s] assuming that [s] starts at position [p]. *)
+
+  val parse_search_string: Lexing.position -> string -> Syntax.search
+  (** [parse_search_string f s] parses a query from string [s] assuming
+      that [s] starts at position [p]. *)
+
+  end
+= struct
+
+  include Aux(struct
+  type token = LpLexer.token
+  let new_parsing = LpParser.new_parsing
+  end)
   (* exported functions *)
   let parse_term_string = parse_entry_string LpParser.term
   let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
@@ -157,8 +170,27 @@ sig
 
 end
 
-include Lp
+module Rocq :
+sig
+  val parse_search_string :
+     Lexing.position -> string -> Syntax.search
+     (* TODO update the next comment *)
+  (** [parse_search_query_string f s] returns a stream of parsed terms from
+      string [s] which comes from file [f] ([f] can be anything). *)
+end
+= struct
 
+  include Aux(struct
+  type token = RocqLexer.token
+  let new_parsing = RocqParser.new_parsing
+  end)
+  (* exported functions *)
+  let parse_term_string = parse_entry_string RocqParser.term
+  let parse_rwpatt_string = parse_entry_string RocqParser.rwpatt
+  let parse_search_string = parse_entry_string RocqParser.search
+end
+
+include Lp
 open Error
 
 (** [path_of_string s] converts the string [s] into a path. *)
@@ -170,8 +202,11 @@ let path_of_string : string -> Path.t = fun s ->
       | QID p, _, _ -> List.rev p
       | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
-  with SyntaxError _ ->
-    fatal_no_pos "Syntax error: \"%s\" is not a path." s
+  with
+      SyntaxError _
+    | RocqLexer.SyntaxError _ ->
+      fatal_no_pos "Syntax error: \"%s\" is not a path." s
+
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
@@ -183,8 +218,10 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
       | _ ->
           fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
-  with SyntaxError _ ->
-    fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
+  with
+    | RocqLexer.SyntaxError _
+    | SyntaxError _ ->
+      fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)

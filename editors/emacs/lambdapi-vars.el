@@ -9,8 +9,11 @@
 (defconst lambdapi-tactics
   '("apply"
     "assume"
+    "assumption"
     "change"
     "eval"
+    "first_hyp"
+    "focus"
     "generalize"
     "have"
     "orelse"

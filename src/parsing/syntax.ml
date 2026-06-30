@@ -224,6 +224,7 @@ type op =
  | Union
 type filter =
  | Path of string
+ | RegExp of string
 type search =
  | QBase of search_base
  | QOp of search * op * search
@@ -267,9 +268,12 @@ type p_tactic_aux =
   | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
+  | P_tac_assumption
   | P_tac_change of p_term
   | P_tac_eval of p_term
   | P_tac_fail
+  | P_tac_first_hyp of p_term
+  | P_tac_focus of string
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
   | P_tac_induction
@@ -450,6 +454,7 @@ let eq_simp_flag : simp_flag eq = fun s1 s2 ->
 
 let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
+  | P_tac_first_hyp t1, P_tac_first_hyp t2
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
   | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
@@ -462,7 +467,9 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_simpl s1, P_tac_simpl s2 -> eq_simp_flag s1 s2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
+  | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
   | P_tac_admit, P_tac_admit
+  | P_tac_assumption, P_tac_assumption
   | P_tac_induction, P_tac_induction
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
@@ -649,6 +656,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_refine t
     | P_tac_apply t
     | P_tac_change t
+    | P_tac_first_hyp t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
     | P_tac_rewrite (_, Some p, t) ->
         (vs, fold_term_vars vs (fold_rwpatt_vars vs a p) t)
@@ -660,12 +668,14 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_set(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
     | P_tac_simpl (SimpSym qid) -> (vs, f a qid)
     | P_tac_simpl _
+    | P_tac_assumption
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
+    | P_tac_focus _
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
     | P_tac_try t

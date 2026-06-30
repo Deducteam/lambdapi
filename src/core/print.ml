@@ -34,6 +34,27 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 (** Flag for printing metavariable arguments. *)
 let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
+let print_pattern_names : bool ref = ref true
+
+let print_implicits_and_domains_in f x =
+  let i = !print_implicits
+  and d = !print_domains
+  and p = !print_pattern_names in
+  print_implicits := true;
+  print_domains := true;
+  print_pattern_names := false;
+  try
+    let r = f x in
+    print_implicits := i;
+    print_domains := d;
+    print_pattern_names := p;
+    r
+  with e ->
+    print_implicits := i;
+    print_domains := d;
+    print_pattern_names := p;
+    raise e
+
 (*****************************************************************************
 printing functions
 *****************************************************************************)
@@ -278,7 +299,11 @@ and head idmap wrap ppf t =
   | Symb(s)     -> sym ppf s
   | Meta(m,e)   -> meta ppf m; if !print_meta_args then env (func idmap) ppf e
   | Plac(_)     -> out ppf "_"
-  | Patt(_,n,e) -> out ppf "$%a%a" uid n (env (func idmap)) e
+  | Patt(Some i,n,e) ->
+    if !print_pattern_names && n<>"" then
+      out ppf "$%s%a" n (env (func idmap)) e
+    else out ppf "$%d%a" i (env (func idmap)) e
+  | Patt(None,_,_) -> assert false
   | Bvar _      -> assert false
   (* Product and abstraction (only them can be wrapped). *)
   | Abst(a,b)   ->
@@ -329,6 +354,7 @@ and head idmap wrap ppf t =
           out ppf " ≔ %a in %a" (func idmap) t (func idmap) u
         end;
       if wrap then out ppf ")"
+
 and abstractions idmap ppf t =
   match unfold t with
   | Abst(_,b) ->
@@ -346,7 +372,15 @@ and atom idmap ppf t = pp `Atom idmap ppf t
 and appl idmap ppf t = pp `Appl idmap ppf t
 and func idmap ppf t = pp `Func idmap ppf t
 
-let term_in = func
+let term_in idmap ppf t =
+  let s = Logger.get_activated_loggers() in
+  if String.contains s 'p' then func idmap ppf t
+  else
+    begin
+      Logger.reset_loggers ~default:"" ();
+      try func idmap ppf t; Logger.reset_loggers ~default:s ()
+      with e -> Logger.reset_loggers ~default:s (); raise e
+    end
 
 let term = term_in StrMap.empty
 

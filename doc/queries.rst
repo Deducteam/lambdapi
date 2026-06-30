@@ -40,7 +40,7 @@ debug mode for some functionalities as follows:
    debug -s;
 
 Each functionality is represented by a single character. To get the
-list of all available flags, use the command ``debug`` with no
+list of all available debug flags, use the command ``debug`` with no
 argument.
 
 .. _flag:
@@ -109,13 +109,15 @@ beginning, the timeout is set to 2s.
 ``search``
 ------------------
 
-Runs a query between double quotes against the index file
-``~/.LPSearch.db``. See :doc:`query_language` for the query language
+Runs a query against the index file updated
+with the assets defined in the file under development including the
+assets imported by the `require` commands.
+See :doc:`query_language` for the query language
 specification.
 
 ::
 
-  search "spine >= (nat → nat) , hyp >= bool";
+  search spine >= (nat → nat) with hyp >= bool;
 
 .. _type:
 

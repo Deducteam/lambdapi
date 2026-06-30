@@ -122,6 +122,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         | Some ps -> return Proof.goals ps
       end
   | P_query_print(Some qid) ->
+    let m = snd qid.elt in
+    if String.is_string_literal m then return string (String.remove_quotes m)
+    else
       let sym_info ppf s =
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
@@ -129,24 +132,25 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let notation ppf s =
           match !(s.sym_nota) with
           | NoNotation -> ()
-          | n -> out ppf "notation %a %a;@." sym s (notation float) n
+          | n -> out ppf "@.notation %a %a;" sym s (notation float) n
         in
         (* Function to print rules. *)
-        let rules ppf s =
+        let rules sym_rule ppf s =
           match !(s.sym_rules) with
           | [] -> ()
           | r::rs ->
             let rule ppf r = sym_rule ppf (s,r) in
             let with_rule ppf r = out ppf "@.with %a" rule r in
-            out ppf "rule %a%a;@." rule r (List.pp with_rule "") rs
+            out ppf "@.rule %a%a;" rule r (List.pp with_rule "") rs
         in
         (* Function to print a symbol declaration. *)
         let decl ppf s =
-          out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
+          out ppf "%a%a%asymbol %a : %a%a;%a%a"
             expo s.sym_expo prop s.sym_prop
             match_strat s.sym_mstrat sym s sym_type s
-            def !(s.sym_def) notation s rules s
+            def !(s.sym_def) notation s (rules sym_rule) s
         in
+        let new_decl ppf s = out ppf "@.%a" decl s in
         (* Function to print constructors and the induction principle if [qid]
            is an inductive type. *)
         let ind ppf s =
@@ -158,11 +162,15 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           in
           try
             let ind = SymMap.find s !(sign.sign_ind) in
-            List.pp decl "" ppf ind.ind_cons;
-            decl ppf ind.ind_prop
+            List.pp new_decl "" ppf ind.ind_cons;
+            new_decl ppf ind.ind_prop
           with Not_found -> ()
         in
-        if s == Unif_rule.equiv || s == Coercion.coerce then rules ppf s
+        if s == Unif_rule.equiv then
+          let sym_rule ppf r =
+            out ppf "%a ↪ [%a]" term (lhs r) term (rhs r) in
+          rules sym_rule ppf s
+        else if s == Coercion.coerce then rules sym_rule ppf s
         else (decl ppf s; ind ppf s)
       in
       return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
@@ -188,7 +196,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   match elt with
   | P_query_search q ->
       let dbpath = Path.default_dbpath in
-      return string (Tool.Indexing.search_cmd_txt_query ss q ~dbpath)
+      return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)

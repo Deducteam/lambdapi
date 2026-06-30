@@ -2,6 +2,8 @@
 
 open Lplib open Base
 
+let cur_dir = Filename.current_dir()
+
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
 type pos =
@@ -64,7 +66,11 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
     if print_fname then
       match fname with
       | None -> ""
-      | Some n -> (if print_dirname then n else Filename.basename n) ^ ":"
+      | Some n ->
+          (if print_dirname
+           then String.remove_prefix (cur_dir^Filename.dir_sep) n
+           else Filename.basename n)
+          ^ ":"
     else ""
   in
   if start_line <> end_line then
@@ -73,8 +79,6 @@ let to_string : ?print_dirname:bool -> ?print_fname:bool -> pos -> string =
     Printf.sprintf "%s%d:%d" fname start_line start_col
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
-
-
 
 (** Type of optional positions. *)
 type popt = pos option
@@ -114,8 +118,6 @@ let lexing_opt (p:popt): Lexing.position =
   match p with
   | None -> {pos_fname=""; pos_lnum=1; pos_bol=0; pos_cnum=0}
   | Some p -> lexing p
-
-
 
 (** Type constructor extending a type (e.g. a piece of abstract syntax) with a
     an optional source code position. *)
@@ -159,37 +161,51 @@ let pp : popt pp = fun ppf p ->
 
 (** [short ppf pos] prints the optional position [pos] on [ppf]. *)
 let short : popt pp = fun ppf p ->
-  let print_fname=false in
-  string ppf (popt_to_string ~print_fname p)
+  string ppf (popt_to_string ~print_fname:false p)
 
 (** [pp_lexing ppf lps] prints the Lexing.position pair [lps] on [ppf]. *)
 let pp_lexing : (Lexing.position * Lexing.position) pp =
   fun ppf lps -> short ppf (Some (locate lps))
 
-
-
-(** [print_file_contents escape sep delimiters pos] prints the contents of the
-    file at position [pos]. [sep] is the separator replacing each newline
+(** [print_file_contents parse_file escape sep delimiters pos] prints the
+    contents of the file at position [pos]. The [parse_file] function
+    takes in input [pos.fname] (that in reality may be a filename or
+    a URI, e.g. when the text comes from LSP) and it returns both a stream
+    of lines provided by a function that raises End_of_file if the file
+    content is terminated, and a function to close the resources when
+    we are done with the stream.
+    [sep] is the separator replacing each newline
     (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
     "unknown location" message returned when the position does not refer to a
-    file. [escape] is used to escape the file contents.*)
+    file. [escape] is used to escape the file contents.
+
+    The value -1 for end_col is to be interpreted as "at the end of line".  *)
 let print_file_contents :
-  escape:(string -> string) -> delimiters:(string*string) -> popt pp =
-  fun ~escape ~delimiters:(db,de) ppf pos ->
+  parse_file:(string -> (unit -> string) * (unit -> unit)) ->
+  escape:(string -> string) ->
+  delimiters:(string*string) ->
+  complain_if_location_unknown:bool ->
+  popt pp =
+  fun ~parse_file ~escape ~delimiters:(db,de) ~complain_if_location_unknown
+   ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
         It's dangerous for your health! *)
 
+     let input_line,finish = parse_file fname in
+     let out =
+       Buffer.create
+        ((end_line - start_line) * 80 +
+         (if end_col = -1 then 80 else end_col) + 1) in
+
      (* ignore the lines before the start_line *)
-     let ch = open_in fname in
-     let out = Buffer.create ((end_line - start_line) * 80 + end_col + 1) in
      for i = 0 to start_line - 2 do
-      ignore (input_line ch)
+      ignore (input_line ())
      done ;
 
      (* skip the first start_col UTF8 codepoints of the start_line *)
-     let startl = input_line ch in
+     let startl = input_line () in
      assert (String.is_valid_utf_8 startl);
      let bytepos = ref 0 in
      for i = 0 to start_col - 1 do
@@ -209,27 +225,39 @@ let print_file_contents :
 
      (* add the lines in between the start_line and the end_line *)
      for i = 0 to end_line - start_line - 2 do
-       Buffer.add_string out (escape (input_line ch)) ;
+       Buffer.add_string out (escape (input_line ())) ;
        Buffer.add_string out "\n"
      done ;
 
      (* identify what the end_line is and how many UTF8 codepoints to keep *)
      let endl,end_col =
       if start_line = end_line then
-        startstr, end_col - start_col
-      else input_line ch, end_col in
+        if end_col = -1 then
+         startstr, -1
+        else
+         startstr, end_col - start_col
+      else input_line (), end_col in
 
      (* keep the first end_col UTF8 codepoints of the end_line *)
      assert (String.is_valid_utf_8 endl);
      let bytepos = ref 0 in
-     for i = 0 to end_col - 1 do
-      let uchar = String.get_utf_8_uchar endl !bytepos in
-      assert (Uchar.utf_decode_is_valid uchar) ;
-      bytepos := !bytepos + Uchar.utf_decode_length uchar
-     done ;
+     let i = ref 0 in
+     (try
+       while !i <= end_col -1 || end_col = -1 do
+        let uchar = String.get_utf_8_uchar endl !bytepos in
+        assert (Uchar.utf_decode_is_valid uchar) ;
+        bytepos := !bytepos + Uchar.utf_decode_length uchar ;
+        incr i
+       done
+      with
+       Invalid_argument _ -> () (* End of line reached *)) ;
      let str = String.sub endl 0 !bytepos in
      Buffer.add_string out (escape str) ;
 
-     close_in ch ;
+     finish () ;
      string ppf (Buffer.contents out)
-  | None | Some {fname=None} -> string ppf (db ^ "unknown location" ^ de)
+  | None | Some {fname=None} ->
+      if complain_if_location_unknown then
+       string ppf (db ^ "unknown location" ^ de)
+      else
+       string ppf ""

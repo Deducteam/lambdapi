@@ -23,6 +23,7 @@ let string_of_token = function
   | ASSIGN -> "≔"
   | ASSOCIATIVE -> "associative"
   | ASSUME -> "assume"
+  | ASSUMPTION -> "assumption"
   | BACKQUOTE -> "`"
   | BEGIN -> "begin"
   | BUILTIN -> "builtin"
@@ -40,8 +41,10 @@ let string_of_token = function
   | EQUIV -> "≡"
   | EVAL -> "eval"
   | FAIL -> "fail"
+  | FIRST_HYP -> "first_hyp"
   | FLAG -> "flag"
   | FLOAT _ -> "float"
+  | FOCUS -> "focus"
   | GENERALIZE -> "generalize"
   | HAVE -> "have"
   | HOOK_ARROW -> "↪"
@@ -112,20 +115,107 @@ let string_of_token = function
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
-let the_current_token : (token * position * position) Stdlib.ref =
-  Stdlib.ref dummy_token
+module ZipperToken :
+sig
+  val current_token : unit -> token
+  val current_pos : unit -> position * position
+  val consume_token :  lexbuf -> unit
+  val new_parsing : (lexbuf -> 'a) -> lexbuf -> 'a
+  val succeed_or_reset_stream : ('a -> 'b) -> 'a -> 'b
+end =
+struct
 
-let current_token() : token = let (t,_,_) = !the_current_token in t
+type token_pos = token * position * position
 
-let current_pos() : position * position =
-  let (_,p1,p2) = !the_current_token in (p1,p2)
+type zipper = token_pos list list * token_pos list
+(* A zipper to represent the token (and its position) stream
+      l1 :: ... ln :: [], tkps
+   represents the stream
+      List.rev (l1 @ ... @ ln) @ tkps @ the_yet_unread_stream
+   where the current stream position is just before tkps,
+   i.e. tkps are the next tokens to be consumed while
+   (l1 @ ... @ ln) are tokens already consumed.
+
+   consume_token moves the next token from tkps to the top of l1,
+   it it exists
+
+   an l1 is pushed on the stack of stacks of already consumed
+   terms when succeed_or_reset_stream is called; in case of
+   failures all tokens in l1 are moved back to tkps
+
+   Invariants on a zipper z:
+   - snd z is never empty: a token is fetch from the stream when
+     consuming the last entry of snd z to maintain the invariant
+   - fst z is empty iff we have not entered any
+     succeed_or_reset_stream and thus the consumed tokens need not
+     be preserved (the zipper functionality is deactivated).
+     This is an optimization for performance reasons *)
+
+let init tkp = [],[tkp]
+
+let the_current_token_pos: zipper Stdlib.ref=
+  Stdlib.ref (init dummy_token)
+
+let current_token_pos () =
+ match !the_current_token_pos with
+ | _, [] -> assert false
+ | _, tkp::_ -> tkp
+
+let current_token () : token =
+  let (t,_,_) = current_token_pos () in t
+
+let current_pos () : position * position =
+  let (_,p1,p2) = current_token_pos () in (p1,p2)
 
 let new_parsing (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
-  let t = !the_current_token in
-  let reset() = the_current_token := t in
-  the_current_token := LpLexer.token lb;
+  let t = !the_current_token_pos in
+  let reset() = the_current_token_pos := t in
+  the_current_token_pos := init (LpLexer.token lb) ;
   try let r = entry lb in begin reset(); r end
   with e -> begin reset(); raise e end
+
+let consume_token (lb:lexbuf) : unit =
+ begin
+  match !the_current_token_pos with
+  | _, [] -> assert false
+  | [], [_] ->
+     the_current_token_pos := [], [LpLexer.token lb]
+  | l::ll, [x] ->
+     the_current_token_pos := (x::l)::ll, [LpLexer.token lb]
+  | [], _::tkps ->
+     the_current_token_pos := [], tkps
+  | l::ll, tkp::tkps ->
+     the_current_token_pos := (tkp::l)::ll, tkps
+ end ;
+ if log_enabled() then
+   let (t,p1,p2) = current_token_pos () in
+   let p = locate (p1,p2) in
+   log "read new token %a %a" Pos.short (Some p) pp_token t
+
+let succeed_or_reset_stream f x =
+ the_current_token_pos :=
+  []::fst !the_current_token_pos, snd !the_current_token_pos ;
+ try
+  let res = f x in
+  match !the_current_token_pos with
+  | [], _ -> assert false
+  | _::[], tkps ->
+     the_current_token_pos := [], tkps ;
+     res
+  | l1::l2::ll, tkps ->
+     the_current_token_pos := (l1@l2)::ll, tkps ;
+     res
+ with
+  SyntaxError _ as e ->
+   match !the_current_token_pos with
+   | [], _ -> assert false
+   | l::ll, tkps ->
+      the_current_token_pos := ll, List.rev l @ tkps ;
+      raise e
+
+end
+
+include ZipperToken
 
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("Expected: "^msg^".")
@@ -133,17 +223,10 @@ let expected (msg:string) (tokens:token list): 'a =
     match tokens with
     | [] -> assert false
     | t::ts ->
-      let soft = string_of_token in
+      let soft t = String.add_quotes (string_of_token t) in
       syntax_error (current_pos())
         (List.fold_left (fun s t -> s^", "^soft t) ("Expected: "^soft t) ts
         ^".")
-
-let consume_token (lb:lexbuf) : unit =
-  the_current_token := LpLexer.token lb;
-  if log_enabled() then
-    let (t,p1,p2) = !the_current_token in
-    let p = locate (p1,p2) in
-    log "read new token %a %a" Pos.short (Some p) pp_token t
 
 (* building positions and terms *)
 
@@ -183,7 +266,9 @@ let ident_of_term pos1 {elt; _} =
 let list (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
-  (try while true do acc := elt lb :: !acc done with SyntaxError _ -> ());
+  (try
+    while true do acc := succeed_or_reset_stream elt lb :: !acc done
+   with SyntaxError _ -> ());
   List.rev !acc
 
 let nelist (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
@@ -197,9 +282,6 @@ let consume (token:token) (lb:lexbuf): unit =
 
 let prefix (token:token) (elt:lexbuf -> 'a) (lb:lexbuf): 'a =
   consume token lb; elt lb
-
-let alone (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
-  let x = entry lb in if current_token() != EOF then expected "" [EOF] else x
 
 (* parsing functions *)
 
@@ -248,6 +330,24 @@ let qid (lb:lexbuf): (string list * string) loc =
       qid_of_path pos1 p
   | _ ->
       expected "" [UID"";QID[]]
+
+let qid_or_regexp (lb:lexbuf): (string list * string) loc =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token() with
+  | UID s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
+  | QID p ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      qid_of_path pos1 p
+  | STRINGLIT s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
+  | _ ->
+      expected "" [UID"";QID[];STRINGLIT""]
 
 let qid_expl (lb:lexbuf): (string list * string) loc =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -308,9 +408,6 @@ let float_or_int (lb:lexbuf): string =
 let path (lb:lexbuf): string list loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token() with
-  (*| UID s ->
-      let pos1 = current_pos() in
-      LpLexer.syntax_error pos1 "Unqualified identifier"*)
   | QID p ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -329,16 +426,20 @@ let qid_or_rule (lb:lexbuf): (string list * string) loc =
       let pos1 = current_pos() in
       consume_token lb;
       qid_of_path pos1 p
+  | STRINGLIT s ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 ([], s)
   | UNIF_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Unif_rule.equiv.sym_name)
+      make_pos pos1 ([], Unif_rule.equiv.sym_name)
   | COERCE_RULE ->
       let pos1 = current_pos() in
       consume_token lb;
-      make_pos pos1 (Sign.Ghost.path, Coercion.coerce.sym_name)
+      make_pos pos1 ([], Coercion.coerce.sym_name)
   | _ ->
-      expected "" [UID"";QID[];UNIF_RULE;COERCE_RULE]
+      expected "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE]
 
 let term_id (lb:lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -542,7 +643,7 @@ let rec command pos1 (p_sym_mod:p_modifier list) (lb:lexbuf): p_command =
         | STRINGLIT s ->
             consume_token lb;
             consume ASSIGN lb;
-            let i = qid lb in
+            let s = String.remove_quotes s and i = qid lb in
             extend_pos (*__FUNCTION__*) pos1 (P_builtin(s,i))
         | _ ->
             expected "" [STRINGLIT""]
@@ -578,7 +679,7 @@ and inductive (lb:lexbuf): p_inductive =
         let l = c::cs in
         extend_pos (*__FUNCTION__*) pos0 (i,t,l)
     | VBAR ->
-        let l = list (prefix VBAR constructor) lb in
+        let l = nelist (prefix VBAR constructor) lb in
         extend_pos (*__FUNCTION__*) pos0 (i,t,l)
     | SEMICOLON ->
         let l = [] in
@@ -762,13 +863,19 @@ and query (lb:lexbuf): p_query =
   | FLAG ->
       let pos1 = current_pos() in
       consume_token lb;
-      let s = consume_STRINGLIT lb in
-      let b = consume_SWITCH lb in
-      extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      begin
+        match current_token() with
+        | SEMICOLON ->
+            extend_pos (*__FUNCTION__*) pos1 (P_query_flag("",true))
+        | _ ->
+          let s = String.remove_quotes (consume_STRINGLIT lb) in
+          let b = consume_SWITCH lb in
+          extend_pos (*__FUNCTION__*) pos1 (P_query_flag(s,b))
+      end
   | PROVER ->
       let pos1 = current_pos() in
       consume_token lb;
-      let s = consume_STRINGLIT lb in
+      let s = String.remove_quotes (consume_STRINGLIT lb) in
       extend_pos (*__FUNCTION__*) pos1 (P_query_prover(s))
   | PROVER_TIMEOUT ->
       let pos1 = current_pos() in
@@ -842,6 +949,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -898,9 +1006,11 @@ and steps (lb:lexbuf): p_proofstep list =
   | ADMIT
   | APPLY
   | ASSUME
+  | ASSUMPTION
   | CHANGE
   | EVAL
   | FAIL
+  | FOCUS
   | GENERALIZE
   | HAVE
   | INDUCTION
@@ -983,6 +1093,10 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       let xs = nelist param lb in
       extend_pos (*__FUNCTION__*) pos1 (P_tac_assume xs)
+  | ASSUMPTION ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      make_pos pos1 P_tac_assumption
   | CHANGE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -997,6 +1111,21 @@ and tactic (lb:lexbuf): p_tactic =
       let pos1 = current_pos() in
       consume_token lb;
       make_pos pos1 P_tac_fail
+  | FIRST_HYP ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let t = term lb in
+      extend_pos (*__FUNCTION__*) pos1 (P_tac_first_hyp t)
+  | FOCUS ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      begin
+        match current_token() with
+        | INT n ->
+            consume_token lb;
+            extend_pos (*__FUNCTION__*) pos1 (P_tac_focus n)
+        | _ -> expected "" [INT ""]
+      end
   | GENERALIZE ->
       let pos1 = current_pos() in
       consume_token lb;
@@ -1112,7 +1241,7 @@ and tactic (lb:lexbuf): p_tactic =
       consume_token lb;
       begin
         match current_token() with
-        | STRINGLIT s ->
+        | STRINGLIT s -> let s = String.remove_quotes s in
             extend_pos (*__FUNCTION__*) pos1 (P_tac_why3 (Some s))
         | _ ->
             make_pos pos1 (P_tac_why3 None)
@@ -1467,7 +1596,7 @@ and binder (lb:lexbuf): p_params list * p_term =
         | UNDERSCORE
         | L_PAREN
         | L_SQ_BRACKET ->
-            let ps = list params lb in
+            let ps = nelist params lb in
             consume COMMA lb;
             let p = [s], None, false in
             p::ps, term lb
@@ -1571,26 +1700,31 @@ and asearch (lb:lexbuf): search =
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,None))))
   | UID "spine" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Spine r)))))
   | UID "concl" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Conclusion r)))))
   | UID "hyp" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QType(Some(Hypothesis r)))))
   | UID "lhs" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
       QBase(QSearch(t,g,Some(QXhs(r,Some Lhs))))
   | UID "rhs" ->
+      consume_token lb;
       let r = relation lb in
       let g = generalize lb in
       let t = term lb in
@@ -1607,8 +1741,8 @@ and csearch (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let aq = asearch lb in
   match current_token() with
-  | COMMA ->
-      let aqs = list (prefix COMMA asearch) lb in
+  | WITH ->
+      let aqs = nelist (prefix WITH asearch) lb in
       List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
   | _ ->
       aq
@@ -1617,8 +1751,8 @@ and ssearch (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let cq = csearch lb in
   match current_token() with
-  | SEMICOLON ->
-      let cqs = list (prefix SEMICOLON csearch) lb in
+  | VBAR ->
+      let cqs = nelist (prefix VBAR csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
@@ -1626,13 +1760,14 @@ and ssearch (lb:lexbuf): search =
 and search (lb:lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
-  let qids = list (prefix VBAR qid) lb in
-  let path_of_qid qid =
-    let p,n = qid.elt in
-    if p = [] then n
-    else Format.asprintf "%a.%a" Print.path p Print.uid n
-  in
-  List.fold_left (fun x qid -> QFilter(x,Path(path_of_qid qid))) q qids
+  let qids = list (prefix IN qid_or_regexp) lb in
+  List.fold_left
+    (fun x qid ->
+       let n = snd qid.elt in
+       if String.is_string_literal n then
+         QFilter(x,RegExp(String.remove_quotes n))
+       else QFilter(x,Path(Format.asprintf "%a" Pretty.qident qid)))
+    q qids
 
 let command (lb:lexbuf): p_command =
   if log_enabled() then log "------------------- start reading command";

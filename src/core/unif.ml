@@ -74,46 +74,40 @@ let add_constr : problem -> constr -> unit = fun p c ->
   if Logger.log_enabled () then log (Color.mag "add constraint %a") constr c;
   p := {!p with to_solve = c::!p.to_solve}
 
-(** [try_unif_rules p c s t] tries to simplify the unification problem [c
-   ⊢ s ≡ t] with the user-defined unification rules. *)
+(** If [s ≡ t] or [t ≡ s] can be rewritten by a user-defined unification rule
+    to [t1 ≡ s1; ..; tn ≡ sn] then [try_unif_rules p c s t] adds these
+    constraints to the problem [p], plus contraints stating that ti and si
+    have the same type, and returns [true]. Otherwise, it returns [false]. *)
 let try_unif_rules : problem -> ctxt -> term -> term -> bool = fun p c s t ->
-  if Logger.log_enabled () then log "check unif_rules";
-  let exception No_match in
-  let open Unif_rule in
-  try
-    let rhs =
-      let start = add_args (mk_Symb equiv) [s;t] in
-      let reduced = Eval.whnf c start in
-      if reduced != start then reduced else
-        let start = add_args (mk_Symb equiv) [t;s] in
-        let reduced = Eval.whnf c start in
-        if reduced != start then reduced else raise No_match
-    in
-    (* Refine generated unification problems to replace holes. *)
-    let sanitise (c, t, u) =
+  let e = add_args (mk_Symb Unif_rule.equiv) [s;t] in
+  if Logger.log_enabled() then log "check unif_rules %a" term e;
+  let e' =
+    if Logger.log_enabled()
+      && String.contains (Logger.get_activated_loggers()) 'u'
+    then Logger.log_in "wq" (Eval.whnf_opt c) e
+    else Eval.whnf_opt c e
+  in
+  match e' with
+  | None -> if Logger.log_enabled() then log "found no unif_rule"; false
+  | Some r ->
+    if Logger.log_enabled() then log "reduced to: %a" term r;
+    let sanitise (t,u) =
       match Infer.infer_noexn p c t, Infer.infer_noexn p c u with
-      | Some (t, a), Some(u, b) ->
-          add_constr p (c,t,u); add_constr p (c,a,b); (c,t,u)
-      | t', u' -> (* Error reporting *)
-          if Stdlib.(!print_error) then
-            begin
-              fatal_msg "@[A unification rule generated the \
-                           ill-typed unification problem@ [%a].@]"
-                Print.constr (c, t, u);
-              if t' = None then
-                fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
-              if u' = None then
-                fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
-              fatal_msg "Untypable unification problem."
-            end;
-          raise Unsolvable
+      | Some (t,a), Some(u,b) ->
+        add_constr p (c,t,u); add_constr p (c,a,b); (c,t,u)
+      | t', u' ->
+        if Stdlib.(!print_error) then
+          begin
+            fatal_msg "A unification rule generated: %a.@." constr (c,t,u);
+            if t' = None then fatal_msg "The LHS is not typable.@.";
+            if u' = None then fatal_msg "The RHS is not typable.@.";
+            fatal_msg "Untypable unification problem."
+          end;
+        raise Unsolvable
     in
-    let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
-    if Logger.log_enabled () then log "rewrites to: %a" constrs cs;
+    let cs = List.map sanitise (Unif_rule.unpack r) in
+    if Logger.log_enabled() then log "rewrites to: %a" constrs cs;
     true
-  with No_match ->
-    if Logger.log_enabled () then log "found no unif_rule";
-    false
 
 (** [instantiable c m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated. It does not check whether the instantiation is closed
@@ -183,7 +177,8 @@ let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
   fun p c t1 t2 ->
   if Eval.pure_eq_modulo c t1 t2 then
     (if Logger.log_enabled () then log "equivalent terms")
-  else if not (try_unif_rules p c t1 t2) then
+  else if !(Unif_rule.equiv.sym_dtree) == Tree_type.empty_dtree
+          || not (try_unif_rules p c t1 t2) then
     (if Logger.log_enabled () then log "move to unsolved";
      p := {!p with unsolved = (c,t1,t2)::!p.unsolved})
 
@@ -333,7 +328,8 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
   match inverse_opt s ts1 t2 with
   | Some (t, u) -> add_constr p (c,t,u)
   | _ ->
-      if not (try_unif_rules p c t1 t2) then
+      if !(Unif_rule.equiv.sym_dtree) == Tree_type.empty_dtree
+         || not (try_unif_rules p c t1 t2) then
         match unfold t2 with
         | Prod _ when is_constant s -> error c t1 t2
         | _ ->
