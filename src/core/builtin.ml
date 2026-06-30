@@ -15,7 +15,7 @@ let get : sig_state -> popt -> Path.t -> string -> sym =
   | [] -> (* Symbol in scope. *)
       begin
         try StrMap.find s ss.builtins
-        with Not_found -> fatal pos "Unknown builtin %s." s
+        with Not_found -> fatal pos "Unknown builtin \"%s\"." s
       end
   | [m] when StrMap.mem m ss.alias_path -> (* Aliased module path. *)
       begin
@@ -26,7 +26,7 @@ let get : sig_state -> popt -> Path.t -> string -> sym =
         in
         (* Look for the symbol. *)
         try StrMap.find s !(sign.sign_builtins) with Not_found ->
-          fatal pos "Unknown builtin %a.%s." Path.pp p s
+          fatal pos "Unknown builtin \"%a.%s\"." Path.pp p s
       end
   | _  -> (* Fully-qualified symbol. *)
       begin
@@ -41,7 +41,7 @@ let get : sig_state -> popt -> Path.t -> string -> sym =
         in
         (* Look for the symbol. *)
         try StrMap.find s !(sign.sign_builtins) with Not_found ->
-          fatal pos "Unknown builtin %a.%s." Path.pp p s
+          fatal pos "Unknown builtin \"%a.%s\"." Path.pp p s
       end
 
 (** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to

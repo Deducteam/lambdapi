@@ -60,7 +60,7 @@ do
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod);;
         # "inductive"
         strictly_positive_*|inductive|989|904|830|341);;
         # underscore in query
@@ -68,7 +68,7 @@ do
         # abstracted variable type in rule LHS
         573-2);;
         # domain-free lambda/product
-        298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
+        298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225|1362);;
         # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
         547);;
         # aborted proof

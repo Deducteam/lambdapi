@@ -11,7 +11,7 @@ open Syntax
     contain any private subterms. If [~typ] is [true], then [t] must be
     a type (defaults to [false]). No {b new} metavariables may appear in
     [t], but metavariables in the image of [mok] may be used. The function
-    [mok] defaults to the function constant to [None]. The function
+    [mok] defaults to the constant function equal to [None]. The function
     [~find_sym] is used to scope symbol identifiers. *)
 val scope_term :
   ?find_sym:find_sym -> ?typ:bool (* default: false *) ->
