@@ -82,14 +82,14 @@ let set_renaming : string -> unit = fun f ->
 
 let mapping = ref QidMap.empty
 
-let map_to qid string =
+let add_mapping qid string =
   if Logger.log_enabled() then
     log "map %a to \"%s\"" Pretty.qident qid string;
   mapping := QidMap.add qid.elt string !mapping
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(string,lp_qid);_} -> map_to lp_qid string
+    | {elt=P_builtin(string,lp_qid);_} -> add_mapping lp_qid string
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -103,6 +103,8 @@ let is_mapped id =
 
 let encoding = ref QidMap.empty
 
+let add_encoding qid b = encoding := QidMap.add qid b !encoding
+
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
@@ -114,8 +116,8 @@ let set_encoding : string -> unit = fun f ->
             builtin.(i) <- qid;
             found.(i) <- true;
             let b = builtin_of_index i in
-            encoding := QidMap.add qid b !encoding;
-            if b = El || b = Prf then map_to lp_qid n
+            add_encoding qid b;
+            if b = El || b = Prf then add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
