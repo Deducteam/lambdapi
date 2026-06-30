@@ -141,7 +141,7 @@ let extend_pos lb (lps:position * position) : 'a -> 'a loc =
     else p2
   in
   (*if log_enabled() then
-    log "extend_pos lb %s %a -> %a" s Pos.pp_lexing lps Pos.pp_lexing lps2;*)
+    log "extend_pos %s %a -> %a" s Pos.pp_lexing lps Pos.pp_lexing lps2;*)
   make_pos (p1,p2)
 
 let qid_of_path (lps: position * position):
