@@ -40,7 +40,7 @@ module type PARSER = sig
 end
 
 (* defined in OCaml >= 4.11 only *)
-let set_filename (lb:lexbuf) (fname:string): unit =
+let set_filename (lb:Lexing.lexbuf) (fname:string): unit =
   lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
 
 (** Parsing dk syntax. *)
@@ -87,52 +87,7 @@ module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
   let parse_lexbuf = parse_lexbuf None command
 end
 
-open LpLexer
 open Sedlexing
-
-module Aux(Lexer:
-  sig
-  val new_parsing : (lexbuf -> 'a) -> lexbuf -> 'a
-  end)=
-struct
-
-  let handle_error (icopt: in_channel option)
-        (entry: lexbuf -> 'a) (lb: lexbuf): 'a option =
-    try Some(entry lb)
-    with
-    | End_of_file -> Option.iter close_in icopt; None
-    | RocqLexer.SyntaxError{pos=None; _}
-    | SyntaxError{pos=None; _} -> assert false
-    | RocqLexer.SyntaxError{pos=Some pos; elt}
-    | SyntaxError{pos=Some pos; elt} ->
-        parser_fatal pos "Syntax error. %s" elt
-
-  let parse_lexbuf (icopt: in_channel option)
-        (entry: lexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
-    Stream.from (fun _ -> handle_error icopt entry lb)
-
-  let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
-      : 'a Stream.t =
-    let lb = Utf8.from_string s in
-    set_filename lb fname;
-    parse_lexbuf None entry lb
-
-  let parse_in_channel (entry: lexbuf -> 'a) (fname:string) (ic: in_channel)
-      : 'a Stream.t =
-    let lb = Utf8.from_channel ic in
-    set_filename lb fname;
-    parse_lexbuf (Some ic) entry lb
-
-  let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
-    parse_in_channel entry fname (open_in fname)
-
-  let parse_entry_string (entry:lexbuf -> 'a) (lexpos:Lexing.position)
-        (s:string): 'a =
-    let lb = Utf8.from_string s in
-    set_position lb lexpos;
-    set_filename lb lexpos.pos_fname;
-    Stream.next (parse_lexbuf None (Lexer.new_parsing entry) lb)
-end
 
 (** Parsing lp syntax. *)
 module Lp :
@@ -147,47 +102,79 @@ sig
   (** [parse_rwpatt_string f s] parses a rewrite pattern specification from
       string [s] assuming that [s] starts at position [p]. *)
 
-  val parse_search_string: Lexing.position -> string -> Syntax.search
-  (** [parse_search_string f s] parses a query from string [s] assuming
-      that [s] starts at position [p]. *)
+  val parse_search_string:
+    allow_rocq_syntax:bool -> alone:bool -> Lexing.position -> string ->
+     Syntax.search
+  (** [parse_search_string ~allow_rocq_syntax ~alone p s] parses a query
+      from string [s] assuming that [s] starts at position [p].
+      [~allow_rocq_syntax] to allow a subset of Rocq syntax
+       (fun/forall/exists)
+      [~alone] to parse the query only if followed by EOF. *)
 
   end
 = struct
 
-  include Aux(struct
-  type token = LpLexer.token
-  let new_parsing = LpParser.new_parsing
-  end)
+  type zlexbuf = LpLexer.token ZipperTokenLexbuf.lexbuf
+
+  let handle_error (icopt: in_channel option)
+        (entry: zlexbuf -> 'a) (lb: zlexbuf): 'a option =
+    try Some(entry lb)
+    with
+    | End_of_file -> Option.iter close_in icopt; None
+    | LpLexer.SyntaxError{pos=None; _} -> assert false
+    | LpLexer.SyntaxError{pos=Some pos; elt} ->
+        parser_fatal pos "Syntax error. %s" elt
+
+  let parse_lexbuf' ~allow_rocq_syntax (icopt: in_channel option)
+        (entry: zlexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
+    Stream.from
+     (fun _ ->
+       handle_error icopt entry
+        (ZipperTokenLexbuf.new_parser
+          ~pp:LpParser.pp_token
+           ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax lb)))
+
+  let parse_lexbuf (icopt: in_channel option)
+       (entry: zlexbuf -> 'a) (lb: lexbuf): 'a Stream.t =
+   parse_lexbuf' ~allow_rocq_syntax:false icopt entry lb
+
+  let parse_string (entry: zlexbuf -> 'a) (fname: string) (s: string)
+      : 'a Stream.t =
+    let lb = Utf8.from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
+
+  let parse_in_channel (entry: zlexbuf -> 'a) (fname:string) (ic: in_channel)
+      : 'a Stream.t =
+    let lb = Utf8.from_channel ic in
+    set_filename lb fname;
+    parse_lexbuf (Some ic) entry lb
+
+  let parse_file (entry: zlexbuf -> 'a) (fname: string): 'a Stream.t =
+    parse_in_channel entry fname (open_in fname)
+
+  let parse_entry_string ~allow_rocq_syntax (entry: zlexbuf -> 'a)
+   (lexpos:Lexing.position) (s:string): 'a =
+    let lb = Utf8.from_string s in
+    set_position lb lexpos;
+    set_filename lb lexpos.pos_fname;
+    Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
+
+
   (* exported functions *)
-  let parse_term_string = parse_entry_string LpParser.term
-  let parse_rwpatt_string = parse_entry_string LpParser.rwpatt
-  let parse_search_string = parse_entry_string LpParser.search
+  let parse_term_string =
+    parse_entry_string ~allow_rocq_syntax:false LpParser.term
+  let parse_rwpatt_string =
+    parse_entry_string ~allow_rocq_syntax:false LpParser.rwpatt
+  let parse_search_string ~allow_rocq_syntax ~alone =
+   parse_entry_string ~allow_rocq_syntax
+    (if alone then LpParser.alone_search else LpParser.search)
 
   let parse_in_channel = parse_in_channel LpParser.command
   let parse_file = parse_file LpParser.command
   let parse_string = parse_string LpParser.command
   let parse_lexbuf = parse_lexbuf None LpParser.command
 
-end
-
-module Rocq :
-sig
-  val parse_search_string :
-     Lexing.position -> string -> Syntax.search
-     (* TODO update the next comment *)
-  (** [parse_search_query_string f s] returns a stream of parsed terms from
-      string [s] which comes from file [f] ([f] can be anything). *)
-end
-= struct
-
-  include Aux(struct
-  type token = RocqLexer.token
-  let new_parsing = RocqParser.new_parsing
-  end)
-  (* exported functions *)
-  let parse_term_string = parse_entry_string RocqParser.term
-  let parse_rwpatt_string = parse_entry_string RocqParser.rwpatt
-  let parse_search_string = parse_entry_string RocqParser.search
 end
 
 include Lp
@@ -197,14 +184,13 @@ open Error
 let path_of_string : string -> Path.t = fun s ->
   let lb = Utf8.from_string s in
   try
-    begin match token lb with
+    begin match LpLexer.token ~allow_rocq_syntax:false lb with
       | UID s, _, _ -> [s]
       | QID p, _, _ -> List.rev p
       | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
   with
-      SyntaxError _
-    | RocqLexer.SyntaxError _ ->
+      LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a path." s
 
 
@@ -212,15 +198,14 @@ let path_of_string : string -> Path.t = fun s ->
 let qident_of_string : string -> Core.Term.qident = fun s ->
   let lb = Utf8.from_string s in
   try
-    begin match token lb with
+    begin match LpLexer.token ~allow_rocq_syntax:false lb with
       | QID [], _, _ -> assert false
       | QID (s::p), _, _ -> (List.rev p, s)
       | _ ->
           fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
   with
-    | RocqLexer.SyntaxError _
-    | SyntaxError _ ->
+    | LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
