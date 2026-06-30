@@ -115,7 +115,7 @@ let set_encoding : string -> unit = fun f ->
             found.(i) <- true;
             let b = builtin_of_index i in
             encoding := QidMap.add qid b !encoding;
-            (*if b = El || b = Prf then map_to lp_qid n*)
+            if b = El || b = Prf then map_to lp_qid n
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
