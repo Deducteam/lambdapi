@@ -151,10 +151,27 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
       (mapping:string option) (renaming:string option) (arities:string option)
       (requiring:string option) (no_implicits:bool) (use_notations:bool)
       (file:string) : unit =
-  let run _ =
-    Config.init {cfg with verbose = Some 0};
+  let stt() =
+    Export.Stt.stt := true;
+    Option.iter Export.Stt.set_renaming renaming;
+    Option.iter Export.Stt.set_encoding encoding;
+    Option.iter Export.Stt.set_mapping mapping;
+    Option.iter Export.Stt.set_tvs_map arities;
+    Option.iter Export.Stt.set_requiring requiring;
     Export.Stt.use_implicits := not no_implicits;
     Export.Stt.use_notations := use_notations;
+    Export.Stt.current_mp :=
+      if Filename.extension file = lp_src_extension then
+        begin
+          Package.apply_config file;
+          (* remove the root_path from the module path *)
+          List.tl (Library.path_of_file LpLexer.escape file)
+        end
+      else [Filename.basename (Filename.chop_extension file)]
+  in
+  let raw() = Option.iter Export.Stt.set_renaming renaming in
+  let run _ =
+    Config.init {cfg with verbose = Some 0};
     match output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
@@ -164,29 +181,10 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
-    | Some RawCoq ->
-        Export.Stt.stt := false;
-        Option.iter Export.Stt.set_renaming renaming;
-        Export.Coq.print (Parser.parse_file file)
-    | Some SttCoq ->
-        Export.Stt.stt := true;
-        Option.iter Export.Stt.set_renaming renaming;
-        Option.iter Export.Stt.set_encoding encoding;
-        Option.iter Export.Stt.set_mapping mapping;
-        Option.iter Export.Stt.set_requiring requiring;
-        Export.Coq.print (Parser.parse_file file)
-    | Some RawLean ->
-        Export.Stt.stt := false;
-        Option.iter Export.Stt.set_renaming renaming;
-        Export.Lean.print file (Parser.parse_file file)
-    | Some SttLean ->
-        Export.Stt.stt := true;
-        Option.iter Export.Stt.set_renaming renaming;
-        Option.iter Export.Stt.set_encoding encoding;
-        Option.iter Export.Stt.set_mapping mapping;
-        Option.iter Export.Stt.set_tvs_map arities;
-        Option.iter Export.Stt.set_requiring requiring;
-        Export.Lean.print file (Parser.parse_file file)
+    | Some RawCoq -> raw(); Export.Coq.print (Parser.parse_file file)
+    | Some SttCoq -> stt(); Export.Coq.print (Parser.parse_file file)
+    | Some RawLean -> raw(); Export.Lean.print file (Parser.parse_file file)
+    | Some SttLean -> stt(); Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)

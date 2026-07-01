@@ -8,6 +8,9 @@ open Core
 let log = Logger.make 'x' "xprt" "export"
 let log = log.pp
 
+module Qid = struct type t = Term.qident let compare = Stdlib.compare end
+module QidMap = Map.Make(Qid)
+
 (** Symbols necessary to encode STT. *)
 
 type builtin =
@@ -54,70 +57,67 @@ let sym b = builtin.(index_of_builtin b)
 (** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
+let codom = ref StrSet.empty
+
+let add_renaming pos s1 s2 =
+  let f = function
+    | None -> Some s2
+    | Some s2' ->
+      fatal pos "\"%s\" renamed to both \"%s\" and \"%s\"" s1 s2' s2
+  in
+  if Logger.log_enabled() then log "rename %s into %s" s1 s2;
+  rmap := StrMap.update s1 f !rmap;
+  codom := StrSet.add s2 !codom
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(lean_id,{elt=([],lp_id);_});_} ->
-        if Logger.log_enabled() then log "rename %s into %s" lp_id lean_id;
-        rmap := StrMap.add lp_id lean_id !rmap
+    | {elt=P_builtin(string,{elt=(p,lp_id);pos=pos_id});pos} ->
+      if p = [] then add_renaming pos lp_id string
+      else fatal pos_id "Qualified identifier."
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
 
 (** Set symbols whose declarations have to be erased. *)
 
-let erase = ref StrSet.empty
+let mapping = ref QidMap.empty
 
-module Qid = struct type t = Term.qident let compare = Stdlib.compare end
-module QidMap = Map.Make(Qid)
-
-let map_erased_qid = ref QidMap.empty
+let add_mapping qid string =
+  if Logger.log_enabled() then
+    log "map %a to \"%s\"" Pretty.qident qid string;
+  mapping := QidMap.add qid.elt string !mapping
 
 let set_mapping : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(lean_id,lp_qid);_} ->
-        if Logger.log_enabled() then
-          log "rename %a into %s" Pretty.qident lp_qid lean_id;
-        let id = snd lp_qid.elt in
-        if Logger.log_enabled() then log "erase %s" id;
-        erase := StrSet.add id !erase;
-        map_erased_qid :=
-          QidMap.add lp_qid.elt lean_id !map_erased_qid;
-        if fst lp_qid.elt = [] && id <> lean_id then
-          rmap := StrMap.add id lean_id !rmap
+    | {elt=P_builtin(string,lp_qid);_} -> add_mapping lp_qid string
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
 
-(** Map from symbol name to number of type variables (>0). A symbol with no
-    entry is not polymorphic (arity =0). *)
+let current_mp = Stdlib.ref []
 
-let tvs_map : (int StrMap.t ref) = ref StrMap.empty
-
-let set_tvs_map (fname:string): unit =
-  let ic = open_in_bin fname in
-  tvs_map := StrMap.add "el" 1 (input_value ic);
-  close_in ic
+let is_mapped id =
+  QidMap.mem ([],id) !mapping || QidMap.mem (!current_mp,id) !mapping
 
 (** Set encoding. *)
 
-let map_qid_builtin = ref QidMap.empty
+let encoding = ref QidMap.empty
+
+let add_encoding qid b = encoding := QidMap.add qid b !encoding
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,lp_qid);pos} ->
+    | {elt=P_builtin(n,({elt=qid;_} as lp_qid));pos} ->
         begin match index_of_name n with
         | Some i ->
             if Logger.log_enabled() then
               log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
-            builtin.(i) <- lp_qid.elt;
+            builtin.(i) <- qid;
             found.(i) <- true;
             let b = builtin_of_index i in
-            map_qid_builtin := QidMap.add lp_qid.elt b !map_qid_builtin;
-            if b = El || b = Prf then
-              (if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
-               erase := StrSet.add (snd lp_qid.elt) !erase)
+            add_encoding qid b;
+            if b = El || b = Prf then add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
@@ -128,6 +128,19 @@ let set_encoding : string -> unit = fun f ->
       if not b then
         fatal None(*FIXME*) "Builtin %s undefined." (name_of_index i))
     found
+
+let is_encoded id =
+  QidMap.mem ([],id) !encoding || QidMap.mem (!current_mp,id) !encoding
+
+(** Map from symbol name to number of type variables (>0). A symbol with no
+    entry is not polymorphic (arity =0). *)
+
+let tvs_map : (int StrMap.t ref) = ref StrMap.empty
+
+let set_tvs_map (fname:string): unit =
+  let ic = open_in_bin fname in
+  tvs_map := StrMap.add "el" 1 (input_value ic);
+  close_in ic
 
 (** Basic printing functions. We use Printf for efficiency reasons. *)
 
@@ -146,12 +159,14 @@ let list elt sep oc xs =
 
 (** Translation of identifiers. *)
 
-let translate_ident : string -> string = fun s ->
-  try StrMap.find s !rmap with Not_found -> s
+let check : (popt -> string -> unit) Stdlib.ref = ref (fun _ _ -> ())
 
-let raw_ident oc s = string oc (translate_ident s)
+let translate_ident {elt=s;pos}: string =
+  try StrMap.find s !rmap
+  with Not_found ->
+    if StrSet.mem s !codom then s^"__alt__" else (!check pos s; s)
 
-let ident oc {elt;_} = raw_ident oc elt
+let ident oc id = string oc (translate_ident id)
 
 let param_id oc idopt =
   match idopt with
@@ -160,14 +175,36 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let raw_path = list string "."
+let path_elt pos oc id = !check pos id; string oc id
 
-let path oc {elt;_} = raw_path oc elt
+let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
-let qident oc {elt=(mp,s);_} =
+let alias = Stdlib.ref StrMap.empty
+
+let rec qident oc {elt=((mp,id) as qid);pos} =
   match mp with
-  | [] -> raw_ident oc s
-  | _::_ -> raw_path oc mp; char oc '.'; raw_ident oc s
+  | [] ->
+    begin match QidMap.find_opt (!current_mp,id) !mapping with
+      | None ->
+        begin match QidMap.find_opt ([],id) !mapping with
+          | None -> ident oc {elt=id;pos}
+          | Some s -> string oc s
+        end
+      | Some s -> string oc s
+    end
+  | [p] ->
+    begin match StrMap.find_opt p !alias with
+      | Some mp -> qident oc {elt=(mp,id);pos}
+      | None ->
+        match QidMap.find_opt qid !mapping with
+        | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
+        | Some s -> string oc s
+    end
+  | _::mp ->
+    begin match QidMap.find_opt (mp,id) !mapping with
+    | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
+    | Some s -> string oc s
+    end
 
 (** Translation of terms. *)
 
@@ -189,7 +226,7 @@ let app t default cases =
   if !stt then
     match h.elt with
     | P_Iden({elt;_},expl) ->
-        begin match QidMap.find_opt elt !map_qid_builtin with
+        begin match QidMap.find_opt elt !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
         end

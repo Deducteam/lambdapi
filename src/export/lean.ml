@@ -43,13 +43,7 @@ let rec term oc t =
   | P_Wild -> char oc '_'
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
-  | P_Iden(qid,b) ->
-      if b then char oc '@';
-      if !stt then
-        match QidMap.find_opt qid.elt !map_erased_qid with
-        | Some s -> string oc s
-        | None -> qident oc qid
-      else qident oc qid
+  | P_Iden(qid,b) -> if b then char oc '@'; qident oc qid
   | P_Arro(u,v) -> arrow oc u v
   | P_Abst(xs,u) -> abst oc xs u
   | P_Prod(xs,u) -> prod oc xs u
@@ -117,7 +111,7 @@ and top_params oc ((ids,a,_) as x) =
   match a with
   | Some{elt=P_Iden(id,_);_} ->
     begin
-      match QidMap.find_opt id.elt !map_qid_builtin with
+      match QidMap.find_opt id.elt !encoding with
       | Some Set ->
         let nonempty oc id =
           string oc " [Nonempty "; param_id oc id; char oc ']'
@@ -154,10 +148,10 @@ let command oc {elt; pos} =
         | Some true -> openings := List.rev_append ps !openings
         | _ -> () (*FIXME?*)
       end
-  | P_require_as _ -> wrn pos "Command not translated."
+  | P_require_as(p,i) -> Stt.alias := StrMap.add i.elt p.elt !Stt.alias
   | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
                p_sym_prf=_; p_sym_def } ->
-      if not (StrSet.mem p_sym_nam.elt !erase) then
+    if not (is_mapped p_sym_nam.elt) then
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             string oc "theorem "; ident oc p_sym_nam;
