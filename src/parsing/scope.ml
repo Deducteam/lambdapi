@@ -547,13 +547,19 @@ let patt_vars : p_term -> (string * int) list * string list =
 let scope_rule :
   ?find_sym:find_sym -> bool -> sig_state -> p_rule -> sym_rule =
   fun ?(find_sym=Sig_state.find_sym) ur ss
-      { elt = (p_lhs, p_rhs); pos = rule_pos} ->
+      { elt = (p_lhs, p_rhs, p_when); pos = rule_pos} ->
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
   let (pvs_rhs, _ ) = patt_vars p_rhs in
   (* Check that pattern variables of RHS that are in the LHS have the right
      arity. *)
+  let pvs_when =
+    match p_when with
+    | None -> []
+    | Some (t1,t2) ->
+        let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
+        p1 @ p2 in
   let check_arity (m,i) =
     try
       let j = List.assoc m pvs_lhs in
@@ -561,6 +567,7 @@ let scope_rule :
     with Not_found -> ()
   in
   List.iter check_arity pvs_rhs;
+  List.iter check_arity pvs_when;
   (* [get_root t] returns the symbol at the root of the p_term [t]. *)
   let rec get_root t = get_root_after_pratt (Pratt.parse ~find_sym ss [] t)
   and get_root_after_pratt t =

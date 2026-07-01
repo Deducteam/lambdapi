@@ -93,6 +93,7 @@ type token =
   | TYPE_TERM
   | UNIF_RULE
   | VERBOSE
+  | WHEN
   | WHY3
   | WITH
 
@@ -298,6 +299,7 @@ let rec token ~allow_rocq_syntax lb =
   | "TYPE" -> TYPE_TERM
   | "unif_rule" -> UNIF_RULE
   | "verbose" -> VERBOSE
+  | "when" -> WHEN
   | "why3" -> WHY3
   | "with" -> WITH
 

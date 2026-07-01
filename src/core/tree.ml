@@ -71,6 +71,13 @@ module CP = struct
       let compare = Stdlib.compare
     end)
 
+  (** Functional sets of pairs of terms. *)
+  module TSet = Set.Make(
+    struct
+      type t = (psym * pvar list) * (psym * pvar list)
+      let compare = Stdlib.compare
+    end)
+
   (** A pool of (convertibility and free variable) conditions. *)
   type t =
     { variables : pvar IntMap.t
@@ -85,17 +92,23 @@ module CP = struct
     ; fv_conds : int array IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
-        stored at slot [i] in the [vars] array of [Eval.tree_walk]. *) }
+        stored at slot [i] in the [vars] array of [Eval.tree_walk]. *)
+    ; eq_conds : TSet.t
+    (** Set of pairs of terms that should be convertible. *)
+    }
 
   (** [empty] is the condition pool holding no condition. *)
   let empty : t =
     { variables = IntMap.empty
     ; nl_conds = PSet.empty
-    ; fv_conds = IntMap.empty }
+    ; fv_conds = IntMap.empty
+    ; eq_conds = TSet.empty }
 
   (** [is_empty pool] tells whether the pool of constraints is empty. *)
   let is_empty : t -> bool = fun pool ->
-    PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
+    PSet.is_empty pool.nl_conds
+    && IntMap.is_empty pool.fv_conds
+    && TSet.is_empty pool.eq_conds
 
   (** [register_nl i (slot,vs) pool] registers the fact that the slot [slot]
       in the [vars] array correspond to a term stored at index [i] in the
@@ -119,6 +132,11 @@ module CP = struct
   let register_fv : int -> int array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
+  (** [register_eq t1 t2 pool] registers a convertibility constraint
+      between terms [t1] and [t2] in [pool]. *)
+  let register_eq : (psym * pvar list) -> (psym * pvar list) -> t -> t = fun t1 t2 pool ->
+    { pool with eq_conds = TSet.add (t1,t2) pool.eq_conds }
+  
   (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
       has already been associated to a variable of the [vars] array. *)
   let constrained_nl : int -> t -> bool = fun slot pool ->
@@ -129,6 +147,8 @@ module CP = struct
   let is_contained : tree_cond -> t -> bool = fun cond pool ->
     match cond with
     | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
+    | CondEQ(t1,t2) -> TSet.mem (t1,t2) pool.eq_conds
+                       || TSet.mem (t2,t1) pool.eq_conds
     | CondFV(i,x) ->
         try Array.eq (=) x (IntMap.find i pool.fv_conds)
         with Not_found -> false
@@ -137,6 +157,7 @@ module CP = struct
   let remove cond pool =
     match cond with
     | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
+    | CondEQ(t1,t2) -> {pool with eq_conds = TSet.remove (t1,t2) pool.eq_conds}
     | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -161,8 +182,18 @@ module CP = struct
       | p :: ps -> try Some(export (IntMap.choose p.fv_conds))
                    with Not_found -> choose_vf ps
     in
+    let rec choose_eq pools =
+      let export (t1,t2) = CondEQ(t1,t2) in
+      match pools with
+      | []      -> None
+      | p :: ps -> try Some(export (TSet.choose p.eq_conds))
+                   with Not_found -> choose_eq ps
+    in
     let res = choose_nl pools in
-    if res = None then choose_vf pools else res
+    if res = None then
+      let res = choose_eq pools in
+      if res = None then choose_vf pools else res
+    else res
 end
 
 (** {1 Clause matrix and pattern matching problem} *)
@@ -224,6 +255,8 @@ module CM = struct
     (** Left hand side of a rule. *)
     ; c_rhs       : rule
     (** Right hand side of a rule, and number of extra variables. *)
+    ; c_when      : (term * term) option
+    (** convertibility constraint for conditional rules *)
     ; c_subst     : rhs_substit
     (** Substitution of RHS variables. *)
     ; xvars_nb    : int
@@ -290,9 +323,10 @@ module CM = struct
 
   (** [of_rules rs] transforms rewriting rules [rs] into a clause matrix. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r ({lhs; xvars_nb; _} as c_rhs) =
+    let r2r ({lhs; xvars_nb; r_when; _} as c_rhs) =
       let c_lhs = Array.of_list lhs in
-      { c_lhs; c_rhs; cond_pool = CP.empty; c_subst = []; xvars_nb }
+      let c_when = r_when in
+      { c_lhs; c_rhs; cond_pool = CP.empty; c_subst = []; xvars_nb; c_when }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -357,7 +391,7 @@ module CM = struct
   (** [is_exhausted p c] tells whether clause [r] whose terms are at positions
       in [p] can be applied or not. *)
   let is_exhausted : arg list -> clause -> bool =
-    fun positions {c_lhs = lhs ; cond_pool ; _} ->
+    fun positions {c_lhs = lhs ; cond_pool ; c_when; _} ->
     let nonl lhs =
       (* Verify that there are no non linearity constraints in the remaining
          terms.  We must check that there are no constraints in the remaining
@@ -384,7 +418,7 @@ module CM = struct
       in
       Array.for_all2 check lhs de && nonl lhs
     in
-    CP.is_empty cond_pool && (lhs = [||] || ripe lhs)
+    c_when = None && CP.is_empty cond_pool && (lhs = [||] || ripe lhs)
 
   (** [yield m] returns the next operation to carry out on matrix [m], that
       is, either specialising, solving a constraint or rewriting to a rule. *)

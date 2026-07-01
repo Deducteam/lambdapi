@@ -6,6 +6,7 @@ open Common
 (** {3 Atomic pattern constructor representation} *)
 
 type pvar = int * int array
+type psym = Path.t * string
 
 (** Representation of an atomic pattern constructor. *)
 module TC =
@@ -56,6 +57,8 @@ type tree_cond =
   | CondFV of pvar
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
+  | CondEQ of (psym * pvar list) * (psym * pvar list)
+  (** user rule condition: are the two terms equivalent *)
 
 (** {b NOTE} that when performing a [tree_cond.CondFV] check, we
     are concerned about variables that were bound in the term being reduced
@@ -69,6 +72,10 @@ let tree_cond : tree_cond pp = fun ppf tc ->
       out ppf "Nl(%d[%a],%d[%a])"
         i (Array.pp int ",") xs j (Array.pp int ",") ys
   | CondFV(i, _) -> out ppf "Fv(%d)" i
+  | CondEQ((s1,a1), (s2,a2)) ->
+      out ppf "Eq(%s(%a),%s(%a))"
+        (snd s1) (List.pp int ",") (List.map fst a1)
+        (snd s2) (List.pp int ",") (List.map fst a2)
 
 (** Substitution of variables in a RHS. During the filtering process, some
     subterms of the filtered term may be stored in an array. Let [v] be that

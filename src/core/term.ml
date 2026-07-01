@@ -214,6 +214,7 @@ and sym =
   { lhs      : term list (** Left hand side (LHS). *)
   ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
+  ; r_when   : (term * term) option (** conditional rule constraint. *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
