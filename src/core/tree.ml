@@ -71,7 +71,7 @@ module CP = struct
       let compare = Stdlib.compare
     end)
 
-  (** Functional sets of pairs of terms. *)
+  (** Functional sets of pairs of flat terms. *)
   module TSet = Set.Make(
     struct
       type t = (psym * pvar list) * (psym * pvar list)
@@ -134,8 +134,11 @@ module CP = struct
 
   (** [register_eq t1 t2 pool] registers a convertibility constraint
       between terms [t1] and [t2] in [pool]. *)
-  let register_eq : (psym * pvar list) -> (psym * pvar list) -> t -> t = fun t1 t2 pool ->
-    { pool with eq_conds = TSet.add (t1,t2) pool.eq_conds }
+  let register_eq : (psym * int list) -> (psym * int list) -> t -> t = 
+    fun (s1,a1) (s2,a2) pool ->
+    let pv1 = List.map (fun i -> IntMap.find i pool.variables) a1 in
+    let pv2 = List.map (fun i -> IntMap.find i pool.variables) a2 in
+    { pool with eq_conds = TSet.add ((s1,pv1),(s2,pv2)) pool.eq_conds }
   
   (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
       has already been associated to a variable of the [vars] array. *)
@@ -183,10 +186,14 @@ module CP = struct
                    with Not_found -> choose_vf ps
     in
     let rec choose_eq pools =
-      let export (t1,t2) = CondEQ(t1,t2) in
+      let export vars (((_,a1) as t1), ((_,a2) as t2)) = 
+        if List.for_all (fun (i,_) -> IntMap.mem i vars) a1
+           && List.for_all (fun (i,_) -> IntMap.mem i vars) a2 then
+          CondEQ(t1,t2) 
+        else raise Not_found in
       match pools with
       | []      -> None
-      | p :: ps -> try Some(export (TSet.choose p.eq_conds))
+      | p :: ps -> try Some(export p.variables (TSet.choose p.eq_conds))
                    with Not_found -> choose_eq ps
     in
     let res = choose_nl pools in
@@ -255,7 +262,7 @@ module CM = struct
     (** Left hand side of a rule. *)
     ; c_rhs       : rule
     (** Right hand side of a rule, and number of extra variables. *)
-    ; c_when      : (term * term) option
+    ; c_when      : ((psym * int list) * (psym * int list)) option
     (** convertibility constraint for conditional rules *)
     ; c_subst     : rhs_substit
     (** Substitution of RHS variables. *)
@@ -325,7 +332,11 @@ module CM = struct
   let of_rules : rule list -> t = fun rs ->
     let r2r ({lhs; xvars_nb; r_when; _} as c_rhs) =
       let c_lhs = Array.of_list lhs in
-      let c_when = r_when in
+      let c_when = match r_when with
+        | None -> None
+        | Some ((s1,a1),(s2,a2)) ->
+            Some (((s1.sym_path,s1.sym_name), a1),
+                  ((s2.sym_path,s2.sym_name), a2)) in
       { c_lhs; c_rhs; cond_pool = CP.empty; c_subst = []; xvars_nb; c_when }
     in
     let size = (* Get length of longest rule *)
@@ -516,6 +527,24 @@ module CM = struct
               CP.register_nl i (mem,vs) cond_pool
           | None    -> cond_pool
         in
+        let c_when, cond_pool =
+          match r.c_rhs.r_when with
+          | None -> r.c_when, cond_pool
+          | Some ((op1,a1), (op2,a2)) when
+                 List.for_all (fun i -> IntMap.mem i cond_pool.variables) a1
+                 && List.for_all (fun i -> IntMap.mem i cond_pool.variables) a2 ->
+              if Logger.log_enabled () then
+                log "Registering user constraint on position [%a] \
+                     %s %a == %s %a"
+                  arg_path a.arg_path
+                  op1.sym_name (List.pp int " ") a1
+                  op2.sym_name (List.pp int " ") a2;
+              None, CP.register_eq
+                      ((op1.sym_path,op1.sym_name), a1)
+                      ((op2.sym_path,op2.sym_name), a2)
+                      cond_pool
+          | _ -> r.c_when, cond_pool
+        in
         let c_subst =
           (* REVIEW: patterns may have slots in the RHS although they are not
              bound. *)
@@ -533,7 +562,7 @@ module CM = struct
               (mem, (i,vs)) :: r.c_subst
           | _ -> r.c_subst
         in
-        {r with c_subst; cond_pool}
+        {r with c_subst; cond_pool; c_when}
     | _ -> r
 
   (** [specialize free_vars pat col pos cls] filters and transforms LHS of

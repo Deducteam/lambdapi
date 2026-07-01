@@ -630,7 +630,21 @@ let scope_rule :
   let arity = List.length lhs in
   let f i = try Hashtbl.find names i with Not_found -> string_of_int i in
   let names = Array.init vars_nb f in
-  let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
+  let pw2rw t =
+    let asPatt t = match unfold t with
+      | Patt (Some i, _, [||]) -> i
+      | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
+               term t in
+    let t = scope ~find_sym 0 mode ss Env.empty t in
+    match get_args t with
+      Symb s, args ->  (s, List.map asPatt args)
+    | _ -> fatal rule_pos "function should be a global symbol in [%a]." term t
+  in 
+  let r_when = match p_when with
+    | None -> None
+    | Some (t1,t2) -> Some (pw2rw t1, pw2rw t2) in
+  let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb;
+           rule_pos; r_when} in
   (sym,r)
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term

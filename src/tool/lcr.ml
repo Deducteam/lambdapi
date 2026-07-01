@@ -55,7 +55,7 @@ let is_definable : sym -> bool = fun s ->
 (** [rule_of_def s d] creates the rule [s --> d]. *)
 let rule_of_def : sym -> term -> rule = fun s rhs ->
   {lhs=[]; names=[||]; rhs; arity=0; arities=[||]; vars_nb=0; xvars_nb=0;
-   rule_pos=s.sym_pos}
+   rule_pos=s.sym_pos; r_when = None}
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
 let replace : term -> subterm_pos -> term -> term = fun t p u ->
@@ -457,7 +457,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     match get_args_len l with
     | Symb s, lhs, arity ->
       let r = {lhs; names=[||]; rhs; arity; arities=[||]; vars_nb=0;
-               xvars_nb=0; rule_pos=Some(new_rule_id())} in
+               xvars_nb=0; rule_pos=Some(new_rule_id()); r_when = None} in
       Some (s,r)
     | _ -> None
   in

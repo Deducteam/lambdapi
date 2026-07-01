@@ -342,6 +342,21 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
               let vi = Array.map (fun id -> mk_Vari (var id)) vi in
               let tj = msubst bj vi in
               if eq_modulo whnf cfg vars.(i) tj then ok else fail
+          | CondEQ(((p1,o1) as op1,a1), ((p2,o2) as op2,a2)) ->
+              let v1 = List.map (fun (i,_) -> vars.(i)) a1 in
+              let v2 = List.map (fun (i,_) -> vars.(i)) a2 in
+              if Logger.log_enabled() then
+                log_rew "%aCondEQ(%s[%a],%s[%a]) : %s(%a) == %s(%a)"
+                  D.depth !depth
+                  (snd op1) (List.pp D.int ",") (List.map fst a1)
+                  (snd op2) (List.pp D.int ",") (List.map fst a2)
+                  (snd op1) (List.pp Raw.term ",") v1 
+                  (snd op2) (List.pp Raw.term ",") v2;
+              let s1 = Sign.find_qualified p1 o1 in
+              let s2 = Sign.find_qualified p2 o2 in
+              let t1 = add_args (mk_Symb s1) v1 in
+              let t2 = add_args (mk_Symb s2) v2 in
+              if eq_modulo whnf cfg t1 t2 then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)

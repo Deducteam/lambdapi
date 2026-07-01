@@ -46,6 +46,10 @@ let tree_to_dot : Format.formatter -> _ dtree -> unit = fun ppf dtree ->
       | CondNL((i,vi), (j,vj)) ->
           out ppf "%d[%a] ≡ %d[%a]" i ar vi j ar vj
       | CondFV(i,vs) -> out ppf "%a ⊆ FV(%d)" ar vs i
+      | CondEQ(((_p1,s1),a1), ((_p2,s2),a2)) ->
+          out ppf "%s[%a] ≡ %s[%a]"
+            s1 (List.pp int ",") (List.map fst a1)
+            s2 (List.pp int ",") (List.map fst a2)
     in
     let node_count = ref 0 in
     (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
