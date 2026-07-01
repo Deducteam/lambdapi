@@ -33,6 +33,7 @@ type token =
   | ABORT
   | ADMIT
   | ADMITTED
+  | ALL_HYPS
   | APPLY
   | AS
   | ASSERT of bool (* true for "assertnot" *)
@@ -231,6 +232,7 @@ let rec token ~allow_rocq_syntax lb =
   | "abort" -> ABORT
   | "admit" -> ADMIT
   | "admitted" -> ADMITTED
+  | "all_hyps" -> ALL_HYPS
   | "apply" -> APPLY
   | "as" -> AS
   | "assert" -> ASSERT false

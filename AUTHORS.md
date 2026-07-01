@@ -6,6 +6,7 @@ Active Contributors (in alphabetical order)
 - Claudio Sacerdoti Coen (2023-)
 - Abdelghani Alidra (2024-)
 - Bruno Barras (2025-)
+- Jean-Paul Bodeveix (2026-)
 
 Past Contributors (in alphabetical order)
 =========================================

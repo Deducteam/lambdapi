@@ -32,6 +32,7 @@ highlight link StringLiteral String
 syntax keyword KeywordOK contained abort
 syntax keyword KeywordOK contained admit
 syntax keyword KeywordOK contained admitted
+syntax keyword KeywordOK contained all_hyps
 syntax keyword KeywordOK contained apply
 syntax keyword KeywordOK contained as
 syntax keyword KeywordOK contained assert
@@ -105,6 +106,7 @@ highlight link KeywordOK Keyword
 syntax keyword KeywordKO contained abort
 syntax keyword KeywordKO contained admit
 syntax keyword KeywordKO contained admitted
+syntax keyword KeywordKO contained all_hyps
 syntax keyword KeywordKO contained apply
 syntax keyword KeywordKO contained as
 syntax keyword KeywordKO contained assert
