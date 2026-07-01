@@ -925,7 +925,9 @@ module UserLevelQueries = struct
   let search_cmd_gen_string ss ~from ~how_many ~fail ~pp_results ~tag fmt s =
     search_cmd_gen ss ~from ~how_many ~fail ~pp_results ~tag fmt
      (* Let's do the parsing later to capture the exceptions later *)
-     (lazy (Parsing.Parser.Rocq.parse_search_string (lexing_opt None) s))
+     (lazy
+      (Parsing.Parser.Lp.parse_search_string ~allow_rocq_syntax:true
+        ~alone:true (lexing_opt None) s))
 
  (** [transform_ascii_to_unicode s] replaces all the occurences of ["->"] and
      ["forall"] with ["→"] and ["Π"] in the search query [s] *)
