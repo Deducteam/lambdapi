@@ -342,22 +342,46 @@ let is_right (pos:popt) (t:term): bool =
   | "" | "right" -> true
   | _ -> fatal pos "invalid side literal"
 
-(** [p_tactic ss g env pos t] weak head normalizes [t] and convert the result
-    into a p_tactic. *)
-let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
+(** [new_name prefix env] returns a string prefixed by [prefix] and not
+    occurring in [env]. *)
+let new_name (prefix:string) (env:Env.t): string =
+  if Env.mem prefix env then
+    let i = ref 0 in
+    let new_name() = prefix ^ string_of_int !i in
+    let s = ref (new_name()) in
+    while Env.mem !s env do incr i; s := new_name() done;
+    !s
+  else prefix
+
+(** [handle ss sym_pos priv ps tac] applies tactic [tac] in the proof state
+   [ps] and returns the new proof state. *)
+let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
+    :proof_state -> p_tactic -> proof_state =
+
+  let rec progress (ps:proof_state) (ptac: p_tactic): proof_state option =
+    try let new_ps = handle ps ptac in
+      if List.length new_ps.proof_goals < List.length ps.proof_goals
+      then Some new_ps
+      else None
+    with Fatal _ -> None
+
+  (* [p_tactic ss g env pos t] weak head normalizes [t] and converts the
+     result into a p_tactic. *)
+  and p_tactic (ps:proof_state) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
     : p_tactic =
-  let idmap = get_names g
-  and ctx = Env.to_ctxt env in
-  let c = get_config ss pos in
-  let p_term = p_term ss pos idmap in
-  let tac_eval t = Pos.make pos (P_tac_eval (p_term t)) in
-  let tac t =
-    let t = Eval.whnf ctx t in
-    if Logger.log_enabled() then log "reduces to: %a" term t;
-    match get_args t with
-    | Symb s, ts ->
+    let idmap = get_names g
+    and ctx = Env.to_ctxt env in
+    let p_term = p_term ss pos idmap in
+    let tac_eval t = Pos.make pos (P_tac_eval (p_term t)) in
+    let tac t =
+      let t = Eval.whnf ctx t in
+      if Logger.log_enabled() then log "reduces to: %a" term t;
+      match get_args t with
+      | Symb s, ts ->
         begin
           try
+            (*FIXME: compute config only once in a proof*)
+            let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> P_tac_admit
             | T_and, [t1;t2] -> P_tac_and(tac_eval t1, tac_eval t2)
@@ -367,10 +391,15 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_apply, [_;t] -> P_tac_apply (p_term t)
             | T_apply, _ -> assert false
             | T_assume, [prefix;_;Abst (_, t)] ->
-              let v = new_var (string_of_term pos prefix) in
-              let n = Pos.make pos (uniq_name v) in
-              P_tac_and (Pos.make pos (P_tac_assume [Some n]),
-                         tac_eval (subst t (mk_Vari v)))
+              begin
+                let n = new_name (string_of_term pos prefix) env in
+                let idopts = [Some(Pos.make pos n)] in
+                let new_ps = handle ps (Pos.make pos (P_tac_assume idopts)) in
+                match new_ps.proof_goals with
+                | Typ{goal_hyps=(_,(v,_,_))::_;_}::_ ->
+                    P_tac_eval (p_term (subst t (mk_Vari v)))
+                | _ -> assert false
+              end
             | T_assume, _ -> assert false
             | T_assumption, [] -> P_tac_assumption
             | T_assumption, _ -> assert false
@@ -427,21 +456,9 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
           with Not_found ->
             fatal pos "Unhandled tactic expression: %a." term t
         end
-    | _ -> fatal pos "Unhandled tactic expression: %a." term t
-  in
-  Pos.make pos (tac t)
-
-(** [handle ss sym_pos priv ps tac] applies tactic [tac] in the proof state
-   [ps] and returns the new proof state. *)
-let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
-    :proof_state -> p_tactic -> proof_state =
-
-  let rec progress (ps:proof_state) (ptac: p_tactic): proof_state option =
-    try let new_ps = handle ps ptac in
-      if List.length new_ps.proof_goals < List.length ps.proof_goals
-      then Some new_ps
-      else None
-    with Fatal _ -> None
+      | _ -> fatal pos "Unhandled tactic expression: %a." term t
+    in
+    Pos.make pos (tac t)
 
   and handle ps ({elt;pos} as tac) =
   if Logger.log_enabled() then log "%a" Pretty.tactic tac;
@@ -516,7 +533,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let v = unfold (mk_Vari v) in
             let t = mk_Appl (mk_Appl (t, p), v) in
             if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try handle ps (p_tactic ss g env pos t) with Fatal _ -> ps
+            try handle ps (p_tactic ps g env pos t) with Fatal _ -> ps
       in
       let ps' = List.fold_left try_assumption ps gt.goal_hyps in
       if ps' == ps then
@@ -575,7 +592,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_first_hyp pt ->
     let t = scope pt in
     let f (_,(v,a,_)) =
-      progress ps (p_tactic ss g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v))) in
+      progress ps (p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v))) in
     begin match List.find_map f gt.goal_hyps with
     | None -> fatal pos "tactic [%a] fails on all assumptions" term t
     | Some new_ps -> new_ps
@@ -760,8 +777,9 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           let term = term_in (Ctxt.names c) in
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
-          if Unif.solve_noexn p then handle ps (p_tactic ss g env pos t)
+          if Unif.solve_noexn p then handle ps (p_tactic ps g env pos t)
           else fatal pos "Cannot solve typing constraints for [%a]" term t
+
   in handle
 
 (** Representation of a tactic output. *)
