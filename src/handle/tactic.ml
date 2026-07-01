@@ -216,8 +216,8 @@ let get_goal: popt -> Sig_state.t -> goal_typ -> Term.term = fun pos ss gt ->
   let rec as_prop g =
     match is_prf g with
     | Some u -> u
-    | None -> match g with
-              | Prod(p,bi) when binder_name bi = "_" ->
+    | None -> match unfold g with
+              | Prod(p,bi) when not (binder_occur bi) ->
                   begin
                     let (_,q) = unbind bi in
                     match is_prf p with
