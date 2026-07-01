@@ -175,7 +175,7 @@ let export_types oc p_sym_nam t =
             string oc " : Nonempty " ; ident oc p_sym_nam;
           | {elt=P_Arro(_,_);_} -> 
             string oc "\n@[instance]\naxiom ne_";ident oc p_sym_nam;
-              let n = snd (snd p) in 
+              let n = (snd (snd p) - 1) in 
                 if n > 0 then 
                   begin
                     string oc " (a0";
