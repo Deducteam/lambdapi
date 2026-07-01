@@ -993,7 +993,7 @@ and tactic (lb:'token lexbuf): p_tactic =
       consume_token lb;
       make_pos pos1 P_tac_admit
   | ALL_HYPS ->
-      let pos1 = current_pos() in
+      let pos1 = current_pos lb in
       consume_token lb;
       let t = term lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_tac_all_hyps t)
