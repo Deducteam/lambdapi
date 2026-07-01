@@ -8,8 +8,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 ``all_hyps``
 -------------
 
-``all_hyps`` takes as argument a term of type ``Π p, Prf p → T``. In a context with ``n`` assumptions ``x₁:Prf p₁``, …, ``xₙ:Prf pₙ``, ``all_hyps t``,  applies the tactic ``try (t pₙ xₙ)`` and chains with the next assumption, and so on. If all the tactis fail, it fails.
-
+``all_hyps`` takes as argument a term of type ``Π p, Prf p → T``. In a context with ``n`` assumptions ``x₁:A₁``, …, ``xₙ:Aₙ``, ``all_hyps t`` applies the tactics ``t _ xₙ``, …, ``t _ x₁``, ignoring failing calls, but fails if all calls failed.
 
 .. _eval:
 
@@ -77,7 +76,7 @@ An example of use is given in `Tactic.lp <https://github.com/Deducteam/lambdapi/
 ``first_hyp``
 -------------
 
-``first_hyp`` takes as argument a term of type ``Π p, Prf p → T``. In a context with ``n`` assumptions ``x₁:Prf p₁``, …, ``xₙ:Prf pₙ``, ``first_hyp t``,  applies the tactic ``t pₙ xₙ``. If the goal is solved, then it stops. Otherwise, it tries with the next assumption, and so on, until one succeeds, or fails.
+``first_hyp`` takes as argument a term of type ``Π p, Prf p → T``. In a context with ``n`` assumptions ``x₁:A₁``, …, ``xₙ:Aₙ``, ``first_hyp t``,  applies the tactic ``t _ xₙ``. If the goal is solved, then it stops. Otherwise, it tries with the next assumption, and so on, until one succeeds, or else it fails.
 
 .. _orelse:
 
