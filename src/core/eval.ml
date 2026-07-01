@@ -350,7 +350,7 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
                   D.depth !depth
                   (snd op1) (List.pp D.int ",") (List.map fst a1)
                   (snd op2) (List.pp D.int ",") (List.map fst a2)
-                  (snd op1) (List.pp Raw.term ",") v1 
+                  (snd op1) (List.pp Raw.term ",") v1
                   (snd op2) (List.pp Raw.term ",") v2;
               let s1 = Sign.find_qualified p1 o1 in
               let s2 = Sign.find_qualified p2 o2 in

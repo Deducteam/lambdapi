@@ -134,12 +134,12 @@ module CP = struct
 
   (** [register_eq t1 t2 pool] registers a convertibility constraint
       between terms [t1] and [t2] in [pool]. *)
-  let register_eq : (psym * int list) -> (psym * int list) -> t -> t = 
+  let register_eq : (psym * int list) -> (psym * int list) -> t -> t =
     fun (s1,a1) (s2,a2) pool ->
     let pv1 = List.map (fun i -> IntMap.find i pool.variables) a1 in
     let pv2 = List.map (fun i -> IntMap.find i pool.variables) a2 in
     { pool with eq_conds = TSet.add ((s1,pv1),(s2,pv2)) pool.eq_conds }
-  
+
   (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
       has already been associated to a variable of the [vars] array. *)
   let constrained_nl : int -> t -> bool = fun slot pool ->
@@ -160,7 +160,7 @@ module CP = struct
   let remove cond pool =
     match cond with
     | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
-    | CondEQ(t1,t2) -> {pool with eq_conds = TSet.remove (t1,t2) pool.eq_conds}
+    | CondEQ(t,u) -> {pool with eq_conds = TSet.remove (t,u) pool.eq_conds}
     | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -186,10 +186,10 @@ module CP = struct
                    with Not_found -> choose_vf ps
     in
     let rec choose_eq pools =
-      let export vars (((_,a1) as t1), ((_,a2) as t2)) = 
+      let export vars (((_,a1) as t1), ((_,a2) as t2)) =
         if List.for_all (fun (i,_) -> IntMap.mem i vars) a1
            && List.for_all (fun (i,_) -> IntMap.mem i vars) a2 then
-          CondEQ(t1,t2) 
+          CondEQ(t1,t2)
         else raise Not_found in
       match pools with
       | []      -> None
@@ -528,11 +528,12 @@ module CM = struct
           | None    -> cond_pool
         in
         let c_when, cond_pool =
+          let vars = cond_pool.variables in
           match r.c_rhs.r_when with
           | None -> r.c_when, cond_pool
           | Some ((op1,a1), (op2,a2)) when
-                 List.for_all (fun i -> IntMap.mem i cond_pool.variables) a1
-                 && List.for_all (fun i -> IntMap.mem i cond_pool.variables) a2 ->
+                 List.for_all (fun i -> IntMap.mem i vars) a1
+                 && List.for_all (fun i -> IntMap.mem i vars) a2 ->
               if Logger.log_enabled () then
                 log "Registering user constraint on position [%a] \
                      %s %a == %s %a"

@@ -688,7 +688,8 @@ and notation (lb:'token lexbuf): string Term.notation =
   | _ ->
       expected lb "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
 
-and rule (lb:'token lexbuf): (p_term * p_term * (p_term * p_term) option) loc =
+and rule (lb:'token lexbuf):
+      (p_term * p_term * (p_term * p_term) option) loc =
   if log_enabled() then log "%s" __FUNCTION__;
   let pos1 = current_pos lb in
   let l = term lb in
@@ -700,7 +701,7 @@ and rule (lb:'token lexbuf): (p_term * p_term * (p_term * p_term) option) loc =
         let t2 = term lb in
         Some (t1,t2)
       end
-    else None in 
+    else None in
   consume HOOK_ARROW lb;
   let r = term lb in
   extend_pos lb (*__FUNCTION__*) pos1 (l, r, w)

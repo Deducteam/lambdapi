@@ -639,7 +639,7 @@ let scope_rule :
     match get_args t with
       Symb s, args ->  (s, List.map asPatt args)
     | _ -> fatal rule_pos "function should be a global symbol in [%a]." term t
-  in 
+  in
   let r_when = match p_when with
     | None -> None
     | Some (t1,t2) -> Some (pw2rw t1, pw2rw t2) in

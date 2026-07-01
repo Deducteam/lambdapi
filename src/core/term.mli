@@ -146,7 +146,8 @@ and rule =
   { lhs      : term list (** Left hand side (LHS). *)
   ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
-  ; r_when   : ((sym * int list) * (sym * int list)) option (** conditional rule constraint. *)
+  ; r_when   : ((sym * int list) * (sym * int list)) option
+  (** conditional rule constraint. *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
@@ -176,8 +177,8 @@ and rule =
        concrete syntax) are represented in the same way, and with a unique
        name (in the rule) that is generated automatically.
 
-    Then, the term [f t u v w] matches the LHS with a substitution represented
-    by an array of terms [a] of length 3 if we
+    Then, the term [f t u v w] matches the LHS with a substitution
+    represented by an array of terms [a] of length 3 if we
     have [a.(0) = t], [a.(1) = u], [a.(1) = v] and [a.(2) = w].
 
     {b TODO} memorising [w] in the substitution is sub-optimal. In practice,
