@@ -13,6 +13,9 @@ symbol & : Tactic → Tactic → Tactic;
 builtin "and" ≔ &;
 notation & infix right 10;
 
+constant symbol #all_hyps : (Π p, π p → Tactic) → Tactic;
+builtin "all_hyps" ≔ #all_hyps;
+
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
 
