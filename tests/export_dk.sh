@@ -49,6 +49,8 @@ do
         Tactic|1374);;
         # use Tactic
         first_hyp|all_hyps);;
+        # use cond rules
+        cond_rules);;
         # requires an excluded file
         assume|first_hyp);;
         # default case
