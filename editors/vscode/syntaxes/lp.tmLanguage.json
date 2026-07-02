@@ -45,7 +45,7 @@
     },
 
     "signature-commands": {
-      "match": "(coerce_rule|inductive|rule|symbol|unif_rule|with)\\s+([^\\s+]*)",
+      "match": "(coerce_rule|inductive|rule|symbol|unif_rule|with|when)\\s+([^\\s+]*)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}

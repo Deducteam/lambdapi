@@ -47,6 +47,7 @@
     "rule"
     "symbol"
     "unif_rule"
+    "when"
     "with")
   "Commands that enrich the signature.")
 

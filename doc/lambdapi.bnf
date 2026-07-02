@@ -33,6 +33,7 @@
 <constructor> ::= <uid> <param_list>* ":" <term>
 
 <rule> ::= <term> "↪" <term>
+         | <term> when <term> ≡ <term> "↪" <term>
 
 <unif_rule> ::= <equation> "↪" "[" <equation> (";" <equation>)* "]"
 

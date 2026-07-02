@@ -56,7 +56,8 @@
      "rule"
      "symbol"
      "unif_rule"
-     "verbose")
+     "verbose"
+     "when")
    lambdapi--queries)
   "Commands at top level.")
 
@@ -142,7 +143,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (symdec ("symbol" args ":" sterm))
       (indcons (args ":" sterm) ("|" args ":" sterm))
       (inddec (inddec "with" args ":" sterm "≔" indcons))
-      (rules (rules "with" sterm "↪" sterm))
+      (rules (rules "with" sterm "↪" sterm)
+             (rules "with" sterm "when" sterm "≡" sterm "↪" sterm))
       (command
                ("begin" prfcontent "abort" ";")
                ("begin" prfcontent "admitted" ";")

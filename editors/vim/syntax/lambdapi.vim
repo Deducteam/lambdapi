@@ -98,6 +98,7 @@ syntax keyword KeywordOK contained type
 syntax keyword KeywordOK contained TYPE
 syntax keyword KeywordOK contained unif_rule
 syntax keyword KeywordOK contained verbose
+syntax keyword KeywordOK contained when
 syntax keyword KeywordOK contained why3
 syntax keyword KeywordOK contained with
 highlight link KeywordOK Keyword
@@ -172,6 +173,7 @@ syntax keyword KeywordKO contained type
 syntax keyword KeywordKO contained TYPE
 syntax keyword KeywordKO contained unif_rule
 syntax keyword KeywordKO contained verbose
+syntax keyword KeywordKO contained when
 syntax keyword KeywordKO contained why3
 syntax keyword KeywordKO contained with
 highlight link KeywordKO Error
