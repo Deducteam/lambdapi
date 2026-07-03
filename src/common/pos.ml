@@ -192,8 +192,10 @@ let print_file_contents :
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
         It's dangerous for your health! *)
-
-     let input_line,finish = parse_file fname in
+    begin match parse_file fname with
+    | exception _ ->
+       string ppf ("Cannot open file " ^ fname ^ " Maybe it was moved?")
+    | input_line,finish ->
      let out =
        Buffer.create
         ((end_line - start_line) * 80 +
@@ -256,6 +258,7 @@ let print_file_contents :
 
      finish () ;
      string ppf (Buffer.contents out)
+    end
   | None | Some {fname=None} ->
       if complain_if_location_unknown then
        string ppf (db ^ "unknown location" ^ de)

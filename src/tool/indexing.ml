@@ -748,7 +748,14 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
     String.sub filename n (String.length filename - n)
    else
     filename in
- let path = Library.path_of_file Parsing.LpLexer.escape filename in
+ let path =
+  try
+   Library.path_of_file Parsing.LpLexer.escape filename
+  with
+   _ ->
+    (* The file has been moved to a new location; use the filename as an
+       emergency solution *)
+    [filename] in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
   (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Lhs)])) ;
