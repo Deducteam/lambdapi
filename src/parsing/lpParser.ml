@@ -904,6 +904,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | CHANGE
   | EVAL
   | FAIL
+  | FIRST_HYP
   | FOCUS
   | GENERALIZE
   | HAVE
