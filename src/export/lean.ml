@@ -261,7 +261,7 @@ let print : string -> ast -> unit = fun file s ->
   | None -> ()
   | Some c ->
   begin
-    string oc "\nset_option linter.style.header false\n\n"; (*avoid header problems in v4.31*)
+    string oc "\nset_option linter.style.header false\n\n";
     List.iter (open_mod oc) (List.rev !openings);
   end;
   string oc "\nnamespace ";
