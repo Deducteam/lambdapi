@@ -599,7 +599,8 @@ let scope_rule :
            ; m_lhs_arities = Hashtbl.create 7
            ; m_lhs_names   = Hashtbl.create 7
            ; m_lhs_size    = 0
-           ; m_lhs_in_env  = nl @ List.map fst pvs_rhs @ List.map fst pvs_when}
+           ; m_lhs_in_env  =
+               nl @ List.map fst pvs_rhs @ List.map fst pvs_when}
     in
     let lhs = scope ~find_sym 0 mode ss Env.empty p_lhs in
     match mode with
