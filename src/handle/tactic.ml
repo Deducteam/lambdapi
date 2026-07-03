@@ -373,7 +373,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   (* [p_tactic ss g env pos t] weak head normalizes [t] and converts the
      result into a p_tactic. *)
   and p_tactic (ps:proof_state) (g:goal) (env:Env.t) (pos:Pos.popt)
-    : term -> p_tactic * proof_state =
+    : term -> proof_state * p_tactic =
     let idmap = get_names g
     and ctx = Env.to_ctxt env in
     let p_term = p_term ss pos idmap in
@@ -389,12 +389,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             (*FIXME: compute config only once in a proof*)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
-            | T_admit, _ -> mk P_tac_admit, ps
-            | T_and, [t1;t2] -> mk(P_tac_and(tac_eval t1, tac_eval t2)), ps
+            | T_admit, _ -> ps, mk P_tac_admit
+            | T_and, [t1;t2] -> ps, mk(P_tac_and(tac_eval t1, tac_eval t2))
             | T_and, _ -> assert false
-            | T_all_hyps, [t] -> mk(P_tac_all_hyps(p_term t)), ps
+            | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
-            | T_apply, [_;t] -> mk(P_tac_apply(p_term t)), ps
+            | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
             | T_assume, [prefix;_;Abst(_, t)] ->
               begin
@@ -402,33 +402,32 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                 let idopts = [Some(Pos.make pos n)] in
                 let new_ps = handle ps (Pos.make pos (P_tac_assume idopts)) in
                 match new_ps.proof_goals with
-                | Typ{goal_hyps=(_,(v,_,_))::_;_} as g::_ ->
-                  if Logger.log_enabled() then log "goal:\n%a" Goal.pp g;
-                  mk(P_tac_eval(p_term(subst t (mk_Vari v)))), new_ps
+                | Typ{goal_hyps=(_,(v,_,_))::_;_}::_ ->
+                  new_ps, mk(P_tac_eval(p_term(subst t (mk_Vari v))))
                 | _ -> assert false
               end
             | T_assume, _ -> assert false
-            | T_assumption, [] -> mk P_tac_assumption, ps
+            | T_assumption, [] -> ps, mk P_tac_assumption
             | T_assumption, _ -> assert false
-            | T_change, [_;t] -> mk(P_tac_apply (p_term t)), ps
+            | T_change, [_;t] -> ps, mk(P_tac_apply (p_term t))
             | T_change, _ -> assert false
-            | T_fail, _ -> mk P_tac_fail, ps
-            | T_first_hyp, [t] -> mk(P_tac_first_hyp(p_term t)), ps
+            | T_fail, _ -> ps, mk P_tac_fail
+            | T_first_hyp, [t] -> ps, mk(P_tac_first_hyp(p_term t))
             | T_first_hyp, _ -> assert false
-            | T_focus, [t] -> mk(P_tac_focus(string_of_term pos t)), ps
+            | T_focus, [t] -> ps, mk(P_tac_focus(string_of_term pos t))
             | T_focus, _ -> assert false
             | T_generalize, [_;t] ->
-              mk(P_tac_generalize(p_ident_of_var pos t)), ps
+              ps, mk(P_tac_generalize(p_ident_of_var pos t))
             | T_generalize, _ -> assert false
             | T_have, [t1;t2] ->
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
-                mk(P_tac_have(Pos.make pos (string_of_term pos t1), t2)), ps
+                ps, mk(P_tac_have(Pos.make pos (string_of_term pos t1), t2))
             | T_have, _ -> assert false
-            | T_induction, _ -> mk P_tac_induction, ps
+            | T_induction, _ -> ps, mk P_tac_induction
             | T_orelse, [t1;t2] ->
-              mk(P_tac_orelse(tac_eval t1, tac_eval t2)), ps
+              ps, mk(P_tac_orelse(tac_eval t1, tac_eval t2))
             | T_orelse, _ -> assert false
             | T_print, [t] ->
               let arg =
@@ -439,31 +438,31 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                   else Some(Pos.make pos (s.sym_path, n))
                 | _ -> fatal pos "not a symbol or string literal: %a" term t
               in
-              mk(P_tac_query (Pos.make pos (P_query_print arg))), ps
+              ps, mk(P_tac_query (Pos.make pos (P_query_print arg)))
             | T_print, _ -> assert false
             | T_refine, [t] ->
-              mk(P_tac_refine(p_term_of_string_term pos t)), ps
+              ps, mk(P_tac_refine(p_term_of_string_term pos t))
             | T_refine, _ -> assert false
-            | T_reflexivity, _ -> mk P_tac_refl, ps
-            | T_remove, [_;t] -> mk(P_tac_remove [p_ident_of_var pos t]), ps
+            | T_reflexivity, _ -> ps, mk P_tac_refl
+            | T_remove, [_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
             | T_remove, _ -> assert false
-            | T_repeat, [t] -> mk(P_tac_repeat(tac_eval t)), ps
+            | T_repeat, [t] -> ps, mk(P_tac_repeat(tac_eval t))
             | T_repeat, _ -> assert false
             | T_rewrite, [side;pat;_;t] ->
-              mk(P_tac_rewrite(is_right pos side,
-                               p_rwpatt_of_string_term pos pat, p_term t)), ps
+              ps, mk(P_tac_rewrite(is_right pos side,
+                                   p_rwpatt_of_string_term pos pat, p_term t))
             | T_rewrite, _ -> assert false
             | T_set, [t1;_;t2] ->
-              mk(P_tac_set(Pos.make pos (string_of_term pos t1), p_term t2)),
-              ps
+              let n = string_of_term pos t1 in
+              ps, mk(P_tac_set(Pos.make pos n, p_term t2))
             | T_set, _ -> assert false
-            | T_simplify, _ -> mk(P_tac_simpl SimpAll), ps
-            | T_simplify_beta, _ -> mk(P_tac_simpl SimpBetaOnly), ps
-            | T_solve, _ -> mk P_tac_solve, ps
-            | T_symmetry, _ -> mk P_tac_sym, ps
-            | T_try, [t] -> mk(P_tac_try(tac_eval t)), ps
+            | T_simplify, _ -> ps, mk(P_tac_simpl SimpAll)
+            | T_simplify_beta, _ -> ps, mk(P_tac_simpl SimpBetaOnly)
+            | T_solve, _ -> ps, mk P_tac_solve
+            | T_symmetry, _ -> ps, mk P_tac_sym
+            | T_try, [t] -> ps, mk(P_tac_try(tac_eval t))
             | T_try, _ -> assert false
-            | T_why3, _ -> mk(P_tac_why3 None), ps
+            | T_why3, _ -> ps, mk(P_tac_why3 None)
           with Not_found ->
             fatal pos "Unhandled tactic expression: %a." term t
         end
@@ -508,7 +507,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  if Logger.log_enabled() then log "goal here:\n%a" Goal.pp g;
   let scope ?(prot=false) =
     let find_sym: Sig_state.find_sym =
       fun ~prt:_ ~prv:_ -> Sig_state.find_sym ~prt:prot ~prv:priv in
@@ -543,7 +541,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let v = unfold (mk_Vari v) in
             let t = mk_Appl (mk_Appl (t, p), v) in
             if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try let t, ps = p_tactic ps g env pos t in handle ps t
+            try let ps, t = p_tactic ps g env pos t in handle ps t
             with Fatal _ -> ps
       in
       let ps' = List.fold_left try_assumption ps gt.goal_hyps in
@@ -603,7 +601,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_first_hyp pt ->
     let t = scope pt in
     let f (_,(v,a,_)) =
-      let t, ps = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
+      let ps, t = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
       progress ps t
     in
     begin match List.find_map f gt.goal_hyps with
@@ -791,7 +789,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
         if Unif.solve_noexn p then
-          let t, ps = p_tactic ps g env pos t in handle ps t
+          let ps, t = p_tactic ps g env pos t in handle ps t
         else fatal pos "Cannot solve typing constraints for [%a]" term t
 
   in handle
