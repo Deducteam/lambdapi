@@ -288,14 +288,8 @@ let p_term (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_term =
         let id = Pos.make pos (base_name x) in
         P_LLet(id,[],Some(term idmap a),term idmap t,term idmap' b)
     | Meta _ -> P_Wild
-    (*P_Meta(Pos.make pos m.meta_key, Array.map (term idmap) ts)*)
     | _ -> fatal pos "Unhandled term expression: %a." Print.term t
-  in
-  fun idmap t ->
-    let r = term idmap t in
-    if Logger.log_enabled() then
-      log "p_term [%a] = [%a]" Print.term t Pretty.term r;
-    r
+  in term
 
 (** [string_of_term pos t] returns the string contained in a string literal
     term [t]. *)
@@ -390,7 +384,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> ps, mk P_tac_admit
-            | T_and, [t1;t2] -> ps, mk(P_tac_and(tac_eval t1, tac_eval t2))
+            | T_and, [t1;t2] ->
+              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
             | T_and, _ -> assert false
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
@@ -400,7 +395,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               begin
                 let n = new_name (string_of_term pos prefix) env in
                 let idopts = [Some(Pos.make pos n)] in
-                let new_ps = handle ps (Pos.make pos (P_tac_assume idopts)) in
+                let new_ps = handle ps (mk (P_tac_assume idopts)) in
                 match new_ps.proof_goals with
                 | Typ{goal_hyps=(_,(v,_,_))::_;_}::_ ->
                   new_ps, mk(P_tac_eval(p_term(subst t (mk_Vari v))))
