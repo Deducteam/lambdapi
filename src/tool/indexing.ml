@@ -731,7 +731,7 @@ let index_term_and_subterms ~is_spine t item =
   List.sort_uniq cmp (subterms_to_index ~is_spine tn) in
  List.iter (fun (where,s) -> insert_rigid s (item where)) subterms
 
-let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
+let index_rule ~path sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rule_pos =
    match rule_pos with
     | None -> assert false (* this probably may happen, but it is BAD!
@@ -741,21 +741,6 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = rule.rhs in
  let get_relation = function | DB.Conclusion r -> r | _ -> assert false in
- let filename = Option.get rule_pos.fname in
- let filename =
-   if String.starts_with ~prefix:"file:///" filename then
-    let n = String.length "file://" in
-    String.sub filename n (String.length filename - n)
-   else
-    filename in
- let path =
-  try
-   Library.path_of_file Parsing.LpLexer.escape filename
-  with
-   _ ->
-    (* The file has been moved to a new location; use the filename as an
-       emergency solution *)
-    [filename] in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
   (fun where -> ((rule_name,Some rule_pos),[Xhs(get_relation where,Lhs)])) ;
@@ -764,9 +749,9 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
 
 let _ =
  Stdlib.(Core.Sign.add_rules_callback :=
-   fun sym rules -> List.iter (index_rule sym) rules)
+   fun ~path sym rules -> List.iter (index_rule ~path sym) rules)
 
-let index_sym sym =
+let index_sym ~path sym =
  let qname = name_of_sym sym in
  (* Name *)
  if List.exists (fun ((sn,_),_) -> sn=qname)
@@ -783,7 +768,7 @@ let index_sym sym =
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
- List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
+ List.iter (index_rule ~path sym) Timed.(!(sym.Core.Term.sym_rules))
 
 let _ = Stdlib.(Core.Sign.add_symbol_callback := index_sym)
 
@@ -796,13 +781,14 @@ let index_sign sign =
  Common.Logger.set_debug true "e" ;*)
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
  let deps = Timed.(!(sign.Core.Sign.sign_deps)) in
- Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
+ let path = sign.Core.Sign.sign_path in
+ Lplib.Extra.StrMap.iter (fun _ sym -> index_sym ~path sym) syms ;
  Common.Path.Map.iter
-  (fun path d ->
+  (fun p d ->
     Lplib.Extra.StrMap.iter
      (fun name sd ->
-       let sym = Core.Sign.find_qualified path name in
-       List.iter (index_rule sym) sd.Sign.rules)
+       let sym = Core.Sign.find_qualified p name in
+       List.iter (index_rule ~path sym) sd.Sign.rules)
      d.Sign.dep_symbols)
   deps
 
