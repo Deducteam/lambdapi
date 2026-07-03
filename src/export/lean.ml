@@ -180,14 +180,16 @@ let export_types oc p_sym_nam t =
                 if n > 0 then
                   begin
                     string oc " (a0";
-                    for i=1 to n-1 do string oc " a" ;
+                    for i=1 to n-1 do
+                      string oc " a" ;
                       string oc (string_of_int i)
                     done;
                     string oc " : Type)";
-                    string oc " : Nonempty " ;
+                    string oc " : Nonempty ";
                     char oc '(';
                     ident oc p_sym_nam; string oc " a0";
-                    for i=1 to n-1 do string oc " a" ;
+                    for i=1 to n-1 do
+                      string oc " a";
                       string oc (string_of_int i)
                     done;
                     char oc ')';
@@ -258,7 +260,10 @@ let print : string -> ast -> unit = fun file s ->
   match handle_requires s with
   | None -> ()
   | Some c ->
-  List.iter (open_mod oc) (List.rev !openings);
+  begin
+    string oc "\nset_option linter.style.header false\n\n"; (*avoid header problems in v4.31*)
+    List.iter (open_mod oc) (List.rev !openings);
+  end;
   string oc "\nnamespace ";
   Option.iter
     (fun s -> string oc
@@ -266,8 +271,7 @@ let print : string -> ast -> unit = fun file s ->
                  with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
   (*to erase style-warnings on generated code*)
-  string oc "\n\nset_option linter.style.header false\n";
-  string oc "set_option linter.style.missingEnd false\n";
+  string oc "\nset_option linter.style.missingEnd false\n";
   string oc "set_option linter.unusedVariables false\n";
   string oc "set_option linter.style.longLine false\n\n";
   command oc c;
