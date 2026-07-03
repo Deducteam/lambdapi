@@ -3,16 +3,18 @@ symbol ∧: Prop → Prop → Prop;
 notation ∧ infix right 7;
 constant symbol ⊤ : Prop;
 constant symbol ⊥ : Prop;
-symbol simp: Prop → Prop;
-symbol simp1: Prop → Prop → Prop;
 
-sequential symbol subterm: Prop → Prop → Prop;
-rule subterm $p $p ↪ ⊤
-with subterm $p ($p ∧ $q) ↪ ⊤
-with subterm $p (_ ∧ $q) ↪ subterm $p $q
-with subterm _ _ ↪ ⊥;
+sequential symbol doubles_in_and : Prop → Prop;
+sequential symbol occurs_in_and : Prop → Prop → Prop;
 
-rule simp ($p ∧ ⊤) ↪ $p;
-rule simp ($p ∧ $q ∧ $r) when subterm $p $r ≡ ⊤ ↪ simp1 $p $r;
+rule doubles_in_and ($p ∧ $q) when occurs_in_and $p $q ≡ ⊤ ↪ ⊤
+with doubles_in_and (_ ∧ $q) ↪ doubles_in_and $q
+with doubles_in_and _ ↪ ⊥;
 
-assert p q r ⊢ (simp (p ∧ q ∧ p ∧ r)) ≡ simp1 p (p ∧ r);
+rule occurs_in_and $p $p ↪ ⊤
+with occurs_in_and $p ($p ∧ _) ↪ ⊤
+with occurs_in_and $p (_ ∧ $q) ↪ occurs_in_and $p $q
+with occurs_in_and _ _ ↪ ⊥;
+
+assert p q r ⊢ doubles_in_and (p ∧ q ∧ r) ≡ ⊥;
+assert p q r ⊢ doubles_in_and (p ∧ q ∧ p ∧ r) ≡ ⊤;

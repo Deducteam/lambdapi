@@ -186,14 +186,10 @@ module CP = struct
                    with Not_found -> choose_vf ps
     in
     let rec choose_eq pools =
-      let export vars (((_,a1) as t1), ((_,a2) as t2)) =
-        if List.for_all (fun (i,_) -> IntMap.mem i vars) a1
-           && List.for_all (fun (i,_) -> IntMap.mem i vars) a2 then
-          CondEQ(t1,t2)
-        else raise Not_found in
+      let export (t1, t2) = CondEQ(t1,t2) in
       match pools with
       | []      -> None
-      | p :: ps -> try Some(export p.variables (TSet.choose p.eq_conds))
+      | p :: ps -> try Some(export (TSet.choose p.eq_conds))
                    with Not_found -> choose_eq ps
     in
     let res = choose_nl pools in
