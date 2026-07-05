@@ -121,8 +121,8 @@ sig
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
-    | LpLexer.SyntaxError{pos=None; _} -> assert false
-    | LpLexer.SyntaxError{pos=Some pos; elt} ->
+    | LpLexer.SyntaxError(_,{pos=None; _}) -> assert false
+    | LpLexer.SyntaxError(_,{pos=Some pos; elt}) ->
         parser_fatal pos "Syntax error. %s" elt
 
   let parse_lexbuf' ~allow_rocq_syntax (icopt: in_channel option)

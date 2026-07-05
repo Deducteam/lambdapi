@@ -127,6 +127,7 @@ let expected lb (msg:string) (tokens:token list) : 'a =
     match tokens with
     | [] -> assert false
     | t::ts ->
+      let ts = ts @ get_expected_tokens lb in
       let soft t = String.add_quotes (string_of_token t) in
       syntax_error (current_pos lb)
         (List.fold_left (fun s t -> s^", "^soft t) ("Expected: "^soft t) ts
@@ -174,18 +175,18 @@ let consume (token:token) (lb:'token lexbuf): unit =
 let prefix (token:token) (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a =
   consume token lb; elt lb
 
-(*CSC: wrong message after list*)
-let list (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a list =
+let list (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
+ : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
   (try
     while true do acc := succeed_or_reset_stream elt lb :: !acc done
-   with SyntaxError _ -> ());
+   with SyntaxError (true,_) -> ());
+  set_expected_tokens lb guard;
   List.rev !acc
 
-(*CSC: wrong message after list*)
-let list_with_sep (elt:'token lexbuf -> 'a) (sep:'token) (lb:'token lexbuf)
- : 'a list =
+let list_with_sep (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
+ (lb:'token lexbuf) : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
   (try
@@ -193,21 +194,26 @@ let list_with_sep (elt:'token lexbuf -> 'a) (sep:'token) (lb:'token lexbuf)
       let el = if !acc = [] then elt else (prefix sep elt) in
       acc := succeed_or_reset_stream el lb :: !acc
     done
-   with SyntaxError _ -> ());
+   with SyntaxError (true,_) -> ());
+  begin
+   if !acc = [] then
+    set_expected_tokens lb guard
+   else
+    set_expected_tokens lb [sep]
+  end ;
   List.rev !acc
 
-(*CSC: wrong message after list*)
-let nelist (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a list =
+let nelist (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
+ : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let x = elt lb in
-  x :: list elt lb
+  x :: list guard elt lb
 
-(*CSC: wrong message after list*)
 let nelist_with_sep (elt:'token lexbuf -> 'a) (sep:'token) (lb:'token lexbuf)
  : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let a = elt lb in
-  let acc = list (prefix sep elt) lb in
+  let acc = list [sep] (prefix sep elt) lb in
   a::acc
 
 (* parsing functions *)
@@ -293,6 +299,7 @@ let qid_expl (lb:'token lexbuf): (string list * string) loc =
   | _ ->
       expected lb "" [UID_EXPL"";QID_EXPL[]]
 
+let uid_tks = [UID""]
 let uid (lb:'token lexbuf): string loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -301,8 +308,9 @@ let uid (lb:'token lexbuf): string loc =
       consume_token lb;
       make_pos pos1 s
   | _ ->
-      expected lb "" [UID""]
+      expected lb "" uid_tks
 
+let param_tks = [UID"";UNDERSCORE]
 let param (lb:'token lexbuf): string loc option =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -314,7 +322,7 @@ let param (lb:'token lexbuf): string loc option =
       consume_token lb;
       None
   | _ ->
-      expected lb "" [UID"";UNDERSCORE]
+      expected lb "" param_tks
 
 let int (lb:'token lexbuf): string =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -335,6 +343,7 @@ let float_or_int (lb:'token lexbuf): string =
   | _ ->
       expected lb "" [INT"";FLOAT""]
 
+let path_tks = [QID[]]
 let path (lb:'token lexbuf): string list loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -343,7 +352,7 @@ let path (lb:'token lexbuf): string list loc =
       consume_token lb;
       make_pos pos1 (List.rev p)
   | _ ->
-      expected lb "" [QID[]]
+      expected lb "" path_tks
 
 let qid_or_rule_or_semicolon (lb:'token lexbuf)
  : (string list * string) loc option =
@@ -394,14 +403,14 @@ let term_id (lb:'token lexbuf): p_term =
 let open_ (priv:bool) (lb:'token lexbuf) : p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  consume OPEN lb;
- let ps = nelist path lb in
+ let ps = nelist path_tks path lb in
  P_require(Some priv,ps)
 
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  consume SYMBOL lb;
  let p_sym_nam = uid lb in
- let p_sym_arg = list params lb in
+ let p_sym_arg = list params_tks params lb in
  begin
    match current_token lb with
    | COLON ->
@@ -452,12 +461,12 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
 and inductive_cmd (p_sym_mod:p_modifier list) (lb:'token lexbuf)
 : p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
- let xs = list params lb in
+ let xs = list params_tks params lb in
  match current_token lb with
  | INDUCTIVE ->
      consume INDUCTIVE lb;
      let i = inductive lb in
-     let is = list (prefix WITH inductive) lb in
+     let is = list [WITH] (prefix WITH inductive) lb in
      P_inductive(p_sym_mod,xs,i::is)
  | _ -> expected lb "" [L_PAREN;L_SQ_BRACKET;INDUCTIVE]
 
@@ -472,9 +481,7 @@ and inductive_cmd (p_sym_mod:p_modifier list) (lb:'token lexbuf)
 and command (lb:'token lexbuf) : p_command =
  if log_enabled() then log "%s" __FUNCTION__;
  let pos1 = current_pos lb in
- (* | SIDE _ | ASSOCIATIVE | COMMUTATIVE | CONSTANT | INJECTIVE | SEQUENTIAL
-    | PRIVATE | OPAQUE | PROTECTED -> *)
- let p_sym_mod = list modifier lb in
+ let p_sym_mod = list modifier_tks modifier lb in
  match p_sym_mod with
  | [{elt=P_opaq;_}] ->
     begin match current_token lb with
@@ -519,7 +526,7 @@ and command (lb:'token lexbuf) : p_command =
               consume_token lb;
               extend_pos lb (*__FUNCTION__*) pos1 (open_ true lb)
           | QID _ ->
-              let ps = nelist path lb in
+              let ps = nelist path_tks path lb in
               begin
                 match current_token lb with
                 | AS ->
@@ -546,17 +553,14 @@ and command (lb:'token lexbuf) : p_command =
         extend_pos lb (*__FUNCTION__*) pos1 (inductive_cmd p_sym_mod lb)
     | RULE ->
         consume_token lb;
-        let r = rule lb in
-        let rs = list (prefix WITH rule) lb in
-        extend_pos lb (*__FUNCTION__*) pos1 (P_rules(r::rs))
+        let rs = list_with_sep (rule_tks ()) rule WITH lb in
+        extend_pos lb (*__FUNCTION__*) pos1 (P_rules rs)
     | UNIF_RULE ->
         consume_token lb;
         let e = equation lb in
         consume HOOK_ARROW lb;
         consume L_SQ_BRACKET lb;
-        let eq1 = equation lb in
-        let eqs = list (prefix SEMICOLON equation) lb in
-        let es = eq1::eqs in
+        let es = list_with_sep (equation_tks ()) equation SEMICOLON lb in
         consume R_SQ_BRACKET lb;
         (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
         let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
@@ -613,7 +617,7 @@ and inductive (lb:'token lexbuf): p_inductive =
   let pos0 = current_pos lb in
   let i = uid lb in
   let pos1 = current_pos lb in
-  let ps = list params lb in
+  let ps = list params_tks params lb in
   consume COLON lb;
   let t = term lb in
   let pos2 = current_pos lb in
@@ -622,12 +626,10 @@ and inductive (lb:'token lexbuf): p_inductive =
   begin
     match current_token lb with
     | UID _ ->
-        let c = constructor lb in
-        let cs = list (prefix VBAR constructor) lb in
-        let l = c::cs in
+        let l = nelist_with_sep constructor VBAR lb in
         extend_pos lb (*__FUNCTION__*) pos0 (i,t,l)
     | VBAR ->
-        let l = nelist (prefix VBAR constructor) lb in
+        let l = list [VBAR] (prefix VBAR constructor) lb in
         extend_pos lb (*__FUNCTION__*) pos0 (i,t,l)
     | SEMICOLON ->
         let l = [] in
@@ -639,11 +641,14 @@ and inductive (lb:'token lexbuf): p_inductive =
 and constructor (lb:'token lexbuf): p_ident * p_term =
   let i = uid lb in
   let pos1 = current_pos lb in
-  let ps = list params lb in
+  let ps = list params_tks params lb in
   consume COLON lb;
   let t = term lb in
   i, make_prod lb (fst pos1) ps t (snd (current_pos lb))
 
+and modifier_tks =
+  [ SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;SEQUENTIAL;
+    PRIVATE;OPAQUE;PROTECTED ]
 and modifier (lb:'token lexbuf): p_modifier =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -721,6 +726,7 @@ and notation (lb:'token lexbuf): string Term.notation =
   | _ ->
       expected lb "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
 
+and rule_tks () = term_tks
 and rule (lb:'token lexbuf): (p_term * p_term) loc =
   if log_enabled() then log "%s" __FUNCTION__;
   let pos1 = current_pos lb in
@@ -729,6 +735,7 @@ and rule (lb:'token lexbuf): (p_term * p_term) loc =
   let r = term lb in
   extend_pos lb (*__FUNCTION__*) pos1 (l, r)
 
+and equation_tks () = term_tks
 and equation (lb:'token lexbuf): p_term * p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   let l = term lb in
@@ -744,7 +751,7 @@ and query (lb:'token lexbuf): p_query =
   | ASSERT b ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let ps = list params lb in
+      let ps = list params_tks params lb in
       consume TURNSTILE lb;
       let t = term lb in
       begin
@@ -880,7 +887,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
   | L_CU_BRACKET ->
-      let l = nelist subproof lb in
+      let l = nelist subproof_tks subproof lb in
       if current_token lb = SEMICOLON then consume_token lb;
       let pe = proof_end lb in
       l, pe
@@ -933,6 +940,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       (*CSC message only *)
       expected lb "subproof, tactic or query" []
 
+and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
   consume L_CU_BRACKET lb;
@@ -942,14 +950,15 @@ and subproof (lb:'token lexbuf): p_proofstep list =
 
 and steps (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
-  let res = list_with_sep step SEMICOLON lb in
+  let res = list_with_sep (step_tks ()) step SEMICOLON lb in
   if current_token lb = SEMICOLON then consume_token lb;
   res
 
+and step_tks () = tactic_tks
 and step (lb:'token lexbuf): p_proofstep =
   if log_enabled() then log "%s" __FUNCTION__;
   let t = tactic lb in
-  let l = list subproof lb in
+  let l = list subproof_tks subproof lb in
   Tactic(t, l)
 
 and proof_end (lb:'token lexbuf): p_proof_end =
@@ -970,6 +979,11 @@ and proof_end (lb:'token lexbuf): p_proof_end =
   | _ ->
       expected lb "" [ABORT;ADMITTED;END]
 
+and tactic_tks =
+ [ASSERT false;COMPUTE;DEBUG;FLAG;PRINT;PROOFTERM;PROVER;PROVER_TIMEOUT;SEARCH
+ ;TYPE_QUERY;VERBOSE;ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL
+ ;FAIL;FIRST_HYP;FOCUS;GENERALIZE;HAVE;INDUCTION;ORELSE;REFINE;REFLEXIVITY
+ ;REMOVE;REPEAT;REWRITE;SET;SIMPLIFY;SOLVE;SYMMETRY;TRY;WHY3]
 and tactic (lb:'token lexbuf): p_tactic =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -1004,7 +1018,7 @@ and tactic (lb:'token lexbuf): p_tactic =
   | ASSUME ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let xs = nelist param lb in
+      let xs = nelist params_tks param lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_tac_assume xs)
   | ASSUMPTION ->
       let pos1 = current_pos lb in
@@ -1068,7 +1082,7 @@ and tactic (lb:'token lexbuf): p_tactic =
   | REMOVE ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let xs = nelist uid lb in
+      let xs = nelist uid_tks uid lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_tac_remove xs)
   | REPEAT ->
       let pos1 = current_pos lb in
@@ -1152,8 +1166,8 @@ and tactic (lb:'token lexbuf): p_tactic =
             make_pos pos1 (P_tac_why3 None)
       end
   | _ ->
-      (*CSC message only*)
-      expected lb "tactic or query" []
+      (*CSC both message and tokens *)
+      expected lb "tactic or query" tactic_tks
 
 and rwpatt_content (lb:'token lexbuf): p_rwpatt =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1238,12 +1252,13 @@ and rwpatt (lb:'token lexbuf): p_rwpatt =
 
 (* terms *)
 
+and params_tks = [L_PAREN;L_SQ_BRACKET;UID"";UNDERSCORE]
 and params (lb:'token lexbuf): p_params =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
   | L_PAREN ->
       consume_token lb;
-      let ps = nelist param lb in
+      let ps = nelist param_tks param lb in
       begin
         match current_token lb with
         | COLON ->
@@ -1259,7 +1274,7 @@ and params (lb:'token lexbuf): p_params =
       end
   | L_SQ_BRACKET ->
       consume_token lb;
-      let ps = nelist param lb in
+      let ps = nelist param_tks param lb in
       begin
         match current_token lb with
         | COLON ->
@@ -1278,8 +1293,13 @@ and params (lb:'token lexbuf): p_params =
       let x = param lb in
       [x], None, false
   | _ ->
-      expected lb "" [L_PAREN;L_SQ_BRACKET;UID"";UNDERSCORE]
+      expected lb "" params_tks
 
+and term_tks =
+  [BACKQUOTE;EXISTS;FORALL;FUN;PI;LAMBDA;LET;
+   UID"";QID[];UID_EXPL"";QID_EXPL[];UNDERSCORE;
+   TYPE_TERM;UID_META 0;UID_PATT"";L_PAREN;L_SQ_BRACKET;
+   INT"";QINT([],"");STRINGLIT""]
 and term (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -1310,8 +1330,8 @@ and term (lb:'token lexbuf): p_term =
       let h = aterm lb in
       app pos1 h lb
   | _ ->
-      (*CSC message only *)
-      expected lb "term" []
+      (*CSC both message and tokens *)
+      expected lb "term" term_tks
 
 and app (pos1:position * position) (t: p_term) (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1390,7 +1410,7 @@ and bterm (lb:'token lexbuf): p_term =
       let pos1 = current_pos lb in
       consume_token lb;
       let x = uid lb in
-      let a = list params lb in
+      let a = list params_tks params lb in
       begin
         match current_token lb with
         | COLON ->
@@ -1489,7 +1509,7 @@ and aterm (lb:'token lexbuf): p_term =
 and env (lb:'token lexbuf): p_term list =
   if log_enabled() then log "%s" __FUNCTION__;
   consume L_SQ_BRACKET lb;
-  let res = list_with_sep term SEMICOLON lb in
+  let res = list_with_sep term_tks term SEMICOLON lb in
   consume R_SQ_BRACKET lb;
   res
 
@@ -1505,7 +1525,7 @@ and binder (lb:'token lexbuf): p_params list * p_term =
         | UNDERSCORE
         | L_PAREN
         | L_SQ_BRACKET ->
-            let ps = nelist params lb in
+            let ps = nelist params_tks params lb in
             consume COMMA lb;
             let p = [s], None, false in
             p::ps, term lb
@@ -1525,11 +1545,11 @@ and binder (lb:'token lexbuf): p_params list * p_term =
               [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET;COMMA]
       end
   | L_PAREN ->
-      let ps = nelist params lb in
+      let ps = nelist params_tks params lb in
       consume COMMA lb;
       ps, term lb
   | L_SQ_BRACKET ->
-      let ps = nelist params lb in
+      let ps = nelist params_tks params lb in
       consume COMMA lb;
       ps, term lb
   | _ ->
@@ -1546,7 +1566,7 @@ and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
         | UID _
         | UNDERSCORE
         | L_PAREN ->
-            let ps = list params lb in
+            let ps = list params_tks params lb in
             consume terminator lb;
             let p = [s], None, false in
             p::ps, term lb
@@ -1569,7 +1589,7 @@ and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
               [UID"";UNDERSCORE;L_PAREN;terminator]
       end
   | L_PAREN ->
-      let ps = nelist params lb in
+      let ps = nelist params_tks params lb in
       consume terminator lb;
       ps, term lb
   | _ ->
@@ -1676,7 +1696,7 @@ and csearch (lb:'token lexbuf): search =
   let aq = asearch lb in
   match current_token lb with
   | WITH ->
-      let aqs = nelist (prefix WITH asearch) lb in
+      let aqs = nelist [WITH] (prefix WITH asearch) lb in
       List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
   | _ ->
       aq
@@ -1686,7 +1706,7 @@ and ssearch (lb:'token lexbuf): search =
   let cq = csearch lb in
   match current_token lb with
   | VBAR ->
-      let cqs = nelist (prefix VBAR csearch) lb in
+      let cqs = nelist [VBAR] (prefix VBAR csearch) lb in
       List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
   | _ ->
       cq
@@ -1694,7 +1714,7 @@ and ssearch (lb:'token lexbuf): search =
 and search (lb:'token lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let q = ssearch lb in
-  let qids = list (prefix IN qid_or_regexp) lb in
+  let qids = list [IN] (prefix IN qid_or_regexp) lb in
   List.fold_left
     (fun x qid ->
        let n = snd qid.elt in

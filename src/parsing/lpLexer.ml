@@ -13,14 +13,20 @@ let remove_last : lexbuf -> string = fun lb ->
 let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
-exception SyntaxError of strloc
+(* true when the error is an unrecoverable tokenization error;
+   false when it is a potentially recoverable parsing error *)
+exception SyntaxError of bool * strloc
 
-let syntax_error : Lexing.position * Lexing.position -> string -> 'a =
-  fun pos msg -> raise (SyntaxError (Pos.make_pos pos msg))
+let syntax_error
+ : ?recoverable:bool -> Lexing.position * Lexing.position -> string -> 'a
+ = fun ?(recoverable=true) pos msg ->
+    raise (SyntaxError (recoverable,Pos.make_pos pos msg))
 
+(* raises an unrecoverable lexing error; do not use in the parser *)
 let fail : lexbuf -> string -> 'a = fun lb msg ->
-  syntax_error (lexing_positions lb) msg
+  syntax_error ~recoverable:false (lexing_positions lb) msg
 
+(* raises an unrecoverable lexing error; do not use in the parser *)
 let invalid_character : lexbuf -> 'a = fun lb ->
   fail lb "Invalid character"
 
