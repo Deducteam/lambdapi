@@ -121,6 +121,28 @@ let string_of_token = function
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
+let match_token tok patt =
+ match patt,tok with
+  | ASSERT _, ASSERT _
+  | DEBUG_FLAGS _, DEBUG_FLAGS _
+  | FLOAT _, FLOAT _
+  | INT _, INT _
+  | QID _, QID _
+  | QID_EXPL _, QID_EXPL _
+  | QINT _ , QINT _
+  | SIDE _, SIDE _
+  | STRINGLIT _, STRINGLIT _
+  | SWITCH false, SWITCH false
+  | SWITCH true, SWITCH _
+  | UID _, UID _
+  | UID_EXPL _, UID_EXPL _
+  | UID_META _, UID_META _
+  | UID_PATT _ , UID_PATT _ -> true
+  | t1,t2 -> t1=t2
+
+let match_guard patts lb =
+ List.exists (match_token (current_token lb)) patts
+
 let expected lb (msg:string) (tokens:token list) : 'a =
   if msg <> "" then syntax_error (current_pos lb) ("Expected: "^msg^".")
   else
@@ -192,9 +214,7 @@ let list (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
  : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
-  (try
-    while true do acc := succeed_or_reset_stream elt lb :: !acc done
-   with SyntaxError (true,_) -> ());
+  while match_guard guard lb do acc := elt lb :: !acc done ;
   set_expected_tokens lb guard;
   List.rev !acc
 
@@ -202,18 +222,35 @@ let list_with_sep (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
  (lb:'token lexbuf) : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
-  (try
-    while true do
-      let el = if !acc = [] then elt else (prefix sep elt) in
-      acc := succeed_or_reset_stream el lb :: !acc
-    done
-   with SyntaxError (true,_) -> ());
-  begin
-   if !acc = [] then
-    set_expected_tokens lb guard
-   else
-    set_expected_tokens lb [sep]
-  end ;
+  let guard = ref guard in
+  let el = ref elt in
+  while match_guard !guard lb do
+    acc := !el lb :: !acc ;
+    guard := [sep] ;
+    el := prefix sep elt
+  done ;
+  set_expected_tokens lb !guard ;
+  List.rev !acc
+
+let list_with_sep_or_termin
+ (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
+ (lb:'token lexbuf) : 'a list =
+  if log_enabled() then log "%s" __FUNCTION__;
+  let acc = ref [] in
+  let match_sep = ref false in
+  while match_guard (if !match_sep then [sep] else guard) lb do
+    if !match_sep then
+     begin
+      consume sep lb ;
+      match_sep := false
+     end
+    else
+     begin
+      acc := elt lb :: !acc ;
+      match_sep := true
+     end
+  done ;
+  set_expected_tokens lb (if !match_sep then [sep] else guard) ;
   List.rev !acc
 
 let nelist (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
@@ -960,9 +997,7 @@ and subproof (lb:'token lexbuf): p_proofstep list =
 
 and steps (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
-  let res = list_with_sep (step_tks ()) step SEMICOLON lb in
-  if current_token lb = SEMICOLON then consume_token lb;
-  res
+  list_with_sep_or_termin (step_tks ()) step SEMICOLON lb
 
 and step_tks () = tactic_tks
 and step (lb:'token lexbuf): p_proofstep =
