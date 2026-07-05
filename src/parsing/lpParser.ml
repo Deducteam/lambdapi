@@ -5,7 +5,7 @@ open Core
 open LpLexer
 open Lexing
 open Sedlexing
-open ZipperTokenLexbuf
+open OneLookaheadCellLexbuf
 
 let log = Logger.make 'n' "pars" "parsing"
 let log = log.pp

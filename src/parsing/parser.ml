@@ -114,7 +114,7 @@ sig
   end
 = struct
 
-  type zlexbuf = LpLexer.token ZipperTokenLexbuf.lexbuf
+  type zlexbuf = LpLexer.token OneLookaheadCellLexbuf.lexbuf
 
   let handle_error (icopt: in_channel option)
         (entry: zlexbuf -> 'a) (lb: zlexbuf): 'a option =
@@ -130,7 +130,7 @@ sig
     Stream.from
      (fun _ ->
        handle_error icopt entry
-        (ZipperTokenLexbuf.new_parser
+        (OneLookaheadCellLexbuf.new_parser
           ~pp:LpParser.pp_token
            ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax lb)))
 
