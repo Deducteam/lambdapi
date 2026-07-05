@@ -175,6 +175,19 @@ let consume (token:token) (lb:'token lexbuf): unit =
 let prefix (token:token) (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a =
   consume token lb; elt lb
 
+let opt (tk : 'token) (lb:'token lexbuf) : bool =
+  if log_enabled() then log "%s" __FUNCTION__;
+  if current_token lb = tk then
+   begin
+    consume_token lb;
+    true
+   end
+  else
+   begin
+     set_expected_tokens lb [tk];
+    false
+   end
+
 let list (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
  : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -539,6 +552,7 @@ and command (lb:'token lexbuf) : p_command =
                     let i = uid lb in
                     extend_pos lb (*__FUNCTION__*) pos1 (P_require_as(p,i))
                 | _ ->
+                    set_expected_tokens lb [AS] ;
                     extend_pos lb (*__FUNCTION__*) pos1 (P_require(None,ps))
               end
           | _ -> expected lb "" [OPEN;PRIVATE;QID[]]
@@ -868,15 +882,11 @@ and term_proof (lb:'token lexbuf):
   | QINT _
   | STRINGLIT _ ->
       let t = term lb in
-      begin
-        match current_token lb with
-        | BEGIN ->
-            consume_token lb;
-            let p = proof lb in
-            Some t, Some p
-        | _ ->
-            Some t, None
-      end
+      if opt BEGIN lb then
+       let p = proof lb in
+       Some t, Some p
+      else
+       Some t, None
   | _ ->
       (*CSC message only*)
       expected lb "term of proof" []
@@ -1096,27 +1106,24 @@ and tactic (lb:'token lexbuf): p_tactic =
         match current_token lb with
         | SIDE d ->
             consume_token lb;
-            begin
-              match current_token lb with
-              | DOT ->
-                  consume_token lb;
-                  let p = rwpatt_bracket lb in
-                  let t = term lb in
-                  let b = d <> Pratter.Left in
-                  extend_pos lb (*__FUNCTION__*) pos1
-                   (P_tac_rewrite(b,Some p,t))
-              | _ ->
-                  let t = term lb in
-                  let b = d <> Pratter.Left in
-                  extend_pos lb (*__FUNCTION__*) pos1
-                   (P_tac_rewrite(b,None,t))
-            end
+            if opt DOT lb then
+              let p = rwpatt_bracket lb in
+              let t = term lb in
+              let b = d <> Pratter.Left in
+              extend_pos lb (*__FUNCTION__*) pos1
+               (P_tac_rewrite(b,Some p,t))
+            else
+              let t = term lb in
+              let b = d <> Pratter.Left in
+              extend_pos lb (*__FUNCTION__*) pos1
+               (P_tac_rewrite(b,None,t))
         | DOT ->
             consume_token lb;
             let p = rwpatt_bracket lb in
             let t = term lb in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_rewrite(true,Some p,t))
         | _ ->
+            set_expected_tokens lb [SIDE Pratter.Left;DOT] ;
             let t = term lb in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_rewrite(true,None,t))
       end
@@ -1140,6 +1147,7 @@ and tactic (lb:'token lexbuf): p_tactic =
             consume (SWITCH false) lb;
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_simpl SimpBetaOnly)
         | _ ->
+            set_expected_tokens lb [UID"";QID[];RULE];
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_simpl SimpAll)
       end
   | SOLVE ->
@@ -1163,6 +1171,7 @@ and tactic (lb:'token lexbuf): p_tactic =
         | STRINGLIT s -> let s = String.remove_quotes s in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_why3 (Some s))
         | _ ->
+            set_expected_tokens lb [STRINGLIT""] ;
             make_pos pos1 (P_tac_why3 None)
       end
   | _ ->
@@ -1198,18 +1207,14 @@ and rwpatt_content (lb:'token lexbuf): p_rwpatt =
         | IN ->
             consume_token lb;
             let t2 = term lb in
-            begin
-              match current_token lb with
-              | IN ->
-                  consume_token lb;
-                  let t3 = term lb in
-                  let x = ident_of_term pos1 t2 in
-                  extend_pos lb (*__FUNCTION__*) pos1
-                    (Rw_TermInIdInTerm(t1,(x,t3)))
-              | _ ->
-                  let x = ident_of_term pos1 t1 in
-                  extend_pos lb (*__FUNCTION__*) pos1 (Rw_IdInTerm(x,t2))
-            end
+            if opt IN lb then
+              let t3 = term lb in
+              let x = ident_of_term pos1 t2 in
+              extend_pos lb (*__FUNCTION__*) pos1
+                (Rw_TermInIdInTerm(t1,(x,t3)))
+            else
+              let x = ident_of_term pos1 t1 in
+               extend_pos lb (*__FUNCTION__*) pos1 (Rw_IdInTerm(x,t2))
         | AS ->
             consume_token lb;
             let t2 = term lb in
@@ -1218,22 +1223,19 @@ and rwpatt_content (lb:'token lexbuf): p_rwpatt =
             let x = ident_of_term pos1 t2 in
             extend_pos lb (*__FUNCTION__*) pos1 (Rw_TermAsIdInTerm(t1,(x,t3)))
         | _ ->
+            set_expected_tokens lb [IN;AS];
             extend_pos lb (*__FUNCTION__*) pos1 (Rw_Term(t1))
       end
   | IN ->
       let pos1 = current_pos lb in
       consume_token lb;
       let t1 = term lb in
-      begin
-        match current_token lb with
-        | IN ->
-            consume_token lb;
-            let t2 = term lb in
-            let x = ident_of_term pos1 t1 in
-            extend_pos lb (*__FUNCTION__*) pos1 (Rw_InIdInTerm(x,t2))
-        | _ ->
-            extend_pos lb (*__FUNCTION__*) pos1 (Rw_InTerm(t1))
-      end
+      if opt IN lb then
+        let t2 = term lb in
+        let x = ident_of_term pos1 t1 in
+        extend_pos lb (*__FUNCTION__*) pos1 (Rw_InIdInTerm(x,t2))
+      else
+        extend_pos lb (*__FUNCTION__*) pos1 (Rw_InTerm(t1))
   | _ ->
       (*CSC message only*)
       expected lb "term or keyword \"in\"" []
@@ -1454,29 +1456,20 @@ and aterm (lb:'token lexbuf): p_term =
         let pos1 = current_pos lb in
         consume_token lb;
         let i = make_pos pos1 s in
-        begin
-          match current_token lb with
-          | DOT ->
-              consume_token lb;
-              extend_pos lb (*__FUNCTION__*) pos1
-                (P_Meta(i,Array.of_list (env lb)))
-          | _ ->
-              {i with elt=P_Meta(i,[||])}
-        end
+        if opt DOT lb then
+          extend_pos lb (*__FUNCTION__*) pos1
+            (P_Meta(i,Array.of_list (env lb)))
+        else
+         {i with elt=P_Meta(i,[||])}
     | UID_PATT s ->
         let pos1 = current_pos lb in
         consume_token lb;
-        let i =
-          if s = "_" then None else Some(make_pos pos1 s) in
-        begin
-          match current_token lb with
-          | DOT ->
-              consume_token lb;
-              extend_pos lb (*__FUNCTION__*) pos1
+        let i = if s = "_" then None else Some(make_pos pos1 s) in
+        if opt DOT lb then
+          extend_pos lb (*__FUNCTION__*) pos1
                 (P_Patt(i, Some(Array.of_list (env lb))))
-          | _ ->
-              make_pos pos1 (P_Patt(i, None))
-        end
+        else
+          make_pos pos1 (P_Patt(i, None))
     | L_PAREN ->
         let pos1 = current_pos lb in
         consume_token lb;
@@ -1600,9 +1593,7 @@ and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
 
 and generalize (lb:'token lexbuf): bool =
   if log_enabled() then log "%s" __FUNCTION__;
-  match current_token lb with
-  | GENERALIZE -> consume_token lb; true
-  | _ -> false
+  opt GENERALIZE lb
 
 and relation (lb:'token lexbuf): relation option =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1694,22 +1685,14 @@ and asearch (lb:'token lexbuf): search =
 and csearch (lb:'token lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let aq = asearch lb in
-  match current_token lb with
-  | WITH ->
-      let aqs = nelist [WITH] (prefix WITH asearch) lb in
-      List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
-  | _ ->
-      aq
+  let aqs = list [WITH] (prefix WITH asearch) lb in
+  List.fold_left (fun x aq -> QOp(x,Intersect,aq)) aq aqs
 
 and ssearch (lb:'token lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
   let cq = csearch lb in
-  match current_token lb with
-  | VBAR ->
-      let cqs = nelist [VBAR] (prefix VBAR csearch) lb in
-      List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
-  | _ ->
-      cq
+  let cqs = list [VBAR] (prefix VBAR csearch) lb in
+  List.fold_left (fun x cq -> QOp(x,Union,cq)) cq cqs
 
 and search (lb:'token lexbuf): search =
   if log_enabled() then log "%s" __FUNCTION__;
