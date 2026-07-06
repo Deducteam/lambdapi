@@ -579,7 +579,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let v = unfold (mk_Vari v) in
             let t = mk_Appl (mk_Appl (t, p), v) in
             if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try let ps, t = p_tactic ps g env pos t in handle ps t
+            try handle ps (p_tactic ss g env pos t)
             with Fatal _ -> ps
       in
       let ps' = List.fold_left try_assumption ps gt.goal_hyps in
@@ -639,7 +639,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_first_hyp pt ->
     let t = scope pt in
     let f (_,(v,a,_)) =
-      let ps, t = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
+      let t = p_tactic ss g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
       progress ps t
     in
     begin match List.find_map f gt.goal_hyps with
@@ -833,7 +833,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
         if Unif.solve_noexn p then
-          let ps, t = p_tactic ps g env pos t in handle ps t
+          let t = p_tactic ss g env pos t in handle ps t
         else fatal pos "Cannot solve typing constraints for [%a]" term t
 
   in handle
