@@ -33,6 +33,7 @@ type token =
   | ABORT
   | ADMIT
   | ADMITTED
+  | ALL_HYPS
   | APPLY
   | AS
   | ASSERT of bool (* true for "assertnot" *)
@@ -114,6 +115,9 @@ type token =
   | COLON
   | DOT
   | EQUIV
+  | EXISTS  (* only in Rocq *)
+  | FORALL  (* only in Rocq *)
+  | FUN     (* only in Rocq *)
   | HOOK_ARROW
   | LAMBDA
   | L_CU_BRACKET
@@ -124,6 +128,7 @@ type token =
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
+  | THICKARROW (* only in Rocq *)
   | TURNSTILE
   | UNDERSCORE
   | VBAR
@@ -184,24 +189,49 @@ let escid = [%sedlex.regexp?
 
 let id = [%sedlex.regexp? regid | escid]
 
+let rec comment next i lb =
+  match%sedlex lb with
+  | eof -> fail lb "Unterminated comment."
+  | "*/" -> if i=0 then next lb else comment next (i-1) lb
+  | "/*" -> comment next (i+1) lb
+  | any -> comment next i lb
+  | _ -> invalid_character lb
+
+let rec qid expl ids lb =
+  match%sedlex lb with
+  | oneline_comment -> qid expl ids lb
+  | "/*" -> comment (qid expl ids) 0 lb
+  | int -> QINT(List.rev ids, Utf8.lexeme lb)
+  | regid, '.' -> qid expl (remove_last lb :: ids) lb
+  | escid, '.' -> qid expl (remove_last lb :: ids) lb
+  | regid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | escid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
+
 (** Lexer. *)
-let rec token lb =
+let rec token ~allow_rocq_syntax lb =
+  let ifrocq t = if allow_rocq_syntax then t else UID(Utf8.lexeme lb) in
   match%sedlex lb with
 
   (* end of file *)
   | eof -> EOF
 
   (* spaces *)
-  | space -> token lb
+  | space -> token ~allow_rocq_syntax lb
 
   (* comments *)
-  | oneline_comment -> token lb
-  | "/*" -> comment token 0 lb
+  | oneline_comment -> token ~allow_rocq_syntax lb
+  | "/*" -> comment (token ~allow_rocq_syntax) 0 lb
 
   (* keywords *)
   | "abort" -> ABORT
   | "admit" -> ADMIT
   | "admitted" -> ADMITTED
+  | "all_hyps" -> ALL_HYPS
   | "apply" -> APPLY
   | "as" -> AS
   | "assert" -> ASSERT false
@@ -219,10 +249,13 @@ let rec token lb =
   | "debug" -> DEBUG
   | "end" -> END
   | "eval" -> EVAL
+  | "exists" -> ifrocq EXISTS (* only in Rocq *)
   | "fail" -> FAIL
   | "first_hyp" -> FIRST_HYP
   | "flag" -> FLAG
   | "focus" -> FOCUS
+  | "forall" -> ifrocq FORALL  (* only in Rocq *)
+  | "fun" -> ifrocq FUN        (* only in Rocq *)
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
@@ -280,6 +313,8 @@ let rec token lb =
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
   | 0x2192 (* → *) -> ARROW
+  | "->" -> ifrocq ARROW       (* only in Rocq *)
+  | "=>" -> ifrocq THICKARROW  (* only in Rocq *)
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
@@ -311,38 +346,18 @@ let rec token lb =
   (* invalid character *)
   | _ -> invalid_character lb
 
-and qid expl ids lb =
-  match%sedlex lb with
-  | oneline_comment -> qid expl ids lb
-  | "/*" -> comment (qid expl ids) 0 lb
-  | int -> QINT(List.rev ids, Utf8.lexeme lb)
-  | regid, '.' -> qid expl (remove_last lb :: ids) lb
-  | escid, '.' -> qid expl (remove_last lb :: ids) lb
-  | regid ->
-    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
-    else QID(Utf8.lexeme lb :: ids)
-  | escid ->
-    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
-    else QID(Utf8.lexeme lb :: ids)
-  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
-
-and comment next i lb =
-  match%sedlex lb with
-  | eof -> fail lb "Unterminated comment."
-  | "*/" -> if i=0 then next lb else comment next (i-1) lb
-  | "/*" -> comment next (i+1) lb
-  | any -> comment next i lb
-  | _ -> invalid_character lb
-
 (** [token lb] is a lexing function on [lb] that can be passed to a parser. *)
-let token : lexbuf -> token * Lexing.position * Lexing.position =
-  fun lb -> try Sedlexing.with_tokenizer token lb () with
-  | MalFormed -> fail lb "Not Utf8 encoded file"
-  | InvalidCodepoint k ->
-      fail lb ("Invalid Utf8 code point " ^ string_of_int k)
+let token :
+  allow_rocq_syntax:bool ->
+   lexbuf -> token * Lexing.position * Lexing.position =
+  fun ~allow_rocq_syntax lb ->
+    try Sedlexing.with_tokenizer (token ~allow_rocq_syntax) lb () with
+    | MalFormed -> fail lb "Not Utf8 encoded file"
+    | InvalidCodepoint k ->
+       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
 let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
 
-let token =
+let token ~allow_rocq_syntax =
   let r = ref dummy_token in fun lb ->
-  Debug.(record_time Lexing (fun () -> r := token lb)); !r
+  Debug.(record_time Lexing (fun () -> r := token ~allow_rocq_syntax lb)); !r
