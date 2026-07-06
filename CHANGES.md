@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Selection of the library mapping with the longest matching prefix in
   `path_of_file`: with nested mappings, the computed module path could get a
   duplicated directory component.
+- LSP server: go-to-definition and hover on qualified identifiers, and session
+  state leaking between open documents.
 
 ## 3.0.0 (2025-07-16)
 

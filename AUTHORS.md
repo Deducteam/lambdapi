@@ -7,6 +7,7 @@ Active Contributors (in alphabetical order)
 - Abdelghani Alidra (2024-)
 - Bruno Barras (2025-)
 - Jean-Paul Bodeveix (2026-)
+- Ciarán Dunne (2026-)
 
 Past Contributors (in alphabetical order)
 =========================================
