@@ -138,6 +138,61 @@ let open_mod oc p = string oc "open "; path oc p; string oc "\n"
 
 let openings = ref []
 
+let export_types oc p_sym_nam t =
+  let rec set_to_type t =
+    begin match t with
+      | {elt=P_Iden(id,_);_} as a  ->
+          begin
+            match QidMap.find_opt id.elt !encoding with
+            | Some Set -> ({elt=P_Type;pos=a.pos},(true,1))
+            | _ -> (a,(false,0))
+          end
+      | {elt=P_Arro(u,v);_} as a ->
+          let u' = set_to_type u in
+            if fst (snd u')  then
+              let v' = set_to_type v in
+                if fst (snd v') then
+                  ({elt=P_Arro(fst u',fst v');pos=a.pos},
+                      (true, snd (snd u') + snd (snd v')))
+              else (a,(false,0))
+            else (a,(false,0))
+      | _ -> (t,(false,0))
+    end
+  in
+  let p = (set_to_type t) in
+      let t' = fst p in
+        term oc t' ;
+        if fst (snd p) then
+        begin
+          match t' with
+          | {elt=P_Type;_} ->
+            string oc "\n@[instance]\naxiom ne_";ident oc p_sym_nam;
+            string oc " : Nonempty " ; ident oc p_sym_nam;
+          | {elt=P_Arro(_,_);_} ->
+            string oc "\n@[instance]\naxiom ne_";ident oc p_sym_nam;
+              let n = (snd (snd p) - 1) in
+                if n > 0 then
+                  begin
+                    string oc " (a0";
+                    for i=1 to n-1 do
+                      string oc " a" ;
+                      string oc (string_of_int i)
+                    done;
+                    string oc " : Type)";
+                    string oc " : Nonempty ";
+                    char oc '(';
+                    ident oc p_sym_nam; string oc " a0";
+                    for i=1 to n-1 do
+                      string oc " a";
+                      string oc (string_of_int i)
+                    done;
+                    char oc ')';
+                  end
+                else ident oc p_sym_nam
+          | _ -> ()
+        end;
+    string oc "\n"
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,ps) -> List.iter (open_mod oc) ps
@@ -165,7 +220,7 @@ let command oc {elt; pos} =
             string oc " := "; term oc t; string oc "\n"
           | false, _, [], Some t ->
             string oc "axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc "\n"
+            export_types oc p_sym_nam t
           | false, _, _, Some t ->
             string oc "axiom "; ident oc p_sym_nam;
             string oc " : ∀"; top_params_list oc p_sym_arg; string oc ", ";
@@ -199,16 +254,18 @@ let print : string -> ast -> unit = fun file s ->
   match handle_requires s with
   | None -> ()
   | Some c ->
-  List.iter (open_mod oc) (List.rev !openings);
+  begin
+    string oc "\nset_option linter.style.header false\n\n";
+    List.iter (open_mod oc) (List.rev !openings);
+  end;
   string oc "\nnamespace ";
   Option.iter
     (fun s -> string oc
                 (try (Filename.chop_extension s)^"."
                  with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
-  string oc "\n\n";
-  (*debugging options*)
-  string oc "set_option linter.style.missingEnd false\n";
+  (*to erase style-warnings on generated code*)
+  string oc "\nset_option linter.style.missingEnd false\n";
   string oc "set_option linter.unusedVariables false\n";
   string oc "set_option linter.style.longLine false\n\n";
   command oc c;
