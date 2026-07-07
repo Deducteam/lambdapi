@@ -638,7 +638,7 @@ let scope_rule :
     | Patt (Some i, _, [||]) -> i
     | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
              term t in
-  let asSymb t = 
+  let asSymb t =
     match unfold t with
     | Symb s -> s
     | _ -> fatal rule_pos "symbol expected [%a]." term t in

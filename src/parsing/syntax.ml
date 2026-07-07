@@ -412,7 +412,7 @@ and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
 let eq_p_constraint: p_constraint eq = fun c1 c2 ->
   match c1,c2 with
     P_EQ (t1,u1), P_EQ (t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
-  | P_ST (o1,t1,u1), P_ST (o2,t2,u2) -> 
+  | P_ST (o1,t1,u1), P_ST (o2,t2,u2) ->
       eq_p_term o1 o2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_None, P_None -> true
   | _ -> false

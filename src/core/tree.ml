@@ -222,7 +222,7 @@ module CP = struct
     let res = choose_nl pools in
     if res = None then
       let res = choose_eq pools in
-      if res = None then 
+      if res = None then
         let res = choose_st pools in
         if res = None then choose_vf pools else res
       else res
@@ -371,7 +371,7 @@ module CM = struct
         | R_None -> C_None
         | R_EQ ((s1,a1),(s2,a2)) ->
             C_EQ (((s1.sym_path,s1.sym_name), a1),
-                  ((s2.sym_path,s2.sym_name), a2)) 
+                  ((s2.sym_path,s2.sym_name), a2))
         | R_ST (op,p,q) -> C_ST ((op.sym_path,op.sym_name), p, q)
       in
       { c_lhs; c_rhs; cond_pool = CP.empty; c_subst = []; xvars_nb; c_when }
@@ -568,7 +568,7 @@ module CM = struct
           let vars = cond_pool.variables in
           match r.c_rhs.r_when with
           | R_None -> r.c_when, cond_pool
-          | R_ST (sy, i, j) when 
+          | R_ST (sy, i, j) when
                  IntMap.mem i vars && IntMap.mem j vars ->
               if Logger.log_enabled () then
                 log "Registering subterm constraint on position [%a] \
