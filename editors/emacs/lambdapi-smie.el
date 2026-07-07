@@ -9,9 +9,12 @@
 ;; Lists of keywords
 (defconst lambdapi--tactics
   '("admit"
+    "all_hyps"
     "apply"
     "assume"
+    "assumption"
     "fail"
+    "first_hyp"
     "focus"
     "generalize"
     "have"
@@ -95,12 +98,15 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("let" ident ":" sterm "≔" sterm "in" sterm)
              ("let" args ":" sterm "≔" sterm "in" sterm)
              ("let" args "≔" sterm "in" sterm))
-      (tactic ("apply" sterm)
+      (tactic ("all_hyps" sterm)
+              ("apply" sterm)
               ("assume" sterm)
+              ("assumption")
               ("change" sterm)
               ("eval" sterm)
               ("fail")
-              ("focus" ident)
+              ("first_hyp" sterm)
+              ("focus" sterm)
               ("generalize" ident)
               ("have" ident ":" sterm)
               ("induction")
@@ -204,11 +210,14 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
 
     ;; tactics
+    (`(:before . "all_hyps") `(column . ,lambdapi-indent-basic))
     (`(:before . "apply") `(column . ,lambdapi-indent-basic))
     (`(:before . "assume") `(column . ,lambdapi-indent-basic))
+    (`(:before . "assumption") `(column . ,lambdapi-indent-basic))
     (`(:before . "change") `(column . ,lambdapi-indent-basic))
     (`(:before . "eval") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
+    (`(:before . "first_hyp") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "generalize") `(column . ,lambdapi-indent-basic))
     (`(:before . "have") `(column . ,lambdapi-indent-basic))
@@ -244,10 +253,10 @@ The default lexer is used because the syntax is primarily made of sexps."
      (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "apply" "assume" "change" "eval" "fail" "focus"
-                     "generalize" "have" "induction" "refine" "reflexivity"
-                     "remove" "rewrite" "set" "simplify" "solve" "symmetry"
-                     "why3"))
+    (`(:after . ,(or "all_hyps" "apply" "assume" "assumption" "change"
+                     "eval" "fail" "focus" "first_hyp" "generalize" "have"
+                     "induction" "refine" "reflexivity" "remove" "rewrite"
+                     "set" "simplify" "solve" "symmetry" "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel

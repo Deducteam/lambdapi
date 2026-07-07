@@ -66,3 +66,9 @@ let is_string_literal (s:string): bool =
   let n = S.length s in n >= 2 && S.get s 0 = '"' && S.get s (n-1) = '"'
 
 let remove_quotes (n:string): string = S.sub n 1 (S.length n - 2)
+
+let _ =
+  assert (remove_quotes "\"\"" = "");
+  assert (remove_quotes "\"ab\"" = "ab")
+
+let add_quotes (n:string): string = "\""^n^"\""

@@ -23,11 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [5.4.1]
+        ocaml-version: [5.5.0]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # - name: recovering cached opam files
       #   uses: actions/cache@v4
       #   with:

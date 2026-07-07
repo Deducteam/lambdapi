@@ -7,10 +7,14 @@
 ;;; Code:
 
 (defconst lambdapi-tactics
-  '("apply"
+  '("all_hyps"
+    "apply"
     "assume"
+    "assumption"
     "change"
     "eval"
+    "first_hyp"
+    "focus"
     "generalize"
     "have"
     "orelse"

@@ -128,7 +128,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       mk_Patt (Some i, name, ts)
   | None ->
       let i = fresh_index () in
-      mk_Patt (Some i, string_of_int i, ts)
+      mk_Patt (Some i, "", ts)
 
 (* used in desugaring decimal notations *)
 let strint = Array.init 11 string_of_int
@@ -282,7 +282,6 @@ and scope_head : ?find_sym:find_sym ->
 
   | (P_SLit s, _) ->
       begin
-        let s = "\""^s^"\"" in
         let sym =
           try Sign.find Sign.Ghost.sign s
           with Not_found ->

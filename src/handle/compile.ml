@@ -90,6 +90,7 @@ let rec compile : Command.compiler = fun ss mp ->
         else Tree.update_dtree s []
       in
       Ghost.iter update;
+      if Stdlib.(!Common.Console.lsp_mod) then Tool.Indexing.index_sign sign;
       sign
     end
 

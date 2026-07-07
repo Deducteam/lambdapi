@@ -99,11 +99,15 @@
 
 <tactic> ::= <query>
            | "admit"
+           | "all_hyps" <term>
            | "apply" <term>
            | "assume" <param>+
+           | "assumption"
            | "change" <term>
            | "eval" <term>
            | "fail"
+           | "first_hyp" <term>
+           | "focus" <integer>
            | "generalize" <uid>
            | "have" <uid> ":" <term>
            | "induction"
@@ -138,10 +142,8 @@
           | "compute" <term>
           | "print" [<id> | "unif_rule" | "coerce_rule"]
           | "proofterm"
-          | "debug"
-          | "debug" ("+"|"-") <char>+
-          | "flag"
-          | "flag" <string> <switch>
+          | "debug" [("+"|"-") <char>+]
+          | "flag" [string> <switch>]
           | "prover" <string>
           | "prover_timeout" <integer>
           | "verbose" <integer>

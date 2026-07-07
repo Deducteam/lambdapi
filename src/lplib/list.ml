@@ -314,3 +314,24 @@ let pos : ('a -> bool) -> 'a list -> int = fun f ->
     | [] -> raise Not_found
     | x::xs -> if f x then k else pos (k+1) xs
   in pos 0
+
+(** [move_nth n l] moves the nth element of l (counting from 0) to its front,
+    or raises [Invalid_argument]. *)
+let move_nth (n:int) (l:'a list): 'a list =
+  let rec move (acc:'a list) n l =
+    match l with
+     | [] -> invalid_arg "remove_nth"
+     | x::l -> if n <= 0 then x :: rev_append acc l
+               else move (x::acc) (n-1) l
+  in move [] n l
+
+(* unit tests *)
+let _ =
+  let l = [0;1;2;3;4] in
+  assert (move_nth 2 l = [2;0;1;3;4]);
+  assert (move_nth 0 l = l);
+  assert (move_nth 4 l = [4;0;1;2;3])
+
+(* Tail recursive implementation of List.append for
+   OCaml < 5.1 *)
+let (@) l1 l2 = rev_append (rev l1) l2

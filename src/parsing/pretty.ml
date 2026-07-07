@@ -27,6 +27,7 @@ let _ = let open LpLexer in
     ; "assertnot", ASSERT true
     ; "associative", ASSOCIATIVE
     ; "assume", ASSUME
+    ; "assumption", ASSUMPTION
     ; "begin", BEGIN
     ; "builtin", BUILTIN
     ; "commutative", COMMUTATIVE
@@ -36,6 +37,7 @@ let _ = let open LpLexer in
     ; "end", END
     ; "fail", FAIL
     ; "flag", FLAG
+    ; "focus", FOCUS
     ; "generalize", GENERALIZE
     ; "have", HAVE
     ; "in", IN
@@ -98,9 +100,8 @@ let raw_path : Path.t pp = List.pp raw_ident "."
 let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
 let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
-  match mp with
-  | [] -> raw_ident ppf s
-  | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
+  if mp = [] || mp = Sign.Ghost.path then raw_ident ppf s
+  else out ppf "%a.%a" raw_path mp raw_ident s
 
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
@@ -157,7 +158,7 @@ let rec term : p_term pp = fun ppf t ->
           ident x params_list xs typ a func t func u
     | (P_NLit([],i)        , _    ) -> out ppf "%s" i
     | (P_NLit(p,i)         , _    ) -> out ppf "%a.%s" raw_path p i
-    | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
+    | (P_SLit(s)           , _    ) -> string ppf s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (P_Appl _, `Atom)
@@ -247,18 +248,24 @@ let assertion : p_assertion pp = fun ppf a ->
   | P_assert_typing (t, a) -> out ppf "@[%a@ : %a@]" term t term a
   | P_assert_conv (t, u)   -> out ppf "@[%a@ ≡ %a@]" term t term u
 
-let relation ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
+let relation ppf s =
+  string ppf (match s with Exact -> " = " | Inside -> " > ")
 
 let where elt ppf = function
   | Spine x -> out ppf "spine%a" elt x
   | Conclusion x -> out ppf "concl%a" elt x
   | Hypothesis x -> out ppf "hyp%a" elt x
 
+  let f ppf x = string ppf x
 let search_constr ppf = function
-  | QType x -> out ppf "type%a" (Option.pp (where (Option.pp relation))) x
-  | QXhs(i,None) -> out ppf "rule%a" (Option.pp relation) i
-  | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp relation) i
-  | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp relation) i
+  | QType x -> out ppf "%a" (Option.pp
+    (where (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation))) x
+  | QXhs(i,None) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Lhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Rhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
 
 let generalize ppf b = if b then string ppf " generalize"
 
@@ -272,7 +279,10 @@ let op ppf o = string ppf (match o with
     Union -> " | "
   | Intersect -> " with ")
 
-let filter ppf (Path s) = out ppf " in %s" s
+let filter ppf f =
+  match f with
+  | Path s -> out ppf " in %s" s
+  | RegExp s -> out ppf " in \"%s\"" s
 
 let rec search ppf = function
   | QBase b -> search_base ppf b
@@ -302,12 +312,16 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
+  | P_tac_all_hyps t -> out ppf "all_hyps %a" term t
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_assumption -> out ppf "assumption"
   | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
+  | P_tac_first_hyp t -> out ppf "first_hyp %a" term t
+  | P_tac_focus n -> out ppf "focus %s" n
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
