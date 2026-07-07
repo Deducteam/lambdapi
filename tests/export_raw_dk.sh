@@ -59,7 +59,7 @@ do
         # module alias
         alias);;
         # conditional rules
-        cond_rules);;
+        cond_rules*);;
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change|assumption|focus|assume|first_hyp|all_hyps);;
         # "open"

@@ -144,7 +144,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (indcons (args ":" sterm) ("|" args ":" sterm))
       (inddec (inddec "with" args ":" sterm "≔" indcons))
       (rules (rules "with" sterm "↪" sterm)
-             (rules "with" sterm "when" sterm "≡" sterm "↪" sterm))
+             (rules "with" sterm "when" condition "↪" sterm))
+      (condition (sterm "«[" sterm "]" sterm) (sterm "≡" sterm))
       (command
                ("begin" prfcontent "abort" ";")
                ("begin" prfcontent "admitted" ";")
@@ -242,7 +243,7 @@ The default lexer is used because the syntax is primarily made of sexps."
                       "print" "proofterm" "search" "type"))
      (lambdapi--query-indent))
 
-    (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))
+    (`(,_ . ,(or "«" "," "↪" "→" "≡")) (smie-rule-separator kind))
 
     (`(,(or :before :list-intro) . ,(or "≔" ":")) (smie-rule-separator kind))
     (`(:after . ,(or "≔" ":")) lambdapi-indent-basic)

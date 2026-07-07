@@ -556,8 +556,11 @@ let scope_rule :
      arity. *)
   let pvs_when =
     match p_when with
-    | None -> []
-    | Some (t1,t2) ->
+    | P_None -> []
+    | P_EQ (t1,t2) ->
+        let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
+        p1 @ p2
+    | P_ST (_o,t1,t2) ->
         let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
         p1 @ p2 in
   let check_arity (m,i) =
@@ -631,19 +634,26 @@ let scope_rule :
   let arity = List.length lhs in
   let f i = try Hashtbl.find names i with Not_found -> string_of_int i in
   let names = Array.init vars_nb f in
+  let asPatt t = match unfold t with
+    | Patt (Some i, _, [||]) -> i
+    | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
+             term t in
+  let asSymb t = 
+    match unfold t with
+    | Symb s -> s
+    | _ -> fatal rule_pos "symbol expected [%a]." term t in
+  let p_asPatt t = asPatt (scope ~find_sym 0 mode ss Env.empty t) in
+  let p_asSymb t = asSymb (scope ~find_sym 0 mode ss Env.empty t) in
   let pw2rw t =
-    let asPatt t = match unfold t with
-      | Patt (Some i, _, [||]) -> i
-      | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
-               term t in
     let t = scope ~find_sym 0 mode ss Env.empty t in
     match get_args t with
       Symb s, args ->  (s, List.map asPatt args)
     | _ -> fatal rule_pos "function should be a global symbol in [%a]." term t
   in
   let r_when = match p_when with
-    | None -> None
-    | Some (t1,t2) -> Some (pw2rw t1, pw2rw t2) in
+    | P_None -> R_None
+    | P_EQ (t1,t2) -> R_EQ (pw2rw t1, pw2rw t2)
+    | P_ST (o,t1,t2) -> R_ST (p_asSymb o, p_asPatt t1, p_asPatt t2) in
   let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb;
            rule_pos; r_when} in
   (sym,r)

@@ -209,6 +209,7 @@ syntax match Keyword ","
 syntax match Keyword ";"
 syntax match Keyword "_"
 syntax match Keyword "≡"
+syntax match Keyword "«"
 
 " Other special classes.
 syntax match Type "\u\w*"
@@ -217,6 +218,7 @@ syntax match PreProc  "?\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
 
 " Abbreviations.
 abbreviate --> ↪
+abbreviate << «
 abbreviate -> →
 abbreviate => ⇒
 abbreviate !  Π

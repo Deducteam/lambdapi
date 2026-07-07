@@ -133,8 +133,13 @@ let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
   | P_Expl u
     -> pvars_lhs u
 
+type p_constraint =
+  P_EQ of p_term * p_term           (* t1 == t2 *)
+| P_ST of p_term * p_term * p_term  (* t2 <<[t1] t3 *)
+| P_None
+
 (** Parser-level rewriting rule representation. *)
-type p_rule_aux = p_term * p_term * (p_term * p_term) option
+type p_rule_aux = p_term * p_term * p_constraint
 type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
@@ -182,7 +187,7 @@ module P  = struct
   let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 
-  let rule : p_term -> p_term -> (p_term * p_term) option -> p_rule =
+  let rule : p_term -> p_term -> p_constraint -> p_rule =
     fun l r w -> Pos.none (l,r,w)
 end
 
@@ -404,13 +409,21 @@ and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
   List.eq (Option.eq eq_p_ident) i1 i2
   && Option.eq eq_p_term ao1 ao2 && b1 = b2
 
+let eq_p_constraint: p_constraint eq = fun c1 c2 ->
+  match c1,c2 with
+    P_EQ (t1,u1), P_EQ (t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_ST (o1,t1,u1), P_ST (o2,t2,u2) -> 
+      eq_p_term o1 o2 && eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_None, P_None -> true
+  | _ -> false
+
 let pair_eq: 'a eq -> 'b eq -> ('a * 'b) eq = fun eq1 eq2 (x1,y1) (x2,y2) ->
   eq1 x1 x2 && eq2 y1 y2
 
 let eq_p_rule : p_rule eq = fun {elt=(l1,r1,w1);_} {elt=(l2,r2,w2);_} ->
   eq_p_term l1 l2
   && eq_p_term r1 r2
-  && Option.eq (pair_eq eq_p_term eq_p_term) w1 w2
+  && eq_p_constraint w1 w2
 
 let eq_p_inductive : p_inductive eq =
   let eq_cons (i1,t1) (i2,t2) = eq_p_ident i1 i2 && eq_p_term t1 t2 in
@@ -624,14 +637,15 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
 
   let fold_term : 'a -> p_term -> 'a = fold_term_vars StrSet.empty in
 
-  let fold_when : 'a -> (p_term * p_term) option -> 'a = fun a w ->
+  let fold_constraint : 'a -> p_constraint -> 'a = fun a w ->
     match w with
-    | Some (t1,t2) -> fold_term (fold_term a t1) t2
-    | None -> a
+    | P_EQ (t1,t2) -> fold_term (fold_term a t1) t2
+    | P_ST (o,t1,t2) -> fold_term (fold_term (fold_term a o) t1) t2
+    | P_None -> a
   in
 
   let fold_rule : 'a -> p_rule -> 'a = fun a {elt=(l,r,w);_} ->
-    fold_when (fold_term (fold_term a l) r) w
+    fold_constraint (fold_term (fold_term a l) r) w
   in
 
   let fold_rwpatt_vars : StrSet.t -> 'a -> p_rwpatt -> 'a = fun vs a p ->

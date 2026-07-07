@@ -189,9 +189,11 @@ and typ : p_term option pp = fun ppf t ->
 
 let rule : string -> p_rule pp = fun kw ppf {elt=(l,r,w);_} ->
   match w with
-  | None -> out ppf "%s %a ↪ %a" kw term l term r
-  | Some (t1,t2) -> out ppf "%s %a when %a ≡ %a ↪ %a"
+  | P_None -> out ppf "%s %a ↪ %a" kw term l term r
+  | P_EQ (t1,t2) -> out ppf "%s %a when %a ≡ %a ↪ %a"
                       kw term l term t1 term t2 term r
+  | P_ST (o,t1,t2) -> out ppf "%s %a when %a «[%a] %a ↪ %a"
+                      kw term l term t1 term o term t2 term r
 
 let inductive : string -> p_inductive pp =
   let cons ppf (id,a) = out ppf "@,| %a : %a" ident id term a in

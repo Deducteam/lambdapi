@@ -347,7 +347,7 @@ let iter_rec_rules :
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      Pos.make rules_pos (arec ind_sym ts cons_arg, rhs, None)
+      Pos.make rules_pos (arec ind_sym ts cons_arg, rhs, P_None)
     in
     fold_cons_type pos ind_pred_map "" ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom

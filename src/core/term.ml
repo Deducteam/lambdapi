@@ -206,6 +206,14 @@ and sym =
 
 (** {3 Representation of rewriting rules} *)
 
+(** optional rule constraints *)
+and r_constraint =
+  (* equality constraint f p1 ... pn == g q1 ... qm *)
+  | R_EQ of (sym * int list) * (sym * int list)
+  (* subterm constraint p <<[op] q *)
+  | R_ST of sym * int * int
+  | R_None (* no constraint *)
+
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
     LHS (left hand side),  which is the pattern that should be matched for the
     rule to apply, and a RHS (right hand side) giving the action to perform if
@@ -214,8 +222,7 @@ and sym =
   { lhs      : term list (** Left hand side (LHS). *)
   ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
-  ; r_when   : ((sym * int list) * (sym * int list)) option
-  (** conditional rule constraint. *)
+  ; r_when   : r_constraint (** conditional rule constraint. *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)

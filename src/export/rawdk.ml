@@ -136,7 +136,7 @@ let rec remove_wraps ({elt;_} as t) =
 let rule : p_rule pp =
   let varset ppf set = List.pp string ", " ppf (StrSet.elements set) in
   fun ppf {elt=(l,r,w);_} ->
-  if w = None then
+  if w = P_None then
     out ppf "[%a] %a --> %a.@."
       varset (pvars_lhs l) term (remove_wraps l) term r
   else
