@@ -133,7 +133,7 @@ let match_token tok patt =
   | SIDE _, SIDE _
   | STRINGLIT _, STRINGLIT _
   | SWITCH false, SWITCH false
-  | SWITCH true, SWITCH _
+  | SWITCH true, SWITCH true
   | UID _, UID _
   | UID_EXPL _, UID_EXPL _
   | UID_META _, UID_META _
@@ -199,16 +199,8 @@ let prefix (token:token) (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a =
 
 let opt (tk : 'token) (lb:'token lexbuf) : bool =
   if log_enabled() then log "%s" __FUNCTION__;
-  if current_token lb = tk then
-   begin
-    consume_token lb;
-    true
-   end
-  else
-   begin
-     set_expected_tokens lb [tk];
-    false
-   end
+  if current_token lb = tk then (consume_token lb; true)
+  else (set_expected_tokens lb [tk]; false)
 
 let list (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
  : 'a list =
@@ -239,16 +231,8 @@ let list_with_sep_or_termin
   let acc = ref [] in
   let match_sep = ref false in
   while match_guard (if !match_sep then [sep] else guard) lb do
-    if !match_sep then
-     begin
-      consume sep lb ;
-      match_sep := false
-     end
-    else
-     begin
-      acc := elt lb :: !acc ;
-      match_sep := true
-     end
+    if !match_sep then (consume sep lb; match_sep := false)
+    else (acc := elt lb :: !acc; match_sep := true)
   done ;
   set_expected_tokens lb (if !match_sep then [sep] else guard) ;
   List.rev !acc
@@ -519,14 +503,6 @@ and inductive_cmd (p_sym_mod:p_modifier list) (lb:'token lexbuf)
      let is = list [WITH] (prefix WITH inductive) lb in
      P_inductive(p_sym_mod,xs,i::is)
  | _ -> expected lb "" [L_PAREN;L_SQ_BRACKET;INDUCTIVE]
-
-(* BUG IN DOC TODO:
-   - inductive can be prefixed by some modifiers
-   - require can be followed by [private] open: is is documented in open
-     but not in require
-   - doc does not say that after := you may have a proof (in {..}) instead
-     of a term! (grammatical entry term_proof)
-*)
 
 and command (lb:'token lexbuf) : p_command =
  if log_enabled() then log "%s" __FUNCTION__;
@@ -925,8 +901,7 @@ and term_proof (lb:'token lexbuf):
       else
        Some t, None
   | _ ->
-      (*CSC message only*)
-      expected lb "term of proof" []
+      expected lb "term or proof" []
 
 (* proofs *)
 
@@ -984,7 +959,6 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       let pe = proof_end lb in
       [], pe
   | _ ->
-      (*CSC message only *)
       expected lb "subproof, tactic or query" []
 
 and subproof_tks = [L_CU_BRACKET]
@@ -1210,7 +1184,6 @@ and tactic (lb:'token lexbuf): p_tactic =
             make_pos pos1 (P_tac_why3 None)
       end
   | _ ->
-      (*CSC both message and tokens *)
       expected lb "tactic or query" tactic_tks
 
 and rwpatt_content (lb:'token lexbuf): p_rwpatt =
@@ -1272,7 +1245,6 @@ and rwpatt_content (lb:'token lexbuf): p_rwpatt =
       else
         extend_pos lb (*__FUNCTION__*) pos1 (Rw_InTerm(t1))
   | _ ->
-      (*CSC message only*)
       expected lb "term or keyword \"in\"" []
 
 and rwpatt_bracket (lb:'token lexbuf): p_rwpatt =
@@ -1333,7 +1305,7 @@ and params (lb:'token lexbuf): p_params =
       expected lb "" params_tks
 
 and term_tks =
-  [BACKQUOTE;EXISTS;FORALL;FUN;PI;LAMBDA;LET;
+  [BACKQUOTE;(*EXISTS;FORALL;FUN;*)PI;LAMBDA;LET;
    UID"";QID[];UID_EXPL"";QID_EXPL[];UNDERSCORE;
    TYPE_TERM;UID_META 0;UID_PATT"";L_PAREN;L_SQ_BRACKET;
    INT"";QINT([],"");STRINGLIT""]
@@ -1367,7 +1339,6 @@ and term (lb:'token lexbuf): p_term =
       let h = aterm lb in
       app pos1 h lb
   | _ ->
-      (*CSC both message and tokens *)
       expected lb "term" term_tks
 
 and app (pos1:position * position) (t: p_term) (lb:'token lexbuf): p_term =
@@ -1469,7 +1440,7 @@ and bterm (lb:'token lexbuf): p_term =
             expected lb "" [COLON;ASSIGN]
       end
   | _ ->
-      expected lb "" [BACKQUOTE;EXISTS;FORALL;PI;LAMBDA;FUN;LET]
+    expected lb "" [BACKQUOTE;PI;LAMBDA;LET(*;EXISTS;FORALL;FUN*)]
 
 and aterm (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1530,9 +1501,8 @@ and aterm (lb:'token lexbuf): p_term =
         consume_token lb;
         make_pos pos1 (P_SLit s)
     | _ ->
-        (*CSC wrong message only: constants for example are not listed*)
-        expected lb "identifier, \"_\", or term between parentheses or \
-        square brackets" []
+      expected lb "TYPE, identifier, integer or string literal, \"_\", \
+                   or term between parentheses or square brackets" []
 
 and env (lb:'token lexbuf): p_term list =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1568,9 +1538,7 @@ and binder (lb:'token lexbuf): p_params list * p_term =
             let p = [s], Some a, false in
             [p], term lb
         | _ ->
-            (*CSC message and tokens!*)
-            expected lb "parameter list"
-              [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET;COMMA]
+            expected lb "" [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET;COMMA;COLON]
       end
   | L_PAREN ->
       let ps = nelist params_tks params lb in
@@ -1583,7 +1551,7 @@ and binder (lb:'token lexbuf): p_params list * p_term =
   | _ ->
       expected lb "" [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET]
 
-and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
+and rocqbinder (lb:'token lexbuf) (terminator:token): p_params list * p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
   | UID _
@@ -1612,16 +1580,14 @@ and rocqbinder (lb:'token lexbuf) terminator : p_params list * p_term =
                     [p], term lb
                 end
             else
-             (*CSC message and tokens!*)
-             expected lb "parameter list"
-              [UID"";UNDERSCORE;L_PAREN;terminator]
+              expected lb "" [UID"";UNDERSCORE;L_PAREN;COLON;terminator]
       end
   | L_PAREN ->
       let ps = nelist params_tks params lb in
       consume terminator lb;
       ps, term lb
   | _ ->
-      expected lb "" [UID"";UNDERSCORE;L_PAREN;]
+      expected lb "" [UID"";UNDERSCORE;L_PAREN]
 
 
 (* search *)
