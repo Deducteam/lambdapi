@@ -145,7 +145,7 @@ let command oc {elt; pos} =
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (is_mapped p_sym_nam.elt) then
+      if not (is_mapped p_sym_nam.elt) then (
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are
@@ -158,7 +158,6 @@ let command oc {elt; pos} =
             string oc "Definition "; ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t; string oc ".\n";
-            List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) p_sym_mod;
           | false, _, [], Some t ->
             string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
             term oc t; string oc ".\n"
@@ -167,7 +166,7 @@ let command oc {elt; pos} =
             params_list oc p_sym_arg; string oc ", "; term oc t;
             string oc ".\n"
           | _ -> wrn pos "Command not translated."
-        end
+          end; List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) p_sym_mod)
   | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
   | P_type_class qid -> add_modifier oc qid {elt=P_typeclass;pos}
   | P_type_class_instance qid ->
