@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Stack_overflow exception due large number of search results.
 - Parser fix: the (ne)list combinator did not backtrack the stream in case of
   failure in the middle of the parsing of a list item
+- Selection of the library mapping with the longest matching prefix in
+  `path_of_file`: with nested mappings, the computed module path could get a
+  duplicated directory component.
 
 ## 3.0.0 (2025-07-16)
 
