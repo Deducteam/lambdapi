@@ -47,6 +47,7 @@ module Tactic = struct
   type t = Syntax.p_tactic
   let equal = Syntax.eq_p_tactic
   let get_pos t = Pos.(t.pos)
+  let keyword = Syntax.tactic_keyword
   let print = Util.located Pretty.tactic
 end
 

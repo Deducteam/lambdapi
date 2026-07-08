@@ -298,6 +298,55 @@ and p_tactic = p_tactic_aux loc
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
 let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true
 
+(** [query_keyword q] returns the keyword introducing query [q]. *)
+let query_keyword : p_query -> string = fun {elt;_} ->
+  match elt with
+  | P_query_verbose _ -> "verbose"
+  | P_query_debug _ -> "debug"
+  | P_query_flag _ -> "flag"
+  | P_query_assert(true,_) -> "assertnot"
+  | P_query_assert(false,_) -> "assert"
+  | P_query_infer _ -> "type"
+  | P_query_normalize _ -> "compute"
+  | P_query_prover _ -> "prover"
+  | P_query_prover_timeout _ -> "prover_timeout"
+  | P_query_print _ -> "print"
+  | P_query_proofterm -> "proofterm"
+  | P_query_search _ -> "search"
+
+(** [tactic_keyword t] returns the keyword introducing tactic [t], or
+    [None] for tactics that no single keyword introduces (not produced by
+    the LP parser). *)
+let tactic_keyword : p_tactic -> string option = fun {elt;_} ->
+  match elt with
+  | P_tac_admit -> Some "admit"
+  | P_tac_and _ -> None
+  | P_tac_all_hyps _ -> Some "all_hyps"
+  | P_tac_apply _ -> Some "apply"
+  | P_tac_assume _ -> Some "assume"
+  | P_tac_assumption -> Some "assumption"
+  | P_tac_change _ -> Some "change"
+  | P_tac_eval _ -> Some "eval"
+  | P_tac_fail -> Some "fail"
+  | P_tac_first_hyp _ -> Some "first_hyp"
+  | P_tac_focus _ -> Some "focus"
+  | P_tac_generalize _ -> Some "generalize"
+  | P_tac_have _ -> Some "have"
+  | P_tac_induction -> Some "induction"
+  | P_tac_orelse _ -> Some "orelse"
+  | P_tac_query q -> Some (query_keyword q)
+  | P_tac_refine _ -> Some "refine"
+  | P_tac_refl -> Some "reflexivity"
+  | P_tac_remove _ -> Some "remove"
+  | P_tac_repeat _ -> Some "repeat"
+  | P_tac_rewrite _ -> Some "rewrite"
+  | P_tac_set _ -> Some "set"
+  | P_tac_simpl _ -> Some "simplify"
+  | P_tac_solve -> Some "solve"
+  | P_tac_sym -> Some "symmetry"
+  | P_tac_try _ -> Some "try"
+  | P_tac_why3 _ -> Some "why3"
+
 (** Parser-level representation of a proof. *)
 type p_subproof = p_proofstep list
 

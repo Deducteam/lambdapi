@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   duplicated directory component.
 - LSP server: go-to-definition and hover on qualified identifiers, and session
   state leaking between open documents.
+- LSP server: the success ("OK") diagnostic of a command is now shown on its
+  terminating ";", and that of a tactic on its leading keyword, instead of
+  underlining the whole command or tactic (symbol body, rule right-hand
+  side, proof, etc.).
 
 ## 3.0.0 (2025-07-16)
 
