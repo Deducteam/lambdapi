@@ -279,7 +279,6 @@ let consume_INT (lb:'token lexbuf): string =
 let consume_DEBUG_FLAGS (lb:'token lexbuf): bool * string =
   match current_token lb with
   | SEMICOLON ->
-      consume_token lb;
       true,""
   | DEBUG_FLAGS(b,s) ->
       consume_token lb;
