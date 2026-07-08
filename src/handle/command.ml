@@ -133,17 +133,21 @@ let handle_require compile bo ss {elt=p;_} =
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> prop * expo * match_strat =
+let handle_modifiers :
+ p_modifier list -> prop * expo * match_strat * (*opaq:*)bool =
   fun ms ->
-  let rec get_modifiers ((props, expos, strats) as acc) = function
+  let rec get_modifiers ((props, expos, strats, opaq) as acc) = function
     | [] -> acc
-    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats) ms
-    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats) ms
+    | {elt=P_prop _;_} as p::ms ->
+        get_modifiers (p::props, expos, strats, opaq) ms
+    | {elt=P_expo _;_} as e::ms ->
+        get_modifiers (props, e::expos, strats, opaq) ms
     | {elt=P_mstrat _;_} as s::ms ->
-        get_modifiers (props, expos, s::strats) ms
-    | {elt=P_opaq;_}::ms -> get_modifiers acc ms
+        get_modifiers (props, expos, s::strats, opaq) ms
+    | {elt=P_opaq;_}::ms ->
+        get_modifiers (props, expos, strats, true) ms
   in
-  let props, expos, strats = get_modifiers ([],[],[]) ms in
+  let props, expos, strats, opaq = get_modifiers ([],[],[],false) ms in
   let prop =
     match props with
     | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
@@ -172,7 +176,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
     | [] -> Eager
     | _ -> assert false
   in
-  (prop, expo, strat)
+  (prop, expo, strat, opaq)
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -342,12 +346,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
 
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, expo, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat, opaq) = handle_modifiers ms in
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
         fatal pos "Pattern matching strategy modifiers cannot be used on \
                        inductive types.";
+      if opaq then
+        fatal pos "Inductive types cannot be declared opaque.";
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
@@ -454,8 +460,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | _ -> ()
     end;
     (* Verify modifiers. *)
-    let prop, expo, mstrat = handle_modifiers p_sym_mod in
-    let opaq = List.exists Syntax.is_opaq p_sym_mod in
+    let prop, expo, mstrat, opaq = handle_modifiers p_sym_mod in
     let pdata_prv = opaq || expo = Privat in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."

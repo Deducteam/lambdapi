@@ -30,20 +30,22 @@ type 'token zipper = 'token token_pos list list * 'token token_pos list
 type 'token lexbuf =
  { pp_token : (Format.formatter -> 'token -> unit)
  ; get_next_token : unit -> 'token token_pos
- ; the_current_token_pos : 'token zipper ref
+ ; mutable the_current_token_pos : 'token zipper
+ ; mutable expected_tokens : 'token list
  }
 
 let new_parser ~pp ~lexer_ =
  { pp_token = pp
  ; get_next_token = lexer_
- ; the_current_token_pos =  Stdlib.ref ([],[lexer_ ()])
+ ; the_current_token_pos = ([],[lexer_ ()])
+ ; expected_tokens = []
  }
 
 let pp_token (lb : 'token lexbuf) = lb.pp_token
 let get_next_token (lb : 'token lexbuf) = lb.get_next_token ()
 let the_current_token_pos (lb : 'token lexbuf) : 'token zipper =
- !(lb.the_current_token_pos)
-let (:=) lb z = lb.the_current_token_pos := z
+ lb.the_current_token_pos
+let (:=) lb z = lb.the_current_token_pos <- z
 
 let current_token_pos lb =
  match the_current_token_pos lb with
@@ -69,6 +71,7 @@ let consume_token (lb:'token lexbuf) : unit =
   | l::ll, tkp::tkps ->
      lb := (tkp::l)::ll, tkps
  end ;
+ lb.expected_tokens <- [];
  if Common.Logger.log_enabled() then
    let (t,p1,p2) = current_token_pos lb in
    let p = Common.Pos.locate (p1,p2) in
@@ -88,9 +91,15 @@ let succeed_or_reset_stream f lb =
      lb := (l1@l2)::ll, tkps ;
      res
  with
-  LpLexer.SyntaxError _ as e ->
+  LpLexer.SyntaxError (true,_) as e ->
    match the_current_token_pos lb with
    | [], _ -> assert false
    | l::ll, tkps ->
       lb := ll, List.rev l @ tkps ;
       raise e
+
+let set_expected_tokens lb l =
+ lb.expected_tokens <- l
+
+let get_expected_tokens lb =
+ lb.expected_tokens

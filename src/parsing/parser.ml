@@ -114,15 +114,15 @@ sig
   end
 = struct
 
-  type zlexbuf = LpLexer.token ZipperTokenLexbuf.lexbuf
+  type zlexbuf = LpLexer.token OneLookaheadCellLexbuf.lexbuf
 
   let handle_error (icopt: in_channel option)
         (entry: zlexbuf -> 'a) (lb: zlexbuf): 'a option =
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
-    | LpLexer.SyntaxError{pos=None; _} -> assert false
-    | LpLexer.SyntaxError{pos=Some pos; elt} ->
+    | LpLexer.SyntaxError(_,{pos=None; _}) -> assert false
+    | LpLexer.SyntaxError(_,{pos=Some pos; elt}) ->
         parser_fatal pos "Syntax error. %s" elt
 
   let parse_lexbuf' ~allow_rocq_syntax (icopt: in_channel option)
@@ -130,7 +130,7 @@ sig
     Stream.from
      (fun _ ->
        handle_error icopt entry
-        (ZipperTokenLexbuf.new_parser
+        (OneLookaheadCellLexbuf.new_parser
           ~pp:LpParser.pp_token
            ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax lb)))
 

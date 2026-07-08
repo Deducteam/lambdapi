@@ -88,6 +88,10 @@ type definition, assuming that the following builtins are defined:
 
 An inductive type can have 0 or more constructors.
 
+The ``inductive`` keyword can be preceded by ``private`` or
+``protected``. This makes the type and constructor symbols ``private``
+or ``protected`` respectively.
+
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
 
@@ -247,7 +251,7 @@ The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previou
 ------------------
 
 Puts into scope the symbols of the previously required modules given
-in arguments. It can also be combined with the ``require`` command.
+in arguments.
 
 Non-private ``open`` commands are transitively inherited: if A opens B
 and B opens C, then the symbols of C are also put in scope in the
@@ -275,13 +279,14 @@ modules. These symbols can be used by prefixing them with their module
 path: if a module ``Stdlib.Bool`` declares a symbol ``true`` then,
 after ``require Stdlib.Bool``, one can use ``true`` by writing
 ``Stdlib.Bool.true``. It is possible to get rid of the prefix by using
-the ``open`` command.
+an :ref:`open` command afterwards, or by writing ``require open
+Stdlib.Bool`` (see the :ref:`open` command for more details).
 
 Dependencies are transitively inherited: if A requires B and B
 requires C, then the symbols of C are also imported in the current
 environment.
 
-A required module also can be aliased.
+A non-open required module can be aliased as follows:
 
 ::
 
@@ -405,7 +410,7 @@ Other examples of patterns are available in `patterns.lp <https://github.com/Ded
 
 Allows to declare or define a symbol as follows:
 
-*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
+*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` [*term*]] [``begin`` *proof* ``end``] ``;``
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
