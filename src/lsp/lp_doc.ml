@@ -42,6 +42,7 @@ type t = {
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Core.Term.qident RangeMap.t;
+  path_map : Common.Path.t RangeMap.t;
 }
 
 let option_default o1 d =
@@ -166,6 +167,7 @@ let new_doc ~uri ~version ~text =
     nodes = [];
     logs = logs;
     map = RangeMap.empty;
+    path_map = RangeMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -208,5 +210,6 @@ let check_text ~doc =
     | Some(pos,msg) -> logs @ [((1, msg), Some pos)], diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
-  let doc = { doc with nodes; final=Some(final); map; logs } in
+  let path_map = Pure.path_rangemap cmds in
+  let doc = { doc with nodes; final=Some(final); map; path_map; logs } in
   doc, LSP.mk_diagnostics ~uri ~version diags

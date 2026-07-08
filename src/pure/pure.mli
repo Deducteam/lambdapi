@@ -10,6 +10,9 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_elt : t -> Parsing.Syntax.p_command_aux
+  (** Expose the parser-level command shape so clients (LSP, MCP, …)
+      can pattern-match on declaration forms (e.g. to build outlines). *)
   val keyword_pos : t -> Pos.popt
   (** Position of the keyword introducing the command ("symbol", "rule",
       "require", …), which is not always at its start: modifiers or
@@ -18,6 +21,10 @@ module Command : sig
 end
 
 val rangemap : Command.t list -> Term.qident RangeMap.t
+
+(** [path_rangemap cmds] maps source ranges of module paths appearing in
+    [require]/[open] commands to the paths they denote. *)
+val path_rangemap : Command.t list -> Common.Path.t RangeMap.t
 
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig
@@ -103,6 +110,11 @@ val find_sym : state -> Term.qident -> Term.sym option
     this before touching timed globals, otherwise they see whichever
     document was opened most recently. *)
 val restore_time : state -> unit
+
+(** [set_print_state st] installs [st] as the printer's signature state
+    so that subsequent [Print.sym_type] / [Print.term] calls produce
+    correctly qualified output. *)
+val set_print_state : state -> unit
 
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise
