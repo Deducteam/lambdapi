@@ -133,7 +133,7 @@ let match_token tok patt =
   | SIDE _, SIDE _
   | STRINGLIT _, STRINGLIT _
   | SWITCH false, SWITCH false
-  | SWITCH true, SWITCH true
+  | SWITCH true, SWITCH _
   | UID _, UID _
   | UID_EXPL _, UID_EXPL _
   | UID_META _, UID_META _
