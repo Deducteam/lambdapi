@@ -49,7 +49,8 @@ builtin "induction" ≔ #induction;
 constant symbol #orelse : Tactic → Tactic → Tactic;
 builtin "orelse" ≔ #orelse;
 
-constant symbol #refine [p] : π p → Tactic;
+/*constant symbol #refine [p] : π p → Tactic;*/
+constant symbol #refine: String → Tactic;
 builtin "refine" ≔ #refine;
 
 constant symbol #reflexivity : Tactic;
@@ -84,6 +85,9 @@ builtin "try" ≔ #try;
 
 constant symbol #why3 : Tactic;
 builtin "why3" ≔ #why3;
+
+constant symbol #with_goal : (Prop → Tactic) → Tactic;
+builtin "with_goal" ≔ #with_goal;
 
 constant symbol #change : Tactic;
 builtin "change" ≔ #change;

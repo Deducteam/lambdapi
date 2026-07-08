@@ -292,6 +292,7 @@ type p_tactic_aux =
   | P_tac_sym
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
+  | P_tac_with_goal of p_term
 
 and p_tactic = p_tactic_aux loc
 
@@ -457,6 +458,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_all_hyps t1, P_tac_all_hyps t2
   | P_tac_first_hyp t1, P_tac_first_hyp t2
+  | P_tac_with_goal t1, P_tac_with_goal t2
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
   | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
@@ -676,6 +678,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_refl
     | P_tac_sym
     | P_tac_why3 _
+    | P_tac_with_goal _
     | P_tac_solve
     | P_tac_fail
     | P_tac_focus _
