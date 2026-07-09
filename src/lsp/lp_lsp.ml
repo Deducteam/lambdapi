@@ -24,8 +24,6 @@ let   list_field name dict = U.to_list   List.(assoc name dict)
 let string_field name dict = U.to_string List.(assoc name dict)
 
 (* Conditionals *)
-let oint_field  name dict =
-  Option.map_default U.to_int 0 List.(assoc_opt name dict)
 let odict_field name dict =
   Option.get [] U.(to_option to_assoc
                       (Option.get `Null List.(assoc_opt name dict)))
@@ -66,13 +64,6 @@ let do_check_text ofmt ~doc =
   Hashtbl.replace completed_table doc.uri doc;
   LIO.send_json ofmt @@ diags
 
-let do_change ofmt ~doc change =
-  let open Lp_doc in
-  LIO.log_error "checking file"
-    (doc.uri ^ " / version: " ^ (string_of_int doc.version));
-  let doc = { doc with text = string_field "text" change; } in
-  do_check_text ofmt ~doc
-
 let do_open ofmt params =
   let document = dict_field "textDocument" params in
   let uri, version, text =
@@ -95,9 +86,18 @@ let do_change ofmt params =
     string_field "uri" document,
     int_field "version" document in
   let changes = List.map U.to_assoc @@ list_field "contentChanges" params in
+  LIO.log_error "checking file"
+    (uri ^ " / version: " ^ (string_of_int version));
   let doc = Hashtbl.find doc_table uri in
   let doc = { doc with Lp_doc.version; } in
-  List.iter (do_change ofmt ~doc) changes
+  (* With full-document sync each change carries the whole new text;
+     the fold applies them all, then a single re-check runs. *)
+  let doc =
+    List.fold_left
+      (fun (doc : Lp_doc.t) change ->
+        { doc with text = string_field "text" change })
+      doc changes in
+  do_check_text ofmt ~doc
 
 let do_close _ofmt params =
   let document = dict_field "textDocument" params in
@@ -379,7 +379,9 @@ let protect_dispatch p f x =
    theading model there is not a lot of difference yet; something to
    think for the future. *)
 let dispatch_message ofmt dict =
-  let id     = oint_field "id" dict in
+  (* The "id" member is kept verbatim (JSON-RPC ids may be numbers or
+     strings) and echoed back as-is in replies. *)
+  let id     = Option.get `Null (List.assoc_opt "id" dict) in
   let params = odict_field "params" dict in
   match string_field "method" dict with
   (* Requests *)
@@ -423,11 +425,18 @@ let dispatch_message ofmt dict =
     exit 0
 
   (* NOOPs *)
-  | "initialized"
-  | "workspace/didChangeWatchedModule" ->
+  | "initialized" ->
     ()
   | msg ->
-    LIO.log_error "no_handler" msg
+    (* Requests carry an id; notifications don't. For requests we must
+       reply with JSON-RPC MethodNotFound so the client doesn't wait
+       forever. Notifications get logged and dropped, matching the
+       spec's "no response" rule. *)
+    LIO.log_error "no_handler" msg;
+    if List.mem_assoc "id" dict then
+      LIO.send_json ofmt
+        (LSP.mk_error_reply ~id ~code:(-32601)
+           ~msg:("Method not found: " ^ msg))
 
 let process_input ofmt (com : J.t) =
   try dispatch_message ofmt (U.to_assoc com)
@@ -438,12 +447,13 @@ let process_input ofmt (com : J.t) =
     let bt = Printexc.get_backtrace () in
     LIO.log_error "[BT]" bt;
     LIO.log_error "process_input" (Printexc.to_string exn);
-    (* Send a null reply so the client doesn't hang *)
-    let id = oint_field "id" (U.to_assoc com) in
-    if id <> 0 then begin
-      let msg = LSP.mk_reply ~id ~result:`Null in
-      LIO.send_json ofmt msg
-    end
+    (* Send a null reply so the client doesn't hang. Requests carry an
+       "id" field; note that id 0 is a valid request id (Zed numbers
+       its first request 0), so key on the field's presence. *)
+    let dict = U.to_assoc com in
+    match List.assoc_opt "id" dict with
+    | Some id -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null)
+    | None -> ()
 
 let main std log_file =
 
@@ -467,7 +477,6 @@ let main std log_file =
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
-    (* flush lp_oc ;*)
     loop ()
   in
   try loop ()
