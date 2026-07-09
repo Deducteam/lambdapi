@@ -361,12 +361,30 @@ let in_range ?loc (line, pos) =
     (compare (start_line, start_col) (line, pos)) *
     (compare (end_line, end_col) (line, pos)) <= 0
 
-let get_node_at_pos doc line pos =
+let find_node_at_pos nodes line pos =
   let open Lp_doc in
   List.find_opt (fun { cmd; _ } ->
       let loc = Pure.Command.get_pos cmd in
       in_range ?loc (line,pos)
-    ) doc.Lp_doc.nodes
+    ) nodes
+
+let get_node_at_pos doc line pos =
+  find_node_at_pos doc.Lp_doc.nodes line pos
+
+(* --- Cursor context: proof scripts, raw tokens, tactic docs -------- *)
+
+(* Like [get_node_at_pos], but falling back to the nodes of the last
+   parse-error-free check. A mid-edit text (a partial tactic name,
+   say) fails to parse, dropping the command being edited from
+   [nodes] — exactly when completion and hover need its proof
+   context. [good_nodes] equals [nodes] whenever the text parses, so
+   the fallback only ever serves stale data while the text is broken;
+   edits happen within a line, so its line-based positions stay valid
+   until the next clean parse. *)
+let get_context_node doc line pos =
+  match get_node_at_pos doc line pos with
+  | Some n -> Some n
+  | None -> find_node_at_pos doc.Lp_doc.good_nodes line pos
 
 (* Identifier-ish token at the (0-based) [line]/[col] of [doc]'s text:
    the maximal run of non-delimiter code points around the cursor.
@@ -405,6 +423,475 @@ let token_at_pos (doc : Lp_doc.t) line col : string option =
       while !s > 0 && not (is_delim (!s - 1)) do decr s done;
       while !e + 1 < ncp && not (is_delim (!e + 1)) do incr e done;
       Some (String.sub str offs.(!s) (offs.(!e + 1) - offs.(!s)))
+
+(* [begin_pos_of doc n] is the position (1-based line, code point
+   column) of the [begin] keyword of [n]'s command in [doc]'s current
+   text, if any. [begin] is a reserved word, so the first
+   word-delimited occurrence within the command's span opens the
+   proof script. *)
+let begin_pos_of (doc : Lp_doc.t) (n : Lp_doc.doc_node)
+  : (int * int) option =
+  match Pure.Command.get_pos n.Lp_doc.cmd with
+  | None -> None
+  | Some Pos.{start_line; end_line; _} ->
+    let lines = String.split_on_char '\n' doc.Lp_doc.text in
+    let delim c =
+      match c with
+      | ' ' | '\t' | '\r' | '(' | ')' | '[' | ']' | '{' | '}'
+      | ';' | ',' | '"' | '.' | ':' | '@' -> true
+      | _ -> false
+    in
+    let find_in_line l =
+      match List.nth_opt lines (l - 1) with
+      | None -> None
+      | Some str ->
+        let len = String.length str in
+        let rec search i =
+          if i + 5 > len then None
+          else if String.sub str i 5 = "begin"
+               && (i = 0 || delim str.[i - 1])
+               && (i + 5 = len || delim str.[i + 5])
+          then
+            (* Byte index to code point column ("b" is ASCII, so it
+               sits on a code point boundary). *)
+            let offs = codepoint_offsets str in
+            let rec cp j = if offs.(j) = i then j else cp (j + 1) in
+            Some (l, cp 0)
+          else search (i + 1)
+        in
+        search 0
+    in
+    let rec scan l =
+      if l > end_line then None
+      else match find_in_line l with
+        | Some p -> Some p
+        | None -> scan (l + 1)
+    in
+    scan start_line
+
+(* True iff the cursor is inside the proof script of the command at
+   the cursor. Carrying a proof ([p_sym_prf]) is not enough: the
+   command's span also covers the statement (name, type), which is
+   not a proof position — require the cursor to be at or after the
+   [begin] keyword. *)
+let in_proof_at (doc : Lp_doc.t) line character : bool =
+  match get_context_node doc line character with
+  | Some n ->
+    (match Pure.Command.get_elt n.Lp_doc.cmd with
+     | Parsing.Syntax.P_symbol {p_sym_prf = Some _; _} ->
+       (match begin_pos_of doc n with
+        | Some bpos -> compare bpos (line + 1, character) <= 0
+        | None -> false)
+     | _ -> false)
+  | None -> false
+
+(** Tactic keywords offered as completions inside a proof and
+    documented on hover. Each entry is [(name, detail, doc, snippet)]:
+    [detail] is a one-line summary shown next to the completion label,
+    [doc] the fuller documentation (sourced from [doc/tactics.rst],
+    [doc/tacticals.rst] and [doc/equality.rst]) shown in the completion
+    docs panel and on hover, and [snippet] a TextMate-style template
+    used when the client advertises [snippetSupport] (otherwise the
+    label is inserted verbatim). Covers every tactic documented in
+    those files — enforced by the test suite, which extracts the
+    documented names and checks them against this list. Queries,
+    which double as tactics ([P_tac_query]), live in
+    [query_completions]. [P_tac_and] is deliberately absent: it has
+    no concrete syntax (only built internally by [eval]). *)
+let tactic_completions : (string * string * string * string) list = [
+  "admit", "discharge goal as axiom",
+  "Adds new symbols (axioms) to the environment proving the focused goal.",
+  "admit";
+
+  "all_hyps", "apply a term to every hypothesis",
+  "`all_hyps t` (with `t : Π p, Prf p → T`) applies `t _ xₙ`, …, \
+   `t _ x₁` on the hypotheses `x₁ … xₙ`, ignoring failing calls; \
+   fails if every call failed.",
+  "all_hyps ${1:term}";
+
+  "apply", "apply a term to the goal",
+  "`apply t` refines the current goal with `t _ … _`, generating one \
+   subgoal for each argument that cannot be inferred.",
+  "apply ${1:term}";
+
+  "assume", "introduce hypotheses",
+  "If the focused goal is of the form `Π x₁ … xₙ, T`, then \
+   `assume h₁ … hₙ` replaces it by `T` with each `xᵢ` replaced by \
+   `hᵢ`.",
+  "assume ${1:h}";
+
+  "assumption", "close goal by an hypothesis",
+  "Proves the current goal if it is (an instance of) an hypothesis.",
+  "assumption";
+
+  "change", "change the goal type",
+  "`change t` replaces the current goal `u` by `t`, provided \
+   `t ≡ u`.",
+  "change ${1:type}";
+
+  "eval", "interpret a term as a tactic",
+  "`eval t` normalizes the term `t` and interprets the result as a \
+   tactic expression built from the tactic builtins.",
+  "eval ${1:term}";
+
+  "fail", "always fail",
+  "Always fails. Useful to stop at a particular point while \
+   developing a proof.",
+  "fail";
+
+  "first_hyp", "apply a term to hypotheses until one succeeds",
+  "`first_hyp t` (with `t : Π p, Prf p → T`) applies `t _ xₙ` on the \
+   last hypothesis; if the goal is not solved, tries the next \
+   hypothesis, and so on, failing if none succeeds.",
+  "first_hyp ${1:term}";
+
+  "focus", "move goal n to the front",
+  "`focus n` moves the n-th goal (`n ≥ 2`) to position 1.",
+  "focus ${1:n}";
+
+  "generalize", "generalize a variable",
+  "If the focused goal is `x₁:A₁, …, y₁:B₁, …, yₚ:Bₚ ⊢ U`, then \
+   `generalize y₁` transforms it into \
+   `x₁:A₁, … ⊢ Π y₁:B₁, …, Π yₚ:Bₚ, U`.",
+  "generalize ${1:x}";
+
+  "have", "introduce an intermediate lemma",
+  "`have x: t` generates a new goal for `t`, then lets you prove the \
+   focused goal with the additional hypothesis `x: t`.",
+  "have ${1:h}: ${2:type}";
+
+  "induction", "structural induction",
+  "If the focused goal is of the form `Π x:I, …` with `I` an \
+   inductive type, refines it by applying the induction principle \
+   of `I`.",
+  "induction";
+
+  "orelse", "try a tactic, else another",
+  "`orelse t₁ t₂` applies `t₁`; if `t₁` fails, applies `t₂`.",
+  "orelse ${1:tac1} ${2:tac2}";
+
+  "refine", "provide a partial proof term",
+  "`refine t` instantiates the focused goal by `t`, which may \
+   contain underscores `_` and metavariable names `?n`; \
+   metavariables that cannot be solved become new goals.",
+  "refine ${1:term}";
+
+  "reflexivity", "close goal by reflexivity",
+  "Solves a goal of the form `Π x₁, …, Π xₙ, P (t = u)` when \
+   `t ≡ u`.",
+  "reflexivity";
+
+  "remove", "remove a hypothesis",
+  "`remove h₁ … hₙ` erases the hypotheses `h₁ … hₙ` from the \
+   context; the goal and the remaining hypotheses must not depend on \
+   them.",
+  "remove ${1:h}";
+
+  "repeat", "repeat a tactic",
+  "`repeat t` applies `t` on the first goal until the number of \
+   goals decreases.",
+  "repeat ${1:tac}";
+
+  "rewrite", "rewrite using an equation",
+  "`rewrite t` rewrites the goal with an equation \
+   `t : Π x₁ … xₙ, P (l = r)` from left to right; prefix with `left` \
+   to rewrite right to left; an optional pattern restricts the \
+   rewritten occurrences.",
+  "rewrite ${1:eq}";
+
+  "set", "define a local abbreviation",
+  "`set x \xe2\x89\x94 t` extends the current context with \
+   `x \xe2\x89\x94 t`.",
+  "set ${1:x} \xe2\x89\x94 ${2:term}";
+
+  "simplify", "simplify the goal",
+  "Normalizes the focused goal with respect to β-reduction and \
+   rewriting rules; `simplify rule off` uses β-reduction only; \
+   `simplify f` unfolds the definition of `f` or applies its rules.",
+  "simplify";
+
+  "solve", "simplify unification goals",
+  "Simplifies unification goals as much as possible.",
+  "solve";
+
+  "symmetry", "swap sides of an equation",
+  "Replaces a goal of the form `P (t = u)` by `P (u = t)`.",
+  "symmetry";
+
+  "try", "try a tactic; never fails",
+  "`try t` applies `t`; if `t` fails, the goal is left unchanged.",
+  "try ${1:tac}";
+
+  "why3", "dispatch to an external prover",
+  "Calls an external prover through the Why3 platform to solve the \
+   current goal; `why3 \"prover\"` selects a specific prover (default \
+   Alt-Ergo, or the one set with the `prover` command).",
+  "why3";
+]
+
+(** Documentation of a tactic keyword, if [name] is one. *)
+let tactic_doc (name : string) : string option =
+  List.find_map
+    (fun (tn, _, doc, _) -> if tn = name then Some doc else None)
+    tactic_completions
+
+(** Command keywords and symbol modifiers: offered as completions
+    where the grammar accepts them (anywhere outside proofs when the
+    prefix does not parse) and documented on hover anywhere in a
+    document. Same [(name, detail, doc, snippet)] entries as
+    [tactic_completions]; docs sourced from [doc/commands.rst]. *)
+let keyword_completions : (string * string * string * string) list = [
+  "symbol", "declare or define a symbol",
+  "Declares or defines a symbol. Syntax: \
+   `modifiers symbol id params [: type] [≔ [term]] [begin proof end] \
+   ;`. Without `≔` it is a declaration (axiom); with `≔` a \
+   definition or theorem.",
+  "symbol ${1:id} : ${2:type};";
+
+  "inductive", "define an inductive type",
+  "Defines inductive types with their constructors, and generates \
+   their induction principles `ind_<name>` and rules (requires the \
+   `Prop` and `P` builtins). Mutually defined types are linked with \
+   `with`.",
+  "inductive ${1:id} : ${2:type} \xe2\x89\x94\n| ${3:c} : $1;";
+
+  "rule", "declare a rewriting rule",
+  "Declares rewriting rules for definable symbols, e.g. \
+   `rule add zero $n ↪ $n;`. `$`-prefixed identifiers are pattern \
+   variables. Rules should form a confluent and terminating system; \
+   chain several with `with`.",
+  "rule ${1:lhs} \xe2\x86\xaa ${2:rhs};";
+
+  "with", "chain rules or inductive types",
+  "Chains additional rewriting rules (`rule … with …`) or links \
+   mutually defined inductive types.",
+  "with ${1:lhs} \xe2\x86\xaa ${2:rhs}";
+
+  "require", "import modules",
+  "Imports the non-private symbols, rules and builtins of other \
+   modules, usable qualified (`Stdlib.Bool.true`); `require open` \
+   also puts them in scope; `require … as …` gives the module an \
+   alias.",
+  (* [open], [private] and module paths complete after the keyword,
+     so the snippet presumes none of the alternatives. *)
+  "require $0;";
+
+  "open", "bring module symbols into scope",
+  "Puts into scope the symbols of previously required modules. \
+   Non-private `open`s are transitively inherited.",
+  "open $0;";
+
+  "builtin", "map a builtin name to a symbol",
+  "Maps an internal string literal to a user symbol, e.g. \
+   `builtin \"P\" ≔ …;` — required by some commands, tactics and \
+   notations.",
+  "builtin \"${1:name}\" \xe2\x89\x94 ${2:id};";
+
+  "notation", "set a symbol's notation",
+  "Sets the notation of a symbol: `infix`/`prefix`/`postfix` with an \
+   optional priority, or `quantifier`.",
+  (* The notation kind is completed contextually after the id, so
+     the snippet does not presume one. *)
+  "notation ${1:id} $0";
+
+  "opaque", "never unfold the definition",
+  "The symbol is never reduced to its definition (typical for \
+   theorems). As a command, `opaque x;` makes a previously defined \
+   symbol opaque.",
+  "opaque";
+
+  "unif_rule", "declare a unification rule",
+  "Declares a unification rule `t ≡ u ↪ [t₁ ≡ u₁; …]`, tried by the \
+   unification engine when a problem cannot be solved by the default \
+   algorithm.",
+  "unif_rule";
+
+  "coerce_rule", "declare a coercion rule",
+  "Declares a coercion rule, used to automatically insert coercions \
+   between types.",
+  "coerce_rule";
+
+  "begin", "start a proof script",
+  "Starts a proof script solving the pending goals with tactics; \
+   close it with `end`, `admitted` or `abort`.",
+  "begin\n  $0\nend;";
+
+  "constant", "modifier: no rules or definition",
+  "Property modifier: no rewriting rule or definition can ever be \
+   given to the symbol.",
+  "constant";
+
+  "injective", "modifier: may be considered injective",
+  "Property modifier: the symbol may be considered injective, i.e. \
+   if `f t₁ … tₙ ≡ f u₁ … uₙ` then `t₁ ≡ u₁`, …, `tₙ ≡ uₙ`. The \
+   verification is left to the user.",
+  "injective";
+
+  "commutative", "modifier: add commutativity",
+  "Property modifier: adds the equation `f t u ≡ f u t` to the \
+   conversion.",
+  "commutative";
+
+  "associative", "modifier: add associativity",
+  "Property modifier: adds the equation `f (f t u) v ≡ f t (f u v)` \
+   to the conversion (in conjunction with `commutative` only); \
+   `left`/`right` selects the canonical form.",
+  "associative";
+
+  "private", "modifier: not visible outside the module",
+  "Exposition modifier: the symbol cannot be used outside the module \
+   where it is defined.",
+  "private";
+
+  "protected", "modifier: only rule LHS outside the module",
+  "Exposition modifier: outside its module, the symbol can only be \
+   used in the left-hand side of rewriting rules.",
+  "protected";
+
+  "sequential", "modifier: try rules in declaration order",
+  "Matching strategy modifier: apply the symbol's rules in \
+   declaration order instead of the default order-independent \
+   strategy. Warning: this can break important properties.",
+  "sequential";
+]
+
+(** Proof-closing keywords, offered as completions inside proofs. *)
+let proof_end_completions : (string * string * string * string) list = [
+  "end", "close a finished proof",
+  "Ends a proof script once all goals are solved.",
+  "end;";
+
+  "admitted", "accept the remaining goals as axioms",
+  "Ends a proof accepting the remaining goals as axioms.",
+  "admitted;";
+
+  "abort", "abort the proof",
+  "Aborts the proof: the symbol is not added to the environment.",
+  "abort;";
+]
+
+(** Queries, valid both as commands and as tactics ([P_tac_query]):
+    offered as completions in both contexts and documented on hover.
+    Docs sourced from [doc/queries.rst]. *)
+let query_completions : (string * string * string * string) list = [
+  "assert", "check a typing or a conversion",
+  "`assert x₁ … xₙ ⊢ t : A;` checks that `t` has type `A`; \
+   `assert x₁ … xₙ ⊢ t ≡ u;` checks that `t` and `u` are \
+   convertible. Fails if the judgment does not hold.",
+  "assert \xe2\x8a\xa2 ${1:term} : ${2:type}";
+
+  "assertnot", "check that a typing or conversion fails",
+  "Like `assert`, but succeeds when the typing or conversion \
+   judgment does NOT hold.",
+  "assertnot \xe2\x8a\xa2 ${1:term} : ${2:type}";
+
+  "compute", "normalize a term",
+  "Computes the normal form of a term.",
+  "compute ${1:term}";
+
+  "debug", "toggle debug flags",
+  "Activates (`+`) or deactivates (`-`) debug modes, each named by \
+   one character, e.g. `debug +ts;`. Without argument, lists the \
+   available flags.",
+  "debug +${1:flags}";
+
+  "flag", "set an option flag on/off",
+  "Sets a flag `on` or `off`, e.g. `flag \"print_implicits\" on;`. \
+   Most flags modify printing; only `\"eta_equality\"` changes the \
+   rewrite engine. Without argument, lists the available flags.",
+  "flag \"${1:name}\" ${2:on}";
+
+  "print", "print a symbol or the goals",
+  "With a symbol identifier, displays information (type, notation, \
+   rules, …) about that symbol; with `unif_rule` or `coerce_rule`, \
+   the corresponding rules; without argument, the current goals.",
+  "print";
+
+  "proofterm", "print the current proof term",
+  "Outputs the current proof term.",
+  "proofterm";
+
+  "prover", "select the why3 prover",
+  "Changes the prover used by the `why3` tactic (default \
+   *Alt-Ergo*), e.g. `prover \"Eprover\";`.",
+  "prover \"${1:name}\"";
+
+  "prover_timeout", "set the why3 timeout",
+  "Changes the timeout (in seconds) of the `why3` tactic; initially \
+   2s.",
+  "prover_timeout ${1:seconds}";
+
+  "search", "query the search index",
+  "Runs a query (see the query language documentation) against the \
+   index of the current file and its requirements, e.g. \
+   `search spine >= (nat → nat);`.",
+  "search ${1:query}";
+
+  "type", "print the type of a term",
+  "Displays the type of a term in the current context.",
+  "type ${1:term}";
+
+  "verbose", "set the verbosity level",
+  "Takes a non-negative integer: the higher, the more details are \
+   printed. Initially 1.",
+  "verbose ${1:level}";
+]
+
+(* Argument keywords (notation kinds, sides, switches, [as]) are
+   deliberately absent here: no hover docs for them, they are only
+   described in their completion items. *)
+let keyword_doc (name : string) : string option =
+  List.find_map
+    (fun (kn, _, doc, _) -> if kn = name then Some doc else None)
+    (keyword_completions @ proof_end_completions @ query_completions)
+
+(** Hypotheses visible at the cursor inside a proof. Returns the
+    focused goal's [(name, type_string)] list, or [[]] when no goal
+    is active at that position. Goal printing prefixes hypothesis
+    types with ": "; strip it so consumers get the bare type, in line
+    with symbol hovers. *)
+let hyps_at_cursor (doc : Lp_doc.t) line character : (string * string) list =
+  match get_context_node doc line character with
+  | None -> []
+  | Some n ->
+    let strip_type t =
+      let t = String.trim t in
+      if String.length t > 0 && t.[0] = ':' then
+        String.trim (String.sub t 1 (String.length t - 1))
+      else t
+    in
+    let hyps_of goals =
+      match goals with
+      | (hyps, _) :: _ ->
+        List.map (fun (hn, ht) -> (hn, strip_type ht)) hyps
+      | [] -> []
+    in
+    (* Goal snapshots record the state after each tactic, anchored at
+       the tactic's keyword, so the snapshot at the cursor belongs to
+       the tactic the cursor is in. But a tactic's arguments are
+       elaborated in the state *before* it runs: the post-state may
+       focus a different goal when the tactic closes the current one
+       (dropping its local hypotheses), or no goal at all when it ends
+       the proof. So resolve names in the pre-state — the snapshot
+       preceding the anchor, not merely the start of the line, which
+       skips too far back when several tactics share a line — and keep
+       the post-state for names the tactic itself binds, e.g. the [x]
+       of [assume x]. *)
+    (match closest_before (line + 1, character) n.Lp_doc.goals with
+     | None -> []
+     | Some (post_goals, gpos) ->
+       let post = hyps_of post_goals in
+       let pre =
+         match gpos with
+         | Some Pos.{start_line; start_col; _} ->
+           (match
+              closest_before (start_line, start_col - 1) n.Lp_doc.goals
+            with
+            | Some (goals, _) -> hyps_of goals
+            | None -> [])
+         | None -> []
+       in
+       pre @ List.filter (fun (hn, _) -> not (List.mem_assoc hn pre)) post)
 
 (** [get_first_error doc] returns the first error inferred from doc.logs *)
 let get_first_error doc =
@@ -553,18 +1040,63 @@ let hover_symInfo ofmt ~id params =
       | None ->
         raise (Error.fatal_no_pos "Final state is missing: the document \
                                    was never successfully loaded") in
-    Pure.restore_time ss;
+    (* Not just [restore_time]: hover prints types, and the printer's
+       signature state ([Print.sig_state]) is a plain ref that time
+       restoration does not cover — without this, types would render
+       with whichever document's notations were installed last. *)
+    Pure.set_print_state ss;
 
-    match get_symbol pt doc.map with
-    | None -> send_null ()
-    | Some (qid, range) ->
-      match Pure.find_sym ss qid with
+    let send_type_hover ?range sym =
+      let sym_type = Format.asprintf "%a" Core.Print.sym_type sym in
+      let fields = ["contents", `String sym_type] in
+      let fields = match range with
+        | Some r -> fields @ ["range", LSP.mk_range_of_interval r]
+        | None -> fields
+      in
+      LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc fields))
+    in
+    let send_contents s =
+      LIO.send_json ofmt
+        (LSP.mk_reply ~id ~result:(`Assoc ["contents", `String s]))
+    in
+    (* Token-based fallback, tried when the identifier RangeMap has no
+       resolvable entry at the cursor: tactic keywords (inside proofs)
+       and hypotheses of the focused goal, then command keywords and
+       modifiers, then in-scope symbols. Text-based, so it also covers
+       regions the checker never reached (mid-edit text, code past a
+       parse error). *)
+    let hover_fallback () =
+      match token_at_pos doc ln pos with
       | None -> send_null ()
-      | Some sym_found ->
-        let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
-        let result = `Assoc [ "contents", `String sym_type
-                            ; "range", LSP.mk_range_of_interval range ] in
-        LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+      | Some tok ->
+        let in_proof = in_proof_at doc ln pos in
+        match (if in_proof then tactic_doc tok else None) with
+        | Some d -> send_contents d
+        | None ->
+          match
+            (if in_proof then
+               List.assoc_opt tok (hyps_at_cursor doc ln pos)
+             else None)
+          with
+          | Some htype -> send_contents htype
+          | None ->
+            match keyword_doc tok with
+            | Some d -> send_contents d
+            | None ->
+              match Extra.StrMap.find_opt tok (Pure.get_symbols ss) with
+              | Some sym when sym.Term.sym_path <> Sign.Ghost.path ->
+                send_type_hover sym
+              | _ -> send_null ()
+    in
+    match get_symbol pt doc.map with
+    | Some (qid, range) ->
+      (match Pure.find_sym ss qid with
+       | Some sym -> send_type_hover ~range sym
+       (* Unresolvable unqualified identifier: typically a proof-local
+          name (hypothesis) — try the fallback chain. *)
+       | None when fst qid = [] -> hover_fallback ()
+       | None -> send_null ())
+    | None -> hover_fallback ()
   with e ->
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()

@@ -39,6 +39,13 @@ type t = {
   mutable root  : Pure.state option; (* Only mutated after parsing. *)
   mutable final : Pure.state option; (* Only mutated after parsing. *)
   nodes : doc_node list;
+  (* [nodes] of the last parse-error-free check. A mid-edit text (a
+     partial tactic name, say) fails to parse, dropping the command
+     being edited from [nodes]; queries that need the cursor's command
+     (proof context for completion and hover) fall back to these.
+     Edits happen within a line, so line-based positions stay valid
+     until the next clean parse resyncs them. *)
+  good_nodes : doc_node list;
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Core.Term.qident RangeMap.t;
@@ -165,6 +172,7 @@ let new_doc ~uri ~version ~text =
     root;
     final = root;
     nodes = [];
+    good_nodes = [];
     logs = logs;
     map = RangeMap.empty;
     path_map = RangeMap.empty;
@@ -211,5 +219,9 @@ let check_text ~doc =
   in
   let map = Pure.rangemap cmds in
   let path_map = Pure.path_rangemap cmds in
-  let doc = { doc with nodes; final=Some(final); map; path_map; logs } in
+  let good_nodes =
+    match error with None -> nodes | Some _ -> doc.good_nodes in
+  let doc =
+    { doc with nodes; good_nodes; final=Some(final); map; path_map; logs }
+  in
   doc, LSP.mk_diagnostics ~uri ~version diags
