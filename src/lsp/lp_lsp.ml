@@ -222,18 +222,62 @@ let mk_definfo file pos =
     ; "range", LSP.mk_range pos
         ]
 
-let kind_of_type tm =
-  let open Term in
-  let open Timed in
-  let is_undef =
-    Option.is_None !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
-  match !(tm.sym_type) with
-  | Vari _ ->
-    13                         (* Variable *)
-  | Type | Kind | Symb _ | _ when is_undef ->
-    14                         (* Constant *)
-  | _ ->
-    12                         (* Function *)
+(* No LSP SymbolKind matches lambdapi's notions (axiom, constructor,
+   definable symbol, theorem, …), so we do not classify: every symbol
+   is reported as Function, the least surprising icon. (SymbolKind is
+   a mandatory field; completions simply omit their optional one.) *)
+let symbol_kind = 12                                       (* Function *)
+
+let mk_document_symbol ?(children=[]) ~name ~kind ~range ~selection_range ()
+  : J.t =
+  `Assoc [
+    "name", `String name;
+    "kind", `Int kind;
+    "range", range;
+    "selectionRange", selection_range;
+    "children", `List children;
+  ]
+
+(** Build hierarchical [DocumentSymbol[]] from the parsed AST. Only
+    declarations that introduce user-visible symbols are emitted:
+    [symbol] (Function) and [inductive] (Enum with constructors as
+    EnumMember children). Require/open, rules, builtins, queries,
+    notations, etc. are skipped. *)
+let document_symbols_of_nodes (nodes : Lp_doc.doc_node list) : J.t list =
+  let open Parsing.Syntax in
+  let range_or_fallback (p : Pos.popt) (fallback : J.t) =
+    match p with Some p -> LSP.mk_range p | None -> fallback
+  in
+  (* [nodes] is stored in reverse (head = most recent); restore
+     top-to-bottom order for the outline. *)
+  List.concat_map (fun ({ cmd; _ } : Lp_doc.doc_node) ->
+    match Pure.Command.get_pos cmd with
+    | None -> []
+    | Some cmd_pos ->
+      let cmd_range = LSP.mk_range cmd_pos in
+      match Pure.Command.get_elt cmd with
+      | P_symbol s ->
+        let sel = range_or_fallback s.p_sym_nam.pos cmd_range in
+        [ mk_document_symbol
+            ~name:s.p_sym_nam.elt ~kind:symbol_kind
+            ~range:cmd_range ~selection_range:sel () ]
+      | P_inductive (_, _, _, inds) ->
+        List.map (fun (ind : p_inductive) ->
+          let (iname, _, cons) = ind.Pos.elt in
+          let ind_range = range_or_fallback ind.Pos.pos cmd_range in
+          let sel = range_or_fallback iname.pos ind_range in
+          let children = List.map (fun (cname, _ctyp) ->
+            let crange = range_or_fallback cname.Pos.pos ind_range in
+            mk_document_symbol
+              ~name:cname.Pos.elt ~kind:22   (* EnumMember *)
+              ~range:crange ~selection_range:crange ()
+          ) cons in
+          mk_document_symbol
+            ~name:iname.elt ~kind:10         (* Enum *)
+            ~range:ind_range ~selection_range:sel ~children ()
+        ) inds
+      | _ -> []
+  ) (List.rev nodes)
 
 let do_symbols ofmt ~id params =
   let file, _, doc = grab_doc params in
@@ -242,21 +286,26 @@ let do_symbols ofmt ~id params =
     let msg = LSP.mk_reply ~id ~result:`Null in
     LIO.send_json ofmt msg
   | Some ss ->
-    Pure.restore_time ss;
-    let sym = Pure.get_symbols ss in
-    let sym =
-      Extra.StrMap.fold
-        (fun _ s l ->
-          let open Term in
-          (* LIO.log_error "sym"
-          ( s.sym_name ^ " | "
-          ^ Format.asprintf "%a" term !(s.sym_type)); *)
-          Option.map_default
-            (fun p -> mk_syminfo file
-                (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l s.sym_pos)
-        sym [] in
-    let msg = LSP.mk_reply ~id ~result:(`List sym) in
-    LIO.send_json ofmt msg
+    let result =
+      if !hierarchical_symbols then
+        (* Built from the parsed AST alone; no signature state needed. *)
+        `List (document_symbols_of_nodes doc.Lp_doc.nodes)
+      else
+        let () = Pure.restore_time ss in
+        let sym = Pure.get_symbols ss in
+        let syms =
+          Extra.StrMap.fold
+            (fun _ s l ->
+              let open Term in
+              Option.map_default
+                (fun p ->
+                  mk_syminfo file
+                    (s.sym_name, s.sym_path, symbol_kind, p) :: l)
+                l s.sym_pos)
+            sym [] in
+        `List syms
+    in
+    LIO.send_json ofmt (LSP.mk_reply ~id ~result)
 
 
 let get_docTextPosition params =
