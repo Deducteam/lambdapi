@@ -198,6 +198,9 @@ let end_proof : proof_state -> command_result =
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
 
+let get_aliases : state -> Common.Path.t Extra.StrMap.t =
+  fun (_, ss) -> ss.alias_path
+
 let find_sym : state -> Term.qident -> Term.sym option =
   fun (_, ss) qid ->
   try Some (Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none qid))

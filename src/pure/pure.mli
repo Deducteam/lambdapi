@@ -108,6 +108,10 @@ val end_proof : proof_state -> command_result
     [st]. This can be used for displaying the type of symbols. *)
 val get_symbols : state -> Term.sym Extra.StrMap.t
 
+(** [get_aliases st] returns the [require ... as] aliases of state [st],
+    mapping each alias to the module path it stands for. *)
+val get_aliases : state -> Path.t Extra.StrMap.t
+
 (** [find_sym st qid] returns the symbol denoted by [qid] in state [st].
     Handles short names in scope, aliased module paths, and fully-qualified
     identifiers. Returns [None] if no such symbol is accessible. *)

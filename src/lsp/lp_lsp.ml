@@ -132,6 +132,12 @@ let do_initialize ofmt ~id params =
         ; "documentSymbolProvider", `Bool true
         ; "hoverProvider", `Bool true
         ; "definitionProvider", `Bool true
+        (* "." separates module-path and qualified-name segments; the
+           completion handler resolves both contexts (and stays quiet
+           on a dot-trigger anywhere else). *)
+        ; "completionProvider",
+          `Assoc [ "resolveProvider", `Bool true
+                 ; "triggerCharacters", `List [`String "."] ]
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -403,6 +409,21 @@ let codepoint_offsets (str : string) : int array =
   done;
   Array.of_list (List.rev (n :: !offs))
 
+(* Number of code points of [s]. *)
+let cp_len (s : string) : int = Array.length (codepoint_offsets s) - 1
+
+(** [line_prefix doc line col] is the text of the (0-based) [line] of
+    [doc] before the cursor column [col] (counted in code points,
+    like every position in the server). *)
+let line_prefix (doc : Lp_doc.t) line col : string option =
+  match List.nth_opt (String.split_on_char '\n' doc.Lp_doc.text) line with
+  | None -> None
+  | Some str ->
+    let offs = codepoint_offsets str in
+    let ncp = Array.length offs - 1 in
+    let col = if col < 0 then 0 else if col > ncp then ncp else col in
+    Some (String.sub str 0 offs.(col))
+
 let token_at_pos (doc : Lp_doc.t) line col : string option =
   match List.nth_opt (String.split_on_char '\n' doc.Lp_doc.text) line with
   | None -> None
@@ -484,6 +505,233 @@ let in_proof_at (doc : Lp_doc.t) line character : bool =
         | None -> false)
      | _ -> false)
   | None -> false
+
+(* --- Completion context ------------------------------------------- *)
+
+(* Complete whitespace-separated words of [s], and the token still
+   being typed (empty when [s] ends in whitespace). *)
+let words_and_partial (s : string) : string list * string =
+  let s = String.map (fun c -> if c = '\t' then ' ' else c) s in
+  match List.rev (String.split_on_char ' ' s) with
+  | [] -> [], ""
+  | partial :: rest ->
+    List.rev (List.filter (fun w -> w <> "") rest), partial
+
+(** Cursor context for completion, determined lexically from the
+    line before the cursor. Only the contexts the parser's follow
+    sets cannot provide remain here: those about the partial token
+    being typed (module paths, qualified names, flag names) and the
+    ranking of hypotheses in tactic arguments; keyword membership
+    itself comes from the grammar (see [follow_at]). *)
+type completion_context =
+  | Ctx_require of string * int
+    (** Module path of a [require]/[open]: the typed partial path
+        and its start column. *)
+  | Ctx_qualified of string * string
+    (** Dotted token before the cursor: the module part (before the
+        last dot) and the partial name after it. *)
+  | Ctx_flag_name       (** Inside the string argument of [flag]. *)
+  | Ctx_tactic_arg
+    (** Argument of a tactic that names existing hypotheses. *)
+  | Ctx_default
+
+(* Tactics whose argument commonly mentions hypotheses. *)
+let arg_tactics = ["apply"; "refine"; "rewrite"; "remove"; "generalize"]
+
+(* Symbol modifiers and their sides. Repeating one is grammatical,
+   so follow sets keep offering them; it is never useful, so the
+   already-typed ones are filtered from completions. *)
+let modifier_words =
+  ["left"; "right"; "associative"; "commutative"; "constant";
+   "injective"; "opaque"; "private"; "protected"; "sequential"]
+
+(* [qualified_of partial] splits the dotted token ending [partial] at
+   its last dot: [Some ("Stdlib.Nat", "ze")] for ["(Stdlib.Nat.ze"].
+   [None] when there is no dot or nothing before it. *)
+let qualified_of (partial : string) : (string * string) option =
+  let is_delim c = String.contains "()[]{};,\":@" c in
+  let start = ref 0 in
+  String.iteri (fun i c -> if is_delim c then start := i + 1) partial;
+  let tok =
+    String.sub partial !start (String.length partial - !start) in
+  match String.rindex_opt tok '.' with
+  | Some i when i > 0 ->
+    Some (String.sub tok 0 i,
+          String.sub tok (i + 1) (String.length tok - i - 1))
+  | _ -> None
+
+let completion_context (doc : Lp_doc.t) line col : completion_context =
+  match line_prefix doc line col with
+  | None -> Ctx_default
+  | Some prefix ->
+    let words, partial = words_and_partial prefix in
+    (* [require] accepts several paths; [as] switches to an alias
+       name and [;] ends the command. *)
+    let path_words ws =
+      List.for_all
+        (fun w -> w = "open"
+                  || (w <> "as" && not (String.contains w ';')))
+        ws
+    in
+    let quotes =
+      String.fold_left
+        (fun n c -> if c = '"' then n + 1 else n) 0 prefix
+    in
+    match words with
+    | ("require" | "open") :: rest
+    | "private" :: ("require" | "open") :: rest
+      when path_words rest ->
+      Ctx_require (partial, col - cp_len partial)
+    | "flag" :: _ when quotes = 1 -> Ctx_flag_name
+    | _ ->
+      match qualified_of partial with
+      | Some (mpath, name) -> Ctx_qualified (mpath, name)
+      | None ->
+        match words with
+        | t :: _ when List.mem t arg_tactics -> Ctx_tactic_arg
+        | _ -> Ctx_default
+
+(* [doc] text before the cursor at (0-based) [line],[col] counted in
+   code points, minus the partial word ending at the cursor: what the
+   parser should see to tell what may come next (the client filters
+   the items against the typed word itself). Word boundaries are the
+   delimiters of [token_at_pos]; a multi-byte code point always
+   belongs to a word. *)
+let doc_prefix (doc : Lp_doc.t) line col : string =
+  let cur =
+    match line_prefix doc line col with
+    | None -> ""
+    | Some prefix ->
+      let is_delim = function
+        | ' ' | '\t' | '\r' | '(' | ')' | '[' | ']' | '{' | '}'
+        | ';' | ',' | '"' | '.' | ':' | '@' -> true
+        | _ -> false
+      in
+      let i = ref (String.length prefix) in
+      while !i > 0 && not (is_delim prefix.[!i - 1]) do decr i done;
+      String.sub prefix 0 !i
+  in
+  let lines = String.split_on_char '\n' doc.Lp_doc.text in
+  let rec before i = function
+    | l :: ls when i < line -> l :: before (i + 1) ls
+    | _ -> []
+  in
+  String.concat "\n" (before 0 lines @ [cur])
+
+(** Tokens the grammar accepts at the cursor, from the parser: the
+    command starters between commands, the follow set of the
+    truncated command within one, and [] when the text before the
+    cursor has a syntax error (a broken edit earlier in the file) —
+    callers then fall back to context-blind items. *)
+let follow_at (doc : Lp_doc.t) line col : Parsing.LpLexer.token list =
+  Pure.expected_tokens (doc_prefix doc line col)
+
+(* Module paths under the current library mappings (the workspace
+   package and every map-dir), found by scanning the mapped
+   directories for source files. *)
+let module_path_candidates () : string list =
+  let out = ref [] in
+  let rec scan prefix dir depth =
+    if depth > 0 then
+      match Sys.readdir dir with
+      | exception Sys_error _ -> ()
+      | entries ->
+        Array.iter (fun e ->
+          if e <> "" && e.[0] <> '.' then
+            let p = Filename.concat dir e in
+            if (try Sys.is_directory p with Sys_error _ -> false) then
+              scan (prefix @ [e]) p (depth - 1)
+            else
+              List.iter (fun ext ->
+                match Filename.chop_suffix_opt ~suffix:ext e with
+                | Some base ->
+                  out := String.concat "." (prefix @ [base]) :: !out
+                | None -> ())
+                [".lp"; ".dk"; ".lpo"])
+          entries
+  in
+  Library.iter (fun mp dir -> scan mp dir 8);
+  List.sort_uniq Stdlib.compare !out
+
+(* Raw LSP range on one line (character units as sent by clients). *)
+let mk_char_range line scol ecol : J.t =
+  `Assoc [
+    "start", `Assoc ["line", `Int line; "character", `Int scol];
+    "end",   `Assoc ["line", `Int line; "character", `Int ecol];
+  ]
+
+(* Completion items replacing the typed [partial] (running from
+   [start_col] to the cursor) by a full module path. The explicit
+   [textEdit] matters: "." is not a word character in editors, so a
+   plain label would be inserted after the last dot. *)
+let mk_module_path_items ~line ~start_col ~cursor_col partial
+  : J.t list =
+  module_path_candidates ()
+  |> List.filter (String.is_prefix partial)
+  |> List.map (fun mp ->
+      `Assoc [
+        "label", `String mp;
+        "kind", `Int 9;                          (* Module *)
+        "filterText", `String mp;
+        "textEdit", `Assoc
+          [ "range", mk_char_range line start_col cursor_col
+          ; "newText", `String mp ];
+      ])
+
+(* Completion items for the qualified name [mstr].[partial]: the
+   non-private symbols of that module (resolving a [require as]
+   alias), plus the next segments of loaded module paths extending
+   it. Only loaded (i.e. required) modules can be referenced, so no
+   filesystem scan here. The client inserts after the dot, so plain
+   labels are enough. *)
+let mk_qualified_items ss uri (mstr : string) : J.t list =
+  let seg = String.split_on_char '.' mstr in
+  let path =
+    match seg with
+    | [a] ->
+      (match Extra.StrMap.find_opt a (Pure.get_aliases ss) with
+       | Some p -> p
+       | None -> seg)
+    | _ -> seg
+  in
+  let loaded = Timed.(!) Sign.loaded in
+  let sym_items =
+    match Path.Map.find_opt path loaded with
+    | None -> []
+    | Some sign ->
+      Extra.StrMap.fold (fun name (s : Term.sym) acc ->
+          if s.Term.sym_expo = Term.Privat then acc
+          else
+            `Assoc [
+              "label", `String name;
+              "data", `Assoc
+                [ "kind", `String "qualified"
+                ; "uri",  `String uri
+                ; "path", `String (String.concat "." path) ];
+            ] :: acc)
+        (Timed.(!) sign.Sign.sign_symbols) []
+  in
+  let rec list_is_prefix xs ys =
+    match xs, ys with
+    | [], _ -> true
+    | x :: xs, y :: ys -> x = y && list_is_prefix xs ys
+    | _, [] -> false
+  in
+  let n = List.length path in
+  let segments =
+    Path.Map.fold (fun p _ acc ->
+        if list_is_prefix path p then
+          match List.nth_opt p n with
+          | Some seg -> seg :: acc
+          | None -> acc
+        else acc)
+      loaded []
+  in
+  let seg_items =
+    List.map (fun seg -> `Assoc ["label", `String seg; "kind", `Int 9])
+      (List.sort_uniq Stdlib.compare segments)
+  in
+  sym_items @ seg_items
 
 (** Tactic keywords offered as completions inside a proof and
     documented on hover. Each entry is [(name, detail, doc, snippet)]:
@@ -634,6 +882,8 @@ let tactic_doc (name : string) : string option =
   List.find_map
     (fun (tn, _, doc, _) -> if tn = name then Some doc else None)
     tactic_completions
+
+let is_tactic_name n = tactic_doc n <> None
 
 (** Command keywords and symbol modifiers: offered as completions
     where the grammar accepts them (anywhere outside proofs when the
@@ -1101,6 +1351,304 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()
 
+(* --- Completion ------------------------------------------------------- *)
+
+(** Completion items for a keyword table ([tactic_completions],
+    [keyword_completions], [proof_end_completions]): docs as markdown
+    and snippet insertions when the client supports them.
+    [sort_prefix] orders keyword groups relative to each other and to
+    the hypotheses group ("1"). *)
+let mk_keyword_items (sort_prefix : string)
+    (entries : (string * string * string * string) list) : J.t list =
+  List.map (fun (name, detail, doc, snippet) ->
+    let doc_field =
+      if !markdown_completion_docs then
+        `Assoc [ "kind", `String "markdown"
+               ; "value", `String doc ]
+      else `String doc
+    in
+    let base = [
+      "label", `String name;
+      "kind",  `Int 14;                 (* Keyword *)
+      "detail", `String detail;
+      "documentation", doc_field;
+      "sortText", `String (sort_prefix ^ name);
+    ] in
+    `Assoc (
+      if !snippet_support then
+        base @
+        [ "insertText", `String snippet
+        ; "insertTextFormat", `Int 2 ]  (* Snippet *)
+      else base)
+  ) entries
+
+(* Argument keywords of the [notation] command. *)
+let notation_arg_completions : (string * string * string * string) list = [
+  "infix", "infix notation",
+  "`notation f infix [left|right] p;` sets an infix notation for \
+   `f` with priority `p`, optionally left/right associative.",
+  "infix ${1:priority}";
+
+  "prefix", "prefix notation",
+  "`notation f prefix p;` sets a prefix notation for `f` with \
+   priority `p`.",
+  "prefix ${1:priority}";
+
+  "postfix", "postfix notation",
+  "`notation f postfix p;` sets a postfix notation for `f` with \
+   priority `p`.",
+  "postfix ${1:priority}";
+
+  "quantifier", "binder notation",
+  "`notation f quantifier;` allows writing `` `f x, t`` for \
+   `f (λ x, t)`.",
+  "quantifier";
+]
+
+(* Associativity sides, after [associative] or [infix]. *)
+let assoc_side_completions : (string * string * string * string) list = [
+  "left", "left associative", "Selects left associativity.", "left";
+  "right", "right associative", "Selects right associativity.", "right";
+]
+
+(* The switch argument of [flag "..."]. *)
+let switch_completions : (string * string * string * string) list = [
+  "on", "enable the flag", "Turns the flag on.", "on";
+  "off", "disable the flag", "Turns the flag off.", "off";
+]
+
+(* Keywords only valid as arguments of other commands, never offered
+   without grammar support. *)
+let arg_keyword_completions : (string * string * string * string) list = [
+  "as", "alias for the required module",
+  "`require M as N;` gives the module `M` the alias `N`, usable in \
+   qualified names (`N.symb`).",
+  "as ${1:alias}";
+]
+
+(* Names of the registered boolean flags, offered inside the string
+   argument of [flag]. *)
+let flag_name_items () : J.t list =
+  Extra.StrMap.fold
+    (fun name _ acc -> `Assoc ["label", `String name] :: acc)
+    Stdlib.(!Console.boolean_flags) []
+
+(* Names under which a follow-set token may appear in the keyword
+   tables. Tokens without a keyword rendering (identifiers, literals,
+   punctuation) map to a phrase no table entry uses, and to nothing
+   in the end. *)
+let token_names (tk : Parsing.LpLexer.token) : string list =
+  match tk with
+  | Parsing.LpLexer.ASSERT _ -> ["assert"; "assertnot"]
+  | Parsing.LpLexer.SIDE _ -> ["left"; "right"]
+  | Parsing.LpLexer.SWITCH _ -> ["on"; "off"]
+  | _ -> [Parsing.LpParser.string_of_token tk]
+
+(* The keyword tables, with the rank their items keep relative to
+   each other when offered from a follow set: queries and proof
+   enders sort after the keywords specific to the context. *)
+let follow_tables : (string * (string * string * string * string) list) list =
+  [ "0", tactic_completions;
+    "0", keyword_completions;
+    "0", notation_arg_completions;
+    "0", assoc_side_completions;
+    "0", switch_completions;
+    "0", arg_keyword_completions;
+    "2", query_completions;
+    "2", proof_end_completions ]
+
+(** Completion items for the keywords of a parser follow set: the
+    grammar decides membership, the tables provide the docs and
+    snippets. [exclude] drops named keywords (already-typed
+    modifiers). *)
+let follow_keyword_items ?(exclude : string list = [])
+    (follow : Parsing.LpLexer.token list) : J.t list =
+  let names =
+    List.filter (fun n -> not (List.mem n exclude))
+      (List.concat_map token_names follow) in
+  List.concat_map (fun (rank, table) ->
+    mk_keyword_items rank
+      (List.filter (fun (n, _, _, _) -> List.mem n names) table))
+    follow_tables
+
+(* Whether the grammar accepts a qualified identifier at a position
+   with this follow set: a symbol reference (term or identifier
+   position) or a module path (after [require]/[open]). Binder
+   positions (a fresh name after [as], [assume], [symbol], …) only
+   accept unqualified identifiers, so they don't trigger symbol
+   completion. *)
+let follow_accepts_qid (follow : Parsing.LpLexer.token list) : bool =
+  List.exists
+    (function
+      | Parsing.LpLexer.QID _ | Parsing.LpLexer.QID_EXPL _ -> true
+      | _ -> false)
+    follow
+
+let do_completion ofmt ~id params =
+  let uri, line, character = get_docTextPosition params in
+  let empty = `Assoc ["isIncomplete", `Bool false; "items", `List []] in
+  match Hashtbl.find_opt completed_table uri with
+  | None -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty)
+  | Some doc ->
+    match doc.Lp_doc.final with
+    | None -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty)
+    | Some ss ->
+      Pure.restore_time ss;
+      let reply items =
+        LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc [
+          "isIncomplete", `Bool false; "items", `List items])) in
+      (* A "."-triggered popup only makes sense in the contexts that
+         understand dots; stay quiet in the others. *)
+      let dot_triggered =
+        match json_path (`Assoc params) ["context"; "triggerKind"] with
+        | Some (`Int 2) -> true
+        | _ -> false
+      in
+      let ctx = completion_context doc line character in
+      match ctx with
+      | Ctx_require (partial, start_col) ->
+        (* Module paths, plus the keywords the grammar still accepts
+           at the cursor ([open], [private], [as], …). No paths where
+           the grammar refuses one (after [require private]); an
+           empty follow set (a partial path ending in ".") cannot
+           tell, so it offers them. *)
+        let follow = follow_at doc line character in
+        let path_items =
+          if follow = [] || follow_accepts_qid follow then
+            mk_module_path_items ~line ~start_col
+              ~cursor_col:character partial
+          else [] in
+        reply (path_items @ follow_keyword_items follow)
+      | Ctx_qualified (mpath, _) ->
+        reply (mk_qualified_items ss uri mpath)
+      | Ctx_flag_name -> reply (flag_name_items ())
+      | (Ctx_default | Ctx_tactic_arg) when dot_triggered -> reply []
+      | Ctx_default | Ctx_tactic_arg ->
+        let follow = follow_at doc line character in
+        let in_proof = in_proof_at doc line character in
+        (* Symbols, where the grammar accepts a symbol reference (a
+           term or identifier position). An unparseable prefix (a
+           broken edit earlier in the file) yields no follow set;
+           offer them regardless then. No [kind]: the LSP completion
+           kinds don't match lambdapi's notions, so we don't force a
+           classification. `detail` is filled in on
+           [completionItem/resolve]; [data] carries what resolve
+           needs to find the symbol again. *)
+        let symbol_items =
+          if follow <> [] && not (follow_accepts_qid follow) then []
+          else
+            Extra.StrMap.fold (fun name s acc ->
+              (* Ghost symbols (internal, e.g. for unification rules)
+                 are not part of the user-facing scope. Inside a proof,
+                 tactic keywords shadow symbols of the same name in the
+                 completion list: the user almost certainly means the
+                 tactic. *)
+              if s.Term.sym_path = Sign.Ghost.path
+              || (in_proof && is_tactic_name name) then acc
+              else
+                `Assoc [
+                  "label", `String name;
+                  "data",  `Assoc [ "kind", `String "symbol"
+                                  ; "uri",  `String uri ];
+                ] :: acc
+            ) (Pure.get_symbols ss) [] in
+        (* Keywords the grammar accepts at the cursor. Without a
+           follow set, fall back to context-blind tables: tactic
+           keywords and proof enders inside proofs, command keywords
+           outside, queries in both. *)
+        let typed_modifiers =
+          match line_prefix doc line character with
+          | Some p ->
+            List.filter (fun w -> List.mem w modifier_words)
+              (fst (words_and_partial p))
+          | None -> [] in
+        let keyword_items =
+          match follow with
+          | _ :: _ -> follow_keyword_items ~exclude:typed_modifiers follow
+          | [] ->
+            match ctx with
+            (* The argument of a tactic is a term position: keywords
+               are not valid there. *)
+            | Ctx_tactic_arg -> []
+            | _ when in_proof ->
+              mk_keyword_items "0" tactic_completions
+              @ mk_keyword_items "2" (query_completions
+                                      @ proof_end_completions)
+            | _ ->
+              mk_keyword_items "0" keyword_completions
+              @ mk_keyword_items "2" query_completions in
+        (* Hypotheses of the focused goal, ranked before the symbols
+           in the argument position of a hypothesis-taking tactic. *)
+        let hyp_rank =
+          match ctx with Ctx_tactic_arg -> "0" | _ -> "1" in
+        let hyp_items =
+          if not in_proof then [] else
+            List.map (fun (hname, htype) ->
+              `Assoc [
+                "label", `String hname;
+                "kind",  `Int 6;                  (* Variable *)
+                "detail", `String htype;
+                "sortText", `String (hyp_rank ^ hname);
+              ]
+            ) (hyps_at_cursor doc line character) in
+        let result = `Assoc [
+          "isIncomplete", `Bool false;
+          "items", `List (symbol_items @ keyword_items @ hyp_items);
+        ] in
+        LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+
+(** Attach [detail] (and eventually other fields) to the completion
+    item the client highlighted. The initial completion response is
+    kept light by omitting per-symbol type strings; they're
+    pretty-printed here, lazily, once per highlighted item. *)
+let do_completion_resolve ofmt ~id params =
+  let echo () =
+    LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc params))
+  in
+  (* Re-find the completed symbol via [find] (with the document's
+     print state installed) and send the item back with its
+     pretty-printed type as [detail]. *)
+  let resolve_with uri (find : Pure.state -> Term.sym option) =
+    match Hashtbl.find_opt completed_table uri with
+    | None -> echo ()
+    | Some doc ->
+      match doc.Lp_doc.final with
+      | None -> echo ()
+      | Some ss ->
+        Pure.set_print_state ss;
+        match find ss with
+        | None -> echo ()
+        | Some sym ->
+          let type_str =
+            Format.asprintf "%a" Core.Print.sym_type sym in
+          let fields =
+            ("detail", `String type_str) ::
+            List.remove_assoc "detail" params in
+          LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc fields))
+  in
+  match List.assoc_opt "data" params with
+  | Some (`Assoc data) ->
+    let uri = try string_field "uri" data with _ -> "" in
+    let label = try string_field "label" params with _ -> "" in
+    (match List.assoc_opt "kind" data with
+     | Some (`String "symbol") ->
+       (* Items are generated from the in-scope symbol map, keyed by
+          the label; resolve the highlighted item from the same map. *)
+       resolve_with uri (fun ss ->
+           Extra.StrMap.find_opt label (Pure.get_symbols ss))
+     | Some (`String "qualified") ->
+       let path =
+         try String.split_on_char '.' (string_field "path" data)
+         with _ -> [] in
+       resolve_with uri (fun _ss ->
+           match Path.Map.find_opt path (Timed.(!) Sign.loaded) with
+           | None -> None
+           | Some sign ->
+             Extra.StrMap.find_opt label
+               (Timed.(!) sign.Sign.sign_symbols))
+     | _ -> echo ())
+  | _ -> echo ()
+
 let protect_dispatch p f x =
   try f x
   with
@@ -1139,6 +1687,17 @@ let dispatch_message ofmt dict =
   | "textDocument/definition" ->
     (try do_definition ofmt ~id params
      with _ -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null))
+
+  | "textDocument/completion" ->
+    (try do_completion ofmt ~id params
+     with _ ->
+       let empty = `Assoc ["isIncomplete", `Bool false; "items", `List []] in
+       LIO.send_json ofmt (LSP.mk_reply ~id ~result:empty))
+
+  | "completionItem/resolve" ->
+    (try do_completion_resolve ofmt ~id params
+     with _ ->
+       LIO.send_json ofmt (LSP.mk_reply ~id ~result:(`Assoc params)))
 
   | "proof/goals" ->
     do_goals ofmt ~id params
