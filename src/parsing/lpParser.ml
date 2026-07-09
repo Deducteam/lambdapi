@@ -433,11 +433,15 @@ let term_id (lb:'token lexbuf): p_term =
 
 (* commands *)
 
-let open_ (priv:bool) (lb:'token lexbuf) : p_command_aux =
+(* [req] tells whether the command starts with the [require] keyword:
+   [require [private] open] loads the modules and opens them
+   ([P_require]), while a bare [[private] open] only opens modules
+   that are already loaded ([P_open]). *)
+let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  consume OPEN lb;
  let ps = nelist path_tks path lb in
- P_require(Some priv,ps)
+ if req then P_require(Some priv,ps) else P_open(priv,ps)
 
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
@@ -520,7 +524,7 @@ and command (lb:'token lexbuf) : p_command =
     end
  | [{elt=P_expo Term.Privat;_}] ->
     begin match current_token lb with
-    | OPEN -> extend_pos lb (*__FUNCTION__*) pos1 (open_ true lb)
+    | OPEN -> extend_pos lb (*__FUNCTION__*) pos1 (open_ false true lb)
     | SYMBOL ->
         extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
     | L_PAREN
@@ -546,10 +550,10 @@ and command (lb:'token lexbuf) : p_command =
         begin
           match current_token lb with
           | OPEN ->
-              extend_pos lb (*__FUNCTION__*) pos1 (open_ false lb)
+              extend_pos lb (*__FUNCTION__*) pos1 (open_ true false lb)
           | PRIVATE ->
               consume_token lb;
-              extend_pos lb (*__FUNCTION__*) pos1 (open_ true lb)
+              extend_pos lb (*__FUNCTION__*) pos1 (open_ true true lb)
           | QID _ ->
               let ps = nelist path_tks path lb in
               begin
@@ -570,7 +574,7 @@ and command (lb:'token lexbuf) : p_command =
           | _ -> expected lb "" [OPEN;PRIVATE;QID[]]
         end
     | OPEN ->
-        extend_pos lb (*__FUNCTION__*) pos1 (open_ false lb)
+        extend_pos lb (*__FUNCTION__*) pos1 (open_ false false lb)
     | SYMBOL ->
         extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
     | L_PAREN
