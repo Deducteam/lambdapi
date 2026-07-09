@@ -24,28 +24,32 @@ let log_object hdr obj =
 exception ReadError of string
 
 let read_request ic =
-  let cl = input_line ic in
-  let sin = Scanf.Scanning.from_string cl in
   try
-    let raw_obj =
-      Scanf.bscanf sin "Content-Length: %d\r" (fun size ->
-          let buf = Bytes.create size in
-          (* Consume the second \r\n *)
-          let _ = input_line ic in
-          really_input ic buf 0 size;
-          Bytes.to_string buf
-        ) in
-    J.from_string raw_obj
+    (* Read header lines up to the empty "\r\n" separator, taking the
+       size from whichever one is [Content-Length] (a client may also
+       send e.g. [Content-Type], in any order). [input_line] strips
+       the '\n'; a trailing '\r' remains. *)
+    let rec content_length acc =
+      match input_line ic with
+      | "" | "\r" -> acc
+      | line ->
+        let acc =
+          try Scanf.sscanf line "Content-Length: %d" (fun n -> Some n)
+          with Scanf.Scan_failure _ | Failure _ -> acc
+        in
+        content_length acc
+    in
+    match content_length None with
+    | None -> raise (ReadError "missing Content-Length header")
+    | Some size ->
+      let buf = Bytes.create size in
+      really_input ic buf 0 size;
+      J.from_string (Bytes.to_string buf)
   with
-  (* if the end of input is encountered while some more characters are needed
-     to read the current conversion specification. *)
   | End_of_file ->
     raise (ReadError "EOF")
-  (* if the input does not match the format. *)
   | Scanf.Scan_failure msg
-  (* if a conversion to a number is not possible. *)
   | Failure msg
-  (* if the format string is invalid. *)
   | Invalid_argument msg ->
     raise (ReadError msg)
 
