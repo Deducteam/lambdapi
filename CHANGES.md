@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
+- LSP server: completion (in-scope symbols; command keywords with snippets; inside proofs, documented tactic keywords and the local symbols introduced by `assume`), documentation on hover for tactics, command keywords and modifiers, hover on `assume`-introduced local symbols showing their types, hierarchical document symbols, go-to-definition on `require`/`open` module paths, hover/go-to-definition fallback to in-scope symbols in unchecked regions, and an integration test suite (`make test_lsp`).
+- LSP server: context-aware completion, with `.` as a trigger character: module paths after `require`/`open`, qualified identifiers (symbols of the required module, resolving `require as` aliases), notation/associativity/flag arguments, and hypothesis-first ranking in the argument of `apply`, `rewrite`, etc.
+- LSP server: keyword completions are driven by the parser's follow sets: at any cursor position, exactly the keywords the grammar accepts there are offered (`open`/`private`/`as` after `require`, `rule` after `simplify`, `begin` after a statement's type, etc.), and symbols are only offered where a term or identifier reference can appear. New parser entry point `Parser.Lp.expected_tokens` returning the acceptable tokens at the end of a source prefix; parser error messages list more of the acceptable alternatives and render term starters as "a term".
 
 ### Changed
 
@@ -36,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A bare `open` (not preceded by `require`) was parsed as `require open`
+  since the parser rework, silently loading not yet required modules
+  instead of failing.
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
 - Syntactical errors in Dedukti export.
 - Weak head normal form test.
@@ -49,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   duplicated directory component.
 - LSP server: go-to-definition and hover on qualified identifiers, and session
   state leaking between open documents.
+- LSP server: the success ("OK") diagnostic of a command or tactic is now
+  shown on its introducing keyword ("symbol", "rule", "assume", …), instead
+  of underlining the whole command or tactic (symbol body, rule right-hand
+  side, proof, etc.).
 
 ## 3.0.0 (2025-07-16)
 

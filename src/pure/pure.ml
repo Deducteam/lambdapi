@@ -22,6 +22,8 @@ module Command = struct
   (* TODO: Fixme not to use generic equality *)
   let equal_with_pos = (=)
   let get_pos c = Pos.(c.pos)
+  let get_elt (c : t) : Syntax.p_command_aux = c.Pos.elt
+  let keyword_pos = Syntax.command_keyword_pos
   let print = Util.located Pretty.command
 end
 
@@ -42,11 +44,22 @@ let rangemap : Command.t list -> Term.qident RangeMap.t =
   in
   Syntax.fold_idents f RangeMap.empty
 
+(** Document module-path range map: positions of paths appearing in
+    [require]/[open] commands, mapped to the path they denote. *)
+let path_rangemap : Command.t list -> Common.Path.t RangeMap.t =
+  let f map ({elt; pos} : Syntax.p_path) =
+    match pos with
+    | Some pos -> RangeMap.add (interval_of_pos pos) elt map
+    | None -> map
+  in
+  Syntax.fold_paths f RangeMap.empty
+
 (** Representation of a single tactic (abstract). *)
 module Tactic = struct
   type t = Syntax.p_tactic
   let equal = Syntax.eq_p_tactic
   let get_pos t = Pos.(t.pos)
+  let keyword_pos = Syntax.tactic_keyword_pos
   let print = Util.located Pretty.tactic
 end
 
@@ -92,6 +105,9 @@ let parse_text :
       List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
   | Fatal(Some(None)     , _  , _) -> assert false
   | Fatal(None           , _  , _) -> assert false
+
+let expected_tokens : string -> LpLexer.token list =
+  Parser.Lp.expected_tokens
 
 let parse_file :
       fname:string -> Command.t list * (Pos.pos * string) option =
@@ -182,6 +198,9 @@ let end_proof : proof_state -> command_result =
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
 
+let get_aliases : state -> Common.Path.t Extra.StrMap.t =
+  fun (_, ss) -> ss.alias_path
+
 let find_sym : state -> Term.qident -> Term.sym option =
   fun (_, ss) qid ->
   try Some (Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none qid))
@@ -193,6 +212,13 @@ let find_sym : state -> Term.qident -> Term.sym option =
    they would observe whichever document was opened most recently. *)
 let restore_time : state -> unit =
   fun (t, _) -> Time.restore t
+
+(** [set_print_state st] installs [st] as the printer's signature state
+    so that subsequent [Print.sym_type] / [Print.term] calls produce
+    correctly qualified output. *)
+let set_print_state : state -> unit = fun (time, ss) ->
+  Time.restore time;
+  Print.sig_state := ss
 
 (* Equality tests, important for the incremental engine *)
 

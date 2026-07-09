@@ -34,8 +34,11 @@ let consume_token (lb:'token lexbuf) : unit =
    let p = Common.Pos.locate (p1,p2) in
    log "read new token %a %a" Common.Pos.short (Some p) (pp_token lb) t
 
-let set_expected_tokens lb l =
- lb.expected_tokens <- l
+(* The tokens recorded since the last [consume_token] all describe
+   alternatives rejected at the same lookahead token, so they
+   accumulate rather than replace each other. *)
+let add_expected_tokens lb l =
+ lb.expected_tokens <- l @ lb.expected_tokens
 
 let get_expected_tokens lb =
  lb.expected_tokens

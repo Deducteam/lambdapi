@@ -10,16 +10,30 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_elt : t -> Parsing.Syntax.p_command_aux
+  (** Expose the parser-level command shape so clients (LSP, MCP, …)
+      can pattern-match on declaration forms (e.g. to build outlines). *)
+  val keyword_pos : t -> Pos.popt
+  (** Position of the keyword introducing the command ("symbol", "rule",
+      "require", …), which is not always at its start: modifiers or
+      parameters may precede it. *)
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
 val rangemap : Command.t list -> Term.qident RangeMap.t
+
+(** [path_rangemap cmds] maps source ranges of module paths appearing in
+    [require]/[open] commands to the paths they denote. *)
+val path_rangemap : Command.t list -> Common.Path.t RangeMap.t
 
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val keyword_pos : t -> Pos.popt
+  (** Position of the keyword introducing the tactic, or of the whole
+      tactic when no single keyword does. *)
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
@@ -42,6 +56,14 @@ type proof_state
     and error message otherwise. *)
     val parse_text :
     fname:string -> string -> Command.t list * (Pos.pos * string) option
+
+(** [expected_tokens prefix] parses [prefix] (lp syntax) up to its end and
+    returns the tokens the parser accepts there: the command starters when
+    [prefix] ends between commands, the follow set of the truncated last
+    command when it ends inside one, and [] when [prefix] has a syntax error
+    before its end. For completion, with [prefix] the document text truncated
+    at the cursor. *)
+val expected_tokens : string -> Parsing.LpLexer.token list
 
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
 val current_goals : proof_state -> Goal.info list
@@ -86,6 +108,10 @@ val end_proof : proof_state -> command_result
     [st]. This can be used for displaying the type of symbols. *)
 val get_symbols : state -> Term.sym Extra.StrMap.t
 
+(** [get_aliases st] returns the [require ... as] aliases of state [st],
+    mapping each alias to the module path it stands for. *)
+val get_aliases : state -> Path.t Extra.StrMap.t
+
 (** [find_sym st qid] returns the symbol denoted by [qid] in state [st].
     Handles short names in scope, aliased module paths, and fully-qualified
     identifiers. Returns [None] if no such symbol is accessible. *)
@@ -96,6 +122,11 @@ val find_sym : state -> Term.qident -> Term.sym option
     this before touching timed globals, otherwise they see whichever
     document was opened most recently. *)
 val restore_time : state -> unit
+
+(** [set_print_state st] installs [st] as the printer's signature state
+    so that subsequent [Print.sym_type] / [Print.term] calls produce
+    correctly qualified output. *)
+val set_print_state : state -> unit
 
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise

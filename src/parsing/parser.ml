@@ -75,7 +75,7 @@ module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
     parse_lexbuf None entry lb
 
   let command =
-    let r = ref (Pos.none (P_open(false,[]))) in
+    let r = ref (Pos.none (P_open(None,false,[]))) in
     fun (lb:lexbuf): p_command ->
     Debug.(record_time Parsing
              (fun () -> r := DkParser.line DkLexer.token lb)); !r
@@ -110,6 +110,14 @@ sig
       [~allow_rocq_syntax] to allow a subset of Rocq syntax
        (fun/forall/exists)
       [~alone] to parse the query only if followed by EOF. *)
+
+  val expected_tokens: string -> LpLexer.token list
+  (** [expected_tokens s] parses [s] as a sequence of commands up to its
+      end and returns the tokens the parser accepts there: the command
+      starters when [s] ends between commands, the follow set of the
+      truncated last command when it ends inside one, and [] when [s]
+      has a syntax error before its end. [s] is typically a source file
+      prefix truncated at a cursor, for completion. *)
 
   end
 = struct
@@ -160,6 +168,29 @@ sig
     set_filename lb lexpos.pos_fname;
     Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
 
+
+  let expected_tokens (s: string) : LpLexer.token list =
+    let lb = Utf8.from_string s in
+    (* One fresh one-token cell per command, like [parse_lexbuf']: a
+       finished command leaves its ";" in the old cell. *)
+    let mk () =
+      OneLookaheadCellLexbuf.new_parser ~pp:LpParser.pp_token
+        ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax:false lb) in
+    LpParser.last_expected := [];
+    let rec loop () =
+      let zlb = mk () in
+      match LpParser.command zlb with
+      | _ -> loop ()
+      | exception End_of_file -> LpParser.command_tks
+      | exception LpLexer.SyntaxError _ ->
+          (* Only a failure on the end of input describes the cursor
+             position; an earlier one is a plain syntax error. *)
+          if OneLookaheadCellLexbuf.current_token zlb = LpLexer.EOF
+          then !LpParser.last_expected else []
+    in
+    (* A lexing error (unterminated comment or string reaching the
+       truncation point) aborts the first token of a fresh cell. *)
+    try loop () with LpLexer.SyntaxError _ -> []
 
   (* exported functions *)
   let parse_term_string =

@@ -111,6 +111,16 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
+(** [prefix n p] is the sub-position of [p] covering only its first [n]
+    characters, which are assumed to lie on the first line of [p] and to be
+    ASCII (so that [n] is both a column count and a character count). *)
+let prefix : int -> popt -> popt = fun n p ->
+  match p with
+  | None -> None
+  | Some p -> Some { p with end_line = p.start_line
+                          ; end_col = p.start_col + n
+                          ; end_offset = p.start_offset + n }
+
 (** [shift k p] returns a position that is [k] characters after [p]. *)
 let shift : int -> popt -> popt = fun k p ->
   match p with
