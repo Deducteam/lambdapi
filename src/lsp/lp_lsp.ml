@@ -368,6 +368,44 @@ let get_node_at_pos doc line pos =
       in_range ?loc (line,pos)
     ) doc.Lp_doc.nodes
 
+(* Identifier-ish token at the (0-based) [line]/[col] of [doc]'s text:
+   the maximal run of non-delimiter code points around the cursor.
+   Columns are counted in code points, matching the position handling
+   in the rest of the server. Being text-based, it also works in
+   regions the checker never reached (mid-edit text, code past a
+   parse error). *)
+(* Byte offset of each code point of [str], with the total length as
+   a final sentinel. *)
+let codepoint_offsets (str : string) : int array =
+  let offs = ref [] and i = ref 0 in
+  let n = String.length str in
+  while !i < n do
+    offs := !i :: !offs;
+    i := !i + Uchar.utf_decode_length (String.get_utf_8_uchar str !i)
+  done;
+  Array.of_list (List.rev (n :: !offs))
+
+let token_at_pos (doc : Lp_doc.t) line col : string option =
+  match List.nth_opt (String.split_on_char '\n' doc.Lp_doc.text) line with
+  | None -> None
+  | Some str ->
+    let offs = codepoint_offsets str in
+    let ncp = Array.length offs - 1 in
+    (* Delimiters are ASCII; a multi-byte code point (first byte
+       [>= '\x80']) always belongs to a token. *)
+    let is_delim k =
+      match str.[offs.(k)] with
+      | ' ' | '\t' | '\r' | '(' | ')' | '[' | ']' | '{' | '}'
+      | ';' | ',' | '"' | '.' | ':' | '@' -> true
+      | _ -> false
+    in
+    if col < 0 || col >= ncp || is_delim col then None
+    else
+      let s = ref col and e = ref col in
+      while !s > 0 && not (is_delim (!s - 1)) do decr s done;
+      while !e + 1 < ncp && not (is_delim (!e + 1)) do incr e done;
+      Some (String.sub str offs.(!s) (offs.(!e + 1) - offs.(!s)))
+
 (** [get_first_error doc] returns the first error inferred from doc.logs *)
 let get_first_error doc =
   List.fold_left (fun acc b ->
@@ -454,23 +492,47 @@ let do_definition ofmt ~id params =
 
     (* Lines sent by the client start at 0 *)
     let pt = Range.make_point (ln + 1) pos in
+    (* Ghost symbols (internal symbols used e.g. for unification rules
+       and string literals) have no user-facing definition site one
+       could jump to. *)
+    let definfo_of_sym (s : Term.sym) : J.t =
+      if s.Term.sym_path = Sign.Ghost.path then `Null
+      else
+        let file =
+          Library.(file_of_path s.Term.sym_path ^ lp_src_extension) in
+        let pos = Option.get (Pos.file_start file) s.Term.sym_pos in
+        mk_definfo file pos
+    in
+    (* Fallback when the identifier RangeMap has no resolvable entry
+       at the cursor: the module paths of require/open commands (jump
+       to the start of that module's file), then the raw token under
+       the cursor against the in-scope symbol table — the latter also
+       covers regions the checker never reached (mid-edit text, code
+       past a parse error). *)
+    let def_fallback () =
+      match RangeMap.find pt doc.path_map with
+      | Some (_, path) ->
+        let file = Library.(file_of_path path ^ lp_src_extension) in
+        mk_definfo file (Pos.file_start file)
+      | None ->
+        match token_at_pos doc ln pos with
+        | None ->
+          LIO.log_error "do_definition" "no symbol at point"; `Null
+        | Some tok ->
+          match Extra.StrMap.find_opt tok (Pure.get_symbols ss) with
+          | Some s -> definfo_of_sym s
+          | None ->
+            LIO.log_error "do_definition" "no symbol at point"; `Null
+    in
     let sym_info =
       match get_symbol pt doc.map with
-      | None ->
-        LIO.log_error "do_definition" "no symbol at point"; `Null
       | Some (qid, _) ->
         LIO.log_error "do_definition" (snd qid);
-        match Pure.find_sym ss qid with
-        | None -> `Null
-        (* Ghost symbols (internal symbols used e.g. for unification
-           rules and string literals) have no user-facing definition
-           site one could jump to. *)
-        | Some s when s.Term.sym_path = Sign.Ghost.path -> `Null
-        | Some s ->
-          let file =
-            Library.(file_of_path s.Term.sym_path ^ lp_src_extension) in
-          let pos = Option.get (Pos.file_start file) s.sym_pos in
-          mk_definfo file pos
+        (match Pure.find_sym ss qid with
+         | Some s -> definfo_of_sym s
+         | None when fst qid = [] -> def_fallback ()
+         | None -> `Null)
+      | None -> def_fallback ()
     in
     let msg = LSP.mk_reply ~id ~result:sym_info in
     LIO.send_json ofmt msg
