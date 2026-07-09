@@ -31,8 +31,100 @@ let odict_field name dict =
 module LIO = Lsp_io
 module LSP = Lsp_base
 
+(* Walk a nested path of object keys; return the leaf or [None] if any
+   segment is missing / has the wrong shape. *)
+let json_path (j : J.t) (keys : string list) : J.t option =
+  List.fold_left
+    (fun j k ->
+       match j with
+       | Some (`Assoc fields) -> List.assoc_opt k fields
+       | _ -> None)
+    (Some j) keys
+
+(** [path_of_file_uri uri] strips the [file://] scheme and percent-decodes
+    the remainder. Returns [None] when [uri] is not a [file:] URI. *)
+let path_of_file_uri (uri : string) : string option =
+  if String.is_prefix "file://" uri then
+    Some (Uri.pct_decode (String.sub uri 7 (String.length uri - 7)))
+  else None
+
+(* Client capabilities we gate features on, read from the [initialize]
+   request. *)
+
+(* [textDocument.completion.completionItem.snippetSupport]: snippet
+   syntax allowed in completion [insertText]. *)
+let snippet_support = ref false
+
+(* [textDocument.documentSymbol.hierarchicalDocumentSymbolSupport]:
+   hierarchical [DocumentSymbol[]] responses understood; when false,
+   fall back to flat [SymbolInformation[]]. *)
+let hierarchical_symbols = ref false
+
+(* [textDocument.completion.completionItem.documentationFormat]
+   includes "markdown": completion docs may be sent as markdown
+   [MarkupContent] (plain strings render literally otherwise). *)
+let markdown_completion_docs = ref false
+
 (* Request Handling: The client expects a reply *)
-let do_initialize ofmt ~id _params =
+let do_initialize ofmt ~id params =
+  (* Read clientCapabilities for features we gate on client support. *)
+  let client_caps =
+    Option.get `Null (List.assoc_opt "capabilities" params) in
+  let cap_bool path =
+    match json_path client_caps path with
+    | Some (`Bool b) -> b
+    | _ -> false
+  in
+  snippet_support :=
+    cap_bool
+      ["textDocument"; "completion"; "completionItem"; "snippetSupport"];
+  hierarchical_symbols :=
+    cap_bool
+      ["textDocument"; "documentSymbol";
+       "hierarchicalDocumentSymbolSupport"];
+  markdown_completion_docs :=
+    (match json_path client_caps
+             ["textDocument"; "completion"; "completionItem";
+              "documentationFormat"]
+     with
+     | Some (`List fmts) -> List.mem (`String "markdown") fmts
+     | _ -> false);
+  (* Apply the workspace's [lambdapi.pkg] (if any) so module mappings
+     are live before the first document is opened. [rootUri] is the
+     pre-3.6 field; [workspaceFolders] is the current one — clients
+     typically send BOTH for the same directory, so deduplicate. And a
+     failure (e.g. "module path already mapped") must never abort
+     [initialize] — the client would kill the server and retry in a
+     loop; per-file [Package.apply_config] still runs on every open. *)
+  let apply_folder uri =
+    match path_of_file_uri uri with
+    | Some p ->
+      (try
+         LIO.log_error "initialize" ("applying package config at " ^ p);
+         Parsing.Package.apply_config p
+       with e ->
+         LIO.log_error "initialize"
+           ("package config skipped: " ^ Printexc.to_string e))
+    | None -> ()
+  in
+  let root_folders =
+    match List.assoc_opt "rootUri" params with
+    | Some (`String uri) -> [uri]
+    | _ -> []
+  in
+  let ws_folders =
+    match List.assoc_opt "workspaceFolders" params with
+    | Some (`List folders) ->
+      List.filter_map
+        (fun f ->
+           match json_path f ["uri"] with
+           | Some (`String uri) -> Some uri
+           | _ -> None)
+        folders
+    | _ -> []
+  in
+  List.iter apply_folder
+    (List.sort_uniq Stdlib.compare (root_folders @ ws_folders));
   let msg = LSP.mk_reply ~id ~result:(
       `Assoc ["capabilities",
        `Assoc [
