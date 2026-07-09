@@ -88,11 +88,11 @@ type decl =
   | Sym of sym
   | Rule of (Path.t * string * rule)
 
-(** Declarations are ordered wrt their positions in the source. *)
+(** Declarations are ordered wrt their declaration positions. *)
 
 let pos_of_decl : decl -> Pos.popt = fun i ->
   match i with
-  | Sym s -> s.sym_pos
+  | Sym s -> s.sym_decl_pos
   | Rule (_,_,r) -> r.rule_pos
 
 let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl

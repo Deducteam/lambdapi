@@ -304,14 +304,21 @@ let p_ident_of_var (pos:popt) (t:term) :p_ident =
   | Vari v -> Pos.make pos (base_name v)
   | _ -> fatal pos "Not a variable of the proof context: %a." term t
 
+(* [pos_of_string s] assumes that [s] is a string literal and returns the
+   lexing position of the content of [s]. *)
+let pos_of_string: sym -> Lexing.position =
+  let f p = {p with start_offset=p.start_offset+1; start_col=p.start_col+1;
+                    end_offset=p.end_offset-1; end_col=p.end_col-1} in
+  fun s -> lexing_opt (Option.map f s.sym_pos)
+
 (** [p_term_of_string_term pos t] turns into a p_term a string literal term
     [t] that is part of a bigger term obtained by scoping and normalizing of a
     p_term at position [pos]. *)
 let p_term_of_string_term (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
-    let p = lexing_opt (after s.sym_pos) in
-    Parsing.Parser.Lp.parse_term_string p (String.remove_quotes s.sym_name)
+    Parsing.Parser.Lp.parse_term_string (pos_of_string s)
+      (String.remove_quotes s.sym_name)
   | _ -> fatal pos "not a string literal"
 
 (** [p_rwpatt_of_string_term pos t] turns into a p_rwpatt option a string
@@ -323,9 +330,8 @@ let p_rwpatt_of_string_term (pos:popt) (t:term): p_rwpatt option =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = String.remove_quotes s.sym_name in
-      if string = "" then None
-      else let p = lexing_opt (after s.sym_pos) in
-           Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
+      if string = "" then None else
+        Some (Parsing.Parser.Lp.parse_rwpatt_string (pos_of_string s) string)
   | _ -> fatal pos "not a string literal"
 
 (** [int_of_term pos t] returns the int contained in a string literal
