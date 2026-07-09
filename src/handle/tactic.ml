@@ -34,13 +34,14 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   let sym =
     wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
-       they are created. *)
+       they are created, and strictly before the symbol. *)
+    (* FIXME: use sym_decl_pos instead ? *)
+    let id = {elt=name; pos=sym_pos} in
     let pos = shift Stdlib.(!admitted) sym_pos in
-    let id = Pos.make pos name in
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)
     snd (Sig_state.add_symbol ss
-           Public Defin Eager true id None !(m.meta_type) [] None)
+           Public Defin Eager true id pos !(m.meta_type) [] None)
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be

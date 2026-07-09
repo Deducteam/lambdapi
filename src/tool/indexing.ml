@@ -768,11 +768,11 @@ let index_sym sym =
    raise
     (Common.Error.Fatal
       (None,string_of_sym_name qname ^ " already indexed", ""));
- DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
+ DB.insert_name (snd qname) ((qname,sym.sym_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
  index_term_and_subterms ~is_spine:true typ
-  (fun where -> ((qname,sym.sym_decl_pos),[Type where])) ;
+  (fun where -> ((qname,sym.sym_pos),[Type where])) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
