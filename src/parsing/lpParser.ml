@@ -599,7 +599,7 @@ and command (lb:'token lexbuf) : p_command =
         let (en, es) = List.(hd es, tl es) in
         let cat e es = P.appl (P.appl cons e) es in
         let rhs = List.fold_right cat es en in
-        let r = extend_pos lb (*__FUNCTION__*) pos1 (lhs, rhs) in
+        let r = extend_pos lb (*__FUNCTION__*) pos1 (lhs, rhs, P_None) in
         extend_pos lb (*__FUNCTION__*) pos1 (P_unif_rule(r))
     | COERCE_RULE ->
         consume_token lb;
