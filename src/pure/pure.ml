@@ -106,6 +106,9 @@ let parse_text :
   | Fatal(Some(None)     , _  , _) -> assert false
   | Fatal(None           , _  , _) -> assert false
 
+let expected_tokens : string -> LpLexer.token list =
+  Parser.Lp.expected_tokens
+
 let parse_file :
       fname:string -> Command.t list * (Pos.pos * string) option =
   fun ~fname ->

@@ -57,6 +57,14 @@ type proof_state
     val parse_text :
     fname:string -> string -> Command.t list * (Pos.pos * string) option
 
+(** [expected_tokens prefix] parses [prefix] (lp syntax) up to its end and
+    returns the tokens the parser accepts there: the command starters when
+    [prefix] ends between commands, the follow set of the truncated last
+    command when it ends inside one, and [] when [prefix] has a syntax error
+    before its end. For completion, with [prefix] the document text truncated
+    at the cursor. *)
+val expected_tokens : string -> Parsing.LpLexer.token list
+
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
 val current_goals : proof_state -> Goal.info list
 

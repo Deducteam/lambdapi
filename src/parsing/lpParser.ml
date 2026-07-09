@@ -143,17 +143,45 @@ let match_token tok patt =
 let match_guard patts lb =
  List.exists (match_token (current_token lb)) patts
 
+(* Structured version of the token lists rendered by [expected]: the
+   tokens acceptable at the position of the last syntax error it
+   raised. [SyntaxError] only carries the message; completion needs
+   the follow set itself (see [expected_tokens] at the end of this
+   file). *)
+let last_expected : token list Stdlib.ref = ref []
+
+(* Order-preserving deduplication: recorded tokens may repeat
+   alternatives already listed explicitly. *)
+let rec uniq : token list -> token list = function
+  | [] -> []
+  | t :: ts -> t :: uniq (List.filter (fun u -> u <> t) ts)
+
+(* Tokens that may start a term. Used by the term parser, and by
+   [expected] to render this whole set as "a term". *)
+let term_tks =
+  [BACKQUOTE;(*EXISTS;FORALL;FUN;*)PI;LAMBDA;LET;
+   UID"";QID[];UID_EXPL"";QID_EXPL[];UNDERSCORE;
+   TYPE_TERM;UID_META 0;UID_PATT"";L_PAREN;L_SQ_BRACKET;
+   INT"";QINT([],"");STRINGLIT""]
+
 let expected lb (msg:string) (tokens:token list) : 'a =
+  let tokens = uniq (tokens @ get_expected_tokens lb) in
+  last_expected := tokens;
   if msg <> "" then syntax_error (current_pos lb) ("Expected: "^msg^".")
   else
-    match tokens with
+    (* Positions that continue a term expect all its starters:
+       collapse them into one word so they don't drown the other
+       alternatives. *)
+    let shown, term =
+      if List.for_all (fun t -> List.mem t tokens) term_tks then
+        List.filter (fun t -> not (List.mem t term_tks)) tokens, true
+      else tokens, false in
+    let soft t = String.add_quotes (string_of_token t) in
+    match List.map soft shown @ (if term then ["a term"] else []) with
     | [] -> assert false
-    | t::ts ->
-      let ts = ts @ get_expected_tokens lb in
-      let soft t = String.add_quotes (string_of_token t) in
+    | p::ps ->
       syntax_error (current_pos lb)
-        (List.fold_left (fun s t -> s^", "^soft t) ("Expected: "^soft t) ts
-        ^".")
+        (List.fold_left (fun s p -> s^", "^p) ("Expected: "^p) ps ^ ".")
 
 (* building positions and terms *)
 
@@ -200,14 +228,14 @@ let prefix (token:token) (elt:'token lexbuf -> 'a) (lb:'token lexbuf): 'a =
 let opt (tk : 'token) (lb:'token lexbuf) : bool =
   if log_enabled() then log "%s" __FUNCTION__;
   if current_token lb = tk then (consume_token lb; true)
-  else (set_expected_tokens lb [tk]; false)
+  else (add_expected_tokens lb [tk]; false)
 
 let list (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
  : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
   while match_guard guard lb do acc := elt lb :: !acc done ;
-  set_expected_tokens lb guard;
+  add_expected_tokens lb guard;
   List.rev !acc
 
 let list_with_sep (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
@@ -221,7 +249,7 @@ let list_with_sep (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
     guard := [sep] ;
     el := prefix sep elt
   done ;
-  set_expected_tokens lb !guard ;
+  add_expected_tokens lb !guard ;
   List.rev !acc
 
 let list_with_sep_or_termin
@@ -234,7 +262,7 @@ let list_with_sep_or_termin
     if !match_sep then (consume sep lb; match_sep := false)
     else (acc := elt lb :: !acc; match_sep := true)
   done ;
-  set_expected_tokens lb (if !match_sep then [sep] else guard) ;
+  add_expected_tokens lb (if !match_sep then [sep] else guard) ;
   List.rev !acc
 
 let nelist (guard: 'token list) (elt:'token lexbuf -> 'a) (lb:'token lexbuf)
@@ -447,6 +475,15 @@ let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
  let ps = nelist path_tks path lb in
  if req then P_require(Some priv,ps) else P_open(kw_pos,priv,ps)
 
+(* Tokens that may start a command. *)
+let command_tks =
+  [ SIDE Pratter.Left ; ASSOCIATIVE ; COMMUTATIVE ; CONSTANT ;
+    INJECTIVE ; SEQUENTIAL ; PRIVATE ; OPAQUE ; PROTECTED ; REQUIRE ;
+    OPEN ; SYMBOL ; L_PAREN ; L_SQ_BRACKET ; INDUCTIVE ; RULE ;
+    UNIF_RULE ; COERCE_RULE ; BUILTIN ; NOTATION ; ASSERT false ;
+    COMPUTE ; DEBUG ; FLAG ; PRINT ; PROOFTERM ; PROVER ;
+    PROVER_TIMEOUT ; SEARCH ; TYPE_QUERY ; VERBOSE ]
+
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  let p_sym_kw = Some(locate (current_pos lb)) in
@@ -574,7 +611,7 @@ and command (lb:'token lexbuf) : p_command =
                     let i = uid lb in
                     extend_pos lb (*__FUNCTION__*) pos1 (P_require_as(p,i))
                 | _ ->
-                    set_expected_tokens lb [AS] ;
+                    add_expected_tokens lb [AS] ;
                     extend_pos lb (*__FUNCTION__*) pos1
                       (P_require(None,ps))
               end
@@ -641,13 +678,7 @@ and command (lb:'token lexbuf) : p_command =
         let q = query lb in
         extend_pos lb (*__FUNCTION__*) pos1 (P_query(q))
     | _ ->
-        expected lb ""
-         [ SIDE Pratter.Left ; ASSOCIATIVE ; COMMUTATIVE ; CONSTANT ;
-           INJECTIVE ; SEQUENTIAL ; PRIVATE ; OPAQUE ; PROTECTED ; REQUIRE ;
-           OPEN ; SYMBOL ; L_PAREN ; L_SQ_BRACKET ; INDUCTIVE ; RULE ;
-           UNIF_RULE ; COERCE_RULE ; BUILTIN ; NOTATION ; ASSERT false ;
-           COMPUTE ; DEBUG ; FLAG ; PRINT ; PROOFTERM ; PROVER ;
-           PROVER_TIMEOUT ; SEARCH ; TYPE_QUERY ; VERBOSE ]
+        expected lb "" command_tks
     end
 
 and inductive (lb:'token lexbuf): p_inductive =
@@ -911,7 +942,7 @@ and term_proof (lb:'token lexbuf):
       else
        Some t, None
   | _ ->
-      expected lb "term or proof" []
+      expected lb "term or proof" (BEGIN :: term_tks)
 
 (* proofs *)
 
@@ -969,7 +1000,8 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       let pe = proof_end lb in
       [], pe
   | _ ->
-      expected lb "subproof, tactic or query" []
+      expected lb "subproof, tactic or query"
+        (L_CU_BRACKET :: ABORT :: ADMITTED :: END :: tactic_tks)
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
@@ -1142,7 +1174,7 @@ and tactic (lb:'token lexbuf): p_tactic =
             let t = term lb in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_rewrite(true,Some p,t))
         | _ ->
-            set_expected_tokens lb [SIDE Pratter.Left;DOT] ;
+            add_expected_tokens lb [SIDE Pratter.Left;DOT] ;
             let t = term lb in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_rewrite(true,None,t))
       end
@@ -1166,7 +1198,7 @@ and tactic (lb:'token lexbuf): p_tactic =
             consume (SWITCH false) lb;
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_simpl SimpBetaOnly)
         | _ ->
-            set_expected_tokens lb [UID"";QID[];RULE];
+            add_expected_tokens lb [UID"";QID[];RULE];
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_simpl SimpAll)
       end
   | SOLVE ->
@@ -1190,7 +1222,7 @@ and tactic (lb:'token lexbuf): p_tactic =
         | STRINGLIT s -> let s = String.remove_quotes s in
             extend_pos lb (*__FUNCTION__*) pos1 (P_tac_why3 (Some s))
         | _ ->
-            set_expected_tokens lb [STRINGLIT""] ;
+            add_expected_tokens lb [STRINGLIT""] ;
             make_pos pos1 (P_tac_why3 None)
       end
   | _ ->
@@ -1241,7 +1273,7 @@ and rwpatt_content (lb:'token lexbuf): p_rwpatt =
             let x = ident_of_term pos1 t2 in
             extend_pos lb (*__FUNCTION__*) pos1 (Rw_TermAsIdInTerm(t1,(x,t3)))
         | _ ->
-            set_expected_tokens lb [IN;AS];
+            add_expected_tokens lb [IN;AS];
             extend_pos lb (*__FUNCTION__*) pos1 (Rw_Term(t1))
       end
   | IN ->
@@ -1314,11 +1346,6 @@ and params (lb:'token lexbuf): p_params =
   | _ ->
       expected lb "" params_tks
 
-and term_tks =
-  [BACKQUOTE;(*EXISTS;FORALL;FUN;*)PI;LAMBDA;LET;
-   UID"";QID[];UID_EXPL"";QID_EXPL[];UNDERSCORE;
-   TYPE_TERM;UID_META 0;UID_PATT"";L_PAREN;L_SQ_BRACKET;
-   INT"";QINT([],"");STRINGLIT""]
 and term (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -1383,6 +1410,9 @@ and app (pos1:position * position) (t: p_term) (lb:'token lexbuf): p_term =
       let u = term lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_Arro(t,u))
   | _ ->
+      (* A term can always be continued: applied to a further
+         argument or extended by an arrow. *)
+      add_expected_tokens lb (ARROW :: term_tks);
       t
 
 and bterm (lb:'token lexbuf): p_term =
