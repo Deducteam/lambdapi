@@ -55,14 +55,15 @@ let buf_get_and_clear buf =
   Buffer.clear buf; res
 
 (* [at_keyword p kw] is the sub-position of [p] covering only its leading
-   keyword [kw] (keywords are ASCII, so their column width is their string
-   length). *)
+   keyword [kw] (keywords are ASCII, so their string length is their width
+   both in columns and in character offsets). *)
 let at_keyword : Pos.popt -> string -> Pos.popt = fun p kw ->
   match p with
   | None -> None
   | Some p ->
       Pos.(Some { p with end_line = p.start_line
-                       ; end_col = p.start_col + String.length kw })
+                       ; end_col = p.start_col + String.length kw
+                       ; end_offset = p.start_offset + String.length kw })
 
 let process_pstep (pstate,diags,logs) tac nb_subproofs =
   let open Pure in
@@ -100,15 +101,30 @@ let get_goals dg_proof =
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 
-(* A command's recorded position ends one character before its terminating
-   ";" (the parser's [extend_pos] stops at the start of the following token).
-   [at_semicolon p] returns the position of that ";", where success ("OK")
-   hints are shown so that they do not underline the whole command. *)
+(* [at_semicolon p] is the position of the ";" terminating a command whose
+   position is [p]. Success ("OK") hints are shown there so that they do
+   not underline the whole command. Position ends are exclusive (as in the
+   LSP ranges they are mapped to), so the position of the one-character
+   ";" ends one column after it. The parser's [extend_pos] ends [p] one
+   character before the ";", except when the ";" is at column 0, where it
+   does not back up over the newline: a ";" at column 0 and one at column
+   1 both yield [end_col = 0] (with [end_offset] the offset of column 0),
+   so in that case the returned position covers both columns. *)
 let at_semicolon : Pos.popt -> Pos.popt = function
   | None -> None
   | Some p ->
-      Pos.(Some { p with start_line = p.end_line; start_col = p.end_col + 1
-                       ; end_line = p.end_line;   end_col = p.end_col + 2 })
+      Pos.(
+        if p.end_col = 0 then
+          Some { p with start_line = p.end_line; start_col = 0
+                      ; start_offset = p.end_offset
+                      ; end_col = 2
+                      ; end_offset = p.end_offset + 2 }
+        else
+          Some { p with start_line = p.end_line
+                      ; start_col = p.end_col + 1
+                      ; start_offset = p.end_offset + 1
+                      ; end_col = p.end_col + 2
+                      ; end_offset = p.end_offset + 2 })
 
 let process_cmd _file (nodes,st,dg,logs) cmd =
   let open Pure in
