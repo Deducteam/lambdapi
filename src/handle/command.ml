@@ -178,10 +178,11 @@ let handle_modifiers :
   in
   (prop, expo, strat, opaq)
 
-(** [handle_inductive_symbol ss e p strat x xs a] handles the command
-    [e p strat symbol x xs : a] with [ss] as the signature state.
-    The command is at position [pos].
-    On success, an updated signature state and the new symbol are returned. *)
+(** [handle_inductive_symbol ss expo prop strat id declpos xs a] handles the
+    command [expo prop strat symbol id xs : a] with [ss] as the signature
+    state. /!\ Use [declpos] as its position (used in commands exporting
+    signatures). On success, an updated signature state and the new symbol are
+    returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     -> p_ident -> popt -> p_params list -> p_term -> sig_state * sym =
   fun ss expo prop mstrat ({elt=name;pos} as id) declpos xs typ ->
@@ -354,12 +355,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                        inductive types.";
       if opaq then
         fatal pos "Inductive types cannot be declared opaque.";
-      (* Add inductive types in the signature. *)
+      (* Add inductive types in the signature, all at position [pos]. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          (* All inductive types are declared at position [pos]
-             so that constructors are declared afterwards. *)
-          let id = {id with pos} in
           handle_inductive_symbol ss expo Const Eager id pos params pt in
         (ss, ind_sym::ind_sym_list)
       in
@@ -369,13 +367,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let params =
         List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
       (* Add constructors in the signature. *)
+      let cons_pos = shift 1 pos in (* after types *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id pos
-            params pt in
-          (ss, cons_sym::cons_sym_list)
+            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+          in (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
           List.fold_left add_cons_sym (ss, []) p_cons_list in
@@ -406,6 +404,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
+      let rec_pos = shift 2 pos in (* after types and constructors *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
@@ -413,12 +412,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let (ss, rec_sym) =
           Console.out 2 (Color.gre "symbol %a : %a")
             uid rec_name term rec_typ;
-          (* Recursors are declared after the types and constructors. *)
-          let pos = after (pos_end pos) in
+          (* Add recursors in the signature, all at position [shift 2 pos]. *)
           let id = Pos.make pos rec_name in
           let r =
-            Sig_state.add_symbol ss expo Defin Eager false id
-             None rec_typ [] None
+            Sig_state.add_symbol ss expo Defin Eager false id rec_pos
+              rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
