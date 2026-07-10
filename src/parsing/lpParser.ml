@@ -332,7 +332,6 @@ let qid_expl (lb:'token lexbuf): (string list * string) loc =
   | _ ->
       expected lb "" [UID_EXPL"";QID_EXPL[]]
 
-let uid_tks = [UID""]
 let uid (lb:'token lexbuf): string loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -341,7 +340,19 @@ let uid (lb:'token lexbuf): string loc =
       consume_token lb;
       make_pos pos1 s
   | _ ->
-      expected lb "" uid_tks
+      expected lb "" [UID""]
+
+let sym_name (lb:'token lexbuf): string loc =
+  if log_enabled() then log "%s" __FUNCTION__;
+  match current_token lb with
+  | INT s ->
+      syntax_error (current_pos lb) "Forbidden symbol name."
+  | UID s ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      make_pos pos1 s
+  | _ ->
+      expected lb "" [UID""]
 
 let param_tks = [UID"";UNDERSCORE]
 let param (lb:'token lexbuf): string loc option =
@@ -451,7 +462,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  let p_sym_kw = Some(locate (current_pos lb)) in
  consume SYMBOL lb;
- let p_sym_nam = uid lb in
+ let p_sym_nam = sym_name lb in
  let p_sym_arg = list params_tks params lb in
  begin
    match current_token lb with
@@ -640,7 +651,7 @@ and command (lb:'token lexbuf) : p_command =
         let q = query lb in
         extend_pos lb (*__FUNCTION__*) pos1 (P_query(q))
     | _ ->
-        expected lb ""
+        expected lb "command"
          [ SIDE Pratter.Left ; ASSOCIATIVE ; COMMUTATIVE ; CONSTANT ;
            INJECTIVE ; SEQUENTIAL ; PRIVATE ; OPAQUE ; PROTECTED ; REQUIRE ;
            OPEN ; SYMBOL ; L_PAREN ; L_SQ_BRACKET ; INDUCTIVE ; RULE ;
@@ -1110,7 +1121,7 @@ and tactic (lb:'token lexbuf): p_tactic =
   | REMOVE ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let xs = nelist uid_tks uid lb in
+      let xs = nelist [UID""] uid lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_tac_remove xs)
   | REPEAT ->
       let pos1 = current_pos lb in
@@ -1510,7 +1521,7 @@ and aterm (lb:'token lexbuf): p_term =
         consume_token lb;
         make_pos pos1 (P_SLit s)
     | _ ->
-      expected lb "TYPE, identifier, integer or string literal, \"_\", \
+      expected lb "TYPE, identifier, integer or string literal, \"_\" \
                    or term between parentheses or square brackets" []
 
 and env (lb:'token lexbuf): p_term list =
