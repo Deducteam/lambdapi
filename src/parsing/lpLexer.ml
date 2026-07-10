@@ -344,6 +344,7 @@ let rec token ~allow_rocq_syntax lb =
   | '@', id -> UID_EXPL(remove_first lb)
   | '?', nat -> UID_META(int_of_string(remove_first lb))
   | '?', '0', nat -> fail lb "Forbidden metavariable name."
+  | '?', id -> fail lb "Forbidden metavariable name."
   | '$', nat -> fail lb "Forbidden pattern variable name."
   | '$', '0', nat -> fail lb "Forbidden pattern variable name."
   | '$', id -> UID_PATT(remove_first lb)
