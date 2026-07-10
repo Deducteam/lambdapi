@@ -140,7 +140,7 @@ let openings = ref []
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open(_,ps) -> List.iter (open_mod oc) ps
+  | P_open(_,_,ps) -> List.iter (open_mod oc) ps
   | P_require(b,ps) ->
       List.iter (req_mod oc) ps;
       begin
@@ -149,8 +149,8 @@ let command oc {elt; pos} =
         | _ -> () (*FIXME?*)
       end
   | P_require_as(p,i) -> Stt.alias := StrMap.add i.elt p.elt !Stt.alias
-  | P_symbol { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm;
-               p_sym_prf=_; p_sym_def } ->
+  | P_symbol { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
+               p_sym_trm; p_sym_prf=_; p_sym_def } ->
     if not (is_mapped p_sym_nam.elt) then
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->

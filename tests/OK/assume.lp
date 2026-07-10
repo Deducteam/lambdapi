@@ -5,14 +5,12 @@ injective symbol π: Prop → TYPE;
 require open tests.OK.Tactic;
 
 constant symbol OK: Prop;
-symbol isOK: π OK;
+symbol isOK [a:Set] (x:τ a): π OK;
 
-symbol test [T:Set] (a: τ T) (b: τ T): π OK ≔
+symbol test [a:Set] (x: τ a) (y: τ a): π OK ≔
 begin
-  assume T;
-  eval (#assume "x" (λ (a1: τ T),
-                     #print "assume1" &
-                                      (#assume "x" (λ (a2: τ T),
-                       #print "assume2" &
-                                        #apply isOK))));
+  assume a;
+  eval (#assume "x" (λ x1,
+    (#assume "x" (λ x2,
+      #apply (isOK x1)))));
 end;

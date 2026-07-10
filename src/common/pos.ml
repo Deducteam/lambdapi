@@ -36,6 +36,13 @@ let cat : pos -> pos -> pos = fun p1 p2 ->
   ; end_col = p2.end_col
   ; end_offset = p2.end_offset }
 
+(** [file_start fname] is a zero-length position at the start of file [fname],
+    used as a fallback for error reporting when no finer position is known. *)
+let file_start : string -> pos = fun fname ->
+  { fname = Some fname
+  ; start_line = 1; start_col = 0; start_offset = 0
+  ; end_line = 1; end_col = 0; end_offset = 0 }
+
 (** [locate ?fname (p1,p2)] converts the pair of Lexing positions [p1,p2] and
     filename [fname] into a {!type:pos}. *)
 let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
@@ -94,7 +101,8 @@ let equal : popt -> popt -> bool = fun p1 p2 ->
 let pos_end : popt -> popt = fun po ->
   match po with
   | None -> None
-  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
+  | Some p -> Some {p with start_offset=p.end_offset
+                         ; start_line = p.end_line; start_col = p.end_col}
 
 (** [cat] extends and hide the above [cat] function from [pos] to [popt]. *)
 let cat : popt -> popt -> popt = fun p1 p2 ->
@@ -104,14 +112,23 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
-(** [shift k p] returns a position that is [k] characters after [p]. *)
+(** [prefix n p] is the sub-position of [p] covering only its first [n]
+    characters, which are assumed to lie on the first line of [p] and to be
+    ASCII (so that [n] is both a column count and a character count). *)
+let prefix : int -> popt -> popt = fun n p ->
+  match p with
+  | None -> None
+  | Some p -> Some { p with end_line = p.start_line
+                          ; end_col = p.start_col + n
+                          ; end_offset = p.start_offset + n }
+
+(** [shift k p] returns a position that is [k] characters after [p].
+    /!\ The generated position may not actually exist in the user input.
+    The fields start_offset, end_offset and end_col are inconsistent. *)
 let shift : int -> popt -> popt = fun k p ->
   match p with
   | None -> assert false
   | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
-
-let after = shift 1
-let before = shift (-1)
 
 (** [lexing_opt p] converts a [popt] into a [Lexing.position]. *)
 let lexing_opt (p:popt): Lexing.position =
@@ -194,7 +211,7 @@ let print_file_contents :
         It's dangerous for your health! *)
     begin match parse_file fname with
     | exception _ ->
-       string ppf ("Cannot open file " ^ fname ^ " Maybe it was moved?")
+       string ppf ("Cannot open file \""^fname^"\". Maybe it was moved?")
     | input_line,finish ->
      let out =
        Buffer.create

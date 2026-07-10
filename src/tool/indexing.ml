@@ -450,7 +450,7 @@ module DB = struct
  (* given a filename/URI it returns the stream of lines
     and a function to close the resources *)
  let parse_file fname =
-  if String.starts_with ~prefix:"file:///" fname then
+  if String.starts_with ~prefix:"file://" fname then
    (assert (fst Stdlib.(!lsp_input) = fname) ;
    let text = snd Stdlib.(!lsp_input) in
    let lines = ref (String.split_on_char '\n' text) in
