@@ -250,7 +250,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
+  | P_open(_,b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
@@ -345,7 +345,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
-  | P_inductive(ms, params, p_ind_list) ->
+  | P_inductive(_, ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat, opaq) = handle_modifiers ms in
       if prop <> Defin then
@@ -444,8 +444,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         rec_sym_list;
       (ss, None, None)
 
-  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
-              p_sym_def} ->
+  | P_symbol {p_sym_mod;p_sym_kw=_;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
+              p_sym_prf;p_sym_def} ->
     (* We check that the identifier is not already used. *)
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then

@@ -222,8 +222,8 @@ let in_range ?loc (line, pos) =
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
-  List.find_opt (fun { ast; _ } ->
-      let loc = Pure.Command.get_pos ast in
+  List.find_opt (fun { cmd; _ } ->
+      let loc = Pure.Command.get_pos cmd in
       in_range ?loc (line,pos)
     ) doc.Lp_doc.nodes
 

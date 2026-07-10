@@ -22,7 +22,7 @@ module LSP = Lsp_base
 let lp_logger = Buffer.create 100
 
 type doc_node =
-  { ast   : Pure.Command.t
+  { cmd   : Pure.Command.t
   ; exec  : bool
   (*; tactics : Proof.Tactic.t list*)
   ; goals : (Goal.info list * Pos.popt) list
@@ -63,7 +63,10 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
     let qres = match qres with None -> "OK" | Some x -> x in
-    pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    (* Show the success hint on the tactic's leading keyword only. This
+       tuple also anchors the goals panel (see [get_goals]), whose lookup
+       reads the start of the position: the start must not move. *)
+    pstate, (Tactic.keyword_pos tac, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -83,27 +86,32 @@ let get_goals dg_proof =
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 
-let process_cmd _file (nodes,st,dg,logs) ast =
+let process_cmd _file (nodes,st,dg,logs) cmd =
   let open Pure in
   (* let open Timed in *)
   (* XXX: Capture output *)
   (* Console.out_fmt := lp_fmt;
    * Console.err_fmt := lp_fmt; *)
-  let cmd_loc = Command.get_pos ast in
-  let hndl_cmd_res = handle_command st ast in
+  let cmd_loc = Command.get_pos cmd in
+  let hndl_cmd_res = handle_command st cmd in
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
-    let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, qres, None in
+    let nodes = { cmd; exec = true; goals = [] } :: nodes in
+    (* Show the success hint on the command's introducing keyword only. *)
+    let ok_diag = Command.keyword_pos cmd, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
-    let goals = get_goals dg_proof in
-    let nodes = { ast; exec = true; goals } :: nodes in
+    (* Initial goals stay anchored at the symbol, for the goals panel. *)
+    let goals =
+      get_goals ((thm_loc, 4, "OK", Some start_goals) :: dg_proof) in
+    let nodes = { cmd; exec = true; goals } :: nodes in
+    (* Visible success hint on the "symbol" keyword, not on the symbol
+       name. *)
+    let dg_proof = (Command.keyword_pos cmd, 4, "OK", None) :: dg_proof in
     let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, qres)   ->
@@ -123,7 +131,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     nodes, st, dg_proof @ dg, logs
 
   | Cmd_Error(loc, msg) ->
-    let nodes = { ast; exec = false; goals = [] } :: nodes in
+    let nodes = { cmd; exec = false; goals = [] } :: nodes in
     let cmd_loc, loc, diag, log = match cmd_loc, loc with
     | Some l, Some Some l' ->
         if l.fname = l'.fname then

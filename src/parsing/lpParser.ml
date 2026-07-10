@@ -436,15 +436,20 @@ let term_id (lb:'token lexbuf): p_term =
 (* [req] tells whether the command starts with the [require] keyword:
    [require [private] open] loads the modules and opens them
    ([P_require]), while a bare [[private] open] only opens modules
-   that are already loaded ([P_open]). *)
+   that are already loaded ([P_open]). For a bare open, the position
+   of the "open" keyword is recorded in the AST (a "private" modifier,
+   like modifiers of symbol declarations, is not part of the
+   keyword). *)
 let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
+ let kw_pos = Some(locate (current_pos lb)) in
  consume OPEN lb;
  let ps = nelist path_tks path lb in
- if req then P_require(Some priv,ps) else P_open(priv,ps)
+ if req then P_require(Some priv,ps) else P_open(kw_pos,priv,ps)
 
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
+ let p_sym_kw = Some(locate (current_pos lb)) in
  consume SYMBOL lb;
  let p_sym_nam = uid lb in
  let p_sym_arg = list params_tks params lb in
@@ -460,7 +465,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
              let p_sym_prf = Some (proof lb) in
              let p_sym_def = false in
              let sym =
-               {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+               {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
                 p_sym_trm=None; p_sym_def; p_sym_prf}
              in P_symbol(sym)
          | ASSIGN ->
@@ -468,7 +473,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
              let p_sym_trm, p_sym_prf = term_proof lb in
              let p_sym_def = true in
              let sym =
-               {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+               {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
                 p_sym_trm; p_sym_def; p_sym_prf}
              in P_symbol(sym)
          | SEMICOLON ->
@@ -476,7 +481,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
              let p_sym_def = false in
              let p_sym_prf = None in
              let sym =
-               {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+               {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
                 p_sym_trm; p_sym_def; p_sym_prf}
              in P_symbol(sym)
          | _ ->
@@ -488,7 +493,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
        let p_sym_def = true in
        let p_sym_typ = None in
        let sym =
-         {p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+         {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
           p_sym_trm; p_sym_def; p_sym_prf}
        in P_symbol(sym)
    | _ ->
@@ -501,10 +506,11 @@ and inductive_cmd (p_sym_mod:p_modifier list) (lb:'token lexbuf)
  let xs = list params_tks params lb in
  match current_token lb with
  | INDUCTIVE ->
+     let kw_pos = Some(locate (current_pos lb)) in
      consume INDUCTIVE lb;
      let i = inductive lb in
      let is = list [WITH] (prefix WITH inductive) lb in
-     P_inductive(p_sym_mod,xs,i::is)
+     P_inductive(kw_pos,p_sym_mod,xs,i::is)
  | _ -> expected lb "" [L_PAREN;L_SQ_BRACKET;INDUCTIVE]
 
 and command (lb:'token lexbuf) : p_command =
