@@ -450,7 +450,7 @@ module DB = struct
  (* given a filename/URI it returns the stream of lines
     and a function to close the resources *)
  let parse_file fname =
-  if String.starts_with ~prefix:"file:///" fname then
+  if String.starts_with ~prefix:"file://" fname then
    (assert (fst Stdlib.(!lsp_input) = fname) ;
    let text = snd Stdlib.(!lsp_input) in
    let lines = ref (String.split_on_char '\n' text) in
@@ -742,12 +742,7 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rhs = rule.rhs in
  let get_relation = function | DB.Conclusion r -> r | _ -> assert false in
  let filename = Option.get rule_pos.fname in
- let filename =
-   if String.starts_with ~prefix:"file:///" filename then
-    let n = String.length "file://" in
-    String.sub filename n (String.length filename - n)
-   else
-    filename in
+ let filename = Lplib.String.remove_prefix "file://" filename in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
  let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
