@@ -575,8 +575,7 @@ and command (lb:'token lexbuf) : p_command =
                     extend_pos lb (*__FUNCTION__*) pos1 (P_require_as(p,i))
                 | _ ->
                     set_expected_tokens lb [AS] ;
-                    extend_pos lb (*__FUNCTION__*) pos1
-                      (P_require(None,ps))
+                    extend_pos lb (*__FUNCTION__*) pos1 (P_require(None,ps))
               end
           | _ -> expected lb "" [OPEN;PRIVATE;QID[]]
         end
