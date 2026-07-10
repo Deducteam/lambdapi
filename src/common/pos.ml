@@ -101,7 +101,8 @@ let equal : popt -> popt -> bool = fun p1 p2 ->
 let pos_end : popt -> popt = fun po ->
   match po with
   | None -> None
-  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
+  | Some p -> Some {p with start_offset=p.end_offset
+                         ; start_line = p.end_line; start_col = p.end_col}
 
 (** [cat] extends and hide the above [cat] function from [pos] to [popt]. *)
 let cat : popt -> popt -> popt = fun p1 p2 ->
@@ -121,14 +122,13 @@ let prefix : int -> popt -> popt = fun n p ->
                           ; end_col = p.start_col + n
                           ; end_offset = p.start_offset + n }
 
-(** [shift k p] returns a position that is [k] characters after [p]. *)
+(** [shift k p] returns a position that is [k] characters after [p].
+    /!\ The generated position may not actually exist in the user input.
+    The fields start_offset, end_offset and end_col are inconsistent. *)
 let shift : int -> popt -> popt = fun k p ->
   match p with
   | None -> assert false
   | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
-
-let after = shift 1
-let before = shift (-1)
 
 (** [lexing_opt p] converts a [popt] into a [Lexing.position]. *)
 let lexing_opt (p:popt): Lexing.position =

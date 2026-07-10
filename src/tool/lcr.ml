@@ -21,9 +21,9 @@ Warning: we currently do not take into account the rules having higher-order
 
 Remark: When trying to unify a subterm of a rule LHS with the LHS of another
    rule, we need to rename the pattern variables of one of the LHS to avoid
-   name clashes. To this end, we use the [shift] function below which replaces
-   [Patt(i,n,_)] by [Patt(-i-1,n ^ "'",_)]. The printing function [subs] below
-   takes this into account. *)
+   name clashes. To this end, we use the [reindex] function below which
+   replaces [Patt(i,n,_)] by [Patt(-i-1,n ^ "'",_)]. The printing function
+   [subs] below takes this into account. *)
 
 open Core open Term open Print
 open Timed
@@ -99,8 +99,8 @@ let occurs : int -> term -> bool = fun i ->
     | LLet _ -> assert false
   in occ
 
-(** [shift t] replaces in [t] every pattern index i by -i-1. *)
-let rec shift : term -> term = fun t ->
+(** [reindex t] replaces in [t] every pattern index i by -i-1. *)
+let rec reindex : term -> term = fun t ->
   match unfold t with
   | Vari _
   | Type
@@ -109,16 +109,16 @@ let rec shift : term -> term = fun t ->
   | Wild
   | Plac _
   | TRef _ -> t
-  | Prod(a,b) -> mk_Prod (shift a, shift_binder b)
-  | Abst(a,b) -> mk_Abst (shift a, shift_binder b)
-  | Appl(a,b) -> mk_Appl (shift a, shift b)
-  | Meta(m,ts) -> mk_Meta (m, Array.map shift ts)
+  | Prod(a,b) -> mk_Prod (reindex a, reindex_binder b)
+  | Abst(a,b) -> mk_Abst (reindex a, reindex_binder b)
+  | Appl(a,b) -> mk_Appl (reindex a, reindex b)
+  | Meta(m,ts) -> mk_Meta (m, Array.map reindex ts)
   | Patt(None,_,_) -> assert false
-  | Patt(Some i,n,ts) -> mk_Patt (Some(-i-1), n ^ "'", Array.map shift ts)
+  | Patt(Some i,n,ts) -> mk_Patt (Some(-i-1), n ^ "'", Array.map reindex ts)
   | Bvar _ -> assert false
-  | LLet(a,t,b) -> mk_LLet (shift a, shift t, shift_binder b)
-and shift_binder b =
-  let x, t = unbind b in bind_var x (shift t)
+  | LLet(a,t,b) -> mk_LLet (reindex a, reindex t, reindex_binder b)
+and reindex_binder b =
+  let x, t = unbind b in bind_var x (reindex t)
 
 (** Type for pattern variable substitutions. *)
 type subs = term IntMap.t
@@ -372,7 +372,7 @@ let iter_cps_with_rule :
   (*if Logger.log_enabled() then
     log_cp "iter_cps_with_rule@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
-  let l = shift l and r = shift r in
+  let l = reindex l and r = reindex r in
   let i = id_sym_rule lr and j = id_sym_rule gd in
   let f _ p l_p = cp_cand_fun h pos i l r p l_p j g d in
   iter_subterms pos f l
@@ -555,7 +555,7 @@ let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
   if Logger.log_enabled() then log_cp "check_cps_subterms_eq";
   (*if Logger.log_enabled() then
     log_cp "check_cps_subterms_eq@.%a@.%a" Print.rule lr Print.rule gd;*)
-  let l = shift (lhs lr) and r = shift (rhs lr) in
+  let l = reindex (lhs lr) and r = reindex (rhs lr) in
   let i = id_sym_rule lr in
   let f s p l_p =
     match !(s.sym_def) with

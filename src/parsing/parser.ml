@@ -160,7 +160,6 @@ sig
     set_filename lb lexpos.pos_fname;
     Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
 
-
   (* exported functions *)
   let parse_term_string =
     parse_entry_string ~allow_rocq_syntax:false LpParser.term
@@ -192,7 +191,6 @@ let path_of_string : string -> Path.t = fun s ->
   with
       LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a path." s
-
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
