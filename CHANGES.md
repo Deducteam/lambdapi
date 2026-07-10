@@ -36,9 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- A bare `open` (not preceded by `require`) was parsed as `require open`
-  since the parser rework, silently loading not yet required modules
-  instead of failing.
 - Convertibility test of non-linear higher-order pattern variables in rule LHS.
 - Syntactical errors in Dedukti export.
 - Weak head normal form test.
