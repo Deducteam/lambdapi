@@ -460,6 +460,9 @@ let main std log_file =
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
   Error.err_fmt := lp_fmt;
+  (* Editors display the proof state themselves, so do not attach it to
+     tactic failures. *)
+  Handle.Proof.state_on_error := false;
   (* Console.verbose := 4; *)
 
   let rec loop () =

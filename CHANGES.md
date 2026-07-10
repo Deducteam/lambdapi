@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
 - Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
+- Errors occurring while a proof is in progress now report the proof state: the goals a failing tactic was applied to, the goals before and after the tactic for a subproof-count mismatch, and the remaining goals when a proof is unfinished at `end`. The state is printed after the error message, which stays unchanged. The LSP server does not attach the proof state to tactic failures since editors display it themselves.
 
 ### Fixed
 
