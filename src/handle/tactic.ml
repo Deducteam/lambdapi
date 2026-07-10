@@ -818,30 +818,53 @@ let handle :
 
 (** [handle sym_pos priv r tac n] applies the tactic [tac] from the previous
    tactic output [r] and checks that the number of goals of the new proof
-   state is compatible with the number [n] of subproofs. *)
+   state is compatible with the number [n] of subproofs. When [tac] fails,
+   the proof state it was applied to is attached to the error (see
+   {!val:Proof.state_on_error}). *)
 let handle :
   Sig_state.t -> popt -> bool -> tac_output -> p_tactic -> int -> tac_output =
   fun ss sym_pos priv (ps, _) t nb_subproofs ->
-  let (ps', _) as a = handle ss sym_pos priv ps t in
+  (* Attach the proof state [t] was applied to, to any error escaping its
+     application. Errors raised inside tacticals like [try] or [orelse] are
+     caught below this point, so only failures actually reported to the user
+     are concerned. *)
+  let (ps', _) as a =
+    try handle ss sym_pos priv ps t
+    with Fatal(p, msg, desc)
+      when Stdlib.(!state_on_error) && ps.proof_goals <> [] ->
+        let state = error_state ps in
+        let desc = if desc = "" then state else desc ^ "\n" ^ state in
+        raise (Fatal(p, msg, desc))
+  in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in
+  (* [t] ran, but the number of subproofs given does not match the number of
+     subgoals it produced: report the proof state before and after its
+     application. *)
+  let mismatch : string -> 'a = fun reason ->
+    fatal t.pos ~err_desc:(error_state ~after:ps' ps) "%s" reason in
   if nb_newgoals <= 0 then
     if nb_subproofs = 0 then a
-    else fatal t.pos "A subproof is given but there is no subgoal."
+    else mismatch "A subproof is given but there is no subgoal."
   else if is_destructive t then
-    match nb_newgoals + 1 - nb_subproofs with
+    (match nb_newgoals + 1 - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1))
     | _ ->
-      fatal t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1)))
   else match nb_newgoals - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs nb_newgoals goals ps'
-    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
-             nb_subproofs nb_newgoals
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)
+    | _ ->
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)

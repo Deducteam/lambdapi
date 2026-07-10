@@ -567,7 +567,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              fatal pe.pos "The proof is not finished:@.%a" goals ps;
+              fatal pe.pos
+                ~err_desc:(Format.asprintf "Proof state:@.%a@." goals ps)
+                "The proof is not finished.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else

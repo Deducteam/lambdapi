@@ -27,6 +27,31 @@ let goals : proof_state pp = fun ppf ps ->
       let goal ppf i g = out ppf "\n%d. %a" (i+1) Goal.pp_no_hyp g in
       List.iteri (goal ppf) gs
 
+(** [state_on_error] controls whether the failure of a tactic attaches the
+    current proof state to the error, as the [err_desc] argument of the
+    [Fatal] exception, printed after the error message. It is enabled by
+    default, and disabled by the LSP server, which has its own means of
+    displaying the proof state. Errors that always reported the proof state
+    (subproof-count mismatches, unfinished proofs) keep doing so regardless
+    of this setting. *)
+let state_on_error : bool Stdlib.ref = Stdlib.ref true
+
+(** [error_state ?after ps] renders, for attachment to an error report, the
+    proof state [ps] a failing tactic was applied to, followed, when the
+    failure was only detected after the tactic was applied (a subproof-count
+    mismatch), by the proof state [after] its application. *)
+let error_state : ?after:proof_state -> proof_state -> string =
+  fun ?after before ->
+  match after with
+  | None ->
+      Format.asprintf "Proof state before tactic application:@.%a@."
+        goals before
+  | Some after ->
+      Format.asprintf
+        "Proof state before tactic application:@.%a@.\
+         Proof state after tactic application:@.%a@."
+        goals before goals after
+
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)
 let remove_solved_goals : proof_state -> proof_state = fun ps ->
