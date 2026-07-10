@@ -22,7 +22,7 @@ Warning: we currently do not take into account the rules having higher-order
 Remark: When trying to unify a subterm of a rule LHS with the LHS of another
    rule, we need to rename the pattern variables of one of the LHS to avoid
    name clashes. To this end, we use the [reindex] function below which
-   replaces [Patt(i,n,_)] by [Patt(-i-1,n ^ "'",_)]. The printing function
+   replaces [Patt(i,n,_)] by [Patt(-i-1,n^"'",_)]. The printing function
    [subs] below takes this into account. *)
 
 open Core open Term open Print
@@ -30,8 +30,8 @@ open Timed
 open Common open Error open Debug
 open Lplib open Base open Extra
 
-let log_cp = Logger.make 'k' "lcr " "local confluence"
-let log_cp = log_cp.pp
+let log = Logger.make 'k' "lcr " "local confluence"
+let log = log.pp
 
 (** [rule_of_pair ppf x] prints on [ppf] the pair of term [x] as a rule. *)
 let rule_of_pair : (term * term) pp =
@@ -59,10 +59,10 @@ let rule_of_def : sym -> term -> rule = fun s rhs ->
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
 let replace : term -> subterm_pos -> term -> term = fun t p u ->
-  (*if Logger.log_enabled() then log_cp "replace by %a" term u;*)
+  (*if Logger.log_enabled() then log "replace by %a" term u;*)
   let rec replace t p =
     (*if Logger.log_enabled() then
-      log_cp "at %a in %a" subterm_pos p term t;*)
+      log "at %a in %a" subterm_pos p term t;*)
     match p with
     | [] -> u
     | 0::p ->
@@ -129,9 +129,9 @@ let subs : term IntMap.t pp =
 
 (** [apply_subs s t] applies the pattern substitution [s] to [t]. *)
 let apply_subs : subs -> term -> term = fun s t ->
-  (*if Logger.log_enabled() then log_cp "apply_subs by %a" subs s;*)
+  (*if Logger.log_enabled() then log "apply_subs by %a" subs s;*)
   let rec apply_subs t =
-    (*if Logger.log_enabled() then log_cp "%a" term t;*)
+    (*if Logger.log_enabled() then log "%a" term t;*)
     match unfold t with
     | Patt(None, _, _) -> assert false
     | Patt(Some i,_,[||]) ->
@@ -164,7 +164,7 @@ let iter_subterms_from_pos : subterm_pos -> iter =
   fun p _pos f t ->
   let rec iter p t =
     (*if Logger.log_enabled() then
-      log_cp "iter_subterms_eq %a %a" subterm_pos p term t;*)
+      log "iter_subterms_eq %a %a" subterm_pos p term t;*)
     let h, _ = get_args t in
     match unfold h with
     | Symb s -> if is_definable s then iter_app s p t else iter_args p t
@@ -199,7 +199,7 @@ let iter_subterms_eq : iter = iter_subterms_from_pos []
 (** [iter_subterms pos f t] iterates f on all strict subterms of [t] headed by
    a defined function symbol. *)
 let iter_subterms : iter = fun pos f t ->
-  (*if Logger.log_enabled() then log_cp "iter_subterms %a" term t;*)
+  (*if Logger.log_enabled() then log "iter_subterms %a" term t;*)
   match unfold t with
   | Symb _
   | Patt _
@@ -230,7 +230,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
     | [] -> s
     | (t, u)::l ->
       if Logger.log_enabled() then
-        log_cp "unif %a ≡ %a with %a" term t term u subs s;
+        log "unif %a ≡ %a with %a" term t term u subs s;
       match unfold t, unfold u with
       | Symb f, Symb g -> if f == g then unif s l else raise NotUnifiable
       | Appl(a,b), Appl(c,d) -> unif s ((a,c)::(b,d)::l)
@@ -328,7 +328,7 @@ let id_sym_rule : sym_rule -> rule_id = fun (_,r) ->
 (** [new_rule_id()] generates a new unique rule id. *)
 let new_rule_id : unit -> rule_id =
   let open Stdlib in
-  let n = ref 0 in
+  let n = Stdlib.ref 0 in
   fun () ->
   decr n;
   {fname=None; start_line=(!n); start_col=0; start_offset=0; end_line=0;
@@ -370,7 +370,7 @@ let iter_cps_with_rule :
   iter -> cp_fun -> Pos.popt -> sym_rule -> sym_rule -> unit =
   fun iter_subterms h pos lr gd ->
   (*if Logger.log_enabled() then
-    log_cp "iter_cps_with_rule@.%a@.%a" Print.rule lr Print.rule gd;*)
+    log "iter_cps_with_rule@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
   let l = reindex l and r = reindex r in
   let i = id_sym_rule lr and j = id_sym_rule gd in
@@ -392,9 +392,8 @@ let iter_cps_of_rules : cp_fun -> Pos.popt -> sym_rule list -> unit =
 (** [typability_constraints pos t] returns [None] if [t] is not typable, and
    [Some s] where [s] is a substitution implied by the typability of [t]. *)
 let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
-  if Logger.log_enabled() then log_cp "typability_constraints %a" term t;
+  if Logger.log_enabled() then log "typability_constraints %a" term t;
   (* Replace Patt's by Meta's. *)
-  let open Stdlib in
   let p = new_problem()
   and p2m : meta IntMap.t ref = ref IntMap.empty
   and m2p : (int * string) MetaMap.t ref = ref MetaMap.empty in
@@ -419,7 +418,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
   in
   let t = patt_to_meta t in
   match Infer.infer_noexn p [] t with
-  | None -> if Logger.log_enabled() then log_cp "not typable"; None
+  | None -> if Logger.log_enabled() then log "not typable"; None
   | _ ->
   (* Replace unsolved metas by symbols. *)
   let s2p : int SymMap.t ref = ref SymMap.empty in
@@ -434,24 +433,13 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     with Not_found -> ()
   in
   MetaSet.iter meta_to_sym Timed.(!p).metas;
-  if Logger.log_enabled() then log_cp "meta_to_sym %a" problem p;
+  if Logger.log_enabled() then log "meta_to_sym %a" problem p;
   (* Try to solve constraints. *)
   match Unif.solve_noexn ~type_check:false p with
   | false ->
-    if Logger.log_enabled() then log_cp "unsolvable constraints"; None
+    if Logger.log_enabled() then log "unsolvable constraints"; None
   | true ->
-  if Logger.log_enabled() then log_cp "after solve %a" problem p;
-  (* Function replacing generated symbols by their corresponding Patt. *)
-  let rec sym_to_patt : term -> term = fun t ->
-    match unfold t with
-    | Symb s ->
-      begin match SymMap.find_opt s !s2p with
-        | Some i -> mk_Patt(Some i, s.sym_name, [||])
-        | None -> t
-      end
-    | Appl(a,b) -> mk_Appl_not_canonical(sym_to_patt a, sym_to_patt b)
-    | _ -> t
-  in
+  if Logger.log_enabled() then log "after solve %a" problem p;
   (* Function converting a pair of terms into a rule, if possible. *)
   let rule_of_terms : term -> term -> sym_rule option = fun l rhs ->
     match get_args_len l with
@@ -464,6 +452,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
   (* Turn constraints into rules. *)
   let add_constr : sym_rule IntMap.t -> constr -> sym_rule IntMap.t =
     fun rule_map (_,l,r) ->
+    if Logger.log_enabled() then log "Term.cmp %a %a" Raw.term l Raw.term r;
     let l,r = if Term.cmp l r > 0 then l,r else r,l in
     match rule_of_terms l r with
     | Some x ->
@@ -478,7 +467,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
   let completion_step : sym_rule IntMap.t -> sym_rule IntMap.t =
     fun rule_map ->
     if Logger.log_enabled() then
-      log_cp "completion_step %a" (D.intmap sym_rule) rule_map;
+      log "completion_step %a" (D.intmap sym_rule) rule_map;
     let new_rule_map = ref rule_map and modified = ref false in
     let remove_rule i =
       new_rule_map := IntMap.remove (int_of_rule_id i) !new_rule_map;
@@ -496,7 +485,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
       assert (s = IntMap.empty);
       remove_rule i;
       let l' = replace l p d in
-      match cmp l' r with
+      match Term.cmp l' r with
       | 0 -> ()
       | n when n > 0 -> add_rule l' r
       | _ -> add_rule r l'
@@ -512,6 +501,17 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     if new_rule_map == rule_map then rule_map else complete new_rule_map
   in
   let rule_map = complete rule_map in
+  (* Function replacing generated symbols by their corresponding Patt. *)
+  let rec sym_to_patt : term -> term = fun t ->
+    match unfold t with
+    | Symb s ->
+      begin match SymMap.find_opt s !s2p with
+        | Some i -> mk_Patt(Some i, s.sym_name, [||])
+        | None -> t
+      end
+    | Appl(a,b) -> mk_Appl_not_canonical(sym_to_patt a, sym_to_patt b)
+    | _ -> t
+  in
   (* Turn completed rules into a substitution. *)
   let f _ ((s,_) as x) subs =
     match SymMap.find_opt s !s2p with
@@ -519,7 +519,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     | None -> subs
   in
   let s = IntMap.fold f rule_map IntMap.empty in
-  if Logger.log_enabled() then log_cp "typing subs %a" subs s;
+  if Logger.log_enabled() then log "typing subs %a" subs s;
   Some s
 
 (** [check_cp pos _ l r p l_p _ g d s] checks that, if [l_p] and [g] are
@@ -528,7 +528,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
    subterms. *)
 let check_cp : cp_fun = fun pos _ l r p l_p _ g d s ->
   if Logger.log_enabled() then
-    log_cp (Color.blu "check_cp \
+    log (Color.blu "check_cp \
       @[<v>l ≔ %a@ r ≔ %a@ p ≔ %a@ l_p ≔ %a@ g ≔ %a@ d ≔ %a@ s ≔ %a@]")
       term l term r subterm_pos p term l_p term g term d subs s;
   let t = apply_subs s l in
@@ -552,9 +552,9 @@ let check_cp : cp_fun = fun pos _ l r p l_p _ g d s ->
    all the subterms of the [sr1] LHS and all the possible rule LHS's. *)
 let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
   fun pos ((_,x) as lr) ->
-  if Logger.log_enabled() then log_cp "check_cps_subterms_eq";
+  if Logger.log_enabled() then log "check_cps_subterms_eq";
   (*if Logger.log_enabled() then
-    log_cp "check_cps_subterms_eq@.%a@.%a" Print.rule lr Print.rule gd;*)
+    log "check_cps_subterms_eq@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = reindex (lhs lr) and r = reindex (rhs lr) in
   let i = id_sym_rule lr in
   let f s p l_p =
@@ -578,7 +578,7 @@ let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
     between all the rules of the signature and [sym_map]. *)
 let check_cps_sign_with : Pos.popt -> Sign.t -> rule list SymMap.t -> unit =
   fun pos sign sym_map ->
-  if Logger.log_enabled() then log_cp "check_cps_sign_with";
+  if Logger.log_enabled() then log "check_cps_sign_with";
   let f s' rs' =
     match SymMap.find_opt s' !(sign.Sign.sign_cp_pos) with
     | None -> ()
@@ -601,7 +601,7 @@ let check_cps_sign_with : Pos.popt -> Sign.t -> rule list SymMap.t -> unit =
 let check_cps :
   Pos.popt -> Sign.t -> sym_rule list -> rule list SymMap.t -> unit =
   fun pos sign srs sym_map ->
-  if Logger.log_enabled() then log_cp "check_cps";
+  if Logger.log_enabled() then log "check_cps";
   (* Verification of CP*(S,S). *)
   iter_cps_of_rules check_cp pos srs;
   (* Verification of CP*(S,R). /!\ Here, we use the fact that decision trees
@@ -630,15 +630,14 @@ let update_cp_pos : Pos.popt -> cp_pos list SymMap.t -> rule list SymMap.t ->
     SymMap.update s h map
   in
   fun pos cp_pos_map rules_map ->
-  if Logger.log_enabled() then log_cp "update_cp_pos";
-  let open Stdlib in
+  if Logger.log_enabled() then log "update_cp_pos";
   let map = ref cp_pos_map in
   let f s rs =
     let h ({rule_pos=i;_} as r) =
       let lr = (s,r) in let l = lhs lr and r = rhs lr in
       let h' s' p l_p = map := add_elt s' (i,l,r,p,l_p) !map
         (*if Logger.log_enabled() then
-          log_cp "add_cp_pos %a ↪ %a, %a, %a"
+          log "add_cp_pos %a ↪ %a, %a, %a"
             term l term r subterm_pos p term l_p*)
       in
       iter_subterms_eq pos h' l
