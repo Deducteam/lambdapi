@@ -126,6 +126,8 @@ let string_of_token =
   | WHY3 -> q"why3"
   | WITH -> q"with"
 
+let string_of_tokens = List.fold_left (fun s t -> s^", "^string_of_token t)
+
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
 let match_token tok patt =
@@ -157,8 +159,8 @@ let expected lb (msg:string) (tokens:token list) : 'a =
     | [] -> assert false
     | t::ts ->
       syntax_error (current_pos lb)
-        (List.fold_left (fun s t -> s^", "^string_of_token t)
-           ("Expected: "^string_of_token t) (ts @ get_expected_tokens lb)
+        (string_of_tokens ("Expected: "^string_of_token t)
+           (ts @ get_expected_tokens lb)
         ^".")
 
 (* building positions and terms *)
@@ -985,7 +987,8 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       let pe = proof_end lb in
       [], pe
   | _ ->
-      expected lb "subproof, tactic or query" []
+    expected lb
+      (string_of_tokens "subproof, tactic, query" [END;ABORT;ADMITTED]) []
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
@@ -1271,7 +1274,7 @@ and rwpatt_content (lb:'token lexbuf): p_rwpatt =
       else
         extend_pos lb (*__FUNCTION__*) pos1 (Rw_InTerm(t1))
   | _ ->
-      expected lb "term or keyword \"in\"" []
+      expected lb (string_of_tokens "term" [IN]) []
 
 and rwpatt_bracket (lb:'token lexbuf): p_rwpatt =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -1527,8 +1530,11 @@ and aterm (lb:'token lexbuf): p_term =
         consume_token lb;
         make_pos pos1 (P_SLit s)
     | _ ->
-      expected lb "TYPE, identifier, integer or string literal, \"_\" \
-                   or term between parentheses or square brackets" []
+      expected lb
+        (string_of_tokens
+           "identifier, integer or string literal, \
+            term between parentheses or square brackets"
+           [TYPE_TERM;UNDERSCORE]) []
 
 and env (lb:'token lexbuf): p_term list =
   if log_enabled() then log "%s" __FUNCTION__;
