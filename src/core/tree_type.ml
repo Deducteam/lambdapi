@@ -7,6 +7,16 @@ open Common
 
 type pvar = int * int array
 type psym = Path.t * string
+type c_term =
+  | C_App of psym * c_term list  (* application *)
+  | C_Patt of pvar               (* pattern variable *)
+  | C_Sym of psym                (* global symbol *)
+
+let rec c_term : c_term pp = fun ppf t ->
+  match t with
+  | C_App(s,al) -> out ppf "%s [%a]" (snd s) (List.pp c_term ",") al
+  | C_Patt (i,_) -> out ppf "?%d" i
+  | C_Sym s -> out ppf "%s" (snd s)
 
 (** Representation of an atomic pattern constructor. *)
 module TC =
@@ -59,9 +69,8 @@ type tree_cond =
       checking) of the term at the given index in the array? *)
   | CondEQ of (psym * pvar list) * (psym * pvar list)
   (** user rule condition: are the two terms equivalent *)
-  | CondST of psym * pvar * pvar
-  (** user rule condition: is the 1st pvar a subterm of the 2nd while
-   traversing psym calls *)
+  | CondCHK of psym * c_term list
+  (** user rule predefined condition *)
 
 (** {b NOTE} that when performing a [tree_cond.CondFV] check, we
     are concerned about variables that were bound in the term being reduced
@@ -79,7 +88,7 @@ let tree_cond : tree_cond pp = fun ppf tc ->
       out ppf "Eq(%s(%a),%s(%a))"
         (snd s1) (List.pp int ",") (List.map fst a1)
         (snd s2) (List.pp int ",") (List.map fst a2)
-  | CondST(op,p,q) -> out ppf "St(%s,%d,%d)" (snd op) (fst p) (fst q)
+  | CondCHK(op,al) -> out ppf "CHK %s[%a]" (snd op) (List.pp c_term " ") al
 
 (** Substitution of variables in a RHS. During the filtering process, some
     subterms of the filtered term may be stored in an array. Let [v] be that

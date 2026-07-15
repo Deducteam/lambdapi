@@ -134,8 +134,8 @@ let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
     -> pvars_lhs u
 
 type p_constraint =
-  P_EQ of p_term * p_term           (* t1 == t2 *)
-| P_ST of p_term * p_term * p_term  (* t2 <<[t1] t3 *)
+  P_EQ of p_term * p_term           (* when t1 == t2 *)
+| P_CHK of p_term  (* when t *)
 | P_None
 
 (** Parser-level rewriting rule representation. *)
@@ -412,8 +412,7 @@ and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
 let eq_p_constraint: p_constraint eq = fun c1 c2 ->
   match c1,c2 with
     P_EQ (t1,u1), P_EQ (t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
-  | P_ST (o1,t1,u1), P_ST (o2,t2,u2) ->
-      eq_p_term o1 o2 && eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_CHK t1, P_CHK t2 -> eq_p_term t1 t2
   | P_None, P_None -> true
   | _ -> false
 
@@ -640,7 +639,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   let fold_constraint : 'a -> p_constraint -> 'a = fun a w ->
     match w with
     | P_EQ (t1,t2) -> fold_term (fold_term a t1) t2
-    | P_ST (o,t1,t2) -> fold_term (fold_term (fold_term a o) t1) t2
+    | P_CHK t -> fold_term a t
     | P_None -> a
   in
 

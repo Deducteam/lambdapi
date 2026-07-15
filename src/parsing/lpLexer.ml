@@ -135,7 +135,6 @@ type token =
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
-  | SUBTERM
   | THICKARROW (* only in Rocq *)
   | TURNSTILE
   | UNDERSCORE
@@ -339,7 +338,6 @@ let rec token ~allow_rocq_syntax lb =
   | ')' -> R_PAREN
   | ']' -> R_SQ_BRACKET
   | ';' -> SEMICOLON
-  | 0xab (* « *) -> SUBTERM
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
   | '_' -> UNDERSCORE

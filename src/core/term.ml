@@ -206,12 +206,18 @@ and sym =
 
 (** {3 Representation of rewriting rules} *)
 
+(** terms in rule constraints *)
+and r_term =
+  | R_App of sym * r_term list  (* application *)
+  | R_Patt of int               (* pattern variable *)
+  | R_Sym of sym                (* global symbol *)
+
 (** optional rule constraints *)
 and r_constraint =
   (* equality constraint f p1 ... pn == g q1 ... qm *)
   | R_EQ of (sym * int list) * (sym * int list)
-  (* subterm constraint p <<[op] q *)
-  | R_ST of sym * int * int
+  (* predefined constraint *)
+  | R_CHK of sym * r_term list
   | R_None (* no constraint *)
 
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
@@ -997,3 +1003,19 @@ module Raw = struct
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
+
+(** {4 functions over constraints} *)
+
+(** [rAll p t] checks [p] on all pattern variables of [t] *)
+let rec rAll : (int -> bool) -> r_term -> bool = fun p t ->
+  match t with
+  | R_App(_s,al) -> List.for_all (rAll p) al
+  | R_Patt i -> p i
+  | R_Sym _ -> true
+
+(** Printing function for debug *)
+let rec r_term : r_term pp = fun ppf t ->
+  match t with
+  | R_App (s,al) -> out ppf "(%a %a)" sym s (List.pp r_term " ") al
+  | R_Patt i -> out ppf "?%d" i
+  | R_Sym s -> out ppf "%a" sym s

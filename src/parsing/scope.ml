@@ -560,9 +560,8 @@ let scope_rule :
     | P_EQ (t1,t2) ->
         let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
         p1 @ p2
-    | P_ST (_o,t1,t2) ->
-        let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
-        p1 @ p2 in
+    | P_CHK t -> fst (patt_vars t)
+  in
   let check_arity (m,i) =
     try
       let j = List.assoc m pvs_lhs in
@@ -638,12 +637,32 @@ let scope_rule :
     | Patt (Some i, _, [||]) -> i
     | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
              term t in
+(*
   let asSymb t =
     match unfold t with
     | Symb s -> s
     | _ -> fatal rule_pos "symbol expected [%a]." term t in
   let p_asPatt t = asPatt (scope ~find_sym 0 mode ss Env.empty t) in
   let p_asSymb t = asSymb (scope ~find_sym 0 mode ss Env.empty t) in
+ *)
+  let rec asRTerm: Term.term -> Term.r_term = fun t ->
+    match get_args t with
+    | Patt (Some i, _, [||]), [] -> R_Patt i
+    | Patt (None, _, _), _ ->
+        fatal rule_pos "anonymous pattern not allowed in constraint [%a]."
+          term t
+    | Patt _, _ ->
+        fatal rule_pos "pattern applicationn not allowed in constraint [%a]."
+          term t
+    | Symb s, tl -> R_App (s, List.map asRTerm tl)
+    | f,_ -> fatal rule_pos "function not allowed in constraint [%a]."
+               term f in
+  let asRTerm : Term.term -> sym * Term.r_term list = fun t ->
+    match asRTerm t with
+    | R_App (s,al) -> s,al
+    | _ -> fatal rule_pos "constraint should be a function call [%a]."
+             term t in
+  let p_asRTerm t = asRTerm (scope ~find_sym 0 mode ss Env.empty t) in
   let pw2rw t =
     let t = scope ~find_sym 0 mode ss Env.empty t in
     match get_args t with
@@ -653,7 +672,7 @@ let scope_rule :
   let r_when = match p_when with
     | P_None -> R_None
     | P_EQ (t1,t2) -> R_EQ (pw2rw t1, pw2rw t2)
-    | P_ST (o,t1,t2) -> R_ST (p_asSymb o, p_asPatt t1, p_asPatt t2) in
+    | P_CHK t -> let (f,al) = p_asRTerm t in R_CHK (f,al) in
   let r = {lhs; names; rhs; arity; arities; vars_nb; xvars_nb;
            rule_pos; r_when} in
   (sym,r)

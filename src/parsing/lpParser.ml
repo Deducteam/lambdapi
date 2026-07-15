@@ -99,7 +99,6 @@ let string_of_token = function
   | SIMPLIFY -> "simplify"
   | SOLVE -> "solve"
   | STRINGLIT _ -> "string literal"
-  | SUBTERM -> "«"
   | SWITCH false -> "off"
   | SWITCH true -> "on or off"
   | SYMBOL -> "symbol"
@@ -769,14 +768,8 @@ and rule (lb:'token lexbuf):
             let t2 = term lb in
             P_EQ(t1, t2)
           end
-        else begin
-            consume SUBTERM lb;
-            consume L_SQ_BRACKET lb;
-            let op = term lb in
-            consume R_SQ_BRACKET lb;
-            let t2 = term lb in
-            P_ST (op,t1,t2)
-          end
+        else
+          P_CHK t1
       end
     else P_None in
   consume HOOK_ARROW lb;

@@ -357,7 +357,8 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
               let t1 = add_args (mk_Symb s1) v1 in
               let t2 = add_args (mk_Symb s2) v2 in
               if eq_modulo whnf cfg t1 t2 then ok else fail
-          | CondST((pth,op), p1, p2) ->
+          | CondCHK((_pth,_op), _args) -> fail
+(*
               let v1 = vars.(fst p1) and v2 = vars.(fst p2) in
               if Logger.log_enabled() then
                 log_rew "%aCondST(%s,%d,%d) : %a <<[%s] %a"
@@ -368,7 +369,8 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
                 | Appl(Appl(Symb s,a1), a2)
                      when s.sym_path=pth && s.sym_name=op -> p a1 || find p a2
                 | t -> p t in
-              if find (eq_modulo whnf cfg v1) v2 then ok else fail
+                if find (eq_modulo whnf cfg v1) v2 then ok else fail
+ *)
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)

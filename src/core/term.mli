@@ -138,12 +138,18 @@ and sym =
 
 (** {3 Representation of rewriting rules} *)
 
+(** terms in rule constraints *)
+and r_term =
+  | R_App of sym * r_term list  (* application *)
+  | R_Patt of int               (* pattern variable *)
+  | R_Sym of sym                (* global symbol *)
+
 (** optional rule constraints *)
 and r_constraint =
   (* equality constraint f p1 ... pn == g q1 ... qm *)
   | R_EQ of (sym * int list) * (sym * int list)
-  (* subterm constraint p <<[op] q *)
-  | R_ST of sym * int * int
+  (* predefined constraint *)
+  | R_CHK of sym * r_term list
   | R_None (* no constraint *)
 
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
@@ -475,3 +481,12 @@ module Raw : sig
   val term : term pp
   val ctxt : ctxt pp
 end
+
+(** {4 functions over constraints} *)
+
+(** [rAll p t] checks [p] on all pattern variables of [t] *)
+val rAll : (int -> bool) -> r_term -> bool
+
+(** Printing function for debug *)
+val r_term : r_term pp
+
