@@ -220,7 +220,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
     | None ->
-        fatal_msg "%s cannot be mapped under the library root.@." fname;
+        fatal_msg "\"%s\" cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in

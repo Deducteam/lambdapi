@@ -28,7 +28,7 @@ let fail : lexbuf -> string -> 'a = fun lb msg ->
 
 (* raises an unrecoverable lexing error; do not use in the parser *)
 let invalid_character : lexbuf -> 'a = fun lb ->
-  fail lb "Invalid character"
+  fail lb "Invalid character."
 
 (** Tokens. *)
 type token =
@@ -157,7 +157,6 @@ let float = [%sedlex.regexp? int, '.', nat]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 let positive_digit = [%sedlex.regexp? '1' .. '9']
-let strict_nat = [%sedlex.regexp? '0' | positive_digit, Star digit]
 
 (** Identifiers.
 
@@ -346,6 +345,10 @@ let rec token ~allow_rocq_syntax lb =
   | id -> UID(Utf8.lexeme lb)
   | '@', id -> UID_EXPL(remove_first lb)
   | '?', nat -> UID_META(int_of_string(remove_first lb))
+  | '?', '0', nat -> fail lb "Forbidden metavariable name."
+  | '?', id -> fail lb "Forbidden metavariable name."
+  | '$', nat -> fail lb "Forbidden pattern variable name."
+  | '$', '0', nat -> fail lb "Forbidden pattern variable name."
   | '$', id -> UID_PATT(remove_first lb)
 
   | id, '.' -> qid false [remove_last lb] lb
@@ -360,9 +363,9 @@ let token :
    lexbuf -> token * Lexing.position * Lexing.position =
   fun ~allow_rocq_syntax lb ->
     try Sedlexing.with_tokenizer (token ~allow_rocq_syntax) lb () with
-    | MalFormed -> fail lb "Not Utf8 encoded file"
+    | MalFormed -> fail lb "Not Utf8 encoded file."
     | InvalidCodepoint k ->
-       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
+       fail lb ("Invalid Utf8 code point \""^string_of_int k^"\".")
 
 let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
 

@@ -200,9 +200,12 @@ and sym =
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
-(** {b NOTE} For generated symbols (recursors, axioms), {!field:sym_pos} may
-   not be valid positions in the source. These virtual positions are however
-   important for exporting lambdapi files to other formats. *)
+(** {b NOTE} For generated symbols (axioms, inductive types, constructors,
+    recursors), {!field:sym_decl_pos} may not be an actual position in the
+    source. These virtual positions are used to order symbol and rule
+    declarations when exporting a signature. They should NOT be used as
+    references to user source files. This field may be removed in the
+    future. *)
 
 (** {3 Representation of rewriting rules} *)
 

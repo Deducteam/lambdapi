@@ -178,10 +178,11 @@ let handle_modifiers :
   in
   (prop, expo, strat, opaq)
 
-(** [handle_inductive_symbol ss e p strat x xs a] handles the command
-    [e p strat symbol x xs : a] with [ss] as the signature state.
-    The command is at position [pos].
-    On success, an updated signature state and the new symbol are returned. *)
+(** [handle_inductive_symbol ss expo prop strat id declpos xs a] handles the
+    command [expo prop strat symbol id xs : a] with [ss] as the signature
+    state. /!\ Use [declpos] as its position (used in commands exporting
+    signatures). On success, an updated signature state and the new symbol are
+    returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     -> p_ident -> popt -> p_params list -> p_term -> sig_state * sym =
   fun ss expo prop mstrat ({elt=name;pos} as id) declpos xs typ ->
@@ -249,7 +250,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
+  | P_open(_,b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
@@ -344,7 +345,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
-  | P_inductive(ms, params, p_ind_list) ->
+  | P_inductive(_, ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat, opaq) = handle_modifiers ms in
       if prop <> Defin then
@@ -354,12 +355,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                        inductive types.";
       if opaq then
         fatal pos "Inductive types cannot be declared opaque.";
-      (* Add inductive types in the signature. *)
+      (* Add inductive types in the signature, all at position [pos]. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          (* All inductive types are declared at position [pos]
-             so that constructors are declared afterwards. *)
-          let id = {id with pos} in
           handle_inductive_symbol ss expo Const Eager id pos params pt in
         (ss, ind_sym::ind_sym_list)
       in
@@ -369,13 +367,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let params =
         List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
       (* Add constructors in the signature. *)
+      let cons_pos = shift 1 pos in (* after types *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id pos
-            params pt in
-          (ss, cons_sym::cons_sym_list)
+            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+          in (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
           List.fold_left add_cons_sym (ss, []) p_cons_list in
@@ -406,6 +404,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
+      let rec_pos = shift 2 pos in (* after types and constructors *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
@@ -413,12 +412,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let (ss, rec_sym) =
           Console.out 2 (Color.gre "symbol %a : %a")
             uid rec_name term rec_typ;
-          (* Recursors are declared after the types and constructors. *)
-          let pos = after (pos_end pos) in
+          (* Add recursors in the signature, all at position [shift 2 pos]. *)
           let id = Pos.make pos rec_name in
           let r =
-            Sig_state.add_symbol ss expo Defin Eager false id
-             None rec_typ [] None
+            Sig_state.add_symbol ss expo Defin Eager false id rec_pos
+              rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -446,8 +444,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         rec_sym_list;
       (ss, None, None)
 
-  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
-              p_sym_def} ->
+  | P_symbol {p_sym_mod;p_sym_kw=_;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
+              p_sym_prf;p_sym_def} ->
     (* We check that the identifier is not already used. *)
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
@@ -569,7 +567,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              fatal pe.pos "The proof is not finished:@.%a" goals ps;
+              fatal pe.pos
+                ~err_desc:(Format.asprintf "Proof state:@.%a@." goals ps)
+                "The proof is not finished.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else

@@ -114,9 +114,9 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open(true,ps) ->
+  | P_open(_,true,ps) ->
       string oc "Import "; list path " " oc ps; string oc ".\n"
-  | P_open(false,ps) ->
+  | P_open(_,false,ps) ->
       string oc "Export "; list path " " oc ps; string oc ".\n"
   | P_require (None, ps) ->
       string oc "Require "; list path " " oc ps; string oc ".\n"
@@ -129,7 +129,7 @@ let command oc {elt; pos} =
     string oc "Module "; ident oc i; string oc " := "; path oc p;
     string oc ".\n"
   | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+    { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
       if not (is_mapped p_sym_nam.elt) then
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with

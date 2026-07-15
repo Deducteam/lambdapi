@@ -101,7 +101,8 @@ let equal : popt -> popt -> bool = fun p1 p2 ->
 let pos_end : popt -> popt = fun po ->
   match po with
   | None -> None
-  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
+  | Some p -> Some {p with start_offset=p.end_offset
+                         ; start_line = p.end_line; start_col = p.end_col}
 
 (** [cat] extends and hide the above [cat] function from [pos] to [popt]. *)
 let cat : popt -> popt -> popt = fun p1 p2 ->
@@ -111,14 +112,23 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
-(** [shift k p] returns a position that is [k] characters after [p]. *)
+(** [prefix n p] is the sub-position of [p] covering only its first [n]
+    characters, which are assumed to lie on the first line of [p] and to be
+    ASCII (so that [n] is both a column count and a character count). *)
+let prefix : int -> popt -> popt = fun n p ->
+  match p with
+  | None -> None
+  | Some p -> Some { p with end_line = p.start_line
+                          ; end_col = p.start_col + n
+                          ; end_offset = p.start_offset + n }
+
+(** [shift k p] returns a position that is [k] characters after [p].
+    /!\ The generated position may not actually exist in the user input.
+    The fields start_offset, end_offset and end_col are inconsistent. *)
 let shift : int -> popt -> popt = fun k p ->
   match p with
   | None -> assert false
   | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
-
-let after = shift 1
-let before = shift (-1)
 
 (** [lexing_opt p] converts a [popt] into a [Lexing.position]. *)
 let lexing_opt (p:popt): Lexing.position =
@@ -199,8 +209,10 @@ let print_file_contents :
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
         It's dangerous for your health! *)
-
-     let input_line,finish = parse_file fname in
+    begin match parse_file fname with
+    | exception _ ->
+       string ppf ("Cannot open file \""^fname^"\". Maybe it was moved?")
+    | input_line,finish ->
      let out =
        Buffer.create
         ((end_line - start_line) * 80 +
@@ -263,6 +275,7 @@ let print_file_contents :
 
      finish () ;
      string ppf (Buffer.contents out)
+    end
   | None | Some {fname=None} ->
       if complain_if_location_unknown then
        string ppf (db ^ "unknown location" ^ de)

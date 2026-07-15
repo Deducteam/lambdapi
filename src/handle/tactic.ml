@@ -34,13 +34,14 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   let sym =
     wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
-       they are created. *)
+       they are created, and strictly before the symbol. *)
+    (* FIXME: use sym_decl_pos instead ? *)
+    let id = {elt=name; pos=sym_pos} in
     let pos = shift Stdlib.(!admitted) sym_pos in
-    let id = Pos.make pos name in
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)
     snd (Sig_state.add_symbol ss
-           Public Defin Eager true id None !(m.meta_type) [] None)
+           Public Defin Eager true id pos !(m.meta_type) [] None)
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be
@@ -304,14 +305,21 @@ let p_ident_of_var (pos:popt) (t:term) :p_ident =
   | Vari v -> Pos.make pos (base_name v)
   | _ -> fatal pos "Not a variable of the proof context: %a." term t
 
+(* [pos_of_string s] assumes that [s] is a string literal and returns the
+   lexing position of the content of [s]. *)
+let pos_of_string: sym -> Lexing.position =
+  let f p = {p with start_offset=p.start_offset+1; start_col=p.start_col+1;
+                    end_offset=p.end_offset-1; end_col=p.end_col-1} in
+  fun s -> lexing_opt (Option.map f s.sym_pos)
+
 (** [p_term_of_string_term pos t] turns into a p_term a string literal term
     [t] that is part of a bigger term obtained by scoping and normalizing of a
     p_term at position [pos]. *)
 let p_term_of_string_term (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
-    let p = lexing_opt (after s.sym_pos) in
-    Parsing.Parser.Lp.parse_term_string p (String.remove_quotes s.sym_name)
+    Parsing.Parser.Lp.parse_term_string (pos_of_string s)
+      (String.remove_quotes s.sym_name)
   | _ -> fatal pos "not a string literal"
 
 (** [p_rwpatt_of_string_term pos t] turns into a p_rwpatt option a string
@@ -323,9 +331,8 @@ let p_rwpatt_of_string_term (pos:popt) (t:term): p_rwpatt option =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = String.remove_quotes s.sym_name in
-      if string = "" then None
-      else let p = lexing_opt (after s.sym_pos) in
-           Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
+      if string = "" then None else
+        Some (Parsing.Parser.Lp.parse_rwpatt_string (pos_of_string s) string)
   | _ -> fatal pos "not a string literal"
 
 (** [int_of_term pos t] returns the int contained in a string literal
@@ -811,30 +818,53 @@ let handle :
 
 (** [handle sym_pos priv r tac n] applies the tactic [tac] from the previous
    tactic output [r] and checks that the number of goals of the new proof
-   state is compatible with the number [n] of subproofs. *)
+   state is compatible with the number [n] of subproofs. When [tac] fails,
+   the proof state it was applied to is attached to the error (see
+   {!val:Proof.state_on_error}). *)
 let handle :
   Sig_state.t -> popt -> bool -> tac_output -> p_tactic -> int -> tac_output =
   fun ss sym_pos priv (ps, _) t nb_subproofs ->
-  let (ps', _) as a = handle ss sym_pos priv ps t in
+  (* Attach the proof state [t] was applied to, to any error escaping its
+     application. Errors raised inside tacticals like [try] or [orelse] are
+     caught below this point, so only failures actually reported to the user
+     are concerned. *)
+  let (ps', _) as a =
+    try handle ss sym_pos priv ps t
+    with Fatal(p, msg, desc)
+      when Stdlib.(!state_on_error) && ps.proof_goals <> [] ->
+        let state = error_state ps in
+        let desc = if desc = "" then state else desc ^ "\n" ^ state in
+        raise (Fatal(p, msg, desc))
+  in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in
+  (* [t] ran, but the number of subproofs given does not match the number of
+     subgoals it produced: report the proof state before and after its
+     application. *)
+  let mismatch : string -> 'a = fun reason ->
+    fatal t.pos ~err_desc:(error_state ~after:ps' ps) "%s" reason in
   if nb_newgoals <= 0 then
     if nb_subproofs = 0 then a
-    else fatal t.pos "A subproof is given but there is no subgoal."
+    else mismatch "A subproof is given but there is no subgoal."
   else if is_destructive t then
-    match nb_newgoals + 1 - nb_subproofs with
+    (match nb_newgoals + 1 - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1))
     | _ ->
-      fatal t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1)))
   else match nb_newgoals - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs nb_newgoals goals ps'
-    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
-             nb_subproofs nb_newgoals
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)
+    | _ ->
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)

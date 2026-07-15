@@ -222,8 +222,8 @@ let in_range ?loc (line, pos) =
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
-  List.find_opt (fun { ast; _ } ->
-      let loc = Pure.Command.get_pos ast in
+  List.find_opt (fun { cmd; _ } ->
+      let loc = Pure.Command.get_pos cmd in
       in_range ?loc (line,pos)
     ) doc.Lp_doc.nodes
 
@@ -460,6 +460,9 @@ let main std log_file =
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
   Error.err_fmt := lp_fmt;
+  (* Editors display the proof state themselves, so do not attach it to
+     tactic failures. *)
+  Handle.Proof.state_on_error := false;
   (* Console.verbose := 4; *)
 
   let rec loop () =

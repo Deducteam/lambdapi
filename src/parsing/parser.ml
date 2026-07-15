@@ -75,7 +75,7 @@ module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
     parse_lexbuf None entry lb
 
   let command =
-    let r = ref (Pos.none (P_open(false,[]))) in
+    let r = ref (Pos.none (P_open(None,false,[]))) in
     fun (lb:lexbuf): p_command ->
     Debug.(record_time Parsing
              (fun () -> r := DkParser.line DkLexer.token lb)); !r
@@ -160,7 +160,6 @@ sig
     set_filename lb lexpos.pos_fname;
     Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
 
-
   (* exported functions *)
   let parse_term_string =
     parse_entry_string ~allow_rocq_syntax:false LpParser.term
@@ -192,7 +191,6 @@ let path_of_string : string -> Path.t = fun s ->
   with
       LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a path." s
-
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
