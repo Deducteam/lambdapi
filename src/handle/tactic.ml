@@ -261,8 +261,8 @@ let _ =
         let prf = mk_Symb prf_sym in
         f {tac;str;elt;set;prf;prop})
   in
-  (* (Π a, El a → T) → T *)
-  let hyps = arr (prod set (fun a -> arr (app elt (var a)) tac)) tac in
+  (* (Π a, Prf a → T) → T *)
+  let hyps = arr (prod prop (fun a -> arr (app prf (var a)) tac)) tac in
   (* Π [a], (El a → T) → T *)
   let dep_elt = prod set (fun a -> arr (arr (app elt (var a)) tac) tac) in
   (* Π [a], Prf a → T *)

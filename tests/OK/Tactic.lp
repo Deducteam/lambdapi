@@ -1,11 +1,11 @@
 // define a type representing Lambdapi tactics
 
-require open tests.OK.String tests.OK.Option tests.OK.List;
+require open tests.OK.String tests.OK.Option tests.OK.List tests.OK.HOL;
+
+// mandatory builtins
 
 constant symbol Tactic : TYPE;
 builtin "Tactic" ≔ Tactic;
-
-// mandatory builtins
 
 constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
@@ -14,7 +14,7 @@ constant symbol & : Tactic → Tactic → Tactic;
 builtin "Tactic.and" ≔ &;
 notation & infix right 10;
 
-constant symbol #all_hyps: (Π a, τ a → Tactic) → Tactic;
+constant symbol #all_hyps: (Π a, π a → Tactic) → Tactic;
 builtin "all_hyps" ≔ #all_hyps;
 
 constant symbol #apply: Π [a], π a → Tactic;
@@ -32,7 +32,7 @@ builtin "change" ≔ #change;
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
-constant symbol #first_hyp: (Π a, τ a → Tactic) → Tactic;
+constant symbol #first_hyp: (Π a, π a → Tactic) → Tactic;
 builtin "first_hyp" ≔ #first_hyp;
 
 constant symbol #focus : String → Tactic;
