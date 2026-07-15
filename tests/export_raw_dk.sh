@@ -61,7 +61,7 @@ do
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change|assumption|focus|assume|first_hyp|all_hyps);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod|Conj|Disj|ExtraRules);;
         # "inductive"
         strictly_positive_*|inductive|989|904|830|341|1392);;
         # underscore in query
