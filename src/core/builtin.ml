@@ -81,7 +81,11 @@ let register_expected_type
   let check ss pos sym =
     let expected = fn ss pos in
     if not (eq !(sym.sym_type) expected) then
-      fatal pos "The type of %s is not of the form %a."
+      fatal pos "The type of %s is not convertible to %a."
         sym.sym_name pp expected
   in
   register name check
+
+let _ =
+  register_expected_type (Eval.eq_modulo []) Print.term
+    "String" (fun _ _ -> Term.mk_Type)

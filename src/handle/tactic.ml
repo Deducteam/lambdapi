@@ -227,6 +227,78 @@ type tactic =
 
 type config = (string,tactic) Hashtbl.t
 
+(** checking functions for tactic builtins *)
+module B = struct
+
+type builtins = {tac:term; str:term; elt:term; set:term; prf:term; prop:term}
+
+let tac b = b.tac
+let str b = b.str
+let elt b = b.elt
+let set b = b.set
+let prf b = b.prf
+let prop b = b.prop
+
+let arr f g b = mk_Arro(f b, g b)
+let app f g b = mk_Appl(f b, g b)
+let var x _b = mk_Vari x
+let prod f g b = mk_Prod(f b, let x = new_var "a" in bind_var x (g x b))
+
+let _ =
+  let register = Builtin.register_expected_type (Eval.eq_modulo []) term in
+  register "Tactic" (fun _ _ -> mk_Type);
+  let dom s =
+    match unfold !(s.sym_type) with Prod(a,_) -> a | _ -> assert false in
+  let register s f =
+    register s (fun ss pos ->
+        let tac = mk_Symb (Builtin.get ss pos [] "Tactic") in
+        let str = mk_Symb (Builtin.get ss pos [] "String") in
+        let elt_sym = Builtin.get ss pos [] "T" in
+        let set = dom elt_sym in
+        let elt = mk_Symb elt_sym in
+        let prf_sym = Builtin.get ss pos [] "P" in
+        let prop = dom prf_sym in
+        let prf = mk_Symb prf_sym in
+        f {tac;str;elt;set;prf;prop})
+  in
+  (* (Π a, El a → T) → T *)
+  let hyps = arr (prod set (fun a -> arr (app elt (var a)) tac)) tac in
+  (* Π [a], (El a → T) → T *)
+  let dep_elt = prod set (fun a -> arr (arr (app elt (var a)) tac) tac) in
+  (* Π [a], Prf a → T *)
+  let prf_arg = prod prop (fun a -> arr (app prf (var a)) tac) in
+  (* Π [a], El a → T *)
+  let elt_arg = prod set (fun a -> arr (app elt (var a)) tac) in
+  register "admit" tac;
+  register "Tactic.and" (arr tac (arr tac tac));
+  register "all_hyps" hyps;
+  register "apply" prf_arg;
+  register "assume" (arr str dep_elt);
+  register "assumption" tac;
+  register "change" elt_arg;
+  register "fail" tac;
+  register "first_hyp" hyps;
+  register "focus" (arr str tac);
+  register "generalize" elt_arg;
+  register "have" (arr str (arr prop tac));
+  register "induction" tac;
+  register "orelse" (arr tac (arr tac tac));
+  register "print" (arr str tac);
+  register "refine" (arr str tac);
+  register "reflexivity" tac;
+  register "remove" prf_arg;
+  register "repeat" (arr tac tac);
+  register "rewrite" (arr str (arr str prf_arg));
+  register "set" (arr str elt_arg);
+  register "simplify" tac;
+  register "simplify rule off" tac;
+  register "solve" tac;
+  register "symmetry" tac;
+  register "try" (arr tac tac);
+  register "why3" tac
+
+end
+
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   let t = Hashtbl.create 17 in
@@ -235,7 +307,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     Hashtbl.add t s.sym_name v
   in
   add "admit" T_admit;
-  add "and" T_and;
+  add "Tactic.and" T_and;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
@@ -411,7 +483,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_assume, _ -> assert false
             | T_assumption, [] -> ps, mk P_tac_assumption
             | T_assumption, _ -> assert false
-            | T_change, [_;t] -> ps, mk(P_tac_apply (p_term t))
+            | T_change, [_;t] -> ps, mk(P_tac_change (p_term t))
             | T_change, _ -> assert false
             | T_fail, _ -> ps, mk P_tac_fail
             | T_first_hyp, [t] -> ps, mk(P_tac_first_hyp(p_term t))

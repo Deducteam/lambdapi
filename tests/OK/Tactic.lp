@@ -3,39 +3,40 @@
 require open tests.OK.String tests.OK.Option tests.OK.List;
 
 constant symbol Tactic : TYPE;
+builtin "Tactic" ≔ Tactic;
 
 // mandatory builtins
 
 constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
 
-symbol & : Tactic → Tactic → Tactic;
-builtin "and" ≔ &;
+constant symbol & : Tactic → Tactic → Tactic;
+builtin "Tactic.and" ≔ &;
 notation & infix right 10;
 
-constant symbol #all_hyps : (Π p, π p → Tactic) → Tactic;
+constant symbol #all_hyps: (Π a, τ a → Tactic) → Tactic;
 builtin "all_hyps" ≔ #all_hyps;
 
-constant symbol #apply [p] : π p → Tactic;
+constant symbol #apply: Π [a], π a → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : String → Π [a:Set], (τ a → Tactic) → Tactic;
+constant symbol #assume : String → Π [a], (τ a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
-
-constant symbol #print: String → Tactic;
-builtin "print" ≔ #print;
 
 constant symbol #assumption : Tactic;
 builtin "assumption" ≔ #assumption;
 
+constant symbol #change: Π [a], τ a → Tactic;
+builtin "change" ≔ #change;
+
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
+constant symbol #first_hyp: (Π a, τ a → Tactic) → Tactic;
+builtin "first_hyp" ≔ #first_hyp;
+
 constant symbol #focus : String → Tactic;
 builtin "focus" ≔ #focus;
-
-constant symbol #first_hyp : (Π a, π a → Tactic) → Tactic;
-builtin "first_hyp" ≔ #first_hyp;
 
 constant symbol #generalize : Π [a], τ a → Tactic;
 builtin "generalize" ≔ #generalize;
@@ -49,7 +50,10 @@ builtin "induction" ≔ #induction;
 constant symbol #orelse : Tactic → Tactic → Tactic;
 builtin "orelse" ≔ #orelse;
 
-constant symbol #refine [p] : π p → Tactic;
+constant symbol #print : String → Tactic;
+builtin "print" ≔ #print;
+
+constant symbol #refine: String → Tactic;
 builtin "refine" ≔ #refine;
 
 constant symbol #reflexivity : Tactic;
@@ -84,9 +88,6 @@ builtin "try" ≔ #try;
 
 constant symbol #why3 : Tactic;
 builtin "why3" ≔ #why3;
-
-constant symbol #change : Tactic;
-builtin "change" ≔ #change;
 
 // defined tactics
 
