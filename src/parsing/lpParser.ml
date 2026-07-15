@@ -119,7 +119,6 @@ let string_of_token =
   | UID_EXPL _ -> "@-prefixed non-qualified identifier"
   | UID_META _ -> "?-prefixed metavariable number"
   | UID_PATT _ -> "$-prefixed non-qualified identifier"
-
   | UNDERSCORE -> q"_"
   | UNIF_RULE -> q"unif_rule"
   | VBAR -> q"|"
@@ -129,7 +128,6 @@ let string_of_token =
   | WITH -> q"with"
 
 let string_of_tokens = List.fold_left (fun s t -> s^", "^string_of_token t)
->>>>>>> dk/master
 
 let pp_token ppf t = Base.string ppf (string_of_token t)
 
