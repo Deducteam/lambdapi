@@ -1,4 +1,5 @@
 constant symbol Set : TYPE;
+builtin "Set" ≔ Set;
 injective symbol τ : Set → TYPE; // `t or \tau
 builtin "T" ≔ τ;
 constant symbol ↦ : Set → Set → Set; // \mapsto

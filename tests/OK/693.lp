@@ -1,10 +1,14 @@
 constant symbol Set: TYPE;
 
+builtin "Set" ≔ Set;
+
 injective symbol τ: Set → TYPE;
 
 builtin "T" ≔ τ;
 
 constant symbol Prop: TYPE;
+
+builtin "Prop" ≔ Prop;
 
 symbol π: Prop → TYPE;
 

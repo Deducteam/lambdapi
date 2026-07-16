@@ -1,5 +1,8 @@
 constant symbol Set : TYPE;
-injective symbol τ : Set → TYPE; builtin "T" ≔ τ;
+builtin "Set" ≔ Set;
+
+injective symbol τ : Set → TYPE;
+builtin "T" ≔ τ;
 
 symbol mys : TYPE;
 symbol myop :  mys →  mys →   mys;

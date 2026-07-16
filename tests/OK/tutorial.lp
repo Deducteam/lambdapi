@@ -313,6 +313,9 @@ constant symbol ≃-refl [a] (x:τ a) : Prf(x ≃ x);
 constant symbol ≃-ind [a] [x y:τ a] : Prf(x ≃ y) → Π p, Prf(p y) → Prf(p x);
   // Leibniz principle.
 
+/* We tell Lambdapi which symbols to use to build proof terms with the rewrite
+tactic. */
+builtin "Set" ≔ Set;
 builtin "T" ≔ τ;
 builtin "eq" ≔ ≃;
 builtin "refl"  ≔ ≃-refl;

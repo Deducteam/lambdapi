@@ -11,7 +11,7 @@ constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
 
 constant symbol & : Tactic → Tactic → Tactic;
-builtin "Tactic.and" ≔ &;
+builtin "compose" ≔ &;
 notation & infix right 10;
 
 constant symbol #all_hyps: (Π a, π a → Tactic) → Tactic;

@@ -1,4 +1,4 @@
-require open Stdlib.Set Stdlib.Prop;
+require open tests.OK.Set tests.OK.Prop;
 
 constant symbol L:TYPE;
 constant symbol prop:L;
@@ -15,7 +15,7 @@ with ϵ [set_] $a ↪ τ $a;
 unif_rule ϵ $a ≡ π $b ↪ [$a ≡ $b];
 unif_rule ϵ $a ≡ τ $b ↪ [$a ≡ $b];
 
-require private open Stdlib.Tactic;
+require private open tests.OK.Tactic;
 
 private symbol tac: Π [l:L], Π [a:U l], ϵ a → Tactic;
 

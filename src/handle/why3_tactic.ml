@@ -4,12 +4,44 @@ open Lplib
 open Timed
 open Common open Error
 open Core open Term open Print
-open Fol
 open Goal
 
 (** Logging function for external prover calling with Why3. *)
 let log = Logger.make 'y' "why3" "why3 tactic"
 let log = log.pp
+
+(** Builtin configuration for propositional logic. *)
+type config =
+  { symb_Prop: sym (** Type of propositions. *)
+  ; symb_P   : sym (** Encoding of propositions. *)
+  ; symb_Set : sym (** Type of sets. *)
+  ; symb_T   : sym (** Encoding of types. *)
+  ; symb_or  : sym (** Disjunction(∨) symbol. *)
+  ; symb_and : sym (** Conjunction(∧) symbol. *)
+  ; symb_imp : sym (** Implication(⇒) symbol. *)
+  ; symb_eqv : sym (** Equivalence(⇔) symbol. *)
+  ; symb_bot : sym (** Bot(⊥) symbol. *)
+  ; symb_top : sym (** Top(⊤) symbol. *)
+  ; symb_not : sym (** Not(¬) symbol. *)
+  ; symb_ex  : sym (** Exists(∃) symbol. *)
+  ; symb_all : sym (** Forall(∀) symbol. *) }
+
+(** [get_config ss pos] build the configuration using [ss]. *)
+let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
+  let builtin = Builtin.get ss pos [] in
+  { symb_Prop= builtin "Prop"
+  ; symb_P   = builtin "P"
+  ; symb_Set = builtin "Set"
+  ; symb_T   = builtin "T"
+  ; symb_or  = builtin "or"
+  ; symb_and = builtin "and"
+  ; symb_imp = builtin "imp"
+  ; symb_eqv = builtin "eqv"
+  ; symb_bot = builtin "bot"
+  ; symb_top = builtin "top"
+  ; symb_not = builtin "not"
+  ; symb_ex  = builtin "ex"
+  ; symb_all = builtin "all" }
 
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)

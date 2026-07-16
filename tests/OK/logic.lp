@@ -5,9 +5,13 @@ require open tests.OK.natural;
 
 constant symbol U : TYPE;
 
+builtin "Set" ≔ U;
+
 // Interpretation function (for data types as types).
 
 injective symbol T : U → TYPE;
+
+builtin "T" ≔ T;
 
 // Examples of data types and their interpretations.
 
@@ -23,11 +27,15 @@ rule T (pi $a $f) ↪ Π (x : T $a), T ($f x);
 
 constant symbol Prop : TYPE;
 
+builtin "Prop" ≔ Prop;
+
 constant symbol all : Π (a : U), (T a → Prop) → Prop;
 
 // Interpretation function (for propositions as types).
 
 injective symbol P : Prop → TYPE;
+
+builtin "P" ≔ P;
 
 rule P (all $a $f) ↪ Π (x : T $a), P ($f x);
 

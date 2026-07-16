@@ -2,7 +2,9 @@ symbol Prop: TYPE;
 symbol π: Prop → TYPE;
 symbol Set: TYPE;
 constant symbol τ: Set → TYPE;
+builtin "Set" ≔ Set;
 builtin "T" ≔ τ;
+builtin "Prop" ≔ Prop;
 builtin "P" ≔ π;
 
 symbol = [a:Set] : τ a → τ a → Prop;

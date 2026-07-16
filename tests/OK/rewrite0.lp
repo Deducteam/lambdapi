@@ -83,7 +83,9 @@ constant symbol eqind a (x y:T a) : P (x = y) → Π p, P (p y) → P (p x);
 
 // Setting up builtins for rewrite.
 
+builtin "Prop"  ≔ Prop;
 builtin "P"     ≔ P;
+builtin "Set"   ≔ U;
 builtin "T"     ≔ T;
 builtin "eq"    ≔ =;
 builtin "eqind" ≔ eqind;

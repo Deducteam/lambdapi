@@ -40,7 +40,9 @@ symbol =_ind [T] (x y : π T) : π (x = y) → Π P, π (P y) → π (P x)
 // ≔ λ eqxy, eqxy (λ t, t = y) (=_refl y)
 ;
 
+builtin "Prop" ≔ Type;
 builtin "P"     ≔ π;
+builtin "Set" ≔ Type;
 builtin "T"     ≔ π;
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;

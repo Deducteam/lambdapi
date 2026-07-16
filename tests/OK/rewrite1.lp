@@ -29,8 +29,10 @@ rule mul (s $x) $y ↪ add $y (mul $x $y);
 // Type of data type codes and their interpretation as types.
 
 constant symbol U : TYPE;
+builtin "Set" ≔ U;
 
 injective symbol T : U → TYPE;
+builtin "T" ≔ T;
 
 constant symbol bool : U;
 constant symbol nat  : U;
@@ -45,8 +47,10 @@ rule T (pi $a $f) ↪ Π (x : T $a), T ($f x);
 // Type of propositions and their interpretation as types.
 
 constant symbol Prop : TYPE;
+builtin "Prop" ≔ Prop;
 
 symbol P : Prop → TYPE;
+builtin "P" ≔ P;
 
 constant symbol all : Π (a : U), (T a → Prop) → Prop;
 

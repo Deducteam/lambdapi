@@ -2,6 +2,8 @@
 
 constant symbol Set : TYPE;
 
+builtin "Set" ≔ Set;
+
 constant symbol ι : Set;
 
 // Interpretation of set codes in TYPE

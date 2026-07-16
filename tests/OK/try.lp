@@ -2,12 +2,16 @@
 // Type of data type codes and their interpretation as types.
 
 constant symbol U : TYPE;
+builtin "Set" ≔ U;
 
 injective symbol T : U → TYPE;
+builtin "T" ≔ T;
 
 constant symbol Prop : TYPE;
+builtin "Prop" ≔ Prop;
 
 symbol P : Prop → TYPE;
+builtin "P" ≔ P;
 
 symbol o: U;
 rule T o ↪ Prop;
