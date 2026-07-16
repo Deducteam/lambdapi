@@ -395,7 +395,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
-            | T_assume, [prefix;_;Abst(_, t)] ->
+            | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin
                 let n = new_name (string_of_term pos prefix) env in
                 let idopts = [Some(Pos.make pos n)] in
@@ -450,7 +450,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_remove, _ -> assert false
             | T_repeat, [t] -> ps, mk(P_tac_repeat(tac_eval t))
             | T_repeat, _ -> assert false
-            | T_rewrite, [side;pat;_;t] ->
+            | T_rewrite, [side;pat;_;_;t] ->
               ps, mk(P_tac_rewrite(is_right pos side,
                                    p_rwpatt_of_string_term pos pat, p_term t))
             | T_rewrite, _ -> assert false
@@ -533,22 +533,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
-      let t = scope t in
-      (* the tactic is not required to prove the goal *)
-      (* effects are superposed *)
-      let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
-        match ps.proof_goals with
-        | [] -> fatal pos "all_hyps called with empty goal list"
-        | g :: _ ->
-            let v = unfold (mk_Vari v) in
-            let t = mk_Appl (mk_Appl (t, p), v) in
-            if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try let ps, t = p_tactic ps g env pos t in handle ps t
-            with Fatal _ -> ps
+    let t = scope t in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
+    let try_assumption (ps: proof_state) (_,(v,a,_)): proof_state =
+      match ps.proof_goals with
+      | [] -> fatal pos "all_hyps called on empty goal list."
+      | g :: _ ->
+          let p = new_problem() in
+          let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+          let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+          try let ps, t = p_tactic ps g env pos t in handle ps t
+          with Fatal _ -> ps
       in
       let ps' = List.fold_left try_assumption ps gt.goal_hyps in
       if ps' == ps then
-        fatal pos "tactic all_hyps [%a] has failed on all assumptions" term t
+        fatal pos "all_hyps (%a) has failed on all assumptions." term t
       else ps'
   | P_tac_apply pt ->
       let t = scope pt in
@@ -559,7 +558,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         match Infer.infer_noexn p c t with
         | None ->
             let ids = Ctxt.names c in let term = term_in ids in
-            fatal pos "[%a] is not typable." term t
+            fatal pos "(%a) is not typable." term t
         | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in

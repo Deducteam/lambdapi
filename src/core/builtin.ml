@@ -82,10 +82,10 @@ let register_expected_type
     : term eq -> term pp -> string -> (sig_state -> popt -> term) -> unit =
   fun eq pp name mk_type ->
   let check ss pos sym =
+    let actual = !(sym.sym_type) in
     let expected = mk_type ss pos in
-    if not (eq !(sym.sym_type) expected) then
-      fatal pos "The type of %s is not convertible to %a."
-        sym.sym_name pp expected
+    if not (eq actual expected) then
+      fatal pos "%a is not convertible to %a." pp actual pp expected
   in
   register name check
 
@@ -130,7 +130,7 @@ let typ _c = mk_Type
 let arr f g c = mk_Arro(f c, g c)
 let app f g c = mk_Appl(f c, g c)
 let var x _c = mk_Vari x
-let prod f g c = mk_Prod(f c, let x = new_var "a" in bind_var x (g x c))
+let prod f g c = mk_Prod(f c, let x = new_var "x" in bind_var x (g x c))
 
 let apps = List.fold_left app
 
@@ -148,7 +148,7 @@ let _ =
 
 (* Set and T builtins. *)
 let set = builtin "Set"
-let elt = builtin "T"
+let elt = app (builtin "T")
 
 let _ =
   register_typ "Set" typ;
@@ -159,7 +159,7 @@ let _ =
   let unary = arr prop prop in
   let binary = arr prop unary in
   (* Π a:Set, (El a → Prop) → Prop *)
-  let quant = prod set (fun a -> arr (arr (app elt (var a)) prop) prop) in
+  let quant = prod set (fun a -> arr (arr (elt (var a)) prop) prop) in
   register_typ "bot" prop;
   register_typ "top" prop;
   register_typ "not" unary;
@@ -176,56 +176,65 @@ let eq = builtin "eq"
 let _ =
   (* Π a:Set, El a → El a → Prop *)
   register_typ "eq"
-    (prod set (fun a -> arr (app elt (var a)) (arr (app elt (var a)) prop)));
+    (prod set (fun a -> arr (elt (var a)) (arr (elt (var a)) prop)));
   (* Π a:Set, Π x:El a, Prf (eq a x x) *)
   register_typ "refl"
     (prod set (fun a ->
-         prod (app elt (var a)) (fun x ->
+         prod (elt (var a)) (fun x ->
              app prf (apps eq [var a; var x; var x]))));
   (* Π a:Set, Π x:El a, Π y:El a, Prf (eq a x y) → Π p:T a → Prop,
      Prf (p y) → Prf (p x) *)
   register_typ "eqind"
     (prod set (fun a ->
-         prod (app elt (var a)) (fun x ->
-             prod (app elt (var a)) (fun y ->
+         prod (elt (var a)) (fun x ->
+             prod (elt (var a)) (fun y ->
                  arr (app prf (apps eq [var a; var x; var y]))
-                   (prod (arr (app elt (var a)) prop) (fun p ->
+                   (prod (arr (elt (var a)) prop) (fun p ->
                         arr (app prf (app (var p) (var y)))
                           (app prf (app (var p) (var x)))))))))
 
 (* Additional builtins for eval tactic. *)
 let tac = builtin "Tactic"
+let lvl = builtin "Level"
+let univ = app (builtin "Univ")
+let eps l u = app (app (builtin "Type") l) u
 
 let _ =
+  register_typ "Level" typ;
+  register_typ "Univ" (arr lvl typ);
+  register_typ "Type" (prod lvl (fun l -> arr (univ (var l)) typ));
   register_typ "Tactic" typ;
-  (* (Π a, Prf a → T) → T *)
-  let hyps = arr (prod prop (fun a -> arr (app prf (var a)) tac)) tac in
-  (* Π [a], Prf a → T *)
-  let prf_arg = prod prop (fun a -> arr (app prf (var a)) tac) in
-  (* Π [a], El a → T *)
-  let elt_arg = prod set (fun a -> arr (app elt (var a)) tac) in
+  let t1 =
+    prod lvl (fun l ->
+        prod (univ (var l)) (fun a ->
+            arr (eps (var l) (var a)) tac))
+  in
+  let t2 =
+    prod lvl (fun l ->
+        prod (univ (var l)) (fun a ->
+            arr (arr (eps (var l) (var a)) tac) tac))
+  in
   register_typ "admit" tac;
-  register_typ "all_hyps" hyps;
-  register_typ "apply" prf_arg;
-  register_typ "assume" (* String → Π [a], (El a → T) → T *)
-    (arr str (prod set (fun a -> arr (arr (app elt (var a)) tac) tac)));
+  register_typ "all_hyps" (arr t1 tac);
+  register_typ "apply" t1;
+  register_typ "assume" (arr str t2);
   register_typ "assumption" tac;
-  register_typ "change" elt_arg;
+  register_typ "change" t1;
   register_typ "compose" (arr tac (arr tac tac));
   register_typ "fail" tac;
-  register_typ "first_hyp" hyps;
+  register_typ "first_hyp" (arr t1 tac);
   register_typ "focus" (arr str tac);
-  register_typ "generalize" elt_arg;
+  register_typ "generalize" t1;
   register_typ "have" (arr str (arr prop tac));
   register_typ "induction" tac;
   register_typ "orelse" (arr tac (arr tac tac));
   register_typ "print" (arr str tac);
   register_typ "refine" (arr str tac);
   register_typ "reflexivity" tac;
-  register_typ "remove" prf_arg;
+  register_typ "remove" t1;
   register_typ "repeat" (arr tac tac);
-  register_typ "rewrite" (arr str (arr str prf_arg));
-  register_typ "set" (arr str elt_arg);
+  register_typ "rewrite" (arr str (arr str t1));
+  register_typ "set" (arr str t1);
   register_typ "simplify" tac;
   register_typ "simplify rule off" tac;
   register_typ "solve" tac;

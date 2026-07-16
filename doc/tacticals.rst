@@ -30,7 +30,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "apply" ≔ …; // : Π [a], Prf a → T
    builtin "assume" ≔ …; // : String → Π [a], (El a → T) → T
    builtin "assumption" ≔ …; // : T
-   builtin "change" := …; // : Π [a], El a → T
+   builtin "change" := …; // : Π [a], Prf a → T
    builtin "compose" ≔ …; // : T → T → T (stands for ";")
    builtin "fail" ≔ …; // : T
    builtin "first_hyp" ≔ …; // : (Π a, El a → T) → T
