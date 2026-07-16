@@ -484,8 +484,16 @@ end
 
 (** {4 functions over constraints} *)
 
-(** [rAll p t] checks [p] on all pattern variables of [t] *)
+(** [rAll p t] checks [p] on all pattern variables of [t]. *)
 val rAll : (int -> bool) -> r_term -> bool
+
+(** [rFind f t] applies [f] to each pvar of [t] and returns the first
+    successful result, None if all calls fail. *)
+val rFind : (int -> 'a option) -> r_term -> 'a option
+
+(** [rFold o a t] computes [a o pv1 o ... pvn] where pv1...pvn are the 
+    pattern variables of t. *)
+val rFold : ('a -> int -> 'a) -> 'a -> r_term -> 'a
 
 (** Printing function for debug *)
 val r_term : r_term pp

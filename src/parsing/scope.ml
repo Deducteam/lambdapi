@@ -559,16 +559,23 @@ let scope_rule :
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
   let (pvs_rhs, _ ) = patt_vars p_rhs in
-  (* Check that pattern variables of RHS that are in the LHS have the right
-     arity. *)
+  (* input/output variables in condition *)
   let pvs_when =
     match p_when with
-    | P_None -> []
+    | P_None -> [],[]
     | P_EQ (t1,t2) ->
         let (p1,_) = patt_vars t1 and (p2,_) = patt_vars t2 in
-        p1 @ p2
-    | P_CHK t -> fst (patt_vars t)
+        (p1 @ p2), []
+    | P_CHK t -> 
+        match p_get_args t with
+          (* find_doubles op! n! t! d? before? middle? after? *)
+        | {elt=P_Iden({elt=(_,"#find_doubles");_},_);_}, [ty;op;u;t;d;b;m;a] ->
+            (List.concat_map (fun t -> fst (patt_vars t)) [ty;u;t]),
+            (List.concat_map (fun t -> fst (patt_vars t)) [d;b;m;a])
+        | _ -> fatal t.pos "Undefined constraint."
   in
+  (* Check that pattern variables of RHS that are in the LHS have the right
+     arity. *)
   let check_arity (m,i) =
     try
       let j = List.assoc m pvs_lhs in
@@ -576,7 +583,8 @@ let scope_rule :
     with Not_found -> ()
   in
   List.iter check_arity pvs_rhs;
-  List.iter check_arity pvs_when;
+  List.iter check_arity (fst pvs_when);
+  List.iter check_arity (snd pvs_when);
   (* [get_root t] returns the symbol at the root of the p_term [t]. *)
   let rec get_root t = get_root_after_pratt (Pratt.parse ~find_sym ss [] t)
   and get_root_after_pratt t =
@@ -609,9 +617,12 @@ let scope_rule :
            ; m_lhs_names   = Hashtbl.create 7
            ; m_lhs_size    = 0
            ; m_lhs_in_env  =
-               nl @ List.map fst pvs_rhs @ List.map fst pvs_when}
+               nl @ List.map fst pvs_rhs @ List.map fst (snd pvs_when)}
     in
     let lhs = scope ~find_sym 0 mode ss Env.empty p_lhs in
+    let _ = match p_when with
+        P_CHK t -> ignore (scope ~find_sym 0 mode ss Env.empty t)
+      | _ -> () in
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
       let lhs = snd (get_args lhs) in
@@ -644,14 +655,6 @@ let scope_rule :
     | Patt (Some i, _, [||]) -> i
     | _ -> fatal rule_pos "arguments should be patterns in condition [%a]."
              term t in
-(*
-  let asSymb t =
-    match unfold t with
-    | Symb s -> s
-    | _ -> fatal rule_pos "symbol expected [%a]." term t in
-  let p_asPatt t = asPatt (scope ~find_sym 0 mode ss Env.empty t) in
-  let p_asSymb t = asSymb (scope ~find_sym 0 mode ss Env.empty t) in
- *)
   let rec asRTerm: Term.term -> Term.r_term = fun t ->
     match get_args t with
     | Patt (Some i, _, [||]), [] -> R_Patt i
@@ -662,7 +665,7 @@ let scope_rule :
         fatal rule_pos "pattern applicationn not allowed in constraint [%a]."
           term t
     | Symb s, tl -> R_App (s, List.map asRTerm tl)
-    | f,_ -> fatal rule_pos "function not allowed in constraint [%a]."
+    | f,_ -> fatal rule_pos "Not allowed in constraint [%a]."
                term f in
   let asRTerm : Term.term -> sym * Term.r_term list = fun t ->
     match asRTerm t with

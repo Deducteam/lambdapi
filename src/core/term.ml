@@ -1016,6 +1016,22 @@ let rec rAll : (int -> bool) -> r_term -> bool = fun p t ->
   | R_Patt i -> p i
   | R_Sym _ -> true
 
+(** [rFind f t] applies [f] to each pvar of [t] and returns the first 
+    successful result, None if all calls fail. *)
+let rec rFind : (int -> 'a option) -> r_term -> 'a option = fun f t ->
+  match t with
+  | R_App(_s,al) -> List.find_map (rFind f) al
+  | R_Patt i -> f i
+  | R_Sym _ -> None
+
+(** [rFold o a t] computes [a o pv1 o ... pvn] where pv1...pvn are the 
+    pattern variables of t. *)
+let rec rFold : ('a -> int -> 'a) -> 'a -> r_term -> 'a = fun f a t ->
+  match t with
+  | R_App(_s,al) -> List.fold_left (rFold f) a al
+  | R_Patt i -> f a i
+  | R_Sym _ -> a
+
 (** Printing function for debug *)
 let rec r_term : r_term pp = fun ppf t ->
   match t with

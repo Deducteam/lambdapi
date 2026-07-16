@@ -577,16 +577,25 @@ module CM = struct
           let vars = cond_pool.variables in
           match r.c_rhs.r_when with
           | R_None -> r.c_when, cond_pool
-          (* find_doubles op! n! t! d? before? middle? after? *)
-          | R_CHK ({sym_path=[];sym_name="#find_doubles";_} as sy,
-                   ([R_Sym _;u;t;_d;_b;_m;_a] as al)) when
-                 rAll (fun i -> IntMap.mem i vars) u
-                 && rAll (fun i -> IntMap.mem i vars) t ->
+          (* find_doubles ty! op! n! t! d? before? middle? after? *)
+          | R_CHK ({sym_name="#find_doubles";_} as sy,
+                   ([ty; R_App (_, []);u;t;rd;rb;rm;ra] as al)) when
+                 rAll (fun i -> IntMap.mem i vars) ty
+                 && rAll (fun i -> IntMap.mem i vars) u
+                 && rAll (fun i -> IntMap.mem i vars) t -> begin
+              let (_mem, cond_pool) = List.fold_left (rFold (fun (m,p) i -> m+1,CP.register_nl i (m,vs) p))
+                                        (mem,cond_pool) [rd;rb;rm;ra] in
+(*
+              match List.find_map (rFind (fun i -> if IntMap.mem i vars then None else Some i)) [rd;rb;rm;ra] with
+                Some i -> r.c_when, CP.register_nl i (mem,vs) cond_pool
+              | None ->
+*)
               if Logger.log_enabled () then
-                log "Registering subterm constraint on position [%a] \
+                log "Registering predefined constraint on position [%a] \
                      %a %a"
                   arg_path a.arg_path Raw.sym sy (List.pp r_term " ") al;
-              C_None, CP.register_chk sy al cond_pool
+                  C_None, CP.register_chk sy al cond_pool
+            end
           | R_EQ ((op1,a1), (op2,a2)) when
                  List.for_all (fun i -> IntMap.mem i vars) a1
                  && List.for_all (fun i -> IntMap.mem i vars) a2 ->
@@ -844,7 +853,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       in
       let right = compile_cv {cm with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
-  | Specialise(swap)                       ->
+  | Specialise(swap) ->
       if Logger.log_enabled () then log "Swap on column %d" swap;
       let store = CM.store cm swap in
       let updated =

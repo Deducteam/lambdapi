@@ -291,6 +291,33 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
   let (lazy capacity, lazy tree) = cfg.dtree s in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
   let bound = Array.make capacity None in
+  (* [ct2t t] transforms a contraint to a term by replacing pattern variables
+     by their values *)
+  let rec ct2t : Tree_type.c_term -> term = fun t ->
+    match t with
+    | Tree_type.C_App ((p,s), al) ->
+        add_args (mk_Symb (Sign.find_qualified p s)) (List.map ct2t al)
+    | C_Patt pv -> vars.(fst pv)
+    | C_Sym (p,s) -> mk_Symb (Sign.find_qualified p s)
+  in
+  (* [flatten op t] returns the list of arguments of [op]
+     considered as associative at the top level of [t] *)
+  let flatten: sym -> term -> term list = fun sy t ->
+    let rec flatten acc t =
+      match get_args t with
+      | (Symb s, al) when s == sy -> List.fold_left flatten acc al
+      | _ -> t::acc
+    in flatten [] t
+  in
+  (* [rebuild op u l] applies the binary [op] on arguments of [l],
+     returns [u] if [l] is empty.
+   *)
+  let rebuild: sym -> term -> term list -> term = fun sy u l ->
+    match l with
+    | [] -> u
+    | [t] -> t
+    | _ -> List.fold_left (fun a t -> mk_Appl(a,t)) (mk_Symb sy) l
+  in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
      array described in {!module:Term} as the environment of the RHS during
@@ -357,20 +384,44 @@ and tree_walk : config -> sym -> stack -> (term * stack) option =
               let t1 = add_args (mk_Symb s1) v1 in
               let t2 = add_args (mk_Symb s2) v2 in
               if eq_modulo whnf cfg t1 t2 then ok else fail
-          | CondCHK((_pth,_op), _args) -> fail
-(*
-              let v1 = vars.(fst p1) and v2 = vars.(fst p2) in
+
+          (* find_doubles ty! op! n! t! d? before? middle? after? *)
+          | CondCHK((_,"#find_doubles"), [ty;C_App((p,o),[]);u;t;d;b;m;a]) ->
               if Logger.log_enabled() then
-                log_rew "%aCondST(%s,%d,%d) : %a <<[%s] %a"
+                log_rew "%aCondCHK(\"find_doubles\",%s,%a,%a) : %a %a"
                   D.depth !depth
-                  op (fst p1) (fst p2) Raw.term v1 op Raw.term v2;
-              let rec find (p: term -> bool) (t: term) =
-                match unfold t with
-                | Appl(Appl(Symb s,a1), a2)
-                     when s.sym_path=pth && s.sym_name=op -> p a1 || find p a2
-                | t -> p t in
-                if find (eq_modulo whnf cfg v1) v2 then ok else fail
- *)
+                  o c_term u c_term t Raw.term (ct2t u) Raw.term (ct2t t);
+              let sy = Sign.find_qualified p o in
+              let _ty = ct2t ty and u = ct2t u and t = ct2t t in
+              let d,b,m,a = ct2t d, ct2t b, ct2t m, ct2t a in
+              let rec doubles l =
+                match l with
+                  [] -> raise Not_found
+                | t::l' ->
+                    try
+                      let (b,_,a) = List.split (fun u -> Term.cmp t u = 0) l'
+                      in (t, [], b, a)
+                    with Not_found ->
+                      let (d,b,m,a) = doubles l' in
+                      (d,(t::b),m,a)
+              in
+              begin
+                try
+                  let t = snf (whnf cfg) t in
+                  let (sd,sb,sm,sa) = doubles (flatten sy t) in
+                  let sb = rebuild sy u sb in
+                  let sm = rebuild sy u sm in
+                  let sa = rebuild sy u sa in
+                  if eq_modulo whnf cfg sd d
+                     && eq_modulo whnf cfg sb b
+                     && eq_modulo whnf cfg sm m
+                     && eq_modulo whnf cfg sa a then
+                    ok
+                  else
+                    fail
+                with Not_found -> fail
+              end
+          | CondCHK((_pth,_op), _args) -> fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
