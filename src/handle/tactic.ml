@@ -198,12 +198,12 @@ let get_prod_ids env =
 (** Builtin tactic names. *)
 type tactic =
   | T_admit
-  | T_and
   | T_all_hyps
   | T_apply
   | T_assume
   | T_assumption
   | T_change
+  | T_compose
   | T_fail
   | T_first_hyp
   | T_focus
@@ -235,12 +235,12 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     Hashtbl.add t s.sym_name v
   in
   add "admit" T_admit;
-  add "compose" T_and;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
   add "assumption" T_assumption;
   add "change" T_change;
+  add "compose" T_compose;
   add "fail" T_fail;
   add "first_hyp" T_first_hyp;
   add "focus" T_focus;
@@ -391,9 +391,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> ps, mk P_tac_admit
-            | T_and, [t1;t2] ->
-              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
-            | T_and, _ -> assert false
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
@@ -413,6 +410,9 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_assumption, _ -> assert false
             | T_change, [_;t] -> ps, mk(P_tac_change (p_term t))
             | T_change, _ -> assert false
+            | T_compose, [t1;t2] ->
+              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
+            | T_compose, _ -> assert false
             | T_fail, _ -> ps, mk P_tac_fail
             | T_first_hyp, [t] -> ps, mk(P_tac_first_hyp(p_term t))
             | T_first_hyp, _ -> assert false

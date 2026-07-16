@@ -200,19 +200,18 @@ let _ =
   register_typ "Tactic" typ;
   (* (Π a, Prf a → T) → T *)
   let hyps = arr (prod prop (fun a -> arr (app prf (var a)) tac)) tac in
-  (* Π [a], (El a → T) → T *)
-  let _dep_elt = prod set (fun a -> arr (arr (app elt (var a)) tac) tac) in
   (* Π [a], Prf a → T *)
   let prf_arg = prod prop (fun a -> arr (app prf (var a)) tac) in
   (* Π [a], El a → T *)
   let elt_arg = prod set (fun a -> arr (app elt (var a)) tac) in
   register_typ "admit" tac;
-  register_typ "compose" (arr tac (arr tac tac));
   register_typ "all_hyps" hyps;
   register_typ "apply" prf_arg;
-  register "assume" no_check; (*(arr str dep_elt);*)
+  register_typ "assume" (* String → Π [a], (El a → T) → T *)
+    (arr str (prod set (fun a -> arr (arr (app elt (var a)) tac) tac)));
   register_typ "assumption" tac;
   register_typ "change" elt_arg;
+  register_typ "compose" (arr tac (arr tac tac));
   register_typ "fail" tac;
   register_typ "first_hyp" hyps;
   register_typ "focus" (arr str tac);
