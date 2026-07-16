@@ -393,7 +393,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_admit, _ -> ps, mk P_tac_admit
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
-            | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
+            | T_apply, [_;_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
             | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin

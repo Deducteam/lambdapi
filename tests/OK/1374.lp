@@ -1,4 +1,4 @@
-require open tests.OK.HOL tests.OK.Tactic tests.OK.PropExt;
+require open tests.OK.HOL tests.OK.Tactic tests.OK.PropExt tests.OK.Impred;
 
 symbol #and ≔ (&);
 

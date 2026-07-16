@@ -23,3 +23,7 @@ with ε [set_] $a ↪ τ $a;
 
 unif_rule ε $a ≡ π $b ↪ [$a ≡ $b];
 unif_rule ε $a ≡ τ $b ↪ [$a ≡ $b];
+
+require open tests.OK.FOL;
+
+unif_rule ε $a ≡ Π x:$b, π $c.[x] ↪ [$a ≡ `∀ x:$b, $c.[x]];

@@ -18,5 +18,5 @@ symbol isOK [a:Set] (x:τ a): π OK;
 symbol test [a:Set] (x: τ a) (y: τ a): π OK ≔
 begin
   assume a;
-  eval (#assume "x" (λ x1, (#assume "x" (λ x2, #apply (isOK x1)))));
+  eval #assume "x" (λ x1, #assume "x" (λ x2, #apply (isOK x1)));
 end;
