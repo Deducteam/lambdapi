@@ -539,16 +539,16 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       match ps.proof_goals with
       | [] -> fatal pos "all_hyps called on empty goal list."
       | g :: _ ->
-          let p = new_problem() in
-          let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
-          let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
-          try let ps, t = p_tactic ps g env pos t in handle ps t
-          with Fatal _ -> ps
-      in
-      let ps' = List.fold_left try_assumption ps gt.goal_hyps in
-      if ps' == ps then
-        fatal pos "all_hyps (%a) has failed on all assumptions." term t
-      else ps'
+        let p = new_problem() in
+        let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+        let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+        try let ps, t = p_tactic ps g env pos t in handle ps t
+        with Fatal _ -> ps
+    in
+    let ps' = List.fold_left try_assumption ps gt.goal_hyps in
+    if ps' == ps then
+      fatal pos "(all_hyps %a) fails on all assumptions." term t
+    else ps'
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
@@ -597,16 +597,19 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               me1 (x :: List.rev e2)
           in
           tac_refine pos ps gt gs p t
-        with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
+        with Not_found -> fatal idpos "Unknown hypothesis %a." uid id;
       end
   | P_tac_first_hyp pt ->
     let t = scope pt in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
     let f (_,(v,a,_)) =
-      let ps, t = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
-      progress ps t
+      let p = new_problem() in
+      let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+      let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+      let ps, t = p_tactic ps g env pos t in progress ps t
     in
     begin match List.find_map f gt.goal_hyps with
-    | None -> fatal pos "tactic [%a] fails on all assumptions" term t
+    | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
     | Some new_ps -> new_ps
     end
   | P_tac_have(id, pt) ->

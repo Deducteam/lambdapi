@@ -14,16 +14,16 @@ builtin "Univ" ≔ U;
 rule U prop ↪ Prop
 with U set_ ↪ Set;
 
-symbol ε:Π [l:L], U l → TYPE;
+symbol η:Π [l:L], U l → TYPE; // \eta
 
-builtin "Type" ≔ ε;
+builtin "Type" ≔ η;
 
-rule ε [prop] $a ↪ π $a
-with ε [set_] $a ↪ τ $a;
+rule η [prop] ↪ π
+with η [set_] ↪ τ;
 
-unif_rule ε $a ≡ π $b ↪ [$a ≡ $b];
-unif_rule ε $a ≡ τ $b ↪ [$a ≡ $b];
+unif_rule η $a ≡ π $b ↪ [$a ≡ $b];
+unif_rule η $a ≡ τ $b ↪ [$a ≡ $b];
 
 require open tests.OK.FOL;
 
-unif_rule ε $a ≡ Π x:$b, π $c.[x] ↪ [$a ≡ `∀ x:$b, $c.[x]];
+unif_rule η $a ≡ Π x:$b, π $c.[x] ↪ [$a ≡ `∀ x:$b, $c.[x]];
