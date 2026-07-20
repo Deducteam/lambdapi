@@ -225,7 +225,7 @@ let _ =
   register_typ "first_hyp" (arr t1 tac);
   register_typ "focus" (arr str tac);
   register_typ "generalize" t1;
-  register_typ "have" (arr str (arr prop tac));
+  register_typ "have" (arr str t1);
   register_typ "induction" tac;
   register_typ "orelse" (arr tac (arr tac tac));
   register_typ "print" (arr str tac);

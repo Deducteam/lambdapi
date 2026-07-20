@@ -41,7 +41,7 @@ builtin "focus" ≔ #focus;
 constant symbol #generalize : Π [l] [a:U l], η a → Tactic;
 builtin "generalize" ≔ #generalize;
 
-constant symbol #have : String → Prop → Tactic;
+constant symbol #have : String → Π [l] [a:U l], η a → Tactic;
 builtin "have" ≔ #have;
 
 constant symbol #induction : Tactic;
