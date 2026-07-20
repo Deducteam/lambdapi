@@ -66,12 +66,21 @@ available flags by using the command ``flag`` with no argument.
 ``print``
 ---------
 
-When called with a symbol identifier as argument, displays information
-(type, notation, rules, etc.) about that symbol. When called with
-``unif_rule`` as argument, displays the list of unification
-rules. When called with ``coerce_rule`` as argument, displays the list
-of coercions. Without argument, displays the list of current goals (in
-proof mode only).
+::
+
+   print; // prints the current goal
+   print <string_literal>; // prints the string
+   print <symbol>; // prints the type, notation and rules of a symbol
+   // in case of an inductive type, it also prints the associated types,
+   // constructors and the recursors
+   print builtin; // prints the current builtins
+   print unif_rule; // prints unification rules
+   print coerce_rule; // prints coercion rules
+   print verbose; // prints the current verbose level
+   print debug; // prints all the debug flags and their values
+   print flag; // prints all the flags and their values
+   print prover; // prints the current default prover
+   print prover_timeout; // prints the current default timeout (in seconds)
 
 .. _proofterm:
 

@@ -406,35 +406,49 @@ let path (lb:'token lexbuf): string list loc =
   | _ ->
       expected lb "" path_tks
 
-let qid_or_rule_or_semicolon (lb:'token lexbuf)
- : (string list * string) loc option =
+let print (lb:'token lexbuf): print =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
-  | SEMICOLON ->
-      consume_token lb;
-      None
+  | SEMICOLON | END | ABORT | ADMITTED ->
+    Goal
   | UID s ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      Some (make_pos pos1 ([], s))
+    let pos1 = current_pos lb in
+    consume_token lb;
+    Symbol(make_pos pos1 ([],s))
   | QID p ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      Some (qid_of_path pos1 p)
+    let pos1 = current_pos lb in
+    consume_token lb;
+    Symbol(qid_of_path pos1 p)
   | STRINGLIT s ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      Some (make_pos pos1 ([], s))
+    consume_token lb;
+    String (String.remove_quotes s)
   | UNIF_RULE ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      Some (make_pos pos1 ([], Unif_rule.equiv.sym_name))
+    consume_token lb;
+    Unif_rule
   | COERCE_RULE ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      Some (make_pos pos1 ([], Coercion.coerce.sym_name))
+    consume_token lb;
+    Coerce_rule
+  | VERBOSE ->
+    consume_token lb;
+    Verbose
+  | DEBUG ->
+    consume_token lb;
+    Debug
+  | FLAG ->
+    consume_token lb;
+    Flag
+  | PROVER ->
+    consume_token lb;
+    Prover
+  | PROVER_TIMEOUT ->
+    consume_token lb;
+    Prover_timeout
+  | BUILTIN ->
+    consume_token lb;
+    Builtin
   | _ ->
-      expected lb "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;SEMICOLON]
+    expected lb "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;VERBOSE;
+                    DEBUG;FLAG;PROVER;PROVER_TIMEOUT;SEMICOLON;BUILTIN]
 
 let term_id (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -839,8 +853,8 @@ and query (lb:'token lexbuf): p_query =
   | PRINT ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let i = qid_or_rule_or_semicolon lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_print i)
+      let p = print lb in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_query_print p)
   | PROOFTERM ->
       let pos1 = current_pos lb in
       consume_token lb;
