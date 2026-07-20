@@ -129,11 +129,21 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
         (* Function to print a notation *)
-        let notation ppf s =
-          match !(s.sym_nota) with
+        let rec nota ppf n =
+          match n with
           | NoNotation -> ()
-          | n -> out ppf "@.notation %a %a;" sym s (notation float) n
+          | Zero -> out ppf "@.builtin \"0\" ≔ %a;" sym s
+          | Succ n -> out ppf "%a@.builtin \"+1\" ≔ %a;" nota n sym s
+          | PosOne -> out ppf "@.builtin \"pos_one\" ≔ %a;" sym s
+          | PosDouble -> out ppf "@.builtin \"pos_double\" ≔ %a;" sym s
+          | PosSuccDouble ->
+            out ppf "@.builtin \"pos_succ_double\" ≔ %a;" sym s
+          | IntZero -> out ppf "@.builtin \"int_zero\" ≔ %a;" sym s
+          | IntPos -> out ppf "@.builtin \"int_positive\" ≔ %a;" sym s
+          | IntNeg -> out ppf "@.builtin \"int_negative\" ≔ %a;" sym s
+          | n -> out ppf "@.notation %a %a;" sym s (Print.notation float) n
         in
+        let notation ppf s = nota ppf !(s.sym_nota) in
         (* Function to print rules. *)
         let rules sym_rule ppf s =
           match !(s.sym_rules) with
@@ -141,16 +151,16 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           | r::rs ->
             let rule ppf r = sym_rule ppf (s,r) in
             let with_rule ppf r = out ppf "@.with %a" rule r in
-            out ppf "@.rule %a%a;" rule r (List.pp with_rule "") rs
+            out ppf "rule %a%a;" rule r (List.pp with_rule "") rs
         in
         (* Function to print a symbol declaration. *)
         let decl ppf s =
+          let rules ppf s =
+            if !(s.sym_rules) <> [] then out ppf "@.%a" (rules sym_rule) s in
           out ppf "%a%a%asymbol %a : %a%a;%a%a"
-            expo s.sym_expo prop s.sym_prop
-            match_strat s.sym_mstrat sym s sym_type s
-            def !(s.sym_def) notation s (rules sym_rule) s
+            expo s.sym_expo prop s.sym_prop match_strat s.sym_mstrat
+            sym s sym_type s def !(s.sym_def) notation s rules s
         in
-        let new_decl ppf s = out ppf "@.%a" decl s in
         (* Function to print constructors and the induction principle if [qid]
            is an inductive type. *)
         let ind ppf s =
@@ -162,14 +172,15 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           in
           try
             let ind = SymMap.find s !(sign.sign_ind) in
-            List.pp new_decl "" ppf ind.ind_cons;
-            new_decl ppf ind.ind_prop
+            let decl ppf s = out ppf "@.%a" decl s in
+            List.pp decl "" ppf ind.ind_cons;
+            decl ppf ind.ind_prop
           with Not_found -> ()
         in
         if s == Unif_rule.equiv then
-          let sym_rule ppf r =
+          let unif_rule ppf r =
             out ppf "%a ↪ [%a]" term (lhs r) term (rhs r) in
-          rules sym_rule ppf s
+          rules unif_rule ppf s
         else if s == Coercion.coerce then rules sym_rule ppf s
         else (decl ppf s; ind ppf s)
       in
