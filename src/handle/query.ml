@@ -75,6 +75,8 @@ let return : 'a pp -> 'a -> result = fun pp x ->
   Console.out 1 "%a" pp x;
   Some (fun () -> Format.asprintf "%a" pp x)
 
+let status = function true -> "on" | false -> "off"
+
 let rules sym_rule ppf s =
   match !(s.sym_rules) with
   | [] -> ()
@@ -82,8 +84,6 @@ let rules sym_rule ppf s =
     let rule ppf r = sym_rule ppf (s,r) in
     let with_rule ppf r = out ppf "@.with %a" rule r in
     out ppf "rule %a%a;" rule r (List.pp with_rule "") rs
-
-let status = function true -> " (on)" | false -> " (off)"
 
 (** [handle_query ss ps q] *)
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
@@ -101,7 +101,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print Debug ->
     let a = Logger.get_activated_loggers() in
     let f (k,d) =
-      Printf.sprintf "%c: %s%s" k d (status (String.contains a k)) in
+      Printf.sprintf "%c: %s (%s)" k d (status (String.contains a k)) in
     return string (String.concat "\n" (List.map f (Logger.log_summary())))
   | P_query_debug(e,s) ->
       String.iter (fun c -> if Logger.is_registered c then ()
@@ -117,12 +117,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
-  | P_query_print Flag ->
-      let f n (d,c) l = (n,d,!c)::l in
+    | P_query_print Flag ->
+      let f n (_,c) l = ("flag \""^n^"\" "^status(!c)^";")::l in
       let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
-      let cmp (n1,_,_) (n2,_,_) = Stdlib.compare n1 n2 in
-      let l = List.sort cmp l in
-      let l = List.map (fun (n,_d,c) -> "\""^n^"\""^status c) l in
+      let l = List.sort Stdlib.compare l in
       return string (String.concat "\n" l)
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
@@ -160,7 +158,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       | Some s -> out ppf " ≔ %a" sym s
       | None -> ()
     in
-    let f n _ acc = Format.asprintf "builtin \"%s\"%a" n def n :: acc in
+    let f n _ acc = Format.asprintf "builtin \"%s\"%a;" n def n :: acc in
     let l = List.sort Stdlib.compare (Hashtbl.fold f Builtin.htbl []) in
     return string (String.concat "\n" l)
   | P_query_print(Symbol qid) ->
