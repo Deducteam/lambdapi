@@ -264,6 +264,7 @@ module CM = struct
         | Abst _, _ -> "λ"
         | Prod _, _ -> "Π"
         | Type, _   -> "TYPE"
+        | Appl _, _ -> "@"
         | _ -> assert false (* Terms that souldn't appear in lhs *) )
 
   (** Representation of a subterm in argument position in a pattern. *)
@@ -464,6 +465,7 @@ module CM = struct
     let depths = Array.of_list (List.map (fun i -> i.arg_rank) positions) in
     let ripe lhs =
       (* [ripe l] returns whether [lhs] can be applied. *)
+      Array.length lhs <= Array.length depths && (* jpb *)
       let de = Array.sub depths 0 (Array.length lhs) in
       let check pt de =
       (* We verify that there are no variable constraints, that is, if
@@ -799,7 +801,7 @@ let harvest :
         in
         default_node true (loop ts subst (slot + 1))
     | Patt(None,_,_)::ts    -> default_node false (loop ts subst slot)
-    | _                     -> assert false
+    | t :: _ -> log "tree error %a" CM.head t; assert false
   in
   loop (Array.to_list lhs) subst slot
 

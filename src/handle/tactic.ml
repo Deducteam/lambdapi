@@ -109,6 +109,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     gs_typ @ MetaSet.fold add_goal (!p).metas
                (List.map (fun c -> Unif c) (!p).unsolved)
   in
+let _ = log "SOLVE: %a" (List.pp Goal.pp "\n") proof_goals in
   {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
@@ -235,7 +236,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     Hashtbl.add t s.sym_name v
   in
   add "admit" T_admit;
-  add "and" T_and;
+  add "then" T_and;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
@@ -398,7 +399,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
-            | T_assume, [prefix;_;Abst(_, t)] ->
+            | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin
                 let n = new_name (string_of_term pos prefix) env in
                 let idopts = [Some(Pos.make pos n)] in
