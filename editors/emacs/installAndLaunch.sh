@@ -43,7 +43,7 @@ clone() {
     branch=$1
     url=$2
     name=`basename $url .git`
-    dir=~/.emacs.d/elpa/eglot/$name
+    dir=~/.emacs.d/elpa/$name
     if [ -d $dir ]; then
         echo "$name already cloned. Skipping."
     else
