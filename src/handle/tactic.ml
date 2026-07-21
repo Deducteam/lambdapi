@@ -436,8 +436,10 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                 match unfold t with
                 | Symb s ->
                   let n = s.sym_name in
-                  if n = String.add_quotes "" then None
-                  else Some(Pos.make pos (s.sym_path, n))
+                  if String.is_string_literal n then
+                    let n = String.remove_quotes n in
+                    if n = "" then Goal else String n
+                  else Symbol(Pos.make pos (s.sym_path, n))
                 | _ -> fatal pos "not a symbol or string literal: %a" term t
               in
               ps, mk(P_tac_query (Pos.make pos (P_query_print arg)))

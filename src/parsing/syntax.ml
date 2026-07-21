@@ -230,6 +230,19 @@ type search =
  | QOp of search * op * search
  | QFilter of search * filter
 
+type print =
+  | Verbose
+  | Debug
+  | Flag
+  | Prover
+  | Prover_timeout
+  | Goal
+  | Symbol of p_qident
+  | Unif_rule
+  | Coerce_rule
+  | String of string
+  | Builtin
+
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of string
@@ -248,7 +261,7 @@ type p_query_aux =
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of string
   (** Set the timeout of the prover (in seconds). *)
-  | P_query_print of p_qident option
+  | P_query_print of print
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
@@ -522,7 +535,8 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
       eq_p_term t1 t2 && c1 = c2
   | P_query_prover s1, P_query_prover s2 -> s1 = s2
   | P_query_prover_timeout t1, P_query_prover_timeout t2 -> t1 = t2
-  | P_query_print io1, P_query_print(io2) -> Option.eq eq_p_qident io1 io2
+  | P_query_print(Symbol i1), P_query_print(Symbol i2) -> eq_p_qident i1 i2
+  | P_query_print p1, P_query_print p2 -> p1 = p2
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
@@ -724,15 +738,15 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_flag (_, _)
     | P_query_prover _
     | P_query_prover_timeout _
-    | P_query_print None
-    | P_query_proofterm -> a
+    | P_query_proofterm
+    | P_query_search _ -> a
     | P_query_assert (_, P_assert_typing(t,u))
     | P_query_assert (_, P_assert_conv(t,u)) ->
         fold_term_vars vs (fold_term_vars vs a t) u
     | P_query_infer (t, _)
     | P_query_normalize (t, _) -> fold_term_vars vs a t
-    | P_query_print (Some qid) -> f a qid
-    | P_query_search _ -> a
+    | P_query_print(Symbol qid) -> f a qid
+    | P_query_print _ -> a
   in
 
   let rec fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
