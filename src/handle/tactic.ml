@@ -408,7 +408,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_assume, _ -> assert false
             | T_assumption, [] -> ps, mk P_tac_assumption
             | T_assumption, _ -> assert false
-            | T_change, [_;t] -> ps, mk(P_tac_change (p_term t))
+            | T_change, [_;_;t] -> ps, mk(P_tac_change (p_term t))
             | T_change, _ -> assert false
             | T_compose, [t1;t2] ->
               let ps = handle ps (tac_eval t1) in ps, tac_eval t2
@@ -418,10 +418,10 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_first_hyp, _ -> assert false
             | T_focus, [t] -> ps, mk(P_tac_focus(string_of_term pos t))
             | T_focus, _ -> assert false
-            | T_generalize, [_;t] ->
+            | T_generalize, [_;_;t] ->
               ps, mk(P_tac_generalize(p_ident_of_var pos t))
             | T_generalize, _ -> assert false
-            | T_have, [t1;t2] ->
+            | T_have, [t1;_;_;t2] ->
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
@@ -446,7 +446,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               ps, mk(P_tac_refine(p_term_of_string_term pos t))
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> ps, mk P_tac_refl
-            | T_remove, [_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
+            | T_remove, [_;_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
             | T_remove, _ -> assert false
             | T_repeat, [t] -> ps, mk(P_tac_repeat(tac_eval t))
             | T_repeat, _ -> assert false
@@ -454,7 +454,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               ps, mk(P_tac_rewrite(is_right pos side,
                                    p_rwpatt_of_string_term pos pat, p_term t))
             | T_rewrite, _ -> assert false
-            | T_set, [t1;_;t2] ->
+            | T_set, [t1;_;_;t2] ->
               let n = string_of_term pos t1 in
               ps, mk(P_tac_set(Pos.make pos n, p_term t2))
             | T_set, _ -> assert false
