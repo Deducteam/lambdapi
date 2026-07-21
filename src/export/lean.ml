@@ -232,9 +232,9 @@ let command oc {elt; pos} =
 
 let commands oc = Stream.iter (command oc)
 
-let handle_requires s =
+let handle_requires cs =
   let rec handle_next_elt() =
-    let x = Stream.next s in
+    let x = Stream.next cs in
     match x.elt with
     | P_require(b, ps) ->
         List.iter (req_mod stdout) ps;
@@ -248,25 +248,17 @@ let handle_requires s =
   in
   try handle_next_elt() with Stream.Failure -> None
 
-let print : string -> ast -> unit = fun file s ->
+let print : string -> ast -> unit = fun file cs ->
   let oc = stdout in
-  Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
-  match handle_requires s with
+  Option.iter (fun s -> string oc ("import "^s^"\n")) !Stt.require;
+  match handle_requires cs with
   | None -> ()
   | Some c ->
-  begin
-    string oc "\nset_option linter.style.header false\n\n";
+    string oc "\nset_option linter.style.header false\n";
     List.iter (open_mod oc) (List.rev !openings);
-  end;
-  string oc "\nnamespace ";
-  Option.iter
-    (fun s -> string oc
-                (try (Filename.chop_extension s)^"."
-                 with Invalid_argument _ -> "")) !require;
-  string oc (Filename.chop_extension file);
-  (*to erase style-warnings on generated code*)
-  string oc "\nset_option linter.style.missingEnd false\n";
-  string oc "set_option linter.unusedVariables false\n";
-  string oc "set_option linter.style.longLine false\n\n";
-  command oc c;
-  commands oc s
+    string oc ("\nnamespace "^Filename.chop_extension file^"\n");
+    string oc "set_option linter.style.missingEnd false\n";
+    string oc "set_option linter.unusedVariables false\n";
+    string oc "set_option linter.style.longLine false\n\n";
+    command oc c;
+    commands oc cs
