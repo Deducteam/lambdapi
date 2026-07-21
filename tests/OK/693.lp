@@ -4,7 +4,7 @@ builtin "Set" ≔ Set;
 
 injective symbol τ: Set → TYPE;
 
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 constant symbol Prop: TYPE;
 
@@ -12,7 +12,7 @@ builtin "Prop" ≔ Prop;
 
 symbol π: Prop → TYPE;
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 constant symbol ⇒: Prop → Prop → Prop; notation ⇒ infix right 10;
 

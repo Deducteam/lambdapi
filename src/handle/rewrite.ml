@@ -21,8 +21,8 @@ type eq_config =
     equality, used by tactics such as “rewrite” or “reflexivity”. *)
 let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
   let builtin = Builtin.get ss pos [] in
-  { symb_P     = builtin "P"
-  ; symb_T     = builtin "T"
+  { symb_P     = builtin "Prf"
+  ; symb_T     = builtin "El"
   ; symb_eq    = builtin "eq"
   ; symb_eqind = builtin "eqind"
   ; symb_refl  = builtin "refl" }

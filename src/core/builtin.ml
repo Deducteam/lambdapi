@@ -140,19 +140,19 @@ let register_typ s f =
 
 (* Prop and P builtins. *)
 let prop = builtin "Prop"
-let prf = builtin "P"
+let prf = builtin "Prf"
 
 let _ =
   register_typ "Prop" typ;
-  register_typ "P" (arr prop typ)
+  register_typ "Prf" (arr prop typ)
 
 (* Set and T builtins. *)
 let set = builtin "Set"
-let elt = app (builtin "T")
+let elt = app (builtin "El")
 
 let _ =
   register_typ "Set" typ;
-  register_typ "T" (arr set typ)
+  register_typ "El" (arr set typ)
 
 (* Additional builtins for why3 tactic. *)
 let _ =

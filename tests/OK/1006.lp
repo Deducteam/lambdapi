@@ -2,7 +2,7 @@ constant symbol Set : TYPE;
 builtin "Set" ≔ Set;
 
 injective symbol τ : Set → TYPE;
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 symbol mys : TYPE;
 symbol myop :  mys →  mys →   mys;

@@ -11,7 +11,7 @@ builtin "Set" ≔ U;
 
 injective symbol T : U → TYPE;
 
-builtin "T" ≔ T;
+builtin "El" ≔ T;
 
 // Examples of data types and their interpretations.
 
@@ -35,7 +35,7 @@ constant symbol all : Π (a : U), (T a → Prop) → Prop;
 
 injective symbol P : Prop → TYPE;
 
-builtin "P" ≔ P;
+builtin "Prf" ≔ P;
 
 rule P (all $a $f) ↪ Π (x : T $a), P ($f x);
 
@@ -109,8 +109,8 @@ opaque symbol not_elimp : Π (A : Prop), P (not (not A)) → P A
     apply pna}
 end;
 
-builtin "P"     ≔ P;
-builtin "T"     ≔ T;
+builtin "Prf"     ≔ P;
+builtin "El"     ≔ T;
 builtin "eq"    ≔ =;
 builtin "eqind" ≔ eqind;
 builtin "refl"  ≔ refl;

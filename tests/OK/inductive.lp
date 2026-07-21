@@ -10,7 +10,7 @@ builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // Interpretation of propositions in TYPE
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 constant symbol Set : TYPE;       // Type of set codes
 
@@ -18,7 +18,7 @@ builtin "Set" ≔ Set;
 
 injective symbol τ : Set → TYPE;  // Interpretation of set codes in TYPE
 
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 /// test escaped type
 inductive {| |}:TYPE ≔ c : {| |};
@@ -659,7 +659,7 @@ constant symbol eq_refl [a] (x : τ a) : π(x = x);
 constant symbol eq_ind [a] (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
 
 // Set builtins for the rewrite tactic
-builtin "T"     ≔ τ;
+builtin "El"     ≔ τ;
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ eq_refl;
 builtin "eqind" ≔ eq_ind;

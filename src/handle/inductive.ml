@@ -32,7 +32,7 @@ type config =
 let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   let builtin = Builtin.get ss pos [] in
   { symb_Prop = builtin "Prop"
-  ; symb_prf  = builtin "P" }
+  ; symb_prf  = builtin "Prf" }
 
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)

@@ -2,13 +2,13 @@ symbol Prop: TYPE;
 builtin "Prop" ≔ Prop;
 
 injective symbol π: Prop → TYPE;
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 symbol Set: TYPE;
 builtin "Set" ≔ Set;
 
 injective symbol τ: Set → TYPE;
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 require open tests.OK.Tactic;
 

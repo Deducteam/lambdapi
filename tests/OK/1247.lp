@@ -3,9 +3,9 @@ symbol π: Prop → TYPE;
 symbol Set: TYPE;
 constant symbol τ: Set → TYPE;
 builtin "Set" ≔ Set;
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 builtin "Prop" ≔ Prop;
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 symbol = [a:Set] : τ a → τ a → Prop;
 

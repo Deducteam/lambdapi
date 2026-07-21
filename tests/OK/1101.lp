@@ -1,7 +1,7 @@
 constant symbol Set : TYPE;
 builtin "Set" ≔ Set;
 injective symbol τ : Set → TYPE; // `t or \tau
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 constant symbol ↦ : Set → Set → Set; // \mapsto
 notation ↦ infix right 20;
 rule τ($a ↦ $b) ↪ τ $a → τ $b;
@@ -9,7 +9,7 @@ rule τ($a ↦ $b) ↪ τ $a → τ $b;
 constant symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 injective symbol π : Prop → TYPE; // `p
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 constant symbol ⊤ : Prop; // \top
 constant symbol top : π ⊤;

@@ -41,9 +41,9 @@ symbol =_ind [T] (x y : π T) : π (x = y) → Π P, π (P y) → π (P x)
 ;
 
 builtin "Prop" ≔ Type;
-builtin "P"     ≔ π;
+builtin "Prf"     ≔ π;
 builtin "Set" ≔ Type;
-builtin "T"     ≔ π;
+builtin "El"     ≔ π;
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;
 builtin "eqind" ≔ =_ind;

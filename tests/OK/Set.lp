@@ -10,7 +10,7 @@ constant symbol ι : Set;
 
 injective symbol τ : Set → TYPE; // `t or \tau
 
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 // We assume that sets are non-empty
 

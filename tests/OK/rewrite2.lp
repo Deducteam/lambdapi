@@ -8,7 +8,7 @@ builtin "Set" ≔ Set;
 
 injective symbol τ : Set → TYPE;
 
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 // Propositional logic
 
@@ -20,7 +20,7 @@ builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE;
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 // Implication
 
