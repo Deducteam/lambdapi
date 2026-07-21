@@ -286,7 +286,7 @@ let consume_INT (lb:'token lexbuf): string =
 
 let consume_DEBUG_FLAGS (lb:'token lexbuf): bool * string =
   match current_token lb with
-  | SEMICOLON ->
+  | SEMICOLON | ABORT | ADMITTED | END ->
       true,""
   | DEBUG_FLAGS(b,s) ->
       consume_token lb;
@@ -409,7 +409,7 @@ let path (lb:'token lexbuf): string list loc =
 let print (lb:'token lexbuf): print =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
-  | SEMICOLON | END | ABORT | ADMITTED ->
+  | SEMICOLON | ABORT | ADMITTED | END ->
     Goal
   | UID s ->
     let pos1 = current_pos lb in
@@ -448,7 +448,8 @@ let print (lb:'token lexbuf): print =
     Builtin
   | _ ->
     expected lb "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;VERBOSE;
-                    DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;SEMICOLON]
+                    DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;SEMICOLON;ABORT;
+                    ADMITTED;END]
 
 let term_id (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -673,13 +674,10 @@ and command (lb:'token lexbuf) : p_command =
         let q = query lb in
         extend_pos lb (*__FUNCTION__*) pos1 (P_query(q))
     | _ ->
-        expected lb "command"
-         [ SIDE Pratter.Left ; ASSOCIATIVE ; COMMUTATIVE ; CONSTANT ;
-           INJECTIVE ; SEQUENTIAL ; PRIVATE ; OPAQUE ; PROTECTED ; REQUIRE ;
-           OPEN ; SYMBOL ; L_PAREN ; L_SQ_BRACKET ; INDUCTIVE ; RULE ;
-           UNIF_RULE ; COERCE_RULE ; BUILTIN ; NOTATION ; ASSERT false ;
-           COMPUTE ; DEBUG ; FLAG ; PRINT ; PROOFTERM ; PROVER ;
-           PROVER_TIMEOUT ; SEARCH ; TYPE_QUERY ; VERBOSE ]
+      expected lb "command"
+        (modifier_tks @
+         [REQUIRE;OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE;RULE;UNIF_RULE;
+          COERCE_RULE;BUILTIN;NOTATION] @ (query_tks()))
     end
 
 and inductive (lb:'token lexbuf): p_inductive =
@@ -716,8 +714,8 @@ and constructor (lb:'token lexbuf): p_ident * p_term =
   i, make_prod lb (fst pos1) ps t (snd (current_pos lb))
 
 and modifier_tks =
-  [ SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;SEQUENTIAL;
-    PRIVATE;OPAQUE;PROTECTED ]
+  [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;OPAQUE;
+   PRIVATE;PROTECTED;SEQUENTIAL]
 and modifier (lb:'token lexbuf): p_modifier =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -747,10 +745,6 @@ and modifier (lb:'token lexbuf): p_modifier =
       let pos1 = current_pos lb in
       consume_token lb;
       extend_pos lb (*__FUNCTION__*) pos1 P_opaq
-  | SEQUENTIAL ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      extend_pos lb (*__FUNCTION__*) pos1 (P_mstrat Term.Sequen)
   | PRIVATE ->
       let pos1 = current_pos lb in
       consume_token lb;
@@ -759,10 +753,12 @@ and modifier (lb:'token lexbuf): p_modifier =
       let pos1 = current_pos lb in
       consume_token lb;
       extend_pos lb (*__FUNCTION__*) pos1 (P_expo Term.Protec)
+  | SEQUENTIAL ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 (P_mstrat Term.Sequen)
   | _ ->
-      expected lb ""
-       [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;
-        SEQUENTIAL;PRIVATE;OPAQUE;PROTECTED]
+      expected lb "" modifier_tks
 
 and notation (lb:'token lexbuf): string Term.notation =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -814,6 +810,8 @@ and equation (lb:'token lexbuf): p_term * p_term =
 
 (* queries *)
 
+and query_tks() = [ASSERT false;COMPUTE;DEBUG;FLAG;PRINT;PROOFTERM;PROVER;
+                   PROVER_TIMEOUT;TYPE_QUERY;VERBOSE;SEARCH]
 and query (lb:'token lexbuf): p_query =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -850,15 +848,6 @@ and query (lb:'token lexbuf): p_query =
       let t = term lb in
       extend_pos lb (*__FUNCTION__*) pos1
         (P_query_normalize(t, {strategy=SNF; steps=None}))
-  | PRINT ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      let p = print lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_print p)
-  | PROOFTERM ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      extend_pos lb (*__FUNCTION__*) pos1 P_query_proofterm
   | DEBUG ->
       let pos1 = current_pos lb in
       consume_token lb;
@@ -878,6 +867,15 @@ and query (lb:'token lexbuf): p_query =
         | _ ->
           expected lb "" [STRINGLIT"";SEMICOLON]
       end
+  | PRINT ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let p = print lb in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_query_print p)
+  | PROOFTERM ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 P_query_proofterm
   | PROVER ->
       let pos1 = current_pos lb in
       consume_token lb;
@@ -888,26 +886,24 @@ and query (lb:'token lexbuf): p_query =
       consume_token lb;
       let n = consume_INT lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_query_prover_timeout n)
-  | VERBOSE ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      let n = consume_INT lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_verbose n)
   | TYPE_QUERY ->
       let pos1 = current_pos lb in
       consume_token lb;
       let t = term lb in
       extend_pos lb (*__FUNCTION__*) pos1
         (P_query_infer(t, {strategy=NONE; steps=None}))
+  | VERBOSE ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let n = consume_INT lb in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_query_verbose n)
   | SEARCH ->
       let pos1 = current_pos lb in
       consume_token lb;
       let q = search lb in
       extend_pos lb (*__FUNCTION__*) pos1 (P_query_search q)
   | _ ->
-      expected lb ""
-       [ASSERT false;COMPUTE;DEBUG;FLAG;PRINT;PROOFTERM;PROVER;
-        PROVER_TIMEOUT;SEARCH;TYPE_QUERY;VERBOSE]
+      expected lb "" (query_tks())
 
 and term_proof (lb:'token lexbuf):
  p_term option * (p_proof * p_proof_end) option =
@@ -1002,7 +998,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       [], pe
   | _ ->
     expected lb
-      (string_of_tokens "subproof, tactic, query" [END;ABORT;ADMITTED]) []
+      (string_of_tokens "subproof, tactic, query" [ABORT;ADMITTED;END]) []
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
@@ -1016,7 +1012,7 @@ and steps (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
   list_with_sep_or_termin (step_tks ()) step SEMICOLON lb
 
-and step_tks () = tactic_tks
+and step_tks() = tactic_tks()
 and step (lb:'token lexbuf): p_proofstep =
   if log_enabled() then log "%s" __FUNCTION__;
   let t = tactic lb in
@@ -1041,11 +1037,10 @@ and proof_end (lb:'token lexbuf): p_proof_end =
   | _ ->
       expected lb "" [ABORT;ADMITTED;END]
 
-and tactic_tks =
- [ASSERT false;COMPUTE;DEBUG;FLAG;PRINT;PROOFTERM;PROVER;PROVER_TIMEOUT;SEARCH
- ;TYPE_QUERY;VERBOSE;ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL
- ;FAIL;FIRST_HYP;FOCUS;GENERALIZE;HAVE;INDUCTION;ORELSE;REFINE;REFLEXIVITY
- ;REMOVE;REPEAT;REWRITE;SET;SIMPLIFY;SOLVE;SYMMETRY;TRY;WHY3]
+and tactic_tks() =
+  [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;
+   GENERALIZE;HAVE;INDUCTION;ORELSE;REFINE;REFLEXIVITY;REMOVE;REPEAT;REWRITE;
+   SET;SIMPLIFY;SOLVE;SYMMETRY;TRY;WHY3] @ (query_tks())
 and tactic (lb:'token lexbuf): p_tactic =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -1227,7 +1222,7 @@ and tactic (lb:'token lexbuf): p_tactic =
             make_pos pos1 (P_tac_why3 None)
       end
   | _ ->
-      expected lb "tactic or query" tactic_tks
+      expected lb "tactic or query" (tactic_tks())
 
 and rwpatt_content (lb:'token lexbuf): p_rwpatt =
   if log_enabled() then log "%s" __FUNCTION__;

@@ -1,21 +1,23 @@
-<qid> ::= [<uid> "."]+ <uid>
+<qid> ::= (<uid> ".")+ <uid>
 
 <id> ::= <uid> | <qid>
 
-<command> ::= "opaque" <qid> ";"
-            | "require" <qid>+ ";"
-            | "require" [["private"] "open"] <qid>+ ";"
-            | "require" <qid> "as" <uid> ";"
-            | ["private"] "open" <qid>+ ";"
-            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof> | "≔" <term_proof>] ";"
-            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* "≔" <term> [<proof>] ";"
-            | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)* ";"
-            | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <string> "≔" <id> ";"
-            | "coerce_rule" <rule> ";"
-            | "unif_rule" <unif_rule> ";"
-            | "notation" <id> <notation> ";"
-            | <query> ";"
+<file> ::= (<command> ";")*
+
+<command> ::= "opaque" <qid>
+            | "require" <qid>+
+            | "require" [["private"] "open"] <qid>+
+            | "require" <qid> "as" <uid>
+            | ["private"] "open" <qid>+
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof> | "≔" <term_proof>]
+            | [<exposition>] <modifier>* "symbol" <uid> <param_list>* "≔" <term> [<proof>]
+            | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)*
+            | "rule" <rule> ("with" <rule>)*
+            | "builtin" <string> "≔" <id>
+            | "coerce_rule" <rule>
+            | "unif_rule" <unif_rule>
+            | "notation" <id> <notation>
+            | <query>
 
 <exposition> ::= "private" | "protected"
 
@@ -134,12 +136,23 @@
 
 <switch> ::= "on" | "off"
 
+<print> ::= <id>
+           | "unif_rule"
+           | "coerce_rule"
+           | "verbose"
+           | "debug"
+           | "flag"
+           | "builtin"
+           | "prover"
+           | "prover_timeout"
+           | <string>
+
 <query> ::= <assert> <param_list>* "⊢" <term> <test> <term>
           | "compute" <term>
-          | "print" [<id> | "unif_rule" | "coerce_rule"]
+          | "print" [<print>]
           | "proofterm"
           | "debug" [("+"|"-") <char>+]
-          | "flag" [string> <switch>]
+          | "flag" [<string> <switch>]
           | "prover" <string>
           | "prover_timeout" <integer>
           | "verbose" <integer>
