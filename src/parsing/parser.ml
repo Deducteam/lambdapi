@@ -20,20 +20,20 @@ module type PARSER = sig
 
   type lexbuf
 
-  val parse_lexbuf : lexbuf -> ast
+  val parse_lexbuf : lexbuf -> p_commands
   (** [parse_lexbuf lb] is the same as [parse_string] but with an already
       created lexbuf. *)
 
-  val parse_in_channel : string -> in_channel -> ast
+  val parse_in_channel : string -> in_channel -> p_commands
   (** [parse f ic] returns a stream of commands parsed from channel [ic]
       created from file [f]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
 
-  val parse_file : string -> ast
+  val parse_file : string -> p_commands
   (** [parse_file f] returns a stream of parsed commands of file [f]. Commands
       are parsed lazily. *)
 
-  val parse_string : string -> string -> ast
+  val parse_string : string -> string -> p_commands
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
 
@@ -208,7 +208,7 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> ast = fun fname ->
+let parse_file : string -> p_commands = fun fname ->
   match Filename.check_suffix fname Library.lp_src_extension with
   | true  -> Lp.parse_file fname
   | false -> Dk.parse_file fname
