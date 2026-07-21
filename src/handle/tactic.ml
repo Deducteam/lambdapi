@@ -198,12 +198,12 @@ let get_prod_ids env =
 (** Builtin tactic names. *)
 type tactic =
   | T_admit
-  | T_and
   | T_all_hyps
   | T_apply
   | T_assume
   | T_assumption
   | T_change
+  | T_compose
   | T_fail
   | T_first_hyp
   | T_focus
@@ -235,12 +235,12 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     Hashtbl.add t s.sym_name v
   in
   add "admit" T_admit;
-  add "and" T_and;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
   add "assumption" T_assumption;
   add "change" T_change;
+  add "compose" T_compose;
   add "fail" T_fail;
   add "first_hyp" T_first_hyp;
   add "focus" T_focus;
@@ -391,14 +391,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> ps, mk P_tac_admit
-            | T_and, [t1;t2] ->
-              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
-            | T_and, _ -> assert false
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
-            | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
+            | T_apply, [_;_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
-            | T_assume, [prefix;_;Abst(_, t)] ->
+            | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin
                 let n = new_name (string_of_term pos prefix) env in
                 let idopts = [Some(Pos.make pos n)] in
@@ -411,17 +408,20 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_assume, _ -> assert false
             | T_assumption, [] -> ps, mk P_tac_assumption
             | T_assumption, _ -> assert false
-            | T_change, [_;t] -> ps, mk(P_tac_apply (p_term t))
+            | T_change, [_;_;t] -> ps, mk(P_tac_change (p_term t))
             | T_change, _ -> assert false
+            | T_compose, [t1;t2] ->
+              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
+            | T_compose, _ -> assert false
             | T_fail, _ -> ps, mk P_tac_fail
             | T_first_hyp, [t] -> ps, mk(P_tac_first_hyp(p_term t))
             | T_first_hyp, _ -> assert false
             | T_focus, [t] -> ps, mk(P_tac_focus(string_of_term pos t))
             | T_focus, _ -> assert false
-            | T_generalize, [_;t] ->
+            | T_generalize, [_;_;t] ->
               ps, mk(P_tac_generalize(p_ident_of_var pos t))
             | T_generalize, _ -> assert false
-            | T_have, [t1;t2] ->
+            | T_have, [t1;_;_;t2] ->
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
@@ -448,15 +448,15 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               ps, mk(P_tac_refine(p_term_of_string_term pos t))
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> ps, mk P_tac_refl
-            | T_remove, [_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
+            | T_remove, [_;_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
             | T_remove, _ -> assert false
             | T_repeat, [t] -> ps, mk(P_tac_repeat(tac_eval t))
             | T_repeat, _ -> assert false
-            | T_rewrite, [side;pat;_;t] ->
+            | T_rewrite, [side;pat;_;_;t] ->
               ps, mk(P_tac_rewrite(is_right pos side,
                                    p_rwpatt_of_string_term pos pat, p_term t))
             | T_rewrite, _ -> assert false
-            | T_set, [t1;_;t2] ->
+            | T_set, [t1;_;_;t2] ->
               let n = string_of_term pos t1 in
               ps, mk(P_tac_set(Pos.make pos n, p_term t2))
             | T_set, _ -> assert false
@@ -535,23 +535,22 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
-      let t = scope t in
-      (* the tactic is not required to prove the goal *)
-      (* effects are superposed *)
-      let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
-        match ps.proof_goals with
-        | [] -> fatal pos "all_hyps called with empty goal list"
-        | g :: _ ->
-            let v = unfold (mk_Vari v) in
-            let t = mk_Appl (mk_Appl (t, p), v) in
-            if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try let ps, t = p_tactic ps g env pos t in handle ps t
-            with Fatal _ -> ps
-      in
-      let ps' = List.fold_left try_assumption ps gt.goal_hyps in
-      if ps' == ps then
-        fatal pos "tactic all_hyps [%a] has failed on all assumptions" term t
-      else ps'
+    let t = scope t in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
+    let try_assumption (ps: proof_state) (_,(v,a,_)): proof_state =
+      match ps.proof_goals with
+      | [] -> fatal pos "all_hyps called on empty goal list."
+      | g :: _ ->
+        let p = new_problem() in
+        let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+        let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+        try let ps, t = p_tactic ps g env pos t in handle ps t
+        with Fatal _ -> ps
+    in
+    let ps' = List.fold_left try_assumption ps gt.goal_hyps in
+    if ps' == ps then
+      fatal pos "(all_hyps %a) fails on all assumptions." term t
+    else ps'
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
@@ -561,7 +560,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         match Infer.infer_noexn p c t with
         | None ->
             let ids = Ctxt.names c in let term = term_in ids in
-            fatal pos "[%a] is not typable." term t
+            fatal pos "(%a) is not typable." term t
         | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -600,16 +599,19 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               me1 (x :: List.rev e2)
           in
           tac_refine pos ps gt gs p t
-        with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
+        with Not_found -> fatal idpos "Unknown hypothesis %a." uid id;
       end
   | P_tac_first_hyp pt ->
     let t = scope pt in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
     let f (_,(v,a,_)) =
-      let ps, t = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
-      progress ps t
+      let p = new_problem() in
+      let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+      let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+      let ps, t = p_tactic ps g env pos t in progress ps t
     in
     begin match List.find_map f gt.goal_hyps with
-    | None -> fatal pos "tactic [%a] fails on all assumptions" term t
+    | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
     | Some new_ps -> new_ps
     end
   | P_tac_have(id, pt) ->

@@ -10,7 +10,9 @@ declarations:
 
 ::
 
-   builtin "T"     ≔ … // : U → TYPE
+   builtin "Set"   ≔ … // : TYPE
+   builtin "T"     ≔ … // : Set → TYPE
+   builtin "Prop"  ≔ … // : TYPE
    builtin "P"     ≔ … // : Prop → TYPE
    builtin "eq"    ≔ … // : Π [a], T a → T a → Prop
    builtin "refl"  ≔ … // : Π [a] (x:T a), P(x = x)
