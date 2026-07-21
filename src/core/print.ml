@@ -191,7 +191,7 @@ let env term ppf ts =
   if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
 
 (** The possible priority levels are [Func] (top level, including abstraction
-    and product), [Appl] (application) and [Atom] (smallest priority). *)
+   and product), [Appl] (application) and [Atom] (smallest priority). *)
 type priority = Func | Appl | Atom
 
 let rec pp p idmap ppf t =

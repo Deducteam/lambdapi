@@ -285,6 +285,20 @@ let rec search ppf = function
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
   | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
+let print : print pp = fun ppf p ->
+  match p with
+  | Verbose -> out ppf " verbose"
+  | Debug -> out ppf " debug"
+  | Flag -> out ppf " flag"
+  | Prover -> out ppf " prover"
+  | Prover_timeout -> out ppf " prover_timeout"
+  | Goal -> ()
+  | Symbol qid -> out ppf " %a" qident qid
+  | Unif_rule -> out ppf " unif_rule"
+  | Coerce_rule -> out ppf " coerce_rule"
+  | String s -> out ppf " %s" (String.add_quotes s)
+  | Builtin -> out ppf " builtin"
+
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
@@ -292,14 +306,14 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
+  | P_query_flag("", _) -> out ppf "flag"
   | P_query_flag(s, b) ->
       out ppf "flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
   | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
-  | P_query_print None -> out ppf "print"
-  | P_query_print(Some qid) -> out ppf "print %a" qident qid
+  | P_query_print p -> out ppf "print%a" print p
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search q -> out ppf "search %a" search q

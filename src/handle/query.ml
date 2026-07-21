@@ -75,14 +75,34 @@ let return : 'a pp -> 'a -> result = fun pp x ->
   Console.out 1 "%a" pp x;
   Some (fun () -> Format.asprintf "%a" pp x)
 
+let status = function true -> "on" | false -> "off"
+
+let rules sym_rule ppf s =
+  match !(s.sym_rules) with
+  | [] -> ()
+  | r::rs ->
+    let rule ppf r = sym_rule ppf (s,r) in
+    let with_rule ppf r = out ppf "@.with %a" rule r in
+    out ppf "rule %a%a;" rule r (List.pp with_rule "") rs
+
 (** [handle_query ss ps q] *)
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps {elt;pos} ->
+  let env = Proof.focus_env ps in
+  let mok =
+    match ps with
+    | None -> fun _ -> None
+    | Some ps -> Proof.meta_of_key ps
+  in
+  let scope ?(typ=false) = Scope.scope_term ~typ ~mok true ss env in
+  let ctxt = Env.to_ctxt env in
+  let p = new_problem() in
   match elt with
-  | P_query_debug(_,"") ->
-      let f (k,d) = Printf.sprintf "\n%c: %s" k d in
-      let s = String.concat "" (List.map f (Logger.log_summary())) in
-      return string ("debug flags:"^s)
+  | P_query_print Debug ->
+    let a = Logger.get_activated_loggers() in
+    let f (k,d) =
+      Printf.sprintf "%c: %s (%s)" k d (status (String.contains a k)) in
+    return string (String.concat "\n" (List.map f (Logger.log_summary())))
   | P_query_debug(e,s) ->
       String.iter (fun c -> if Logger.is_registered c then ()
                             else fatal pos "Unknown debug flag \'%c\'" c) s;
@@ -97,12 +117,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
-  | P_query_flag("",_) ->
-      let f n _ l = n::l in
+  | P_query_print Flag ->
+      let f n (_,c) l = ("flag \""^n^"\" "^status(!c)^";")::l in
       let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
       let l = List.sort Stdlib.compare l in
-      let l = List.map (fun s -> "\""^s^"\"") l in
-      return string ("flags: "^String.concat ", " l)
+      return string (String.concat "\n" l)
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
@@ -115,16 +134,34 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       if n < 0 then fatal pos "Negative number";
       Why3_tactic.timeout := n;
       None
-  | P_query_print(None) ->
+  | P_query_print Verbose ->
+    return (fun ppf -> out ppf "verbose %d;") !Console.verbose
+  | P_query_print Prover ->
+    return (fun ppf -> out ppf "prover \"%s\";") !Why3_tactic.default_prover
+  | P_query_print Prover_timeout ->
+    return (fun ppf -> out ppf "prover_timeout %d;") !Why3_tactic.timeout
+  | P_query_print (String s) -> return string s
+  | P_query_print Coerce_rule -> return (rules sym_rule) Coercion.coerce
+  | P_query_print Unif_rule ->
+    let unif_rule ppf r = out ppf "%a ↪ [%a]" term (lhs r) term (rhs r) in
+    return (rules unif_rule) Unif_rule.equiv
+  | P_query_print Goal ->
       begin
         match ps with
         | None -> fatal pos "Not in a proof."
         | Some ps -> return Proof.goals ps
       end
-  | P_query_print(Some qid) ->
-    let m = snd qid.elt in
-    if String.is_string_literal m then return string (String.remove_quotes m)
-    else
+  | P_query_print Builtin ->
+    let sym ppf s = out ppf "%a.%a" path s.sym_path uid s.sym_name in
+    let def ppf n =
+      match Extra.StrMap.find_opt n ss.builtins with
+      | Some s -> out ppf " ≔ %a" sym s
+      | None -> ()
+    in
+    let f n _ acc = Format.asprintf "builtin \"%s\"%a;" n def n :: acc in
+    let l = List.sort Stdlib.compare (Hashtbl.fold f Builtin.htbl []) in
+    return string (String.concat "\n" l)
+  | P_query_print(Symbol qid) ->
       let sym_info ppf s =
         (* Function to print a definition. *)
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
@@ -177,12 +214,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             decl ppf ind.ind_prop
           with Not_found -> ()
         in
-        if s == Unif_rule.equiv then
-          let unif_rule ppf r =
-            out ppf "%a ↪ [%a]" term (lhs r) term (rhs r) in
-          rules unif_rule ppf s
-        else if s == Coercion.coerce then rules sym_rule ppf s
-        else (decl ppf s; ind ppf s)
+        decl ppf s; ind ppf s
       in
       return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
@@ -194,27 +226,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
                let ids = Env.names (Proof.focus_env ps) in
                return (term_in ids) (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
-  | _ ->
-  let env = Proof.focus_env ps in
-  let mok =
-    match ps with
-    | None -> fun _ -> None
-    | Some ps -> Proof.meta_of_key ps
-  in
-  let scope ?(typ=false) = Scope.scope_term ~typ ~mok true ss env in
-  let ctxt = Env.to_ctxt env in
-  let p = new_problem() in
-  match elt with
   | P_query_search q ->
       let dbpath = Path.default_dbpath in
       return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
-  | P_query_debug(_,_)
-  | P_query_verbose(_)
-  | P_query_flag(_,_)
-  | P_query_prover(_)
-  | P_query_prover_timeout(_)
-  | P_query_print(_)
-  | P_query_proofterm -> assert false (* already done *)
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
       let t = scope pt and a = scope ~typ:true pa in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
