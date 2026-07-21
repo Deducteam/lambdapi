@@ -284,16 +284,6 @@ let consume_INT (lb:'token lexbuf): string =
   | _ ->
       expected lb "" [INT""]
 
-let consume_DEBUG_FLAGS (lb:'token lexbuf): bool * string =
-  match current_token lb with
-  | SEMICOLON | ABORT | ADMITTED | END ->
-      true,""
-  | DEBUG_FLAGS(b,s) ->
-      consume_token lb;
-      b,s
-  | _ ->
-      expected lb "" [DEBUG_FLAGS(true,"");SEMICOLON]
-
 let qid (lb:'token lexbuf): (string list * string) loc =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -406,6 +396,8 @@ let path (lb:'token lexbuf): string list loc =
   | _ ->
       expected lb "" path_tks
 
+let proof_end_tks = [END;ABORT;ADMITTED]
+
 let print (lb:'token lexbuf): print =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -447,9 +439,9 @@ let print (lb:'token lexbuf): print =
     consume_token lb;
     Builtin
   | _ ->
-    expected lb "" [UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;VERBOSE;
-                    DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;SEMICOLON;ABORT;
-                    ADMITTED;END]
+    expected lb ""
+      ([UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;VERBOSE;
+        DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;SEMICOLON] @ proof_end_tks)
 
 let term_id (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;
@@ -851,21 +843,30 @@ and query (lb:'token lexbuf): p_query =
   | DEBUG ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let b,s = consume_DEBUG_FLAGS lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_debug(b,s))
+      begin
+        match current_token lb with
+        | SEMICOLON | ABORT | ADMITTED | END ->
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_print Debug)
+        | DEBUG_FLAGS(b,s) ->
+          consume_token lb;
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_debug(b,s))
+        | _ ->
+          expected lb "" ([DEBUG_FLAGS(true,"");SEMICOLON] @ proof_end_tks)
+      end
   | FLAG ->
       let pos1 = current_pos lb in
       consume_token lb;
       begin
         match current_token lb with
-        | SEMICOLON ->
-            extend_pos lb (*__FUNCTION__*) pos1 (P_query_flag("",true))
-        | STRINGLIT _ ->
-          let s = String.remove_quotes (consume_STRINGLIT lb) in
+        | SEMICOLON | ABORT | ADMITTED | END ->
+            extend_pos lb (*__FUNCTION__*) pos1 (P_query_print Flag)
+        | STRINGLIT s ->
+          consume_token lb;
           let b = consume_SWITCH lb in
+          let s = String.remove_quotes s in
           extend_pos lb (*__FUNCTION__*) pos1 (P_query_flag(s,b))
         | _ ->
-          expected lb "" [STRINGLIT"";SEMICOLON]
+          expected lb "" ([STRINGLIT"";SEMICOLON] @ proof_end_tks)
       end
   | PRINT ->
       let pos1 = current_pos lb in
@@ -879,13 +880,35 @@ and query (lb:'token lexbuf): p_query =
   | PROVER ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let s = String.remove_quotes (consume_STRINGLIT lb) in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_prover(s))
+      begin
+        match current_token lb with
+        | SEMICOLON | ABORT | ADMITTED | END ->
+            extend_pos lb (*__FUNCTION__*) pos1 (P_query_print Prover)
+        | STRINGLIT s ->
+          consume_token lb;
+          let s = String.remove_quotes s in
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_prover s)
+        | _ ->
+          expected lb "" ([STRINGLIT"";SEMICOLON] @ proof_end_tks)
+      end
   | PROVER_TIMEOUT ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let n = consume_INT lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_prover_timeout n)
+      begin
+        match current_token lb with
+        | SEMICOLON | ABORT | ADMITTED | END ->
+            extend_pos lb (*__FUNCTION__*) pos1 (P_query_print Prover_timeout)
+        | INT s ->
+          consume_token lb;
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_prover_timeout s)
+        | _ ->
+          expected lb "" ([INT"";SEMICOLON] @ proof_end_tks)
+      end
+  | SEARCH ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      let q = search lb in
+      extend_pos lb (*__FUNCTION__*) pos1 (P_query_search q)
   | TYPE_QUERY ->
       let pos1 = current_pos lb in
       consume_token lb;
@@ -895,13 +918,16 @@ and query (lb:'token lexbuf): p_query =
   | VERBOSE ->
       let pos1 = current_pos lb in
       consume_token lb;
-      let n = consume_INT lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_verbose n)
-  | SEARCH ->
-      let pos1 = current_pos lb in
-      consume_token lb;
-      let q = search lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_query_search q)
+      begin
+        match current_token lb with
+        | SEMICOLON | ABORT | ADMITTED | END ->
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_print Verbose)
+        | INT s ->
+          consume_token lb;
+          extend_pos lb (*__FUNCTION__*) pos1 (P_query_verbose s)
+        | _ ->
+          expected lb "" ([INT"";SEMICOLON] @ proof_end_tks)
+      end
   | _ ->
       expected lb "" (query_tks())
 
@@ -998,7 +1024,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       [], pe
   | _ ->
     expected lb
-      (string_of_tokens "subproof, tactic, query" [ABORT;ADMITTED;END]) []
+      (string_of_tokens "subproof, tactic, query" proof_end_tks) []
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
@@ -1035,7 +1061,7 @@ and proof_end (lb:'token lexbuf): p_proof_end =
       consume_token lb;
       make_pos pos1 Syntax.P_proof_end
   | _ ->
-      expected lb "" [ABORT;ADMITTED;END]
+      expected lb "" proof_end_tks
 
 and tactic_tks() =
   [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;

@@ -98,12 +98,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
-  | P_query_debug(_,"") | P_query_print Debug ->
+  | P_query_print Debug ->
     let a = Logger.get_activated_loggers() in
     let f (k,d) =
-      Printf.sprintf "\n%c: %s%s" k d (status (String.contains a k)) in
-    let s = String.concat "" (List.map f (Logger.log_summary())) in
-    return string ("debug flags:"^s)
+      Printf.sprintf "%c: %s%s" k d (status (String.contains a k)) in
+    return string (String.concat "\n" (List.map f (Logger.log_summary())))
   | P_query_debug(e,s) ->
       String.iter (fun c -> if Logger.is_registered c then ()
                             else fatal pos "Unknown debug flag \'%c\'" c) s;
@@ -118,13 +117,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
-  | P_query_flag("",_) | P_query_print Flag ->
+  | P_query_print Flag ->
       let f n (d,c) l = (n,d,!c)::l in
       let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
       let cmp (n1,_,_) (n2,_,_) = Stdlib.compare n1 n2 in
       let l = List.sort cmp l in
-      let l = List.map (fun (n,_d,c) -> "\n\""^n^"\""^status c) l in
-      return string ("flags:"^String.concat "" l)
+      let l = List.map (fun (n,_d,c) -> "\""^n^"\""^status c) l in
+      return string (String.concat "\n" l)
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
@@ -137,9 +136,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       if n < 0 then fatal pos "Negative number";
       Why3_tactic.timeout := n;
       None
-  | P_query_print Verbose -> return int !Console.verbose
-  | P_query_print Prover -> return string !Why3_tactic.default_prover
-  | P_query_print Prover_timeout -> return int !Why3_tactic.timeout
+  | P_query_print Verbose ->
+    return (fun ppf -> out ppf "verbose %d;") !Console.verbose
+  | P_query_print Prover ->
+    return (fun ppf -> out ppf "prover \"%s\";") !Why3_tactic.default_prover
+  | P_query_print Prover_timeout ->
+    return (fun ppf -> out ppf "prover_timeout %d;") !Why3_tactic.timeout
   | P_query_print (String s) -> return string s
   | P_query_print Coerce_rule -> return (rules sym_rule) Coercion.coerce
   | P_query_print Unif_rule ->
@@ -158,8 +160,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       | Some s -> out ppf " ≔ %a" sym s
       | None -> ()
     in
-    let f n _ acc = acc ^ Format.asprintf "builtin \"%s\"%a\n" n def n in
-    return string (Hashtbl.fold f Builtin.htbl "")
+    let f n _ acc = Format.asprintf "builtin \"%s\"%a" n def n :: acc in
+    let l = List.sort Stdlib.compare (Hashtbl.fold f Builtin.htbl []) in
+    return string (String.concat "\n" l)
   | P_query_print(Symbol qid) ->
       let sym_info ppf s =
         (* Function to print a definition. *)

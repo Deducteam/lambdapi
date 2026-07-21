@@ -153,9 +153,9 @@
           | "proofterm"
           | "debug" [("+"|"-") <char>+]
           | "flag" [<string> <switch>]
-          | "prover" <string>
-          | "prover_timeout" <integer>
-          | "verbose" <integer>
+          | "prover" [<string>]
+          | "prover_timeout" [<integer>]
+          | "verbose" [<integer>]
           | "type" <term>
           | "search" <search>
 
