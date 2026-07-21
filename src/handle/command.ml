@@ -285,7 +285,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      Builtin.check ss pos n s;
+      Builtin.check n ss pos s;
       Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
       (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->

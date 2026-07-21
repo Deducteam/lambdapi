@@ -1,11 +1,11 @@
 constant symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 injective symbol π : Prop → TYPE; // `p
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 constant symbol Set : TYPE;
 injective symbol τ : Set → TYPE;
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 constant symbol ⊥ : Prop; // \bot
 

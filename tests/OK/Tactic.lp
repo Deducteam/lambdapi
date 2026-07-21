@@ -1,46 +1,47 @@
 // define a type representing Lambdapi tactics
 
-require open tests.OK.String tests.OK.Option tests.OK.List;
-
-constant symbol Tactic : TYPE;
+require open tests.OK.String tests.OK.Univ;
 
 // mandatory builtins
+
+constant symbol Tactic : TYPE;
+builtin "Tactic" ≔ Tactic;
 
 constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
 
-symbol & : Tactic → Tactic → Tactic;
-builtin "and" ≔ &;
-notation & infix right 10;
-
-constant symbol #all_hyps : (Π p, π p → Tactic) → Tactic;
+constant symbol #all_hyps: (Π [l] [a:U l], η a → Tactic) → Tactic;
 builtin "all_hyps" ≔ #all_hyps;
 
-constant symbol #apply [p] : π p → Tactic;
+constant symbol #apply: Π [l] [a:U l], η a → Tactic;
 builtin "apply" ≔ #apply;
 
-constant symbol #assume : String → Π [a:Set], (τ a → Tactic) → Tactic;
+constant symbol #assume : String → Π [l], Π [a:U l], (η a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
-
-constant symbol #print: String → Tactic;
-builtin "print" ≔ #print;
 
 constant symbol #assumption : Tactic;
 builtin "assumption" ≔ #assumption;
 
+constant symbol #change: Π [l] [a:U l], η a → Tactic;
+builtin "change" ≔ #change;
+
+constant symbol & : Tactic → Tactic → Tactic;
+builtin "compose" ≔ &;
+notation & infix right 10;
+
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
+
+constant symbol #first_hyp: (Π [l] [a:U l], η a → Tactic) → Tactic;
+builtin "first_hyp" ≔ #first_hyp;
 
 constant symbol #focus : String → Tactic;
 builtin "focus" ≔ #focus;
 
-constant symbol #first_hyp : (Π a, π a → Tactic) → Tactic;
-builtin "first_hyp" ≔ #first_hyp;
-
-constant symbol #generalize : Π [a], τ a → Tactic;
+constant symbol #generalize : Π [l] [a:U l], η a → Tactic;
 builtin "generalize" ≔ #generalize;
 
-constant symbol #have : String → Prop → Tactic;
+constant symbol #have : String → Π [l] [a:U l], η a → Tactic;
 builtin "have" ≔ #have;
 
 constant symbol #induction : Tactic;
@@ -49,22 +50,25 @@ builtin "induction" ≔ #induction;
 constant symbol #orelse : Tactic → Tactic → Tactic;
 builtin "orelse" ≔ #orelse;
 
-constant symbol #refine [p] : π p → Tactic;
+constant symbol #print : String → Tactic;
+builtin "print" ≔ #print;
+
+constant symbol #refine: String → Tactic;
 builtin "refine" ≔ #refine;
 
 constant symbol #reflexivity : Tactic;
 builtin "reflexivity" ≔ #reflexivity;
 
-constant symbol #remove : Π [a], π a → Tactic;
+constant symbol #remove : Π [l] [a:U l], η a → Tactic;
 builtin "remove" ≔ #remove;
 
 constant symbol #repeat : Tactic → Tactic;
 builtin "repeat" ≔ #repeat;
 
- symbol #rewrite : String → String → Π [a], π a → Tactic;
+ symbol #rewrite : String → String → Π [l] [a:U l], η a → Tactic;
 builtin "rewrite" ≔ #rewrite;
 
-constant symbol #set : String → Π [a], τ a → Tactic;
+constant symbol #set : String → Π [l] [a:U l], η a → Tactic;
 builtin "set" ≔ #set;
 
 constant symbol #simplify : Tactic;
@@ -84,9 +88,6 @@ builtin "try" ≔ #try;
 
 constant symbol #why3 : Tactic;
 builtin "why3" ≔ #why3;
-
-constant symbol #change : Tactic;
-builtin "change" ≔ #change;
 
 // defined tactics
 

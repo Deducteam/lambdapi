@@ -2,12 +2,16 @@
 // Type of data type codes and their interpretation as types.
 
 constant symbol U : TYPE;
+builtin "Set" ≔ U;
 
 injective symbol T : U → TYPE;
+builtin "El" ≔ T;
 
 constant symbol Prop : TYPE;
+builtin "Prop" ≔ Prop;
 
 symbol P : Prop → TYPE;
+builtin "Prf" ≔ P;
 
 symbol o: U;
 rule T o ↪ Prop;
@@ -20,8 +24,8 @@ constant symbol refl a (x:T a) : P (x = x);
 
 constant symbol eqind a (x y:T a) : P (x = y) → Π p, P (p y) → P (p x);
 
-builtin "P"     ≔ P;
-builtin "T"     ≔ T;
+builtin "Prf"     ≔ P;
+builtin "El"     ≔ T;
 builtin "eq"    ≔ =;
 builtin "eqind" ≔ eqind;
 builtin "refl"  ≔ refl;

@@ -81,10 +81,10 @@ let rec compile : Command.compiler = fun ss mp ->
          type of string literals with the String builtin. *)
       let update s =
         if String.is_string_literal s.Term.sym_name then
-          match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
+          match Builtin.get_opt ss "String" with
           | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
           | None ->
-          match Builtin.get_opt ss "String" with
+          match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
           | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
           | None -> assert false
         else Tree.update_dtree s []

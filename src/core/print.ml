@@ -190,9 +190,9 @@ let are_quant_args : term list -> bool = fun args ->
 let env term ppf ts =
   if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
 
-(** The possible priority levels are [`Func] (top level, including abstraction
-   and product), [`Appl] (application) and [`Atom] (smallest priority). *)
-type priority = [`Func | `Appl | `Atom]
+(** The possible priority levels are [Func] (top level, including abstraction
+   and product), [Appl] (application) and [Atom] (smallest priority). *)
+type priority = Func | Appl | Atom
 
 let rec pp p idmap ppf t =
   if Logger.log_enabled() then log "%a %a" (D.strmap D.int) idmap Raw.term t;
@@ -200,24 +200,24 @@ let rec pp p idmap ppf t =
   (* standard application *)
   let pp_appl h args =
     match args with
-    | []   -> head idmap (p <> `Func) ppf h
+    | []   -> head idmap (p <> Func) ppf h
     | args ->
-        if p = `Atom then out ppf "(";
+        if p = Atom then out ppf "(";
         head idmap true ppf h;
         List.iter (out ppf " %a" (atom idmap)) args;
-        if p = `Atom then out ppf ")"
+        if p = Atom then out ppf ")"
   in
   (* postfix symbol application *)
   let postfix h s args =
     match args with
     | l::args ->
         (* Can be improved by looking at symbol priority. *)
-        if p <> `Func then out ppf "(";
+        if p <> Func then out ppf "(";
         if args = []
         then out ppf "%a %a" (appl idmap) l sym s
         else out ppf "(%a %a)" (appl idmap) l sym s;
         List.iter (out ppf " %a" (appl idmap)) args;
-        if p <> `Func then out ppf ")"
+        if p <> Func then out ppf ")"
     | [] ->
         out ppf "("; head idmap true ppf h; out ppf ")"
   in
@@ -230,15 +230,15 @@ let rec pp p idmap ppf t =
         let args = LibTerm.remove_impl_args s args in
         begin match !(s.sym_nota) with
         | Quant when are_quant_args args ->
-            if p <> `Func then out ppf "(";
+            if p <> Func then out ppf "(";
             quantifier idmap ppf s args;
-            if p <> `Func then out ppf ")"
+            if p <> Func then out ppf ")"
         | Postfix _ -> postfix h s args
         | Infix _ ->
             begin
               match args with
               | l::r::args ->
-                  if p <> `Func then out ppf "(";
+                  if p <> Func then out ppf "(";
                   (* Can be improved by looking at symbol priority. *)
                   if args = []
                   then out ppf "%a %a %a"
@@ -246,14 +246,14 @@ let rec pp p idmap ppf t =
                   else out ppf "(%a %a %a)"
                          (appl idmap) l sym s (appl idmap) r;
                   List.iter (out ppf " %a" (appl idmap)) args;
-                  if p <> `Func then out ppf ")"
+                  if p <> Func then out ppf ")"
               | [] ->
                   out ppf "("; head idmap true ppf h; out ppf ")"
               | _ ->
-                  if p = `Atom then out ppf "(";
+                  if p = Atom then out ppf "(";
                   out ppf "("; head idmap true ppf h; out ppf ")";
                   List.iter (out ppf " %a" (atom idmap)) args;
-                  if p = `Atom then out ppf ")"
+                  if p = Atom then out ppf ")"
             end
         | Zero | IntZero -> out ppf "0"
         | Succ (Postfix _) ->
@@ -275,7 +275,7 @@ and quantifier idmap ppf s args =
         match unfold b with
         | Abst(a,b) ->
             let (x,p),idmap' = safe_unbind idmap b in
-            out ppf "`%a %a%a, %a"
+            out ppf "%a %a%a, %a"
               sym s var x (typ_in idmap) a (func idmap') p
         | _ -> assert false
       end
@@ -368,9 +368,9 @@ and abstractions idmap ppf t =
 and typ_in : int StrMap.t -> term pp = fun idmap ppf a ->
   if !print_domains then out ppf ": %a" (func idmap) a
 
-and atom idmap ppf t = pp `Atom idmap ppf t
-and appl idmap ppf t = pp `Appl idmap ppf t
-and func idmap ppf t = pp `Func idmap ppf t
+and atom idmap ppf t = pp Atom idmap ppf t
+and appl idmap ppf t = pp Appl idmap ppf t
+and func idmap ppf t = pp Func idmap ppf t
 
 let term_in idmap ppf t =
   let s = Logger.get_activated_loggers() in

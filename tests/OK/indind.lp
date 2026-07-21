@@ -12,7 +12,7 @@ constant symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE;
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 // contexts
 inductive Con : TYPE ≔
