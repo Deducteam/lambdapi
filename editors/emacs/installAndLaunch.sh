@@ -1,9 +1,9 @@
 #!/bin/bash
 
 set -e
-NAME="$1"
-VERSION="$2"
-BIN="$3"
+NAME="$1" # lambdapi
+VERSION="$2" # defined in lambdapi-mode.el
+BIN="$3" # emacs binary, e.g. /snap/bin/emacs
 EGLOT_V="$4"
 MATH_SYMB_V="$5"
 HIGHLIGHT_V="$6"
