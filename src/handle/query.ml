@@ -117,7 +117,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (Console.verbose := i; Console.out 1 "verbose %i" i)
       else (Console.out 1 "verbose %i" i; Console.verbose := i);
       None
-    | P_query_print Flag ->
+  | P_query_print Flag ->
       let f n (_,c) l = ("flag \""^n^"\" "^status(!c)^";")::l in
       let l = Extra.StrMap.fold f Stdlib.(!Console.boolean_flags) [] in
       let l = List.sort Stdlib.compare l in
