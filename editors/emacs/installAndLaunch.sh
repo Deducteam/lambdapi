@@ -39,6 +39,7 @@ EOF
 echo "Creating ~/.emacs.d/elpa/ ..."
 mkdir -p ~/.emacs.d/elpa/
 
+# [clone $branch $url] clones $url and checkout $branch (if <> 0) 
 clone() {
     branch=$1
     url=$2
@@ -56,14 +57,20 @@ clone() {
     fi
 }
 
+# [version $pkg] returns the version of $pkg in lambdapi-mode.el 
+version() {
+    pkg=$1
+    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
+}
+
 clone $EGLOT_V https://github.com/joaotavora/eglot.git
-if [[ $EGLOT_V == "0" ]]; then EGLOT_V="1.9"; fi
+if [[ $EGLOT_V == "0" ]]; then EGLOT_V=`version eglot`; fi
 
 clone $MATH_SYMB_V https://github.com/vspinu/math-symbol-lists.git
-if [[ $MATH_SYMB_V == "0" ]]; then MATH_SYMB_V="1.3"; fi
+if [[ $MATH_SYMB_V == "0" ]]; then MATH_SYMB_V=`version math-symbol-lists`; fi
 
 clone $HIGHLIGHT_V https://github.com/emacsmirror/highlight.git
-if [[ $HIGHLIGHT_V == "0" ]]; then HIGHLIGHT_V="20250815.1830"; fi
+if [[ $HIGHLIGHT_V == "0" ]]; then HIGHLIGHT_V=`version highlight`; fi
 
 echo "updating version in Elpa"
 echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
