@@ -1,4 +1,4 @@
-(** Translate the parser-level AST to Dedukti. *)
+(** Translate parser-level commands to Dedukti. *)
 
 open Lplib open Base open Extra
 open Common open Pos open Error
@@ -242,6 +242,6 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_symbol{p_sym_prf=Some _; _}
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 
-let ast : ast pp = fun ppf -> Stream.iter (command ppf)
+let commands : p_commands pp = fun ppf -> Stream.iter (command ppf)
 
-let print : ast -> unit = ast std_formatter
+let print : p_commands -> unit = commands std_formatter
