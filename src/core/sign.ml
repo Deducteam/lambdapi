@@ -247,7 +247,11 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
     create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name pos
       (cleanup typ) (minimize_impl impl)
   in
-  sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
+  let f = function
+    | None -> Some sym
+    | Some _ -> fatal_no_pos "Bug: symbol %a already declared." Term.qsym sym
+  in
+  sign.sign_symbols := StrMap.update name.elt f !(sign.sign_symbols);
   if Stdlib.(!Common.Console.lsp_mod) then
     Stdlib.(!add_symbol_callback ~path:sign.sign_path sym) ;
   sym

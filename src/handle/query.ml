@@ -152,10 +152,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         | Some ps -> return Proof.goals ps
       end
   | P_query_print Builtin ->
-    let sym ppf s = out ppf "%a.%a" path s.sym_path uid s.sym_name in
     let def ppf n =
       match Extra.StrMap.find_opt n ss.builtins with
-      | Some s -> out ppf " ≔ %a" sym s
+      | Some s -> out ppf " ≔ %a" qsym s
       | None -> ()
     in
     let f n _ acc = Format.asprintf "builtin \"%s\"%a;" n def n :: acc in

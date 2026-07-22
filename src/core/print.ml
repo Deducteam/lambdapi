@@ -91,8 +91,6 @@ let notation : 'a pp -> 'a notation pp = fun elt ->
 
 let uid : string pp = string
 
-let path : Path.t pp = Path.pp
-
 let prop : prop pp = fun ppf p ->
   match p with
   | AC true -> out ppf "left associative commutative "
@@ -133,7 +131,7 @@ let sym : sym pp = fun ppf s ->
     | None ->
         (* Do not print path of temporary symbols introduced in sr.ml. *)
         if n <> "" && n.[0] = LibTerm.sym_meta_prefix then uid ppf n
-        else out ppf "%a.%a" path p uid n
+        else qsym ppf s
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
 let var : var pp = fun ppf x -> uid ppf (base_name x)
