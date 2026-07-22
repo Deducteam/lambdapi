@@ -50,7 +50,7 @@ let get_eq_data :
         let v,t = unbind ~name:("$"^binder_name t) t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
-        let u = Eval.whnf ~tags:[`NoRw;`NoExpand] [] u in
+        let u = Eval.whnf ~tags:[NoRw;NoExpand] [] u in
         try return vs (get_eq_args u)
         with Not_eq _ ->
           (try return vs (get_eq_args (Eval.whnf [] u))

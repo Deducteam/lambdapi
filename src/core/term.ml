@@ -38,6 +38,8 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+let is_ac = function Commu | Assoc _ | AC _ -> true | _ -> false
+
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
@@ -428,8 +430,8 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0
     then tm
     else msubst tm in
-  if Logger.log_enabled() then
-    log "msubst %a#%a %a = %a" terms env term tm terms vs term r;
+  (*if Logger.log_enabled() then
+    log "msubst %a#%a %a = %a" terms env term tm terms vs term r;*)
   r
 
 (** Total order on terms. *)
@@ -523,16 +525,16 @@ and right_aliens : sym -> term -> term list = fun s ->
           | _ -> aliens (u :: acc) us
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
-  if Logger.log_enabled () then
-    log "right_aliens %a %a = %a" sym s term t (D.list term) r;
+  (*if Logger.log_enabled () then
+    log "right_aliens %a %a = %a" sym s term t (D.list term) r;*)
   r
 
 (** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
    or AC symbols. *)
 and mk_Appl : term * term -> term = fun (t, u) ->
-  (* if Logger.log_enabled () then
-    log "mk_Appl(%a, %a)" term t term u;
-  let r = *)
+  (*if Logger.log_enabled () then
+    log "mk_Appl(%a, %a)" term t term u;*)
+  let r =
   match get_args t with
   | Symb s, [t1] ->
       begin
@@ -552,10 +554,10 @@ and mk_Appl : term * term -> term = fun (t, u) ->
         | _ -> Appl (t, u)
       end
   | _ -> Appl (t, u)
-  (* in
-  if Logger.log_enabled () then
-    log "mk_Appl(%a, %a) = %a" term t term u term r;
-  r *)
+  in
+  (*if Logger.log_enabled () then
+    log "mk_Appl(%a, %a) = %a" term t term u term r;*)
+  r
 
 (* unit test *)
 let _ =
@@ -683,8 +685,8 @@ let subst : binder -> term -> term = fun (bi,tm,env) v ->
   let r =
     if bi.binder_bound = false &&  Array.length env = 0 then tm
     else subst tm in
-  if Logger.log_enabled() then
-    log "subst %a#%a [%a] = %a" terms env term tm term v term r;
+  (*if Logger.log_enabled() then
+    log "subst %a#%a [%a] = %a" terms env term tm term v term r;*)
   r
 
 (** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
