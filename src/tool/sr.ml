@@ -144,6 +144,13 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   | Some (lhs_with_metas, ty_lhs) ->
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
+  (* Infer the typing constraints of the condition. *)
+  match check_constraint p metas r.r_when with
+  | None -> fatal pos "The constraint is not typable."
+  | Some (_,_) -> 
+  if not (Unif.solve_noexn ~type_check:false p) then
+    fatal pos "The constraint is not typable.";
+  (* Try to simplify constraints. *)
   (* Normalize constraints. *)
   let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
   let lhs_constrs = List.map norm_constr !p.unsolved in
