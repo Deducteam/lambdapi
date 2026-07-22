@@ -354,8 +354,7 @@ let mk_right_comb : sym -> term list -> term -> term = fun s ->
 (** Printing functions for debug. *)
 let var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 let sym : sym pp = fun ppf s -> string ppf s.sym_name
-let path = Path.pp
-let qsym : sym pp = fun ppf s -> out ppf "%a.%s" path s.sym_path s.sym_name
+let qsym : sym pp = fun ppf s -> out ppf "%a.%s" Path.pp s.sym_path s.sym_name
 let rec term : term pp = fun ppf t ->
   match unfold t with
   | Bvar (InSub k) -> out ppf "`%d" k
@@ -990,7 +989,6 @@ let new_problem : unit -> problem = fun () ->
 module Raw = struct
   let var = var let _ = var
   let sym = sym let _ = sym
-  let qsym = qsym let _ = qsym
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
