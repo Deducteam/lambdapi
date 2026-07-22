@@ -17,7 +17,9 @@ let log = log.pp
     new compiled module. *)
 let admitted_initial_value = min_int
 let admitted : int Stdlib.ref = Stdlib.ref admitted_initial_value
-let reset_admitted() = Stdlib.(admitted := admitted_initial_value)
+let reset_admitted() =
+  Stdlib.(let a = !admitted in admitted := admitted_initial_value; a)
+let restore_admitted (a:int) = Stdlib.(admitted := a)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
     of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not

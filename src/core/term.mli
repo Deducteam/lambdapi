@@ -36,8 +36,6 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-val is_ac: prop -> bool
-
 (** Type for free variables. *)
 type var
 
@@ -462,6 +460,8 @@ val lhs : sym_rule -> term
 val rhs : sym_rule -> term
 
 (** Basic printing function (for debug). *)
+val qsym : sym pp
+
 module Raw : sig
   val var : var pp
   val sym : sym pp

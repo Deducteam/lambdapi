@@ -74,12 +74,12 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-      fatal pos "Module aliases cannot be open."
+    fatal pos "Module aliases cannot be open."
   | _ ->
-      (* Check that [p] has been required. *)
-      match Path.Map.find_opt p !loaded with
-      | None -> fatal pos "Module \"%a\" needs to be required first." path p
-      | Some _ -> rec_open (not prv) ss p
+    (* Check that [p] has been required. *)
+    match Path.Map.find_opt p !loaded with
+    | None -> fatal pos "Module \"%a\" needs to be required first." Path.pp p
+    | Some _ -> rec_open (not prv) ss p
 
 (** [rec_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument

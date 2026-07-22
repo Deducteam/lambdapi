@@ -38,8 +38,6 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-let is_ac = function Commu | Assoc _ | AC _ -> true | _ -> false
-
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
@@ -354,6 +352,9 @@ let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
 
 (** Printing functions for debug. *)
+let var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
+let sym : sym pp = fun ppf s -> string ppf s.sym_name
+let qsym : sym pp = fun ppf s -> out ppf "%a.%s" Path.pp s.sym_path s.sym_name
 let rec term : term pp = fun ppf t ->
   match unfold t with
   | Bvar (InSub k) -> out ppf "`%d" k
@@ -375,8 +376,6 @@ let rec term : term pp = fun ppf t ->
   | LLet(a,t,(n,b,e)) ->
       out ppf "let %s:%a ≔ %a in %a#(%a)"
         n.binder_name term a term t terms e term b
-and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
-and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf -> out ppf "[%a]" (Array.pp term ",")
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor

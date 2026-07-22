@@ -478,7 +478,7 @@ module DB = struct
       ^^
       (colorizer "%s")
       ^^ "%s@%s%s%a%s%s%s%a%s%s%a%s%s%a%s%s%s%s@.")
-      lisb (escaper.run Core.Print.path) p boldb n bolde
+      lisb (escaper.run Path.pp) p boldb n bolde
       (popt_to_string ~print_dirname:false pos)
       separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb codeb
@@ -719,7 +719,7 @@ let index_term_and_subterms ~is_spine t item =
  let tn = normalize t in
  (*
  let pp_item ppf (((p,n),_ ), _) =
-   Lplib.Base.out ppf "%a.%s" Core.Print.path p n in
+   Lplib.Base.out ppf "%a.%s" Path.pp p n in
  Format.printf "%a :(%a) REWRITTEN TO (%a)@."
   pp_item (item (DB.Conclusion DB.Exact))
   Core.Print.term t Core.Print.term tn ;

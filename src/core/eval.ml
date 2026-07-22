@@ -549,7 +549,7 @@ let whnf_opt = time_reducer None whnf_opt
     AC-canonical form. Otherwise, it returns [t] itself. *)
 let partial_ac_nf (t:term): term =
   match get_args t with
-  | Symb s, _ when is_ac s.sym_prop -> cleanup t
+  | Symb s, _ when is_modulo s -> cleanup t
   | _ -> unfold t
 
 (** [whnf ?tags c t] returns a whnf of [t] that is in AC-canonical form. *)

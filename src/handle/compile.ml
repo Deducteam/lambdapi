@@ -55,10 +55,11 @@ let rec compile : Command.compiler = fun ss mp ->
       (*let open Base in sout "loaded:";
         Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
         sout "\n%!";*)
-      Tactic.reset_admitted();
+      let a = Tactic.reset_admitted() in
       let ss = Stdlib.ref (Sig_state.of_sign sign) in
       let consume cmd = Stdlib.(ss := Command.handle compile !ss cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
+      Tactic.restore_admitted a;
       Console.out 1 (Color.blu "End checking \"%s\"") src;
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
