@@ -80,7 +80,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef _ -> assert false
   in snf
 
-type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
+type rw_tag = NoBeta | NoRw | NoExpand
 
 (** Configuration of the reduction engine. *)
 module Config = struct
@@ -98,9 +98,9 @@ module Config = struct
       By default, beta reduction and rewriting is enabled for all symbols. *)
   let make : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> t =
   fun ?(dtree=fun sym -> Timed.(!(sym.sym_dtree))) ?(tags=[]) context ->
-    let beta = not @@ List.mem `NoBeta tags in
-    let expand_defs = not @@ List.mem `NoExpand tags in
-    let rewrite = not @@ List.mem `NoRw tags in
+    let beta = not @@ List.mem NoBeta tags in
+    let expand_defs = not @@ List.mem NoExpand tags in
+    let rewrite = not @@ List.mem NoRw tags in
     {varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
 
   (** [unfold cfg a] unfolds [a] if it's a variable defined in the
@@ -510,7 +510,7 @@ let snf : ?dtree:(sym -> dtree) -> term reducer = fun ?dtree ?tags c t ->
 
 let snf ?dtree = time_reducer mk_Kind (snf ?dtree)
 
-let snf_beta t = snf ~tags:[`NoRw; `NoExpand] [] t
+let snf_beta t = snf ~tags:[NoRw;NoExpand] [] t
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
@@ -545,10 +545,18 @@ let whnf_opt : term option reducer = fun ?tags c t ->
 
 let whnf_opt = time_reducer None whnf_opt
 
+(** If [t] is headed by an AC symbol, then [partial_ac_nf t] returns its
+    AC-canonical form. Otherwise, it returns [t] itself. *)
+let partial_ac_nf (t:term): term =
+  match get_args t with
+  | Symb s, _ when is_ac s.sym_prop -> cleanup t
+  | _ -> unfold t
+
+(** [whnf ?tags c t] returns a whnf of [t] that is in AC-canonical form. *)
 let whnf : term reducer = fun ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?tags c) t in
-  if Stdlib.(!steps = 0) then unfold t else u
+  if Stdlib.(!steps = 0) then partial_ac_nf t else u
 
 let whnf = time_reducer mk_Kind whnf
 

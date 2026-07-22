@@ -23,9 +23,9 @@ val eta_equality : bool Timed.ref
 
 (** Tags for rewriting configuration. *)
 type rw_tag =
-  [ `NoBeta (** If true, no beta-reduction is performed. *)
-  | `NoRw (** If true, no user-defined rewrite rule is used. *)
-  | `NoExpand (** If true, definitions are not expanded. *) ]
+  | NoBeta (** If true, no beta-reduction is performed. *)
+  | NoRw (** If true, no user-defined rewrite rule is used. *)
+  | NoExpand (** If true, definitions are not expanded. *)
 
 (** Functions that use the rewriting engine and accept an optional argument
     [tags] of type [rw_tag list] have the following behaviour.
