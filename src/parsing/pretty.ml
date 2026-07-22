@@ -425,5 +425,5 @@ let command : p_command pp = fun ppf { elt; _ } ->
   end;
   out ppf ";"
 
-let ast : ast pp = fun ppf ->
+let commands : p_commands pp = fun ppf ->
   Stream.iter ((command +| unit "@.") ppf)

@@ -464,8 +464,8 @@ let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
   | P_query q -> prefix (query_keyword q)
   | P_opaque _ -> prefix "opaque"
 
-(** Top level AST returned by the parser. *)
-type ast = p_command Stream.t
+(** Top level data structure returned by the parser. *)
+type p_commands = p_command Stream.t
 
 (** Equality functions on the syntactic expressions ignoring positions. *)
 
@@ -652,10 +652,10 @@ let fold_proof : ('a -> p_tactic -> int -> 'a) -> 'a -> p_proof -> 'a =
     List.fold_left subproof (f a t (List.length spl)) spl
   in List.fold_left subproof
 
-(** [fold_idents f a ast] allows to recursively build a value of type ['a]
-   starting from [a] and by applying [f] on each identifier occurring in [ast]
-   corresponding to a function symbol: variables (term variables or assumption
-   names) are excluded.
+(** [fold_idents f a cs] allows to recursively build a value of type ['a]
+    starting from [a] and by applying [f] on each identifier occurring in [cs]
+    corresponding to a function symbol: variables (term variables or
+    assumption names) are excluded.
 
 NOTE: This function is incomplete if an assumption name hides a function
 symbol. Example:

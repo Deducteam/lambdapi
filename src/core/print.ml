@@ -131,9 +131,8 @@ let sym : sym pp = fun ppf s ->
   else
     match Path.Map.find_opt p ss.path_alias with
     | None ->
-        (* Hack for printing symbols replacing metavariables in infer.ml
-           unqualified. *)
-        if n <> "" && let c = n.[0] in c = '$' || c = '?' then uid ppf n
+        (* Do not print path of temporary symbols introduced in sr.ml. *)
+        if n <> "" && n.[0] = LibTerm.sym_meta_prefix then uid ppf n
         else out ppf "%a.%a" path p uid n
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
