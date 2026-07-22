@@ -490,7 +490,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       end
   | P_tac_simpl SimpBetaOnly ->
       begin
-        match Goal.simpl_opt (Eval.snf_opt ~tags:[`NoRw; `NoExpand]) g with
+        match Goal.simpl_opt (Eval.snf_opt ~tags:[NoRw;NoExpand]) g with
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end

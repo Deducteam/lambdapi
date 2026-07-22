@@ -65,7 +65,7 @@ do
         # "open"
         triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod|Conj|Disj|ExtraRules|Univ);;
         # "inductive"
-        strictly_positive_*|inductive|989|904|830|341|1392);;
+        strictly_positive_*|inductive|989|904|830|341|1392|1407);;
         # underscore in query
         unif_hint|patterns|let|767);;
         # abstracted variable type in rule LHS

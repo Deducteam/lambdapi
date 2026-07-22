@@ -36,6 +36,8 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+val is_ac: prop -> bool
+
 (** Type for free variables. *)
 type var
 

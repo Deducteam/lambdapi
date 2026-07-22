@@ -144,13 +144,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   | Some (lhs_with_metas, ty_lhs) ->
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
-  (* Infer the typing constraints of the condition. *)
-  match check_constraint p metas r.r_when with
-  | None -> fatal pos "The constraint is not typable."
-  | Some (_,_) -> 
-  if not (Unif.solve_noexn ~type_check:false p) then
-    fatal pos "The constraint is not typable.";
-  (* Try to simplify constraints. *)
+  (* Normalize constraints. *)
   let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
   let lhs_constrs = List.map norm_constr !p.unsolved in
   if Logger.log_enabled () then
@@ -158,10 +152,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       term ty_lhs constrs lhs_constrs
       term lhs_with_metas term rhs_with_metas;
   (* Instantiate all uninstantiated metavariables by fresh symbols. *)
-  (* Map each uninstantiated meta to a fresh symbol. *)
-  let m2s = Stdlib.ref MetaMap.empty
-  (* Map each new symbol to Some pattern index if any, and None otherwise. *)
-  and s2p = Stdlib.ref SymMap.empty in
+  let m2s = Stdlib.ref MetaMap.empty (* meta -> symbol *)
+  and s2p = Stdlib.ref SymMap.empty in (* symbol -> pattern index option *)
   let sym_of_meta m =
     let name = Printf.sprintf "%c%d" LibTerm.sym_meta_prefix m.meta_key in
     Term.create_sym (Sign.current_path())
@@ -223,7 +215,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
-  (* TODO complete the constraints into a set of rewriting rules on
+  (* TODO: complete the constraints into a set of rewriting rules on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in

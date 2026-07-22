@@ -623,7 +623,7 @@ let normalize typ =
  let dtree sym =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with Not_found -> Core.Tree_type.empty_dtree in
- Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
+ Core.Eval.snf ~dtree ~tags:[NoExpand] [] typ
 
 let _ = normalize_fun := normalize
 
