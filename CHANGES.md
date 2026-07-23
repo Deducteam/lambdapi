@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
 - Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
+- Conditional rules `l when t1 ≡ t2 ↪ r`
 
 ### Changed
 

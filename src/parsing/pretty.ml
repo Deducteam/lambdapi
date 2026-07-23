@@ -187,8 +187,12 @@ and params_list : p_params list pp = fun ppf ->
 and typ : p_term option pp = fun ppf t ->
   Option.iter (out ppf "@ : %a" term) t
 
-let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
-  out ppf "%s %a ↪ %a" kw term l term r
+let rule : string -> p_rule pp = fun kw ppf {elt=(l,r,w);_} ->
+  match w with
+  | P_None -> out ppf "%s %a ↪ %a" kw term l term r
+  | P_EQ (t1,t2) -> out ppf "%s %a when %a ≡ %a ↪ %a"
+                      kw term l term t1 term t2 term r
+  | P_CHK t -> out ppf "%s %a when %a ↪ %a" kw term l term t term r
 
 let inductive : string -> p_inductive pp =
   let cons ppf (id,a) = out ppf "@,| %a : %a" ident id term a in
@@ -214,7 +218,7 @@ let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
       else assert false
   | _ -> assert false
 
-let unif_rule : p_rule pp = fun ppf {elt=(l,r);_} ->
+let unif_rule : p_rule pp = fun ppf {elt=(l,r,_);_} ->
   let lhs =
     match Syntax.p_get_args l with
     | (_, [t; u]) -> (t, u)

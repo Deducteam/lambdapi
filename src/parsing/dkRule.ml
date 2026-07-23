@@ -155,4 +155,4 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
   let rhs = build [] rhs in
-  Pos.make r.pos (lhs, rhs)
+  Pos.make r.pos (lhs, rhs, P_None)

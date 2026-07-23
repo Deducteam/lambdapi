@@ -111,6 +111,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     gs_typ @ MetaSet.fold add_goal (!p).metas
                (List.map (fun c -> Unif c) (!p).unsolved)
   in
+let _ = log "SOLVE: %a" (List.pp Goal.pp "\n") proof_goals in
   {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. *)
@@ -796,7 +797,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           let term = term_in (Ctxt.names c) in
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
-        if Unif.solve_noexn p then
+        if Unif.solve_noexn p && !p.unsolved = [] then
           let ps, t = p_tactic ps g env pos t in handle ps t
         else fatal pos "Cannot solve typing constraints for [%a]" term t
 

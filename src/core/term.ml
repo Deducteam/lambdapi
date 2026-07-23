@@ -209,6 +209,20 @@ and sym =
 
 (** {3 Representation of rewriting rules} *)
 
+(** terms in rule constraints *)
+and r_term =
+  | R_App of sym * r_term list  (* application *)
+  | R_Patt of int               (* pattern variable *)
+  | R_Sym of sym                (* global symbol *)
+
+(** optional rule constraints *)
+and r_constraint =
+  (* equality constraint f p1 ... pn == g q1 ... qm *)
+  | R_EQ of (sym * int list) * (sym * int list)
+  (* predefined constraint *)
+  | R_CHK of sym * r_term list
+  | R_None (* no constraint *)
+
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
     LHS (left hand side),  which is the pattern that should be matched for the
     rule to apply, and a RHS (right hand side) giving the action to perform if
@@ -217,6 +231,7 @@ and sym =
   { lhs      : term list (** Left hand side (LHS). *)
   ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
+  ; r_when   : r_constraint (** conditional rule constraint. *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
@@ -992,3 +1007,35 @@ module Raw = struct
   let term = term let _ = term
   let ctxt = ctxt let _ = ctxt
 end
+
+(** {4 functions over constraints} *)
+
+(** [rAll p t] checks [p] on all pattern variables of [t] *)
+let rec rAll : (int -> bool) -> r_term -> bool = fun p t ->
+  match t with
+  | R_App(_s,al) -> List.for_all (rAll p) al
+  | R_Patt i -> p i
+  | R_Sym _ -> true
+
+(** [rFind f t] applies [f] to each pvar of [t] and returns the first 
+    successful result, None if all calls fail. *)
+let rec rFind : (int -> 'a option) -> r_term -> 'a option = fun f t ->
+  match t with
+  | R_App(_s,al) -> List.find_map (rFind f) al
+  | R_Patt i -> f i
+  | R_Sym _ -> None
+
+(** [rFold o a t] computes [a o pv1 o ... pvn] where pv1...pvn are the 
+    pattern variables of t. *)
+let rec rFold : ('a -> int -> 'a) -> 'a -> r_term -> 'a = fun f a t ->
+  match t with
+  | R_App(_s,al) -> List.fold_left (rFold f) a al
+  | R_Patt i -> f a i
+  | R_Sym _ -> a
+
+(** Printing function for debug *)
+let rec r_term : r_term pp = fun ppf t ->
+  match t with
+  | R_App (s,al) -> out ppf "(%a %a)" sym s (List.pp r_term " ") al
+  | R_Patt i -> out ppf "?%d" i
+  | R_Sym s -> out ppf "%a" sym s

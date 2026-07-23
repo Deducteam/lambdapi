@@ -138,6 +138,20 @@ and sym =
 
 (** {3 Representation of rewriting rules} *)
 
+(** terms in rule constraints *)
+and r_term =
+  | R_App of sym * r_term list  (* application *)
+  | R_Patt of int               (* pattern variable *)
+  | R_Sym of sym                (* global symbol *)
+
+(** optional rule constraints *)
+and r_constraint =
+  (* equality constraint f p1 ... pn == g q1 ... qm *)
+  | R_EQ of (sym * int list) * (sym * int list)
+  (* predefined constraint *)
+  | R_CHK of sym * r_term list
+  | R_None (* no constraint *)
+
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
     LHS (left hand side),  which is the pattern that should be matched for the
     rule to apply, and a RHS (right hand side) giving the action to perform if
@@ -146,6 +160,7 @@ and rule =
   { lhs      : term list (** Left hand side (LHS). *)
   ; names    : string array (** Names of pattern variables. *)
   ; rhs      : term (** Right hand side (RHS). *)
+  ; r_when   : r_constraint (** conditional rule constraint. *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
@@ -175,8 +190,8 @@ and rule =
        concrete syntax) are represented in the same way, and with a unique
        name (in the rule) that is generated automatically.
 
-    Then, the term [f t u v w] matches the LHS with a substitution represented
-    by an array of terms [a] of length 3 if we
+    Then, the term [f t u v w] matches the LHS with a substitution
+    represented by an array of terms [a] of length 3 if we
     have [a.(0) = t], [a.(1) = u], [a.(1) = v] and [a.(2) = w].
 
     {b TODO} memorising [w] in the substitution is sub-optimal. In practice,
@@ -468,3 +483,20 @@ module Raw : sig
   val term : term pp
   val ctxt : ctxt pp
 end
+
+(** {4 functions over constraints} *)
+
+(** [rAll p t] checks [p] on all pattern variables of [t]. *)
+val rAll : (int -> bool) -> r_term -> bool
+
+(** [rFind f t] applies [f] to each pvar of [t] and returns the first
+    successful result, None if all calls fail. *)
+val rFind : (int -> 'a option) -> r_term -> 'a option
+
+(** [rFold o a t] computes [a o pv1 o ... pvn] where pv1...pvn are the 
+    pattern variables of t. *)
+val rFold : ('a -> int -> 'a) -> 'a -> r_term -> 'a
+
+(** Printing function for debug *)
+val r_term : r_term pp
+

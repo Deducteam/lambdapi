@@ -137,14 +137,15 @@ let link : t -> unit = fun sign ->
   and link_term = link_term mk_Appl in
   let link_rule r =
     let lhs = List.map link_lhs r.lhs in
+    let arity = List.length lhs in
     let rhs = link_term r.rhs in
-    {r with lhs ; rhs}
+    {r with lhs ; rhs; arity}  (* jpb *)
   in
   let f _ s =
     s.sym_type := link_term !(s.sym_type);
     s.sym_def := Option.map link_term !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules);
-    Tree.update_dtree s []
+    Tree.update_dtree s [];
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp {dep_symbols=sm; _} =

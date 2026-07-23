@@ -123,6 +123,7 @@ let string_of_token =
   | UNIF_RULE -> q"unif_rule"
   | VBAR -> q"|"
   | VERBOSE -> q"verbose"
+  | WHEN -> q"when"
   | WHY3 -> q"why3"
   | WITH -> q"with"
 
@@ -633,7 +634,7 @@ and command (lb:'token lexbuf) : p_command =
         let (en, es) = List.(hd es, tl es) in
         let cat e es = P.appl (P.appl cons e) es in
         let rhs = List.fold_right cat es en in
-        let r = extend_pos lb (*__FUNCTION__*) pos1 (lhs, rhs) in
+        let r = extend_pos lb (*__FUNCTION__*) pos1 (lhs, rhs, P_None) in
         extend_pos lb (*__FUNCTION__*) pos1 (P_unif_rule(r))
     | COERCE_RULE ->
         consume_token lb;
@@ -784,13 +785,27 @@ and notation (lb:'token lexbuf): string Term.notation =
       expected lb "" [INFIX;POSTFIX;PREFIX;QUANTIFIER]
 
 and rule_tks () = term_tks
-and rule (lb:'token lexbuf): (p_term * p_term) loc =
+and rule (lb:'token lexbuf):
+      (p_term * p_term * p_constraint) loc =
   if log_enabled() then log "%s" __FUNCTION__;
   let pos1 = current_pos lb in
   let l = term lb in
+  let w =
+    if (current_token lb == WHEN) then begin
+        consume WHEN lb;
+        let t1 = term lb in
+        if (current_token lb == EQUIV) then begin
+            consume EQUIV lb;
+            let t2 = term lb in
+            P_EQ(t1, t2)
+          end
+        else
+          P_CHK t1
+      end
+    else P_None in
   consume HOOK_ARROW lb;
   let r = term lb in
-  extend_pos lb (*__FUNCTION__*) pos1 (l, r)
+  extend_pos lb (*__FUNCTION__*) pos1 (l, r, w)
 
 and equation_tks () = term_tks
 and equation (lb:'token lexbuf): p_term * p_term =
