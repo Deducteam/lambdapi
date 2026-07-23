@@ -56,9 +56,13 @@ let rec compile : Command.compiler = fun ss mp ->
         Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
         sout "\n%!";*)
       let a = Tactic.reset_admitted() in
-      let ss = Stdlib.ref (Sig_state.of_sign sign) in
-      let consume cmd = Stdlib.(ss := Command.handle compile !ss cmd) in
+      Sig_state.update_ext_sym_dtrees false ss;
+      let consume =
+        let new_ss = Stdlib.ref (Sig_state.of_sign sign) in
+        fun cmd -> Stdlib.(new_ss := Command.handle compile !new_ss cmd)
+      in
       Debug.stream_iter consume (Parser.parse_file src);
+      Sig_state.update_ext_sym_dtrees true ss;
       Tactic.restore_admitted a;
       Console.out 1 (Color.blu "End checking \"%s\"") src;
       Sign.strip_private sign;
@@ -88,7 +92,7 @@ let rec compile : Command.compiler = fun ss mp ->
           match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
           | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
           | None -> assert false
-        else Tree.update_dtree s []
+        else Tree.update s
       in
       Ghost.iter update;
       if Stdlib.(!Common.Console.lsp_mod) then Tool.Indexing.index_sign sign;

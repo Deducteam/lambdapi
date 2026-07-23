@@ -144,7 +144,7 @@ let link : t -> unit = fun sign ->
     s.sym_type := link_term !(s.sym_type);
     s.sym_def := Option.map link_term !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules);
-    Tree.update_dtree s []
+    Tree.update s
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp {dep_symbols=sm; _} =
@@ -155,7 +155,7 @@ let link : t -> unit = fun sign ->
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule sd.rules;
         Option.iter (fun n -> s.sym_nota := n) sd.nota;
-        Tree.update_dtree s []
+        Tree.update s
       in
       StrMap.iter g sm
   in
