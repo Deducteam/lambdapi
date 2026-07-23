@@ -464,6 +464,11 @@ and cmp_binder : binder cmp =
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
 
+and eq : term eq = fun t u -> cmp t u = 0
+
+and eq_lhs r1 r2 =
+  try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false
+
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
@@ -941,6 +946,9 @@ type sym_rule = sym * rule
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
+let sym_rule : sym_rule pp = fun ppf (s,r) ->
+  out ppf "%a%a ↪ %a" sym s (List.pp (prefix " " term) "") r.lhs term r.rhs
+
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
@@ -990,5 +998,6 @@ module Raw = struct
   let var = var let _ = var
   let sym = sym let _ = sym
   let term = term let _ = term
+  let sym_rule = sym_rule let _ = sym_rule
   let ctxt = ctxt let _ = ctxt
 end

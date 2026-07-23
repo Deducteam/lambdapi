@@ -609,7 +609,7 @@ let load_meta_rules () =
    let h = function Some rs -> Some(r::rs) | None -> Some[r] in
    SymMap.update s h map in
  let map = List.fold_left handle_rule SymMap.empty rules in
- SymMap.iter Tree.update_dtree map;
+ SymMap.iter Tree.set_dtree map;
  SymMap.fold
   (fun sym _rs map' ->
     QNameMap.add (name_of_sym sym) (Timed.(!(sym.sym_dtree))) map')
