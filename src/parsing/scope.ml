@@ -496,6 +496,47 @@ let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
     ; m_lhs_in_env  = [] }) in
   scope ?find_sym ~typ 0 md ss env t
 
+(** [scope_term_w_pats] is the same as {!val:scope_term} but it accepts
+    pattern variables. *)
+let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term =
+  fun ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->
+    let merge = List.fold_left (List.merge Stdlib.compare) [] in
+    let rec get_pats (t : p_term) = match t.elt with
+    | P_Type
+    | P_Iden _
+    | P_Wild
+    | P_Meta _
+    | P_NLit _
+    | P_SLit _ -> []
+    | P_Wrap t
+    | P_Expl t -> get_pats t
+    | P_Appl(t,u)
+    | P_Arro(t,u) -> merge [get_pats t; get_pats u]
+    | P_Abst(ps,t)
+    | P_Prod(ps,t) -> merge [of_params ps; get_pats t]
+    | P_Patt(nameo,ts) ->
+      let name = match nameo with Some {elt;_} -> [elt] | _ -> [] in
+      merge [name; of_array_opt ts]
+    | P_LLet(_,ps,tyo,t,u) ->
+      merge [of_params ps; of_option tyo; get_pats t; get_pats u]
+    and of_params ps = merge (List.map of_param ps)
+    and of_param (_,t,_) = of_option t
+    and of_array_opt tso = merge (Option.map_default of_array [] tso)
+    and of_array ts = Array.to_list (Array.map get_pats ts)
+    and of_option o = Option.map_default get_pats [] o
+    in
+    let names = Hashtbl.create 1 in
+    let md = M_LHS {
+      m_lhs_prv = false;
+      m_lhs_indices = Hashtbl.create 1;
+      m_lhs_arities = Hashtbl.create 1;
+      m_lhs_names = names;
+      m_lhs_size = 0;
+      m_lhs_in_env = get_pats t
+    } in
+    scope ~typ 0 md ss env t
+
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
     in the parser-level term [t]. The second component [nl] contains the names

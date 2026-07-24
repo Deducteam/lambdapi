@@ -32,6 +32,8 @@ type t =
   ; sign_deps     : dep_data Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_ind      : ind_data SymMap.t ref
+  ; sign_tc       : SymSet.t ref
+  ; sign_tci      : sym list ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref }
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
@@ -67,6 +69,8 @@ module Ghost = struct
     ; sign_deps = ref Path.Map.empty
     ; sign_builtins = ref StrMap.empty
     ; sign_ind = ref SymMap.empty
+    ; sign_tc  = ref SymSet.empty
+    ; sign_tci = ref []
     ; sign_cp_pos = ref SymMap.empty }
 
   let _ = loaded := Path.Map.add path sign !loaded
@@ -87,6 +91,8 @@ let create : Path.t -> t = fun sign_path ->
   ; sign_deps
   ; sign_builtins = ref StrMap.empty
   ; sign_ind = ref SymMap.empty
+  ; sign_tc  = ref SymSet.empty
+  ; sign_tci = ref []
   ; sign_cp_pos = ref SymMap.empty }
 
 (** [loading] contains the modules that are being processed. They are stored
@@ -297,6 +303,7 @@ let read : string -> t = fun fname ->
   unsafe_reset sign.sign_builtins;
   unsafe_reset sign.sign_ind;
   unsafe_reset sign.sign_cp_pos;
+  unsafe_reset sign.sign_tc;
   let shallow_reset_sym s =
     unsafe_reset s.sym_type;
     unsafe_reset s.sym_def;
@@ -334,6 +341,7 @@ let read : string -> t = fun fname ->
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
   let f _ {dep_symbols=sm; _} =
     StrMap.iter (fun _ sd -> List.iter reset_rule sd.rules) sm in
+  SymSet.iter (fun s -> reset_sym s) !(sign.sign_tc);
   Path.Map.iter f !(sign.sign_deps);
   let reset_ind i =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
@@ -440,3 +448,13 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
+
+(** [add_tc sign sym] registers [sym] as a typeclass in [sign] *)
+let add_tc : t -> sym -> unit =
+  fun sign sym ->
+    sign.sign_tc := SymSet.add sym !(sign.sign_tc)
+
+(** [add_tci sign sym] registers [sym] as a typeclass instance in [sign] *)
+let add_tci : t -> sym -> unit =
+  fun sign sym ->
+    sign.sign_tci := sym :: !(sign.sign_tci)

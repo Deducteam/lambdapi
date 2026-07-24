@@ -58,7 +58,7 @@ let rec compile : Command.compiler = fun ss mp ->
       let a = Tactic.reset_admitted() in
       Sig_state.update_ext_sym_dtrees false ss;
       let consume =
-        let new_ss = Stdlib.ref (Sig_state.of_sign sign) in
+        let new_ss = Stdlib.ref (Elpi_handle.Sig_state.of_sign sign) in
         fun cmd -> Stdlib.(new_ss := Command.handle compile !new_ss cmd)
       in
       Debug.stream_iter consume (Parser.parse_file src);
@@ -103,4 +103,4 @@ let rec compile : Command.compiler = fun ss mp ->
     and compiles [fname]. *)
 let compile_file (fname:string): Sign.t =
   Package.apply_config fname;
-  compile Sig_state.dummy (path_of_file LpLexer.escape fname)
+  compile Elpi_handle.Sig_state.dummy (path_of_file LpLexer.escape fname)
