@@ -567,7 +567,7 @@ and command (lb:'token lexbuf) : p_command =
          | P_typeclass -> P_type_class i
          | P_typeclass_instance -> P_type_class_instance i
          | _ -> assert false
-       in 
+       in
        extend_pos lb (*__FUNCTION__*) pos1 cmd
     | SYMBOL ->
        extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)

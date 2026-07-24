@@ -51,7 +51,8 @@ let rec rec_open : popt -> bool -> sig_state -> Path.t -> sig_state =
       | None -> assert false
       | Some sign ->
           (* Recursively open the dependencies of [p] declared as open. *)
-          let f p d ss = if d.dep_open then rec_open pos record ss p else ss in
+          let f p d ss =
+            if d.dep_open then rec_open pos record ss p else ss in
           let ss = Path.Map.fold f !(sign.sign_deps) ss in
           (* Record that [p] must be open if [record]. *)
           if record then
