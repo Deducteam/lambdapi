@@ -421,14 +421,10 @@ type p_symbol =
 type p_command_aux =
   | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
-<<<<<<< HEAD
-  | P_open of (*private?*)bool * p_path list
-  | P_type_class of p_qident
-  | P_type_class_instance of p_qident
-=======
   | P_open of (*"open" keyword position*)Pos.popt
               * (*private?*)bool * p_path list
->>>>>>> 4139cf983d81e1068f52810a91b4e869c85e33a6
+  | P_type_class of p_qident
+  | P_type_class_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of (*"inductive" keyword position*)Pos.popt
