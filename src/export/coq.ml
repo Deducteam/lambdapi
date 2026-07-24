@@ -154,7 +154,7 @@ let command oc {elt; pos} =
           let mods_left = List.filter (fun m -> not (is_lem m)) p_sym_mod in
           let res =
             List.filter (fun {elt;_} -> elt != P_typeclass) mods_left in
-          let prefix = if res == mods_left then "Lemma " else "Instance " in 
+          let prefix = if res == mods_left then "Lemma " else "Instance " in
           string oc prefix ; ident oc p_sym_nam; params_list oc p_sym_arg;
           string oc " : "; term oc a; string oc ".\nProof. exact (";
           term oc t; string oc "). Qed.\n";
@@ -163,7 +163,7 @@ let command oc {elt; pos} =
           let res =
             List.filter (fun {elt;_} -> elt != P_typeclass) p_sym_mod in
           let prefix = if res == p_sym_mod || Option.is_none p_sym_typ
-            then "Definition " else "Instance " in 
+            then "Definition " else "Instance " in
           string oc prefix ; ident oc p_sym_nam;
           params_list oc p_sym_arg; typopt oc p_sym_typ;
           string oc " := "; term oc t; string oc ".\n";
