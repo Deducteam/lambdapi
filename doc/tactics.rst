@@ -164,7 +164,9 @@ The user should define those symbols using builtins as follows :
 
 ::
 
-   builtin "T"   ≔ … // : U → TYPE
+   builtin "Set" ≔ … // : TYPE
+   builtin "T"   ≔ … // : Set → TYPE
+   builtin "Prop"≔ … // : TYPE
    builtin "P"   ≔ … // : Prop → TYPE
    builtin "bot" ≔ … // : Prop
    builtin "top" ≔ … // : Prop
@@ -173,8 +175,8 @@ The user should define those symbols using builtins as follows :
    builtin "or"  ≔ … // : Prop → Prop → Prop
    builtin "imp" ≔ … // : Prop → Prop → Prop
    builtin "eqv" ≔ … // : Prop → Prop → Prop
-   builtin "all" ≔ … // : Π x: U, (T x → Prop) → Prop
-   builtin "ex"  ≔ … // : Π x: U, (T x → Prop) → Prop
+   builtin "all" ≔ … // : Π a:Set, (T a → Prop) → Prop
+   builtin "ex"  ≔ … // : Π a:Set, (T a → Prop) → Prop
 
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.

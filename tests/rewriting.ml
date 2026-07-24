@@ -36,7 +36,7 @@ let arrow_matching () =
   (* Matching on a product. *)
   let (c, _) as rule = parse_rule "rule C (A → A) ↪ Ok;" in
   Sign.add_rule sig_state.signature rule;
-  Tree.update_dtree c [];
+  Tree.update c;
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "C (A → A) matches C (A → A)"
@@ -49,7 +49,7 @@ let arrow_matching = Timed.pure_apply arrow_matching
 let prod_matching () =
   let (c,_) as rule = parse_rule "rule C (Π _: _, A) ↪ Ok;" in
   Sign.add_rule sig_state.signature rule;
-  Tree.update_dtree c [];
+  Tree.update c;
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "C (A → A) matches C (Π _: _, A)"
@@ -62,7 +62,7 @@ let arrow_default () =
   (* Assert that a product can be considered as a default case. *)
   let (c,_) as rule = parse_rule "rule C _ ↪ Ok;" in
   Sign.add_rule sig_state.signature rule;
-  Tree.update_dtree c [];
+  Tree.update c;
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "C (A → A) matches C _"
@@ -75,7 +75,7 @@ let arrow_default = Timed.pure_apply arrow_default
 let type_matching () =
   let rule = parse_rule "rule C TYPE ↪ Ok;" in
   Sign.add_rule sig_state.signature rule;
-  Tree.update_dtree c [];
+  Tree.update c;
   let lhs = parse_term "C TYPE" |> scope_term sig_state in
   Alcotest.(check bool)
     "C TYPE matches C TYPE"
@@ -87,7 +87,7 @@ let type_matching = Timed.pure_apply type_matching
 let type_default () =
   let rule = parse_rule "rule C _ ↪ Ok;" in
   Sign.add_rule sig_state.signature rule;
-  Tree.update_dtree c [];
+  Tree.update c;
   let lhs = parse_term "C TYPE" |> scope_term sig_state in
   Alcotest.(check bool)
     "C TYPE matches C _"

@@ -8,7 +8,7 @@ builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // `p
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 // true
 

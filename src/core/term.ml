@@ -200,9 +200,12 @@ and sym =
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
-(** {b NOTE} For generated symbols (recursors, axioms), {!field:sym_pos} may
-   not be valid positions in the source. These virtual positions are however
-   important for exporting lambdapi files to other formats. *)
+(** {b NOTE} For generated symbols (axioms, inductive types, constructors,
+    recursors), {!field:sym_decl_pos} may not be an actual position in the
+    source. These virtual positions are used to order symbol and rule
+    declarations when exporting a signature. They should NOT be used as
+    references to user source files. This field may be removed in the
+    future. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -349,6 +352,9 @@ let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
 
 (** Printing functions for debug. *)
+let var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
+let sym : sym pp = fun ppf s -> string ppf s.sym_name
+let qsym : sym pp = fun ppf s -> out ppf "%a.%s" Path.pp s.sym_path s.sym_name
 let rec term : term pp = fun ppf t ->
   match unfold t with
   | Bvar (InSub k) -> out ppf "`%d" k
@@ -370,8 +376,6 @@ let rec term : term pp = fun ppf t ->
   | LLet(a,t,(n,b,e)) ->
       out ppf "let %s:%a ≔ %a in %a#(%a)"
         n.binder_name term a term t terms e term b
-and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
-and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf -> out ppf "[%a]" (Array.pp term ",")
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
@@ -425,8 +429,8 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0
     then tm
     else msubst tm in
-  if Logger.log_enabled() then
-    log "msubst %a#%a %a = %a" terms env term tm terms vs term r;
+  (*if Logger.log_enabled() then
+    log "msubst %a#%a %a = %a" terms env term tm terms vs term r;*)
   r
 
 (** Total order on terms. *)
@@ -459,6 +463,11 @@ and cmp_binder : binder cmp =
     (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
+
+and eq : term eq = fun t u -> cmp t u = 0
+
+and eq_lhs r1 r2 =
+  try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
@@ -520,16 +529,16 @@ and right_aliens : sym -> term -> term list = fun s ->
           | _ -> aliens (u :: acc) us
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
-  if Logger.log_enabled () then
-    log "right_aliens %a %a = %a" sym s term t (D.list term) r;
+  (*if Logger.log_enabled () then
+    log "right_aliens %a %a = %a" sym s term t (D.list term) r;*)
   r
 
 (** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
    or AC symbols. *)
 and mk_Appl : term * term -> term = fun (t, u) ->
-  (* if Logger.log_enabled () then
-    log "mk_Appl(%a, %a)" term t term u;
-  let r = *)
+  (*if Logger.log_enabled () then
+    log "mk_Appl(%a, %a)" term t term u;*)
+  let r =
   match get_args t with
   | Symb s, [t1] ->
       begin
@@ -549,10 +558,10 @@ and mk_Appl : term * term -> term = fun (t, u) ->
         | _ -> Appl (t, u)
       end
   | _ -> Appl (t, u)
-  (* in
-  if Logger.log_enabled () then
-    log "mk_Appl(%a, %a) = %a" term t term u term r;
-  r *)
+  in
+  (*if Logger.log_enabled () then
+    log "mk_Appl(%a, %a) = %a" term t term u term r;*)
+  r
 
 (* unit test *)
 let _ =
@@ -680,8 +689,8 @@ let subst : binder -> term -> term = fun (bi,tm,env) v ->
   let r =
     if bi.binder_bound = false &&  Array.length env = 0 then tm
     else subst tm in
-  if Logger.log_enabled() then
-    log "subst %a#%a [%a] = %a" terms env term tm term v term r;
+  (*if Logger.log_enabled() then
+    log "subst %a#%a [%a] = %a" terms env term tm term v term r;*)
   r
 
 (** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
@@ -937,6 +946,9 @@ type sym_rule = sym * rule
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
+let sym_rule : sym_rule pp = fun ppf (s,r) ->
+  out ppf "%a%a ↪ %a" sym s (List.pp (prefix " " term) "") r.lhs term r.rhs
+
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
@@ -986,5 +998,6 @@ module Raw = struct
   let var = var let _ = var
   let sym = sym let _ = sym
   let term = term let _ = term
+  let sym_rule = sym_rule let _ = sym_rule
   let ctxt = ctxt let _ = ctxt
 end

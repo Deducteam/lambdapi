@@ -150,7 +150,7 @@ let link : t -> unit = fun sign ->
     s.sym_type := link_term !(s.sym_type);
     s.sym_def := Option.map link_term !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules);
-    Tree.update_dtree s []
+    Tree.update s
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp {dep_symbols=sm; _} =
@@ -161,7 +161,7 @@ let link : t -> unit = fun sign ->
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule sd.rules;
         Option.iter (fun n -> s.sym_nota := n) sd.nota;
-        Tree.update_dtree s []
+        Tree.update s
       in
       StrMap.iter g sm
   in
@@ -234,11 +234,11 @@ let unlink : t -> unit = fun sign ->
 
 (** [add_symbol_callback] is used to index symbols in the document currently
     edited in Spl mode*)
-let add_symbol_callback = Stdlib.ref (fun _ -> ())
+let add_symbol_callback = Stdlib.ref (fun ~path:_ _ -> ())
 
 (** [add_rules_callback] is used to index rules in the document currently
     edited in Spl mode*)
-let add_rules_callback = Stdlib.ref (fun _ _ -> ())
+let add_rules_callback = Stdlib.ref (fun ~path:_ _ _ -> ())
 
 (** [add_symbol sign expo prop mstrat opaq name pos typ impl notation] adds in
     the signature [sign] a symbol with name [name], exposition [expo],
@@ -253,8 +253,13 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
     create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name pos
       (cleanup typ) (minimize_impl impl)
   in
-  sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
-  if Stdlib.(!Common.Console.lsp_mod) then Stdlib.(!add_symbol_callback sym) ;
+  let f = function
+    | None -> Some sym
+    | Some _ -> fatal_no_pos "Bug: symbol %a already declared." Term.qsym sym
+  in
+  sign.sign_symbols := StrMap.update name.elt f !(sign.sign_symbols);
+  if Stdlib.(!Common.Console.lsp_mod) then
+    Stdlib.(!add_symbol_callback ~path:sign.sign_path sym) ;
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -370,7 +375,8 @@ let add_rules : t -> sym -> rule list -> unit = fun sign s rs ->
     let d = {d with dep_symbols=sm} in
     sign.sign_deps := Path.Map.add s.sym_path d !(sign.sign_deps)
    end ;
-  if Stdlib.(!Common.Console.lsp_mod) then Stdlib.(!add_rules_callback s rs)
+  if Stdlib.(!Common.Console.lsp_mod) then
+    Stdlib.(!add_rules_callback ~path:sign.sign_path s rs)
 
 (** [add_rule sign s r] adds the new rule [r] to the symbol [s]. When the rule
     does not correspond to a symbol of signature [sign], it is stored in its

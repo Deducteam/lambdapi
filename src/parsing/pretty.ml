@@ -289,6 +289,20 @@ let rec search ppf = function
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
   | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
+let print : print pp = fun ppf p ->
+  match p with
+  | Verbose -> out ppf " verbose"
+  | Debug -> out ppf " debug"
+  | Flag -> out ppf " flag"
+  | Prover -> out ppf " prover"
+  | Prover_timeout -> out ppf " prover_timeout"
+  | Goal -> ()
+  | Symbol qid -> out ppf " %a" qident qid
+  | Unif_rule -> out ppf " unif_rule"
+  | Coerce_rule -> out ppf " coerce_rule"
+  | String s -> out ppf " %s" (String.add_quotes s)
+  | Builtin -> out ppf " builtin"
+
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
@@ -296,14 +310,14 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
+  | P_query_flag("", _) -> out ppf "flag"
   | P_query_flag(s, b) ->
       out ppf "flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
   | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
-  | P_query_print None -> out ppf "print"
-  | P_query_print(Some qid) -> out ppf "print %a" qident qid
+  | P_query_print p -> out ppf "print%a" print p
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search q -> out ppf "search %a" search q
@@ -371,16 +385,16 @@ let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
   | P_builtin (s, qid) -> out ppf "@[builtin \"%s\"@ ≔ %a@]" s qident qid
-  | P_inductive (_, _, []) -> assert false (* not possible *)
-  | P_inductive (ms, xs, i :: il) ->
+  | P_inductive (_, _, _, []) -> assert false (* not possible *)
+  | P_inductive (_, ms, xs, i :: il) ->
     let with_ind ppf i = out ppf "@,%a" (inductive "with") i in
     out ppf "@[<v>@[%a%a@]%a%a@]"
       modifiers ms (List.pp params " ") xs
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open(false,ps) -> out ppf "open %a" (List.pp path " ") ps
-  | P_open(true,ps) -> out ppf "private open %a" (List.pp path " ") ps
+  | P_open(_,false,ps) -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(_,true,ps) -> out ppf "private open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (None, ps) -> out ppf "require %a" (List.pp path " ") ps
   | P_require (Some false, ps) ->
@@ -393,7 +407,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
     let with_rule ppf r = out ppf "@.%a" (rule "with") r in
     rule "rule" ppf r; List.iter (with_rule ppf) rs
   | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+    { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf; p_sym_def } ->
     begin
       out ppf "@[<v>@[<2>%asymbol %a%a%a%a%a@]%a@]"
@@ -413,5 +427,5 @@ let command : p_command pp = fun ppf { elt; _ } ->
   end;
   out ppf ";"
 
-let ast : ast pp = fun ppf ->
+let commands : p_commands pp = fun ppf ->
   Stream.iter ((command +| unit "@.") ppf)

@@ -28,7 +28,8 @@ let sig_state_of_require l : Sig_state.sig_state =
     Handle.Command.handle Compile.compile ss
      (Pos.none
       (Parsing.Syntax.P_require
-        (Some false, [Pos.none (Parsing.Parser.path_of_string req)]))))
+        (Some false,
+         [Pos.none (Parsing.Parser.path_of_string req)]))))
   Elpi_handle.Sig_state.dummy l
 
 let search_cmd cfg rules require s dbpath_opt =
@@ -175,7 +176,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     Config.init {cfg with verbose = Some 0};
     match output with
     | None
-    | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
+    | Some Lp -> Pretty.commands Format.std_formatter (Parser.parse_file file)
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
     | Some RawDk -> Export.Rawdk.print (Parser.parse_file file)
     | Some Hrs ->

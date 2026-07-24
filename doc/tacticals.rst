@@ -19,27 +19,32 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
 
 ::
 
+   builtin "String" ≔ …; // : TYPE
+   builtin "Level" ≔ …; // : TYPE, written L below
+   builtin "Univ" ≔ … // : L → TYPE, written U below
+   builtin "Type" ≔ … // : Π [l:L], U l → TYPE, written η below
+   builtin "Tactic" ≔ …; // : TYPE, written T below
    builtin "admit" ≔ …; // : T
-   builtin "and" ≔ …; // : T → T → T (stands for ";")
-   builtin "all_hyps" ≔ …; // : (Π p, Prf p → T) → T
-   builtin "apply" ≔ …; // : Π [p], Prf p → T
-   builtin "assume" ≔ …; // : String → Π [a], (El a → T) → T
+   builtin "all_hyps" ≔ …; // : (Π [l] [a:U l], η a → T) → T
+   builtin "apply" ≔ …; // : Π [l] [a:U l], η a → T
+   builtin "assume" ≔ …; // : String → Π [l] [a:U l], (η a → T) → T
    builtin "assumption" ≔ …; // : T
-   builtin "apply" ≔ …; // : Π [p], Prf p → T
+   builtin "change" := …; // : Π [l] [a:U l], η a → T
+   builtin "compose" ≔ …; // : T → T → T (stands for ";")
    builtin "fail" ≔ …; // : T
-   builtin "first_hyp" ≔ …; // : (Π p, Prf p → T) → T
+   builtin "first_hyp" ≔ …; // : (Π [l] [a:U l], η a → T) → T
    builtin "focus" ≔ …; // : String -> T
-   builtin "generalize" ≔ …; // : Π [a], El a → T
-   builtin "have" ≔ …; // : String → Prop → T  
+   builtin "generalize" ≔ …; // : Π [l] [a:U l], η a → T
+   builtin "have" ≔ …; // : String → Π [l] [a:U l], η a → T  
    builtin "induction" ≔ …; // : T
    builtin "orelse" ≔ …; // : T → T → T
    builtin "print" ≔ …; // : String → T
    builtin "refine" ≔ …; // : String → T
    builtin "reflexivity" ≔ …; // : T
-   builtin "remove" ≔ …; // : Π [a], El a → T
+   builtin "remove" ≔ …; // : Π [l] [a:U l], η a → T
    builtin "repeat" ≔ …; // : T → T
-   builtin "rewrite" ≔ …; // : String → String → Π [p], Prf p → T
-   builtin "set" ≔ …; // : String → Π [a], El a → T
+   builtin "rewrite" ≔ …; // : String → String → Π [l] [a:U l], η a → T
+   builtin "set" ≔ …; // : String → Π [l] [a:U l], η a → T
    builtin "simplify" ≔ …; // : T
    builtin "simplify rule off" ≔ …; // : T
    builtin "solve" ≔ …; // : T

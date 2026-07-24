@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
+- Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
 
 ### Changed
 
@@ -36,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
 - Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
 - Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
+- Errors occurring while a proof is in progress now report the proof state: the goals a failing tactic was applied to, the goals before and after the tactic for a subproof-count mismatch, and the remaining goals when a proof is unfinished at `end`. The state is printed after the error message, which stays unchanged. The LSP server does not attach the proof state to tactic failures since editors display it themselves.
 
 ### Fixed
 
@@ -50,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Selection of the library mapping with the longest matching prefix in
   `path_of_file`: with nested mappings, the computed module path could get a
   duplicated directory component.
+- LSP server: go-to-definition and hover on qualified identifiers, and session
+  state leaking between open documents.
+- LSP server: the success ("OK") diagnostic of a command or tactic is now
+  shown on its introducing keyword ("symbol", "rule", "assume", …), instead
+  of underlining the whole command or tactic (symbol body, rule right-hand
+  side, proof, etc.).
 
 ## 3.0.0 (2025-07-16)
 

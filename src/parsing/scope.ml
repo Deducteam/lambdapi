@@ -107,8 +107,15 @@ let scope_iden : ?find_sym:find_sym ->
   in
   find_qid ?find_sym prt prv ss env qid
 
-(** [fresh_patt name ts] creates a unique pattern variable applied to
-   [ts]. [name] is used as suffix if distinct from [None]. *)
+(** [fresh_patt nopt ts] creates a unique pattern variable applied to
+    [ts]. [nopt] is an optional name. If None, we use the pattern index as
+    name. /!\ To check whether a critical pair is typable, Lcr converts 1) a
+    pattern variable of index i and name n to a fresh meta m, 2) a meta m to a
+    fresh symbol of name n, 3) some unsolved equations into rewrite rules and,
+    finally, 4) a generated symbol n back to the pattern variable of index i
+    and name n it is coming from. Step 3) uses Term.cmp which compare symbols
+    by their names. It is therefore important that the mapping from pattern
+    variable indexes to pattern or symbol names is injective. *)
 let fresh_patt : lhs_data -> string option -> term array -> term =
   fun data nopt ts ->
   let fresh_index () =
@@ -128,7 +135,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       mk_Patt (Some i, name, ts)
   | None ->
       let i = fresh_index () in
-      mk_Patt (Some i, "", ts)
+      mk_Patt (Some i, string_of_int i, ts)
 
 (* used in desugaring decimal notations *)
 let strint = Array.init 11 string_of_int

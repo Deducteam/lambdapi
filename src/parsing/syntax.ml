@@ -230,6 +230,19 @@ type search =
  | QOp of search * op * search
  | QFilter of search * filter
 
+type print =
+  | Verbose
+  | Debug
+  | Flag
+  | Prover
+  | Prover_timeout
+  | Goal
+  | Symbol of p_qident
+  | Unif_rule
+  | Coerce_rule
+  | String of string
+  | Builtin
+
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of string
@@ -248,7 +261,7 @@ type p_query_aux =
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of string
   (** Set the timeout of the prover (in seconds). *)
-  | P_query_print of p_qident option
+  | P_query_print of print
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
@@ -298,6 +311,63 @@ and p_tactic = p_tactic_aux loc
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
 let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true
 
+(** [query_keyword q] returns the keyword introducing query [q]. *)
+let query_keyword : p_query -> string = fun {elt;_} ->
+  match elt with
+  | P_query_verbose _ -> "verbose"
+  | P_query_debug _ -> "debug"
+  | P_query_flag _ -> "flag"
+  | P_query_assert(true,_) -> "assertnot"
+  | P_query_assert(false,_) -> "assert"
+  | P_query_infer _ -> "type"
+  | P_query_normalize _ -> "compute"
+  | P_query_prover _ -> "prover"
+  | P_query_prover_timeout _ -> "prover_timeout"
+  | P_query_print _ -> "print"
+  | P_query_proofterm -> "proofterm"
+  | P_query_search _ -> "search"
+
+(** [tactic_keyword t] returns the keyword introducing tactic [t], or
+    [None] for tactics that no single keyword introduces (not produced by
+    the LP parser). *)
+let tactic_keyword : p_tactic -> string option = fun {elt;_} ->
+  match elt with
+  | P_tac_admit -> Some "admit"
+  | P_tac_and _ -> None
+  | P_tac_all_hyps _ -> Some "all_hyps"
+  | P_tac_apply _ -> Some "apply"
+  | P_tac_assume _ -> Some "assume"
+  | P_tac_assumption -> Some "assumption"
+  | P_tac_change _ -> Some "change"
+  | P_tac_eval _ -> Some "eval"
+  | P_tac_fail -> Some "fail"
+  | P_tac_first_hyp _ -> Some "first_hyp"
+  | P_tac_focus _ -> Some "focus"
+  | P_tac_generalize _ -> Some "generalize"
+  | P_tac_have _ -> Some "have"
+  | P_tac_induction -> Some "induction"
+  | P_tac_orelse _ -> Some "orelse"
+  | P_tac_query q -> Some (query_keyword q)
+  | P_tac_refine _ -> Some "refine"
+  | P_tac_refl -> Some "reflexivity"
+  | P_tac_remove _ -> Some "remove"
+  | P_tac_repeat _ -> Some "repeat"
+  | P_tac_rewrite _ -> Some "rewrite"
+  | P_tac_set _ -> Some "set"
+  | P_tac_simpl _ -> Some "simplify"
+  | P_tac_solve -> Some "solve"
+  | P_tac_sym -> Some "symmetry"
+  | P_tac_try _ -> Some "try"
+  | P_tac_why3 _ -> Some "why3"
+
+(** [tactic_keyword_pos t] returns the position of the keyword introducing
+    tactic [t], or the position of the whole of [t] when no single keyword
+    does. *)
+let tactic_keyword_pos : p_tactic -> Pos.popt = fun ({pos;_} as t) ->
+  match tactic_keyword t with
+  | Some kw -> Pos.prefix (String.length kw) pos
+  | None -> pos
+
 (** Parser-level representation of a proof. *)
 type p_subproof = p_proofstep list
 
@@ -339,6 +409,7 @@ let is_priv {elt; _} = match elt with P_expo Privat -> true | _ -> false
 (** Parser-level representation of symbol declarations. *)
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
+  ; p_sym_kw : Pos.popt (** position of the "symbol" keyword *)
   ; p_sym_nam : p_ident (** symbol name *)
   ; p_sym_arg : p_params list (** arguments before ":" *)
   ; p_sym_typ : p_term option (** symbol type *)
@@ -350,12 +421,18 @@ type p_symbol =
 type p_command_aux =
   | P_require  of (*private?*)bool (*open?*)option * p_path list
   | P_require_as of p_path * p_ident
+<<<<<<< HEAD
   | P_open of (*private?*)bool * p_path list
   | P_type_class of p_qident
   | P_type_class_instance of p_qident
+=======
+  | P_open of (*"open" keyword position*)Pos.popt
+              * (*private?*)bool * p_path list
+>>>>>>> 4139cf983d81e1068f52810a91b4e869c85e33a6
   | P_symbol of p_symbol
   | P_rules of p_rule list
-  | P_inductive of p_modifier list * p_params list * p_inductive list
+  | P_inductive of (*"inductive" keyword position*)Pos.popt
+                   * p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
   | P_notation of p_qident * string Term.notation
   | P_unif_rule of p_rule
@@ -366,8 +443,31 @@ type p_command_aux =
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
 
-(** Top level AST returned by the parser. *)
-type ast = p_command Stream.t
+(** [command_keyword_pos c] returns the position of the keyword introducing
+    command [c] ("symbol", "rule", "require", …). Symbol, inductive and
+    open commands record it in the AST, as modifiers or parameters may
+    precede their keyword; for the other commands it is a prefix of the
+    position of [c]. When no position was recorded (e.g. on Dedukti input),
+    the position of the whole of [c] is returned instead. *)
+let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
+  let prefix kw = Pos.prefix (String.length kw) pos in
+  match elt with
+  | P_open(kw,_,_)
+  | P_inductive(kw,_,_,_)
+  | P_symbol{p_sym_kw=kw;_} ->
+      (match kw with Some _ -> kw | None -> pos)
+  | P_require _
+  | P_require_as _ -> prefix "require"
+  | P_rules _ -> prefix "rule"
+  | P_builtin _ -> prefix "builtin"
+  | P_notation _ -> prefix "notation"
+  | P_unif_rule _ -> prefix "unif_rule"
+  | P_coercion _ -> prefix "coerce_rule"
+  | P_query q -> prefix (query_keyword q)
+  | P_opaque _ -> prefix "opaque"
+
+(** Top level data structure returned by the parser. *)
+type p_commands = p_command Stream.t
 
 (** Equality functions on the syntactic expressions ignoring positions. *)
 
@@ -443,7 +543,8 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
       eq_p_term t1 t2 && c1 = c2
   | P_query_prover s1, P_query_prover s2 -> s1 = s2
   | P_query_prover_timeout t1, P_query_prover_timeout t2 -> t1 = t2
-  | P_query_print io1, P_query_print(io2) -> Option.eq eq_p_qident io1 io2
+  | P_query_print(Symbol i1), P_query_print(Symbol i2) -> eq_p_qident i1 i2
+  | P_query_print p1, P_query_print p2 -> p1 = p2
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
@@ -497,12 +598,12 @@ let eq_p_sym_prf : (p_proof * p_proof_end) eq = fun (p1, pe1) (p2, pe2) ->
   pe1.elt = pe2.elt && eq_p_proof p1 p2
 
 let eq_p_symbol : p_symbol eq = fun
-  { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
-    p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
-    p_sym_def=p_sym_def1}
-  { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
-    p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
-    p_sym_def=p_sym_def2} ->
+  { p_sym_mod=p_sym_mod1; p_sym_kw=_; p_sym_nam=p_sym_nam1;
+    p_sym_arg=p_sym_arg1; p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1;
+    p_sym_prf=p_sym_prf1; p_sym_def=p_sym_def1}
+  { p_sym_mod=p_sym_mod2; p_sym_kw=_; p_sym_nam=p_sym_nam2;
+    p_sym_arg=p_sym_arg2; p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2;
+    p_sym_prf=p_sym_prf2; p_sym_def=p_sym_def2} ->
   List.eq eq_p_modifier p_sym_mod1 p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
   && List.eq eq_p_params p_sym_arg1 p_sym_arg2
@@ -515,13 +616,14 @@ let eq_p_symbol : p_symbol eq = fun
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
-  | P_require(b1,l1), P_require(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
-  | P_open(b1,l1), P_open(b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
+  | P_require(b1,l1), P_require(b2,l2) ->
+      b1 = b2 && List.eq eq_p_path l1 l2
+  | P_open(_,b1,l1), P_open(_,b2,l2) -> b1 = b2 && List.eq eq_p_path l1 l2
   | P_require_as(m1,i1), P_require_as(m2,i2) ->
       eq_p_path m1 m2 && eq_p_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
   | P_rules(r1), P_rules(r2) ->  List.eq eq_p_rule r1 r2
-  | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
+  | P_inductive(_,m1,xs1,l1), P_inductive(_,m2,xs2,l2) ->
       m1 = m2 && List.eq eq_p_params xs1 xs2
       && List.eq eq_p_inductive l1 l2
   | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
@@ -540,10 +642,10 @@ let fold_proof : ('a -> p_tactic -> int -> 'a) -> 'a -> p_proof -> 'a =
     List.fold_left subproof (f a t (List.length spl)) spl
   in List.fold_left subproof
 
-(** [fold_idents f a ast] allows to recursively build a value of type ['a]
-   starting from [a] and by applying [f] on each identifier occurring in [ast]
-   corresponding to a function symbol: variables (term variables or assumption
-   names) are excluded.
+(** [fold_idents f a cs] allows to recursively build a value of type ['a]
+    starting from [a] and by applying [f] on each identifier occurring in [cs]
+    corresponding to a function symbol: variables (term variables or
+    assumption names) are excluded.
 
 NOTE: This function is incomplete if an assumption name hides a function
 symbol. Example:
@@ -644,15 +746,15 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_flag (_, _)
     | P_query_prover _
     | P_query_prover_timeout _
-    | P_query_print None
-    | P_query_proofterm -> a
+    | P_query_proofterm
+    | P_query_search _ -> a
     | P_query_assert (_, P_assert_typing(t,u))
     | P_query_assert (_, P_assert_conv(t,u)) ->
         fold_term_vars vs (fold_term_vars vs a t) u
     | P_query_infer (t, _)
     | P_query_normalize (t, _) -> fold_term_vars vs a t
-    | P_query_print (Some qid) -> f a qid
-    | P_query_search _ -> a
+    | P_query_print(Symbol qid) -> f a qid
+    | P_query_print _ -> a
   in
 
   let rec fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
@@ -723,7 +825,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_coercion r
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
-    | P_inductive (_, xs, ind_list) ->
+    | P_inductive (_, _, xs, ind_list) ->
         let vs, a = List.fold_left fold_args (StrSet.empty, a) xs in
         List.fold_left (fold_inductive_vars vs) a ind_list
     | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->

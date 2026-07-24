@@ -20,20 +20,20 @@ module type PARSER = sig
 
   type lexbuf
 
-  val parse_lexbuf : lexbuf -> ast
+  val parse_lexbuf : lexbuf -> p_commands
   (** [parse_lexbuf lb] is the same as [parse_string] but with an already
       created lexbuf. *)
 
-  val parse_in_channel : string -> in_channel -> ast
+  val parse_in_channel : string -> in_channel -> p_commands
   (** [parse f ic] returns a stream of commands parsed from channel [ic]
       created from file [f]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
 
-  val parse_file : string -> ast
+  val parse_file : string -> p_commands
   (** [parse_file f] returns a stream of parsed commands of file [f]. Commands
       are parsed lazily. *)
 
-  val parse_string : string -> string -> ast
+  val parse_string : string -> string -> p_commands
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
 
@@ -75,7 +75,7 @@ module Dk : PARSER with type lexbuf := Lexing.lexbuf = struct
     parse_lexbuf None entry lb
 
   let command =
-    let r = ref (Pos.none (P_open(false,[]))) in
+    let r = ref (Pos.none (P_open(None,false,[]))) in
     fun (lb:lexbuf): p_command ->
     Debug.(record_time Parsing
              (fun () -> r := DkParser.line DkLexer.token lb)); !r
@@ -114,15 +114,15 @@ sig
   end
 = struct
 
-  type zlexbuf = LpLexer.token ZipperTokenLexbuf.lexbuf
+  type zlexbuf = LpLexer.token OneLookaheadCellLexbuf.lexbuf
 
   let handle_error (icopt: in_channel option)
         (entry: zlexbuf -> 'a) (lb: zlexbuf): 'a option =
     try Some(entry lb)
     with
     | End_of_file -> Option.iter close_in icopt; None
-    | LpLexer.SyntaxError{pos=None; _} -> assert false
-    | LpLexer.SyntaxError{pos=Some pos; elt} ->
+    | LpLexer.SyntaxError(_,{pos=None; _}) -> assert false
+    | LpLexer.SyntaxError(_,{pos=Some pos; elt}) ->
         parser_fatal pos "Syntax error. %s" elt
 
   let parse_lexbuf' ~allow_rocq_syntax (icopt: in_channel option)
@@ -130,7 +130,7 @@ sig
     Stream.from
      (fun _ ->
        handle_error icopt entry
-        (ZipperTokenLexbuf.new_parser
+        (OneLookaheadCellLexbuf.new_parser
           ~pp:LpParser.pp_token
            ~lexer_:(fun () -> LpLexer.token ~allow_rocq_syntax lb)))
 
@@ -159,7 +159,6 @@ sig
     set_position lb lexpos;
     set_filename lb lexpos.pos_fname;
     Stream.next (parse_lexbuf' ~allow_rocq_syntax None entry lb)
-
 
   (* exported functions *)
   let parse_term_string =
@@ -193,7 +192,6 @@ let path_of_string : string -> Path.t = fun s ->
       LpLexer.SyntaxError _ ->
       fatal_no_pos "Syntax error: \"%s\" is not a path." s
 
-
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
   let lb = Utf8.from_string s in
@@ -210,7 +208,7 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> ast = fun fname ->
+let parse_file : string -> p_commands = fun fname ->
   match Filename.check_suffix fname Library.lp_src_extension with
   | true  -> Lp.parse_file fname
   | false -> Dk.parse_file fname

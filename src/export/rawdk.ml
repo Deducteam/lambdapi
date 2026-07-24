@@ -1,4 +1,4 @@
-(** Translate the parser-level AST to Dedukti. *)
+(** Translate parser-level commands to Dedukti. *)
 
 open Lplib open Base open Extra
 open Common open Pos open Error
@@ -198,7 +198,8 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_query q -> query ppf q
   | P_require(None,ps) ->
       List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.mident elt) ps
-  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg; p_sym_typ;
+  | P_symbol{p_sym_prf=Some(_,{elt=P_proof_abort;_}); _} -> ()
+  | P_symbol{p_sym_mod; p_sym_kw=_; p_sym_nam=n; p_sym_arg; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
       let ms = partition_modifiers p_sym_mod in
       begin match get_ac_typ pos ms p_sym_arg p_sym_typ with
@@ -231,11 +232,11 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_builtin _
   | P_unif_rule _
   | P_coercion _
-    -> () (*FIXME?*)
-  | P_inductive _
+    -> ()
+  | P_inductive _ (*FIXME*)
   | P_open _
   | P_require_as _
-  | P_notation _ (* FIXME: accept quantifier notations *)
+  | P_notation _
   | P_opaque _
   | P_require(Some _,_)
   | P_symbol{p_sym_prf=Some _; _}
@@ -243,6 +244,6 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_type_class_instance _
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 
-let ast : ast pp = fun ppf -> Stream.iter (command ppf)
+let commands : p_commands pp = fun ppf -> Stream.iter (command ppf)
 
-let print : ast -> unit = ast std_formatter
+let print : p_commands -> unit = commands std_formatter

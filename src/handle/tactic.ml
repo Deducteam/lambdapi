@@ -17,7 +17,9 @@ let log = log.pp
     new compiled module. *)
 let admitted_initial_value = min_int
 let admitted : int Stdlib.ref = Stdlib.ref admitted_initial_value
-let reset_admitted() = Stdlib.(admitted := admitted_initial_value)
+let reset_admitted() =
+  Stdlib.(let a = !admitted in admitted := admitted_initial_value; a)
+let restore_admitted (a:int) = Stdlib.(admitted := a)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
     of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
@@ -34,13 +36,14 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   let sym =
     wrn sym_pos "axiom %a: %a" uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
-       they are created. *)
+       they are created, and strictly before the symbol. *)
+    (* FIXME: use sym_decl_pos instead ? *)
+    let id = {elt=name; pos=sym_pos} in
     let pos = shift Stdlib.(!admitted) sym_pos in
-    let id = Pos.make pos name in
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)
     snd (Sig_state.add_symbol ss
-           Public Defin Eager true id None !(m.meta_type) [] false false None)
+           Public Defin Eager true id pos !(m.meta_type) [] false false None)
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be
@@ -203,12 +206,12 @@ let get_prod_ids env =
 (** Builtin tactic names. *)
 type tactic =
   | T_admit
-  | T_and
   | T_all_hyps
   | T_apply
   | T_assume
   | T_assumption
   | T_change
+  | T_compose
   | T_fail
   | T_first_hyp
   | T_focus
@@ -240,12 +243,12 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     Hashtbl.add t s.sym_name v
   in
   add "admit" T_admit;
-  add "and" T_and;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
   add "assume" T_assume;
   add "assumption" T_assumption;
   add "change" T_change;
+  add "compose" T_compose;
   add "fail" T_fail;
   add "first_hyp" T_first_hyp;
   add "focus" T_focus;
@@ -310,14 +313,21 @@ let p_ident_of_var (pos:popt) (t:term) :p_ident =
   | Vari v -> Pos.make pos (base_name v)
   | _ -> fatal pos "Not a variable of the proof context: %a." term t
 
+(* [pos_of_string s] assumes that [s] is a string literal and returns the
+   lexing position of the content of [s]. *)
+let pos_of_string: sym -> Lexing.position =
+  let f p = {p with start_offset=p.start_offset+1; start_col=p.start_col+1;
+                    end_offset=p.end_offset-1; end_col=p.end_col-1} in
+  fun s -> lexing_opt (Option.map f s.sym_pos)
+
 (** [p_term_of_string_term pos t] turns into a p_term a string literal term
     [t] that is part of a bigger term obtained by scoping and normalizing of a
     p_term at position [pos]. *)
 let p_term_of_string_term (pos:popt) (t:term): p_term =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
-    let p = lexing_opt (after s.sym_pos) in
-    Parsing.Parser.Lp.parse_term_string p (String.remove_quotes s.sym_name)
+    Parsing.Parser.Lp.parse_term_string (pos_of_string s)
+      (String.remove_quotes s.sym_name)
   | _ -> fatal pos "not a string literal"
 
 (** [p_rwpatt_of_string_term pos t] turns into a p_rwpatt option a string
@@ -329,9 +339,8 @@ let p_rwpatt_of_string_term (pos:popt) (t:term): p_rwpatt option =
   match t with
   | Symb s when String.is_string_literal s.sym_name ->
       let string = String.remove_quotes s.sym_name in
-      if string = "" then None
-      else let p = lexing_opt (after s.sym_pos) in
-           Some (Parsing.Parser.Lp.parse_rwpatt_string p string)
+      if string = "" then None else
+        Some (Parsing.Parser.Lp.parse_rwpatt_string (pos_of_string s) string)
   | _ -> fatal pos "not a string literal"
 
 (** [int_of_term pos t] returns the int contained in a string literal
@@ -390,14 +399,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> ps, mk P_tac_admit
-            | T_and, [t1;t2] ->
-              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
-            | T_and, _ -> assert false
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
-            | T_apply, [_;t] -> ps, mk(P_tac_apply(p_term t))
+            | T_apply, [_;_;t] -> ps, mk(P_tac_apply(p_term t))
             | T_apply, _ -> assert false
-            | T_assume, [prefix;_;Abst(_, t)] ->
+            | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin
                 let n = new_name (string_of_term pos prefix) env in
                 let idopts = [Some(Pos.make pos n)] in
@@ -410,17 +416,20 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_assume, _ -> assert false
             | T_assumption, [] -> ps, mk P_tac_assumption
             | T_assumption, _ -> assert false
-            | T_change, [_;t] -> ps, mk(P_tac_apply (p_term t))
+            | T_change, [_;_;t] -> ps, mk(P_tac_change (p_term t))
             | T_change, _ -> assert false
+            | T_compose, [t1;t2] ->
+              let ps = handle ps (tac_eval t1) in ps, tac_eval t2
+            | T_compose, _ -> assert false
             | T_fail, _ -> ps, mk P_tac_fail
             | T_first_hyp, [t] -> ps, mk(P_tac_first_hyp(p_term t))
             | T_first_hyp, _ -> assert false
             | T_focus, [t] -> ps, mk(P_tac_focus(string_of_term pos t))
             | T_focus, _ -> assert false
-            | T_generalize, [_;t] ->
+            | T_generalize, [_;_;t] ->
               ps, mk(P_tac_generalize(p_ident_of_var pos t))
             | T_generalize, _ -> assert false
-            | T_have, [t1;t2] ->
+            | T_have, [t1;_;_;t2] ->
                 let prf_sym = Builtin.get ss pos [] "P" in
                 let prf = p_term (mk_Symb prf_sym) in
                 let t2 = Pos.make pos (P_Appl(prf, p_term t2)) in
@@ -435,8 +444,10 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                 match unfold t with
                 | Symb s ->
                   let n = s.sym_name in
-                  if n = String.add_quotes "" then None
-                  else Some(Pos.make pos (s.sym_path, n))
+                  if String.is_string_literal n then
+                    let n = String.remove_quotes n in
+                    if n = "" then Goal else String n
+                  else Symbol(Pos.make pos (s.sym_path, n))
                 | _ -> fatal pos "not a symbol or string literal: %a" term t
               in
               ps, mk(P_tac_query (Pos.make pos (P_query_print arg)))
@@ -445,15 +456,15 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               ps, mk(P_tac_refine(p_term_of_string_term pos t))
             | T_refine, _ -> assert false
             | T_reflexivity, _ -> ps, mk P_tac_refl
-            | T_remove, [_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
+            | T_remove, [_;_;t] -> ps, mk(P_tac_remove [p_ident_of_var pos t])
             | T_remove, _ -> assert false
             | T_repeat, [t] -> ps, mk(P_tac_repeat(tac_eval t))
             | T_repeat, _ -> assert false
-            | T_rewrite, [side;pat;_;t] ->
+            | T_rewrite, [side;pat;_;_;t] ->
               ps, mk(P_tac_rewrite(is_right pos side,
                                    p_rwpatt_of_string_term pos pat, p_term t))
             | T_rewrite, _ -> assert false
-            | T_set, [t1;_;t2] ->
+            | T_set, [t1;_;_;t2] ->
               let n = string_of_term pos t1 in
               ps, mk(P_tac_set(Pos.make pos n, p_term t2))
             | T_set, _ -> assert false
@@ -486,7 +497,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       end
   | P_tac_simpl SimpBetaOnly ->
       begin
-        match Goal.simpl_opt (Eval.snf_opt ~tags:[`NoRw; `NoExpand]) g with
+        match Goal.simpl_opt (Eval.snf_opt ~tags:[NoRw;NoExpand]) g with
         | Some g -> {ps with proof_goals = g :: gs}
         | None -> fatal pos "Could not simplify the goal."
       end
@@ -532,23 +543,22 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_focus _ -> assert false (* done before *)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
-      let t = scope t in
-      (* the tactic is not required to prove the goal *)
-      (* effects are superposed *)
-      let try_assumption (ps: proof_state) (_,(v,p,_)): proof_state =
-        match ps.proof_goals with
-        | [] -> fatal pos "all_hyps called with empty goal list"
-        | g :: _ ->
-            let v = unfold (mk_Vari v) in
-            let t = mk_Appl (mk_Appl (t, p), v) in
-            if Logger.log_enabled () then log "ALL_HYPS on %a\n" term v;
-            try let ps, t = p_tactic ps g env pos t in handle ps t
-            with Fatal _ -> ps
-      in
-      let ps' = List.fold_left try_assumption ps gt.goal_hyps in
-      if ps' == ps then
-        fatal pos "tactic all_hyps [%a] has failed on all assumptions" term t
-      else ps'
+    let t = scope t in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
+    let try_assumption (ps: proof_state) (_,(v,a,_)): proof_state =
+      match ps.proof_goals with
+      | [] -> fatal pos "all_hyps called on empty goal list."
+      | g :: _ ->
+        let p = new_problem() in
+        let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+        let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+        try let ps, t = p_tactic ps g env pos t in handle ps t
+        with Fatal _ -> ps
+    in
+    let ps' = List.fold_left try_assumption ps gt.goal_hyps in
+    if ps' == ps then
+      fatal pos "(all_hyps %a) fails on all assumptions." term t
+    else ps'
   | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
@@ -558,7 +568,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         match Infer.infer_noexn p c t with
         | None ->
             let ids = Ctxt.names c in let term = term_in ids in
-            fatal pos "[%a] is not typable." term t
+            fatal pos "(%a) is not typable." term t
         | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -597,16 +607,19 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
               me1 (x :: List.rev e2)
           in
           tac_refine pos ss ps gt gs p t
-        with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
+        with Not_found -> fatal idpos "Unknown hypothesis %a." uid id;
       end
   | P_tac_first_hyp pt ->
     let t = scope pt in
+    let l = mk_Symb (Builtin.get ss pos [] "Level") in
     let f (_,(v,a,_)) =
-      let ps, t = p_tactic ps g env pos (mk_Appl(mk_Appl(t,a),mk_Vari v)) in
-      progress ps t
+      let p = new_problem() in
+      let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
+      let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
+      let ps, t = p_tactic ps g env pos t in progress ps t
     in
     begin match List.find_map f gt.goal_hyps with
-    | None -> fatal pos "tactic [%a] fails on all assumptions" term t
+    | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
     | Some new_ps -> new_ps
     end
   | P_tac_have(id, pt) ->
@@ -817,30 +830,53 @@ let handle :
 
 (** [handle sym_pos priv r tac n] applies the tactic [tac] from the previous
    tactic output [r] and checks that the number of goals of the new proof
-   state is compatible with the number [n] of subproofs. *)
+   state is compatible with the number [n] of subproofs. When [tac] fails,
+   the proof state it was applied to is attached to the error (see
+   {!val:Proof.state_on_error}). *)
 let handle :
   Sig_state.t -> popt -> bool -> tac_output -> p_tactic -> int -> tac_output =
   fun ss sym_pos priv (ps, _) t nb_subproofs ->
-  let (ps', _) as a = handle ss sym_pos priv ps t in
+  (* Attach the proof state [t] was applied to, to any error escaping its
+     application. Errors raised inside tacticals like [try] or [orelse] are
+     caught below this point, so only failures actually reported to the user
+     are concerned. *)
+  let (ps', _) as a =
+    try handle ss sym_pos priv ps t
+    with Fatal(p, msg, desc)
+      when Stdlib.(!state_on_error) && ps.proof_goals <> [] ->
+        let state = error_state ps in
+        let desc = if desc = "" then state else desc ^ "\n" ^ state in
+        raise (Fatal(p, msg, desc))
+  in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in
+  (* [t] ran, but the number of subproofs given does not match the number of
+     subgoals it produced: report the proof state before and after its
+     application. *)
+  let mismatch : string -> 'a = fun reason ->
+    fatal t.pos ~err_desc:(error_state ~after:ps' ps) "%s" reason in
   if nb_newgoals <= 0 then
     if nb_subproofs = 0 then a
-    else fatal t.pos "A subproof is given but there is no subgoal."
+    else mismatch "A subproof is given but there is no subgoal."
   else if is_destructive t then
-    match nb_newgoals + 1 - nb_subproofs with
+    (match nb_newgoals + 1 - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1))
     | _ ->
-      fatal t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs (nb_newgoals + 1) goals ps'
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1)))
   else match nb_newgoals - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
-        nb_subproofs nb_newgoals goals ps'
-    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
-             nb_subproofs nb_newgoals
+      mismatch (Printf.sprintf
+        "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)
+    | _ ->
+      mismatch (Printf.sprintf
+        "Too many subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals)

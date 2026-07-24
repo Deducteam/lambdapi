@@ -221,3 +221,19 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
       fatal pos "Protected symbol not allowed here."
   | (_    , false, Privat) -> fatal pos "Private symbol not allowed here."
   | _                      -> s
+
+(** [update_ext_sym_dtrees b ss] updates the decision trees of external
+    symbols by adding (resp. removing) extra rules if [b] is true
+    (resp. false). *)
+let update_ext_sym_dtrees (b:bool) (ss:sig_state): unit =
+  Path.Map.iter (fun p dd ->
+      let sign = try Path.Map.find p !loaded with Not_found -> assert false in
+      StrMap.iter (fun n sd ->
+          let s = try Sign.find sign n with Not_found -> assert false in
+          if sd.rules <> [] then
+            if b then Tree.update s
+            else let neq r1 r2 = not (eq_lhs r1 r2) in
+              let is_not_extra r = List.for_all (neq r) sd.rules in
+              Tree.set_dtree s (List.filter is_not_extra !(s.sym_rules))
+        ) dd.dep_symbols
+    ) !(ss.signature.sign_deps)
