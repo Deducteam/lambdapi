@@ -214,7 +214,7 @@ external pred msolve i:list sealed-goal.
     Out(term,"SX",
     Read (ContextualConversion.unit_ctx, "SX is the snf of X"))),
     (fun t _ ~depth:_ _ _ _ ->
-      !: (Eval.snf ~tags:[`NoExpand] [] t))),
+      !: (Eval.snf ~tags:[NoExpand] [] t))),
     DocAbove);
 
   MLCode(Pred("lp.eq_modulo",

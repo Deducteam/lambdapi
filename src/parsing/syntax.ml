@@ -461,6 +461,8 @@ let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
   | P_coercion _ -> prefix "coerce_rule"
   | P_query q -> prefix (query_keyword q)
   | P_opaque _ -> prefix "opaque"
+  | P_type_class _ -> prefix "typeclass"
+  | P_type_class_instance _ -> prefix "instance"
 
 (** Top level data structure returned by the parser. *)
 type p_commands = p_command Stream.t

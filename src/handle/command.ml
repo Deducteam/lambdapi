@@ -141,17 +141,17 @@ let handle_modifiers :
     function
     | [] -> acc
     | {elt=P_prop _;_} as p::ms ->
-        get_modifiers (p::props, expos, strats, opaq) ms
+        get_modifiers (p::props, expos, strats, opaq, tc, tci) ms
     | {elt=P_typeclass;_}::ms ->
-      get_modifiers (props, expos, strats,true, tci) ms
+      get_modifiers (props, expos, strats, opaq, true, tci) ms
     | {elt=P_typeclass_instance;_}::ms ->
-      get_modifiers (props, expos, strats,tc, true) ms
+      get_modifiers (props, expos, strats, opaq, tc, true) ms
     | {elt=P_expo _;_} as e::ms ->
-        get_modifiers (props, e::expos, strats, opaq) ms
+        get_modifiers (props, e::expos, strats, opaq, tc, tci) ms
     | {elt=P_mstrat _;_} as s::ms ->
-        get_modifiers (props, expos, s::strats, opaq) ms
+        get_modifiers (props, expos, s::strats, opaq, tc, tci) ms
     | {elt=P_opaq;_}::ms ->
-        get_modifiers (props, expos, strats, true) ms
+        get_modifiers (props, expos, strats, true, tc, tci) ms
   in
   let props, expos, strats, opaq, tc, tci =
     get_modifiers ([],[],[],false,false,false) ms in
