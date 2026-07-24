@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Streaming of results in command line search.
 - Support `Plac` in rewriting rules.
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+- Support for typeclasses using Elpi
+  * Added syntax: two new symbol modifiers `typeclass` and `instance` and individual commands `typeclass/instance qid` to declare a previously defined symbol as a typeclass or instance.
+  * typeclass instance search is used in tactics, symbol definitions, and the `type` query, upon encountering any unsolvable hole (wildcard or implicit argument)
 - Tactic `assumption` which proves a goal if it is an instance of an assumption.
 - Tactic `focus n` which makes goal n the current goal.
 - Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.

@@ -391,6 +391,8 @@ type p_modifier_aux =
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
+  | P_typeclass (** typeclass *)
+  | P_typeclass_instance (** typeclass instance *)
 
 type p_modifier = p_modifier_aux loc
 
@@ -421,6 +423,8 @@ type p_command_aux =
   | P_require_as of p_path * p_ident
   | P_open of (*"open" keyword position*)Pos.popt
               * (*private?*)bool * p_path list
+  | P_type_class of p_qident
+  | P_type_class_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of (*"inductive" keyword position*)Pos.popt
@@ -457,6 +461,8 @@ let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
   | P_coercion _ -> prefix "coerce_rule"
   | P_query q -> prefix (query_keyword q)
   | P_opaque _ -> prefix "opaque"
+  | P_type_class _ -> prefix "typeclass"
+  | P_type_class_instance _ -> prefix "instance"
 
 (** Top level data structure returned by the parser. *)
 type p_commands = p_command Stream.t
@@ -807,7 +813,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     match elt with
     | P_require (_, _)
     | P_require_as (_, _)
-    | P_open _ -> a
+    | P_open _
+    | P_type_class _
+    | P_type_class_instance _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_opaque qid
     | P_builtin (_, qid)

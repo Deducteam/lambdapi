@@ -163,6 +163,18 @@ Finaly, here is an example of strictly-positive inductive type:
    assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
    assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
 
+.. _instance:
+
+``instance``
+---------------
+
+The command ``instance`` allows to declare as typeclass instance (see **Typeclass modifiers**) a previously defined symbol.
+
+::
+
+   symbol bool_zero : zero_class bool ≔ is_zero true; // true is neutral for or/xor
+   instance bool_zero;
+
 .. _notation:
 
 ``notation``
@@ -484,6 +496,12 @@ the system with additional information on its properties and behavior.
     canonical term headed by ``f`` is of the form ``f t₁ (f t₂ (f t₃ …
     tₙ) … )``. Moreover, in both cases, we have ``t₁ ≤ t₂ ≤ … ≤ tₙ``.
 
+- **Typeclass modifiers** (adding rules to the typeclass solver)
+
+  - ``instance``: if the conclusion of the type of the symbol is a typeclass,
+    adds a rule to automatically use the symbol to obtain an object of that type.
+  - ``typeclass``: allows to declare instances of that symbol (must be of type ``T → TYPE`` for some type ``T``)
+
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used
   without restriction.
@@ -545,6 +563,18 @@ arguments must be explicitly given.
 
 **Notations**: Some notation can be declared for a symbol using the
 commands :ref:`notation` and :ref:`builtin`.
+
+.. _typeclass:
+
+``typeclass``
+---------------
+
+The command ``typeclass`` allows to declare as typeclass (see **Typeclass modifiers**) a previously defined symbol.
+
+::
+
+   symbol nonempty : U → TYPE;
+   typeclass nonempty; //One can now declare instances of [nonempty x] for any [x]
 
 .. _unif_rule:
 

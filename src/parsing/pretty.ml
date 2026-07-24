@@ -45,6 +45,7 @@ let _ = let open LpLexer in
     ; "inductive", INDUCTIVE
     ; "infix", INFIX
     ; "injective", INJECTIVE
+    ; "instance", INSTANCE
     ; "left", SIDE(Pratter.Left)
     ; "let", LET
     ; "off", SWITCH(false)
@@ -72,6 +73,7 @@ let _ = let open LpLexer in
     ; "symbol", SYMBOL
     ; "symmetry", SYMMETRY
     ; "type", TYPE_QUERY
+    ; "typeclass", TYPECLASS
     ; "TYPE", TYPE_TERM
     ; "unif_rule", UNIF_RULE
     ; "verbose", VERBOSE
@@ -108,6 +110,8 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
   | P_mstrat(s) -> Print.match_strat ppf s
   | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
+  | P_typeclass -> out ppf "typeclass "
+  | P_typeclass_instance -> out ppf "instance "
 
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
@@ -418,6 +422,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
+  | P_type_class qid -> out ppf "typeclass %a" qident qid
+  | P_type_class_instance qid -> out ppf "instance %a" qident qid
   end;
   out ppf ";"
 
