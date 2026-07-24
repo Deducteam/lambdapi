@@ -144,28 +144,41 @@ let command oc {elt; pos} =
   | P_symbol
     { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (is_mapped p_sym_nam.elt) then (
-        begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
-          | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
-            (* If they have a type, opaque or private defined symbols are
-               translated as Lemma's so that their definition is loaded in
-               memory only when it is necessary. *)
-            string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
-            string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed.\n"
-          | true, Some t, _, _ ->
-            string oc "Definition "; ident oc p_sym_nam;
-            params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t; string oc ".\n";
-          | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc ".\n"
-          | false, _, _, Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
-            params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc ".\n"
-          | _ -> wrn pos "Command not translated."
-          end; List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) p_sym_mod)
+      if not (is_mapped p_sym_nam.elt)
+      then let modifiers =
+        match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+        | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
+          (* If they have a type, opaque or private defined symbols are
+             translated as Lemma's so that their definition is loaded in
+             memory only when it is necessary. *)
+          let mods_left = List.filter (fun m -> not (is_lem m)) p_sym_mod in
+          let res =
+            List.filter (fun {elt;_} -> elt != P_typeclass) mods_left in
+          let prefix = if res == mods_left then "Lemma " else "Instance " in 
+          string oc prefix ; ident oc p_sym_nam; params_list oc p_sym_arg;
+          string oc " : "; term oc a; string oc ".\nProof. exact (";
+          term oc t; string oc "). Qed.\n";
+          res
+        | true, Some t, _, _ ->
+          let res =
+            List.filter (fun {elt;_} -> elt != P_typeclass) p_sym_mod in
+          let prefix = if res == p_sym_mod || Option.is_none p_sym_typ
+            then "Definition " else "Instance " in 
+          string oc prefix ; ident oc p_sym_nam;
+          params_list oc p_sym_arg; typopt oc p_sym_typ;
+          string oc " := "; term oc t; string oc ".\n";
+          res
+        | false, _, [], Some t ->
+          string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
+          term oc t; string oc ".\n";
+          p_sym_mod
+        | false, _, _, Some t ->
+          string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
+          params_list oc p_sym_arg; string oc ", "; term oc t;
+          string oc ".\n";
+          p_sym_mod
+        | _ -> wrn pos "Command not translated."; []
+      in List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) modifiers
   | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
   | P_type_class qid -> add_modifier oc qid {elt=P_typeclass;pos}
   | P_type_class_instance qid ->
