@@ -53,9 +53,9 @@ test_export_lp: lambdapi
 test_export_raw_dk: lambdapi
 	@tests/export_raw_dk.sh
 
-.PHONY: tests_alt_ergo
-tests_alt_ergo: lambdapi
-	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
+.PHONY: test_why3
+test_why3: lambdapi
+	@dune exec lambdapi -- check tests/OK/why3*.lp
 
 .PHONY: test_libs
 test_libs: lambdapi
