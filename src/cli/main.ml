@@ -396,12 +396,11 @@ let opt_ghost =
 let cmd_dtree =
   let c = add_command
             { name = "decision-tree"
-            ; args = "[OPTION …] MODULE.NAME"
+            ; args = "[OPTION …] QID"
             ; summary = "Print the decision tree of a symbol."
             ; desc =
-{|Check MODULE and print to the standard output the decision tree of the
-  symbol NAME in the Dot language. You can display it by piping this command
-  to 'dot -Tpng | display'.|}
+{|Print to the standard output the decision tree of the symbol QID in the Dot
+language. Pipe the output to 'dot -Tpng | display' to display it.|}
             ; options = opt_ghost :: compile_options } in
   fun args ->
   match parse_options c.options args with
