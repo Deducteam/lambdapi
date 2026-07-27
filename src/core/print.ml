@@ -370,6 +370,8 @@ and appl idmap ppf t = pp Appl idmap ppf t
 and func idmap ppf t = pp Func idmap ppf t
 
 let term_in idmap ppf t =
+  let idmap =
+    StrMap.fold (fun n _ -> Name.add_name n) !sig_state.in_scope idmap in
   let s = Logger.get_activated_loggers() in
   if String.contains s 'p' then func idmap ppf t
   else
