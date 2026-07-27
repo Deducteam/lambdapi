@@ -248,202 +248,202 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(bo,ps) ->
-    (List.fold_left (handle_require compile bo) ss ps, None, None)
+      (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
   | P_open(_,b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
        of [srs] to its defining rules. *)
-    let handle_rule r (srs, map) =
-      let sr = scope_rule false ss r in
-      let (s,r) as sr =
-        if Stdlib.(!sr_check) then Tool.Sr.check_rule r.pos sr else sr in
-      let h = function Some rs -> Some(r::rs) | None -> Some[r] in
-      sr::srs, SymMap.update s h map
-    in
-    (* The order of rules must be kept between [rs] and [srs].
-       That is, the following assertion should hold
-       [assert (srs = List.map (check_rule ss) rs);] if we could compare
-       functional values. Failure to keep that invariant breaks some
-       evaluation strategies. *)
-    let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
-    (* /!\ Update decision trees without adding the rules themselves. It is
-       important for local confluence checking. *)
-    SymMap.iter Tree.add_and_update map;
-    let sign = ss.signature in
-    (* Local confluence checking. *)
-    Tool.Lcr.check_cps pos sign srs map;
-    (* Add rules in the signature. *)
-    SymMap.iter (Sign.add_rules ss.signature) map;
-    if !Console.verbose >= 2 then
-      List.iter (Console.out 2 (Color.gre "rule %a") sym_rule)
-        (List.rev srs);
-    (* Update critical pair positions. *)
-    sign.Sign.sign_cp_pos :=
-      Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
-    (ss, None, None)
+      let handle_rule r (srs, map) =
+        let sr = scope_rule false ss r in
+        let (s,r) as sr =
+          if Stdlib.(!sr_check) then Tool.Sr.check_rule r.pos sr else sr in
+        let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+        sr::srs, SymMap.update s h map
+      in
+      (* The order of rules must be kept between [rs] and [srs].
+         That is, the following assertion should hold
+         [assert (srs = List.map (check_rule ss) rs);] if we could compare
+         functional values. Failure to keep that invariant breaks some
+         evaluation strategies. *)
+      let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
+      (* /!\ Update decision trees without adding the rules themselves. It is
+         important for local confluence checking. *)
+      SymMap.iter Tree.add_and_update map;
+      let sign = ss.signature in
+      (* Local confluence checking. *)
+      Tool.Lcr.check_cps pos sign srs map;
+      (* Add rules in the signature. *)
+      SymMap.iter (Sign.add_rules ss.signature) map;
+      if !Console.verbose >= 2 then
+        List.iter (Console.out 2 (Color.gre "rule %a") sym_rule)
+          (List.rev srs);
+      (* Update critical pair positions. *)
+      sign.Sign.sign_cp_pos :=
+        Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
+      (ss, None, None)
   | P_builtin(n,qid) ->
-    let s = find_sym ~prt:true ~prv:true ss qid in
-    Builtin.check n ss pos s;
-    Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-    (Sig_state.add_builtin ss n s, None, None)
+      let s = find_sym ~prt:true ~prv:true ss qid in
+      Builtin.check n ss pos s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
-    let s = find_sym ~prt:true ~prv:true ss qid in
-    (* Check arity. *)
-    let expected =
-      match n with
-      | Prefix _ | Postfix _ | Quant -> 1
-      | Infix _ -> 2
-      | _ -> assert false
-    and real =
-      LibTerm.count_products ~impl:s.sym_impl Eval.whnf [] !(s.sym_type) in
-    if real <> expected then
-      fatal pos "Notation incompatible with the type of %a" sym s;
-    (* Check that the notation is compatible with the theory. *)
-    begin
-      match s.sym_prop, n with
-      | (Assoc true | AC true), Infix (Pratter.Right,_)
-      | (Assoc false | AC false), Infix (Pratter.Left,_)
-        -> fatal pos
-             "notation incompatible with symbol property \
-              (e.g. infix right notation on left associative symbol)"
-      | _ -> ()
-    end;
-    (* Convert strings into floats. *)
-    let float_priority_from_string_priority s =
-      try
-        if String.contains s '.' then float_of_string s
-        else float_of_int (int_of_string s)
-      with Failure _ -> fatal pos "Too big number (max is %d)" max_int
-    in
-    let float_notation_from_string_notation n =
-      match n with
-      | Prefix s -> Prefix (float_priority_from_string_priority s)
-      | Postfix s -> Postfix (float_priority_from_string_priority s)
-      | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
-      | Quant -> Quant
-      | _ -> assert false
-    in
-    let n = float_notation_from_string_notation n in
-    Console.out 2 (Color.gre "notation %a %a") sym s (notation float) n;
-    Sign.add_notation ss.signature s n;
-    (ss, None, None)
+      let s = find_sym ~prt:true ~prv:true ss qid in
+      (* Check arity. *)
+      let expected =
+        match n with
+        | Prefix _ | Postfix _ | Quant -> 1
+        | Infix _ -> 2
+        | _ -> assert false
+      and real =
+        LibTerm.count_products ~impl:s.sym_impl Eval.whnf [] !(s.sym_type) in
+      if real < expected then
+        fatal pos "Notation incompatible with the type of %a" sym s;
+      (* Check that the notation is compatible with the theory. *)
+      begin
+        match s.sym_prop, n with
+        | (Assoc true | AC true), Infix (Pratter.Right,_)
+        | (Assoc false | AC false), Infix (Pratter.Left,_)
+          -> fatal pos
+               "notation incompatible with symbol property \
+                (e.g. infix right notation on left associative symbol)"
+        | _ -> ()
+      end;
+      (* Convert strings into floats. *)
+      let float_priority_from_string_priority s =
+        try
+          if String.contains s '.' then float_of_string s
+          else float_of_int (int_of_string s)
+        with Failure _ -> fatal pos "Too big number (max is %d)" max_int
+      in
+      let float_notation_from_string_notation n =
+        match n with
+        | Prefix s -> Prefix (float_priority_from_string_priority s)
+        | Postfix s -> Postfix (float_priority_from_string_priority s)
+        | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
+        | Quant -> Quant
+        | _ -> assert false
+      in
+      let n = float_notation_from_string_notation n in
+      Console.out 2 (Color.gre "notation %a %a") sym s (notation float) n;
+      Sign.add_notation ss.signature s n;
+      (ss, None, None)
   | P_unif_rule(h) ->
-    (* Approximately same processing as rules without SR checking. *)
-    let (s,r1) as x = scope_rule true ss h in
-    let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
-    let r2 = {r1 with lhs} in
-    Sign.add_rules ss.signature s [r1;r2];
-    Tree.update Unif_rule.equiv;
-    Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
-    Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
-    (ss, None, None)
+      (* Approximately same processing as rules without SR checking. *)
+      let (s,r1) as x = scope_rule true ss h in
+      let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
+      let r2 = {r1 with lhs} in
+      Sign.add_rules ss.signature s [r1;r2];
+      Tree.update Unif_rule.equiv;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
+      (ss, None, None)
   | P_coercion c ->
-    let r = scope_rule false ss c in
-    Sign.add_rule ss.signature r;
-    Tree.update Coercion.coerce;
-    Console.out 2 (Color.gre "coercion %a") sym_rule r;
-    (ss, None, None)
+      let r = scope_rule false ss c in
+      Sign.add_rule ss.signature r;
+      Tree.update Coercion.coerce;
+      Console.out 2 (Color.gre "coercion %a") sym_rule r;
+      (ss, None, None)
 
   | P_inductive(_, ms, params, p_ind_list) ->
-    (* Check modifiers. *)
-    let (prop, expo, mstrat, opaq) = handle_modifiers ms in
-    if prop <> Defin then
-      fatal pos "Property modifiers cannot be used on inductive types.";
-    if mstrat <> Eager then
-      fatal pos "Pattern matching strategy modifiers cannot be used on \
-                 inductive types.";
-    if opaq then
-      fatal pos "Inductive types cannot be declared opaque.";
-    (* Add inductive types in the signature, all at position [pos]. *)
-    let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
-      let (ss, ind_sym) =
-        handle_inductive_symbol ss expo Const Eager id pos params pt in
-      (ss, ind_sym::ind_sym_list)
-    in
-    let (ss, ind_sym_list_rev) =
-      List.fold_left add_ind_sym (ss, []) p_ind_list in
-    (* Set parameters as implicit in the type of constructors. *)
-    let params =
-      List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
-    (* Add constructors in the signature. *)
-    let cons_pos = shift 1 pos in (* after types *)
-    let add_constructors
-        (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
-      let add_cons_sym (ss, cons_sym_list) (id, pt) =
-        let (ss, cons_sym) =
-          handle_inductive_symbol ss expo Const Eager id cons_pos params pt
-        in (ss, cons_sym::cons_sym_list)
+      (* Check modifiers. *)
+      let (prop, expo, mstrat, opaq) = handle_modifiers ms in
+      if prop <> Defin then
+        fatal pos "Property modifiers cannot be used on inductive types.";
+      if mstrat <> Eager then
+        fatal pos "Pattern matching strategy modifiers cannot be used on \
+                       inductive types.";
+      if opaq then
+        fatal pos "Inductive types cannot be declared opaque.";
+      (* Add inductive types in the signature, all at position [pos]. *)
+      let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
+        let (ss, ind_sym) =
+          handle_inductive_symbol ss expo Const Eager id pos params pt in
+        (ss, ind_sym::ind_sym_list)
       in
-      let (ss, cons_sym_list_rev) =
-        List.fold_left add_cons_sym (ss, []) p_cons_list in
-      (* Reverse the list of constructors previously computed to preserve
-         the initial order. *)
-      let cons_sym_list = List.rev cons_sym_list_rev in
-      (ss, cons_sym_list::cons_sym_list_list)
-    in
-    let (ss, cons_sym_list_list_rev) =
-      List.fold_left add_constructors (ss, []) p_ind_list
-    in
-    let ind_list =
-      List.fold_left2
-        (fun acc ind_sym cons_sym_list -> (ind_sym,cons_sym_list)::acc)
-        []
-        ind_sym_list_rev cons_sym_list_list_rev
-    in
-    (* Compute data useful for generating the induction principles. *)
-    let cfg = Inductive.get_config ss pos in
-    let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-    let ind_nb_params = List.length params in
-    let vs, env, ind_pred_map =
-      Inductive.create_ind_pred_map pos cfg ind_nb_params ind_list
-        a_str p_str x_str
-    in
-    (* Compute the induction principles. *)
-    let rec_typ_list_rev =
-      Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
-    in
-    (* Add the induction principles in the signature. *)
-    let rec_pos = shift 2 pos in (* after types and constructors *)
-    let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
-      let rec_name = Inductive.rec_name ind_sym in
-      if Sign.mem ss.signature rec_name then
-        fatal pos "Symbol %a already exists." uid rec_name;
-      let (ss, rec_sym) =
-        Console.out 2 (Color.gre "symbol %a : %a")
-          uid rec_name term rec_typ;
-        (* Add recursors in the signature, all at position [shift 2 pos]. *)
-        let id = Pos.make pos rec_name in
-        let r =
-          Sig_state.add_symbol ss expo Defin Eager false id rec_pos
-            rec_typ [] None
-        in sig_state := fst r; r
+      let (ss, ind_sym_list_rev) =
+        List.fold_left add_ind_sym (ss, []) p_ind_list in
+      (* Set parameters as implicit in the type of constructors. *)
+      let params =
+        List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
+      (* Add constructors in the signature. *)
+      let cons_pos = shift 1 pos in (* after types *)
+      let add_constructors
+            (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
+        let add_cons_sym (ss, cons_sym_list) (id, pt) =
+          let (ss, cons_sym) =
+            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+          in (ss, cons_sym::cons_sym_list)
+        in
+        let (ss, cons_sym_list_rev) =
+          List.fold_left add_cons_sym (ss, []) p_cons_list in
+        (* Reverse the list of constructors previously computed to preserve
+           the initial order. *)
+        let cons_sym_list = List.rev cons_sym_list_rev in
+        (ss, cons_sym_list::cons_sym_list_list)
       in
-      (ss, rec_sym::rec_sym_list)
-    in
-    let (ss, rec_sym_list) =
-      List.fold_left2 add_recursor (ss, [])
-        ind_sym_list_rev rec_typ_list_rev
-    in
-    (* Add recursor rules in the signature. *)
-    let add_rule pr =
-      let r = scope_rule false ss pr in
-      let r = Tool.Sr.check_rule pos r in
-      Sign.add_rule ss.signature r;
-      Console.out 2 (Color.gre "rule %a") sym_rule r
-    in
-    no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
-    List.iter Tree.update rec_sym_list;
-    (* Store the inductive structure in the signature *)
-    let ind_nb_types = List.length ind_list in
-    List.iter2
-      (fun (ind_sym, cons_sym_list) rec_sym ->
-         Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym
-           ind_nb_params ind_nb_types)
-      ind_list
-      rec_sym_list;
-    (ss, None, None)
+      let (ss, cons_sym_list_list_rev) =
+        List.fold_left add_constructors (ss, []) p_ind_list
+      in
+      let ind_list =
+        List.fold_left2
+          (fun acc ind_sym cons_sym_list -> (ind_sym,cons_sym_list)::acc)
+          []
+          ind_sym_list_rev cons_sym_list_list_rev
+      in
+      (* Compute data useful for generating the induction principles. *)
+      let cfg = Inductive.get_config ss pos in
+      let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
+      let ind_nb_params = List.length params in
+      let vs, env, ind_pred_map =
+        Inductive.create_ind_pred_map pos cfg ind_nb_params ind_list
+          a_str p_str x_str
+      in
+      (* Compute the induction principles. *)
+      let rec_typ_list_rev =
+        Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
+      in
+      (* Add the induction principles in the signature. *)
+      let rec_pos = shift 2 pos in (* after types and constructors *)
+      let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
+        let rec_name = Inductive.rec_name ind_sym in
+        if Sign.mem ss.signature rec_name then
+          fatal pos "Symbol %a already exists." uid rec_name;
+        let (ss, rec_sym) =
+          Console.out 2 (Color.gre "symbol %a : %a")
+            uid rec_name term rec_typ;
+          (* Add recursors in the signature, all at position [shift 2 pos]. *)
+          let id = Pos.make pos rec_name in
+          let r =
+            Sig_state.add_symbol ss expo Defin Eager false id rec_pos
+              rec_typ [] None
+          in sig_state := fst r; r
+        in
+        (ss, rec_sym::rec_sym_list)
+      in
+      let (ss, rec_sym_list) =
+        List.fold_left2 add_recursor (ss, [])
+          ind_sym_list_rev rec_typ_list_rev
+      in
+      (* Add recursor rules in the signature. *)
+      let add_rule pr =
+        let r = scope_rule false ss pr in
+        let r = Tool.Sr.check_rule pos r in
+        Sign.add_rule ss.signature r;
+        Console.out 2 (Color.gre "rule %a") sym_rule r
+      in
+      no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
+      List.iter Tree.update rec_sym_list;
+      (* Store the inductive structure in the signature *)
+      let ind_nb_types = List.length ind_list in
+      List.iter2
+        (fun (ind_sym, cons_sym_list) rec_sym ->
+          Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym
+            ind_nb_params ind_nb_types)
+        ind_list
+        rec_sym_list;
+      (ss, None, None)
 
   | P_symbol {p_sym_mod;p_sym_kw=_;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
               p_sym_prf;p_sym_def} ->
@@ -465,7 +465,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
      | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
      | true, _, Const, _ -> fatal pos "Definitions cannot be constant."
      | true, _, _, Sequen ->
-       fatal pos "Definitions cannot have matching strategies."
+         fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
     (* Scoping the definition and the type. *)
     let scope ?(typ=false) = scope_term ~typ pdata_prv ss Env.empty in
@@ -475,11 +475,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     let pt, t =
       match p_sym_trm with
       | Some pt ->
-        let pt =
-          if p_sym_arg = [] then pt
-          else let pos = Pos.(cat (pos_end p_sym_nam.pos) pt.pos) in
-            Pos.make pos (P_Abst(p_sym_arg, pt))
-        in Some pt, Some (scope pt)
+          let pt =
+            if p_sym_arg = [] then pt
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) pt.pos) in
+                 Pos.make pos (P_Abst(p_sym_arg, pt))
+          in Some pt, Some (scope pt)
       | None -> None, None
     in
     (* Desugaring of parameters, scoping of [p_sym_typ], and computation
@@ -493,11 +493,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           | Some pt -> Syntax.get_impl_term pt
         in None, impl
       | Some a ->
-        let a =
-          if p_sym_arg = [] then a
-          else let pos = Pos.(cat (pos_end p_sym_nam.pos) a.pos) in
-            Pos.make pos (P_Prod(p_sym_arg, a))
-        in Some (scope ~typ:true a), Syntax.get_impl_term a
+          let a =
+            if p_sym_arg = [] then a
+            else let pos = Pos.(cat (pos_end p_sym_nam.pos) a.pos) in
+                 Pos.make pos (P_Prod(p_sym_arg, a))
+          in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
@@ -541,45 +541,45 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
-          if finished ps then
-            fatal pe.pos "The proof is finished. Use 'end' instead.";
-          (* Admit all the remaining typing goals. *)
-          let admit_goal g =
-            match g with
-            | Unif _ -> fatal pos "Cannot admit unification goals."
-            | Typ gt ->
-              let m = gt.goal_meta in
-              match !(m.meta_value) with
-              | None -> Tactic.admit_meta ss p_sym_nam.pos m
-              | Some _ -> ()
-          in
-          List.iter admit_goal ps.proof_goals;
-          (* Add the symbol in the signature with a warning. *)
-          Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
-          wrn pe.pos "Proof admitted.";
-          (* Keep the definition only if the symbol is not opaque. *)
-          let d =
-            if opaq then None else
-              Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
-          in
-          (* Add the symbol in the signature. *)
-          fst (Sig_state.add_symbol
-                 ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+            if finished ps then
+              fatal pe.pos "The proof is finished. Use 'end' instead.";
+            (* Admit all the remaining typing goals. *)
+            let admit_goal g =
+              match g with
+              | Unif _ -> fatal pos "Cannot admit unification goals."
+              | Typ gt ->
+                let m = gt.goal_meta in
+                match !(m.meta_value) with
+                | None -> Tactic.admit_meta ss p_sym_nam.pos m
+                | Some _ -> ()
+            in
+            List.iter admit_goal ps.proof_goals;
+            (* Add the symbol in the signature with a warning. *)
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
+            wrn pe.pos "Proof admitted.";
+            (* Keep the definition only if the symbol is not opaque. *)
+            let d =
+              if opaq then None else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+            in
+            (* Add the symbol in the signature. *)
+            fst (Sig_state.add_symbol
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
         | P_proof_end ->
-          (* Check that the proof is indeed finished. *)
-          if not (finished ps) then
-            fatal pe.pos
-              ~err_desc:(Format.asprintf "Proof state:@.%a@." goals ps)
-              "The proof is not finished.";
-          (* Keep the definition only if the symbol is not opaque. *)
-          let d =
-            if opaq then None else
-              Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
-          in
-          (* Add the symbol in the signature. *)
-          Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
-          fst (Sig_state.add_symbol
-                 ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+            (* Check that the proof is indeed finished. *)
+            if not (finished ps) then
+              fatal pe.pos
+                ~err_desc:(Format.asprintf "Proof state:@.%a@." goals ps)
+                "The proof is not finished.";
+            (* Keep the definition only if the symbol is not opaque. *)
+            let d =
+              if opaq then None else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+            in
+            (* Add the symbol in the signature. *)
+            Console.out 2 (Color.gre "symbol %a : %a") uid id term a;
+            fst (Sig_state.add_symbol
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =
@@ -591,9 +591,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             let proof_goals =
               match t with
               | Some t ->
-                (* Refine the focused goal with the given term. *)
-                LibMeta.set p m (bind_mvar [||] t.elt);
-                proof_goals
+                  (* Refine the focused goal with the given term. *)
+                  LibMeta.set p m (bind_mvar [||] t.elt);
+                  proof_goals
               | _ -> Goal.of_meta m :: proof_goals
             in
             {proof_name = p_sym_nam; proof_term = Some m; proof_goals}
@@ -603,11 +603,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Tactic.tac_solve pos ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
-          "Some metavariables could not be solved: a proof must be given";
+        "Some metavariables could not be solved: a proof must be given";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in
-    (ss, Some pdata, qres)
+      (ss, Some pdata, qres)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
