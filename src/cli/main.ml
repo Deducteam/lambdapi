@@ -425,9 +425,9 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
             Common.Path.pp p id
     in
     if Timed.(!(sym.Core.Term.sym_rules)) = [] then
-      Common.Error.wrn None "symbol %s has no rule."
-        sym.Core.Term.sym_name;
-    Format.printf "%a" Tool.Tree_graphviz.to_dot sym
+      Common.Error.wrn None "Symbol %s has no rule."
+        sym.Core.Term.sym_name
+    else Format.printf "%a" Tool.Tree_graphviz.to_dot sym
 
 (*-------------------------------------------------------------------------*)
 (** deindex command *)
