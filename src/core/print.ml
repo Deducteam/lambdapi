@@ -184,9 +184,6 @@ let are_quant_args : term list -> bool = fun args ->
   | [b] -> is_abst b
   | _ -> false
 
-let env term ppf ts =
-  if Array.length ts > 0 then out ppf ".[%a]" (Array.pp term ";") ts
-
 let rec wrap idmap ppf t =
   match unfold t with
   | Abst _ | LLet _ | Appl _ -> out ppf "(%a)" (term_in idmap) t
@@ -200,7 +197,7 @@ and appl idmap ppf h ts =
 
 and postfix idmap ppf s args =
   match args with
-  | [] -> out ppf "("; sym ppf s; out ppf ")"
+  | [] -> out ppf "(%a)" sym s
   | [t] -> out ppf "%a %a" (wrap idmap) t sym s
   | t::ts ->
     out ppf "(%a %a)" (wrap idmap) t sym s;
@@ -257,6 +254,10 @@ and quantifier idmap ppf s ts =
 
 and meta ppf m = out ppf "?%d" m.meta_key
 
+and env idmap ppf ts =
+  if Array.length ts > 0 then
+    out ppf ".[%a]" (Array.pp (term_in idmap) ";") ts
+
 and head idmap ppf t =
   match unfold t with
   | Appl _ -> assert false
@@ -268,13 +269,12 @@ and head idmap ppf t =
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
   | Meta(m,e) ->
-    meta ppf m; if !print_meta_args then env (term_in idmap) ppf e
+    meta ppf m; if !print_meta_args then env idmap ppf e
   | Plac _ -> out ppf "_"
   | Patt(None,_,_) -> assert false
   | Patt(Some i,n,e) ->
-    if !print_pattern_names && n<>"" then
-      out ppf "$%s%a" n (env (term_in idmap)) e
-    else out ppf "$%d%a" i (env (term_in idmap)) e
+    if !print_pattern_names && n<>"" then out ppf "$%s%a" n (env idmap) e
+    else out ppf "$%d%a" i (env idmap) e
   | Bvar _ -> assert false
   | Abst(a,b)   ->
     if binder_occur b then
@@ -341,7 +341,7 @@ let term_in idmap ppf t =
 
 let term = term_in StrMap.empty
 
-let env = env term
+let env = env StrMap.empty
 
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
   let decl idmap ppf (x,t) = out ppf "%a:%a" var x (wrap idmap) t in
