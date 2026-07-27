@@ -38,13 +38,6 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 
 Proves the current goal if it is (an instance of) an hypothesis.
 
-.. _focus:
-
-``focus <n>``
--------------
-
-Move the n-th goal (n≥2) to position 1.
-
 .. _change:
 
 ``change``
@@ -59,6 +52,13 @@ Move the n-th goal (n≥2) to position 1.
 
 Always fails. It is useful when developing a proof to stop at some
 particular point.
+
+.. _focus:
+
+``focus``
+---------
+
+``focus n`` moves the n-th goal (n≥2) to position 1.
 
 .. _generalize:
 
