@@ -44,77 +44,101 @@ let parse_map_dir s =
 type handle =
   | NoArg of (unit -> unit)
   | Next of string * (string -> unit)
+  (* the option takes an argument that is the next argument *)
   | Suffix of string * (string -> unit)
+  (* the option takes an argument that is a suffix of the argument *)
 
 type opt =
-  { opt_name: string
-  ; opt_short: string option
+  { opt_name: string (* must start with "--" *)
+  ; opt_short: string option (* must start with "-" *)
   ; opt_desc: string
   ; opt_handle: handle }
 
-let find_option arg =
+(* [find_option arg options] returns [Some o] if [o] is an option in [options]
+   and [arg] is equal to the short or long name of [o]. *)
+let find_option (arg:string): opt list -> opt option =
   let rec find = function
     | [] -> None
     | o :: options ->
-        match o.opt_handle with
-        | Suffix _ ->
+      (*Common.Console.out 0 "arg: %s, option: %s" arg o.opt_name;*)
+      match o.opt_handle with
+      | Suffix _ ->
+        begin
+          match o.opt_short with
+          | None ->
             if Stdlib.String.starts_with ~prefix:o.opt_name arg then Some o
             else find options
-        | _ ->
-            let eq =
-              match o.opt_short with
-              | None -> arg = o.opt_name
-              | Some s -> arg = s || arg = o.opt_name
-            in
-            if eq then Some o else find options
+          | Some s ->
+            if Stdlib.String.starts_with ~prefix:s arg
+            || Stdlib.String.starts_with ~prefix:o.opt_name arg then Some o
+            else find options
+        end
+      | _ ->
+        let eq =
+          match o.opt_short with
+          | None -> arg = o.opt_name
+          | Some s -> arg = s || arg = o.opt_name
+        in
+        if eq then Some o else find options
   in find
 
-let parse_options options =
+let parse_options options args =
+  (*let out = Common.Console.out 0 in let open Common.Debug in
+  out "parse\noptions=%a\nargs=%a"
+    (D.list (fun ppf o -> D.string ppf o.opt_name)) options
+    (D.list D.string) args;*)
   let rec parse args =
     match args with
     | [] -> []
     | arg::other_args ->
-        if arg="" then Common.Error.fatal_no_pos "empty argument"
-        else if arg.[0] <> '-' then args
-        else
-          match find_option arg options with
-          | None -> Common.Error.fatal_no_pos "unknown option: %s" arg
-          | Some o ->
-              match o.opt_handle with
-              | NoArg h -> h(); parse other_args
-              | Suffix(_,h) ->
-                h (Lplib.String.remove_prefix o.opt_name arg);
-                parse other_args
-              | Next(_,h) ->
-                  match other_args with
-                  | [] ->
-                      Common.Error.fatal_no_pos
-                        "option %s has no argument" arg
-                  | arg::other_args -> h arg; parse other_args
-  in parse
+      if arg="" then Common.Error.fatal_no_pos "empty argument"
+      else if arg.[0] <> '-' then args
+      else
+        match find_option arg options with
+        | None -> Common.Error.fatal_no_pos "unknown option: %s" arg
+        | Some o ->
+          match o.opt_handle with
+          | NoArg h -> h(); parse other_args
+          | Suffix(_,h) ->
+            let v =
+              match o.opt_short with
+              | None -> Lplib.String.remove_prefix o.opt_name arg
+              | Some s ->
+                if Stdlib.String.starts_with ~prefix:o.opt_name arg then
+                  Lplib.String.remove_prefix o.opt_name arg
+                else Lplib.String.remove_prefix s arg
+            in
+            h v; parse other_args
+          | Next(_,h) ->
+            match other_args with
+            | [] ->
+              Common.Error.fatal_no_pos
+                "option %s has no argument" arg
+            | arg::other_args -> h arg; parse other_args
+  in parse args
 
 let print_option o =
   match o.opt_short with
   | None ->
-      begin
-        match o.opt_handle with
-        | NoArg _ ->
-            Printf.printf "%s%s%s\n  %s" b o.opt_name r o.opt_desc
-        | Next(arg,_) ->
-            Printf.printf "%s%s %s%s\n  %s" b o.opt_name arg r o.opt_desc
-        | Suffix(arg,_) ->
-            Printf.printf "%s%s%s%s\n  %s" b o.opt_name arg r o.opt_desc
-      end
-  | Some s ->
+    begin
       match o.opt_handle with
       | NoArg _ ->
-          Printf.printf "%s%s, %s%s\n  %s" b s o.opt_name r o.opt_desc
+        Printf.printf "%s%s%s\n  %s" b o.opt_name r o.opt_desc
       | Next(arg,_) ->
-          Printf.printf "%s%s %s, %s %s%s\n  %s"
-            b s arg o.opt_name arg r o.opt_desc
+        Printf.printf "%s%s %s%s\n  %s" b o.opt_name arg r o.opt_desc
       | Suffix(arg,_) ->
-          Printf.printf "%s%s%s, %s%s%s\n  %s"
-            b s arg o.opt_name arg r o.opt_desc
+        Printf.printf "%s%s%s%s\n  %s" b o.opt_name arg r o.opt_desc
+    end
+  | Some s ->
+    match o.opt_handle with
+    | NoArg _ ->
+      Printf.printf "%s%s, %s%s\n  %s" b s o.opt_name r o.opt_desc
+    | Next(arg,_) ->
+      Printf.printf "%s%s %s, %s %s%s\n  %s"
+        b s arg o.opt_name arg r o.opt_desc
+    | Suffix(arg,_) ->
+      Printf.printf "%s%s%s, %s%s%s\n  %s"
+        b s arg o.opt_name arg r o.opt_desc
 
 (*--------------------------------------------------------------------------*)
 (** General command line options *)
@@ -341,7 +365,7 @@ let cmd_check =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | f::files ->
-      Parsing.Package.apply_config (Filename.dirname f);
+      Parsing.Package.apply_config f;
       let time = Timed.Time.save() in
       ignore (compile f);
       let handle file =
@@ -378,26 +402,26 @@ let cmd_dtree =
   | [] -> Common.Error.fatal_no_pos "qualified identifier missing"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-      let (p,id) as qid = Parsing.Parser.qident_of_string s in
-      Parsing.Package.apply_config (Sys.getcwd());
-      let sym =
-        Timed.(Common.Console.verbose := 0);
-        let sign = sign_of_path p in
-        if !ghost then
-          try Core.Sign.find Core.Sign.Ghost.sign id
-          with Not_found ->
-            Common.Error.fatal_no_pos "Unknown ghost symbol %s." id
-        else
-          try Core.Sig_state.find_sym ~prt:true ~prv:true
-                (Core.Sig_state.of_sign sign) (Common.Pos.none qid)
-          with Not_found ->
-            Common.Error.fatal_no_pos "Unknown symbol %a.%s."
-              Common.Path.pp p id
-      in
-      if Timed.(!(sym.Core.Term.sym_rules)) = [] then
-        Common.Error.wrn None "symbol %s has no rule."
-          sym.Core.Term.sym_name;
-      Format.printf "%a" Tool.Tree_graphviz.to_dot sym
+    let (p,id) as qid = Parsing.Parser.qident_of_string s in
+    Parsing.Package.apply_config (Sys.getcwd());
+    let sym =
+      Timed.(Common.Console.verbose := 0);
+      let sign = sign_of_path p in
+      if !ghost then
+        try Core.Sign.find Core.Sign.Ghost.sign id
+        with Not_found ->
+          Common.Error.fatal_no_pos "Unknown ghost symbol %s." id
+      else
+        try Core.Sig_state.find_sym ~prt:true ~prv:true
+              (Core.Sig_state.of_sign sign) (Common.Pos.none qid)
+        with Not_found ->
+          Common.Error.fatal_no_pos "Unknown symbol %a.%s."
+            Common.Path.pp p id
+    in
+    if Timed.(!(sym.Core.Term.sym_rules)) = [] then
+      Common.Error.wrn None "symbol %s has no rule."
+        sym.Core.Term.sym_name;
+    Format.printf "%a" Tool.Tree_graphviz.to_dot sym
 
 (*-------------------------------------------------------------------------*)
 (** deindex command *)

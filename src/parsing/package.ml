@@ -68,7 +68,6 @@ let read : string -> config_data = fun fname ->
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
 let find_config : string -> string option = fun fname ->
-  let fname = Filename.normalize fname in
   let rec find dir =
     let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
@@ -77,13 +76,13 @@ let find_config : string -> string option = fun fname ->
                                 find (Filename.dirname dir)
     | exception Sys_error(_) -> None
   in
-  find fname
+  find (Filename.normalize fname)
 
 (** [apply_config fname] attempts to find a configuration file from the
    directory or file [fname], and applies the corresponding configuration. *)
 let apply_config : string -> unit = fun fname ->
   match find_config fname with
-  | None           -> ()
+  | None           -> wrn None "Found no file \"%s\"." pkg_file
   | Some(cfg_file) ->
   let {root_path; _} = read cfg_file in
   let root = Filename.dirname cfg_file in
