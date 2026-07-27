@@ -189,9 +189,9 @@ let valid_extensions : string list =
   [lp_src_extension; dk_src_extension; obj_extension]
 
 (** [path_of_file escape fname] computes the module path that corresponds to
-   the filename [fname]. [escape] converts irregular path elements into
-   escaped identifiers if needed.
-@raise [Fatal] if [fname] doesn't have a valid extension. *)
+    the filename [fname]. [escape] converts irregular path elements into
+    escaped identifiers if needed. Raises [Fatal] if [fname] doesn't have a
+    valid extension. *)
 let path_of_file : (string -> string) -> string -> Path.t =
   fun escape fname ->
   (* Sanity check: source file extension. *)
@@ -212,7 +212,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
       match !mapping with
       | None       -> mapping := Some(mp, fp)
       | Some(_, p) ->
-          if String.(length p < length fp) then mapping := Some(mp, p)
+          if String.(length p < length fp) then mapping := Some(mp, fp)
   in
   LibMap.iter f !lib_mappings;
   (* Fail if there is none. *)
@@ -220,7 +220,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
     | None ->
-        fatal_msg "%s cannot be mapped under the library root.@." fname;
+        fatal_msg "\"%s\" cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in
@@ -242,3 +242,14 @@ let install_path : string -> string = fun fname ->
   match Stdlib.(!lib_root) with
   | None -> assert false
   | Some(p) -> List.fold_left Filename.concat p mp ^ ext
+
+(** Restore library mappings and console state after running [f x]. *)
+let restore_after f x =
+  let lm = Stdlib.ref !lib_mappings in
+  Console.State.push();
+  let restore() =
+    lib_mappings := Stdlib.(!lm);
+    Console.State.pop()
+  in
+  try let res = f x in restore(); res
+  with e -> restore(); raise e

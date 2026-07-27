@@ -1,6 +1,6 @@
 // classical logic
 
-require open tests.OK.Set tests.OK.Prop tests.OK.FOL;
+require open tests.OK.FOL;
 
 symbol em p : π (p ∨ ¬ p); // excluded middle
 
@@ -18,7 +18,7 @@ assume p q pq; apply ∨ₑ (em p)
 { assume np; refine ∨ᵢ₁ np }
 end;
 
-opaque symbol ∃¬ᵢ a p : π (¬ (∀ p)) → π (`∃ x : τ a, ¬ (p x)) ≔
+opaque symbol ∃¬ᵢ a p : π (¬ (`∀ x, p x)) → π (`∃ x : τ a, ¬ (p x)) ≔
 begin
 assume a p not_all_p; apply ∨ₑ (em (`∃ x, ¬ (p x)))
 { assume h; apply h }

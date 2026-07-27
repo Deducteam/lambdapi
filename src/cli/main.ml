@@ -55,31 +55,17 @@ let float_of_string s =
   | Some k when k >= 0. -> k
   | _ -> Common.Error.fatal_no_pos "invalid float number"
 
-(** [remove_prefix p s] returns the subtring of [s] starting at position
-    [String.length p]. *)
-let remove_prefix prefix s =
-  let n = String.length prefix in
-  String.sub s n (String.length s - n)
-
-let _ = assert (remove_prefix "--debug=" "--debug=tu" = "tu")
-
-let parse_path s =
-  try Parsing.Parser.path_of_string s
-  with Common.Error.Fatal(_,m) -> raise (Common.Error.Fatal(None,m))
-
-let parse_qident s =
-  try Parsing.Parser.qident_of_string s
-  with Common.Error.Fatal(_,m) -> raise (Common.Error.Fatal(None,m))
-
+(*FIXME: move to lplib/string.ml *)
 (** [split_first c s] returns [Some(s1,s2)] such that [s=s1^c^s2] and [c] does
     not occur in [s1], and [None] otherwise. *)
 let split_first c s =
-  let n = String.length s in
+  let module S = Stdlib.String in
+  let n = S.length s in
   let i = ref 0 in
   while !i < n && s.[!i] != c do incr i done;
   let i = !i in
   if i = n then None
-  else Some (String.sub s 0 i, String.sub s (i + 1) (n - i - 1))
+  else Some (S.sub s 0 i, S.sub s (i + 1) (n - i - 1))
 
 let _ = assert (split_first ':' "ab:cd" = Some("ab","cd"))
 let _ = assert (split_first ':' ":cd" = Some("","cd"))
@@ -87,7 +73,8 @@ let _ = assert (split_first ':' "ab:" = Some("ab",""))
 
 let parse_map_dir s =
   match split_first ':' s with
-  | Some(s,dir) -> Common.Library.add_mapping (parse_path s, dir)
+  | Some(s,dir) ->
+    Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
   | None -> Common.Error.fatal_no_pos "wrong argument: %s" s
 
 (*-------------------------------------------------------------------------*)
@@ -111,7 +98,7 @@ let find_option arg =
     | o :: options ->
         match o.opt_handle with
         | Suffix _ ->
-            if String.starts_with ~prefix:o.opt_name arg then Some o
+            if Stdlib.String.starts_with ~prefix:o.opt_name arg then Some o
             else find options
         | _ ->
             let eq =
@@ -136,7 +123,8 @@ let parse_options options =
               match o.opt_handle with
               | NoArg h -> h(); parse other_args
               | Suffix(_,h) ->
-                  h (remove_prefix o.opt_name arg); parse other_args
+                h (Lplib.String.remove_prefix o.opt_name arg);
+                parse other_args
               | Next(_,h) ->
                   match other_args with
                   | [] ->
@@ -180,7 +168,7 @@ let opt_debug =
 {|Enables the debugging flags specified in FLAGS. Every character of FLAGS
   correspond to a flag. The available values are:|}
 ^ let f (k,d) = Printf.sprintf "\n    %c: %s" k d in
-  String.concat "" (List.map f (Common.Logger.log_summary())) }
+  Stdlib.String.concat "" (List.map f (Common.Logger.log_summary())) }
 
 let opt_verbose =
   { opt_name = "--verbose="
@@ -370,10 +358,11 @@ let add_command c =
 (*-------------------------------------------------------------------------*)
 
 let sign_of_path p =
+  let ss = Core.Sig_state.of_sign (Core.Sign.create []) in
   match !timeout with
-  | None -> Handle.Compile.compile p
+  | None -> Handle.Compile.compile ss p
   | Some i ->
-      try Lplib.Extra.timeout i Handle.Compile.compile p
+      try Lplib.Extra.timeout i (Handle.Compile.compile ss) p
       with Lplib.Extra.Timeout ->
         Common.Error.fatal_no_pos "timeout for checking %a." Common.Path.pp p
 
@@ -429,7 +418,7 @@ let cmd_dtree =
   | [] -> Common.Error.fatal_no_pos "qualified identifier missing"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-      let (p,id) as qid = parse_qident s in
+      let (p,id) as qid = Parsing.Parser.qident_of_string s in
       Parsing.Package.apply_config (Sys.getcwd());
       let sym =
         Timed.(Common.Console.verbose := 0);
@@ -553,7 +542,7 @@ let opt_no_implicits =
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
                      check_output [SttCoq;RawCoq];
-                     Export.Coq.use_implicits := false)
+                     Export.Stt.use_implicits := false)
   ; opt_desc = "In case input symbols have no implicit arguments." }
 
 let opt_use_notations =
@@ -561,7 +550,7 @@ let opt_use_notations =
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
                      check_output [SttCoq;RawCoq];
-                     Export.Coq.use_notations := true)
+                     Export.Stt.use_notations := true)
   ; opt_desc = "Generate Rocq code using notations for connectors." }
 
 let export_options =
@@ -601,20 +590,20 @@ let cmd_export =
       end;
       let parse = Parsing.Parser.parse_file in
       match output with
-      | Lp -> Parsing.Pretty.ast Format.std_formatter (parse file)
+      | Lp -> Parsing.Pretty.commands Format.std_formatter (parse file)
       | Dk -> Export.Dk.sign (compile file)
       | RawDk -> Export.Rawdk.print (parse file)
       | Hrs -> Export.Hrs.sign Format.std_formatter (compile file)
       | Xtc -> Export.Xtc.sign Format.std_formatter (compile file)
       | RawCoq ->
-          Option.iter Export.Coq.set_renaming !renaming;
+          Option.iter Export.Stt.set_renaming !renaming;
           Export.Coq.print (parse file)
       | SttCoq ->
-          Export.Coq.stt := true;
-          Option.iter Export.Coq.set_renaming !renaming;
-          Option.iter Export.Coq.set_encoding !encoding;
-          Option.iter Export.Coq.set_mapping !mapping;
-          Option.iter Export.Coq.set_requiring !requiring;
+          Export.Stt.stt := true;
+          Option.iter Export.Stt.set_renaming !renaming;
+          Option.iter Export.Stt.set_encoding !encoding;
+          Option.iter Export.Stt.set_mapping !mapping;
+          Option.iter Export.Stt.set_requiring !requiring;
           Export.Coq.print (parse file)
 
 (*-------------------------------------------------------------------------*)
@@ -667,7 +656,7 @@ let cmd_init =
   | [] -> Common.Error.fatal_no_pos "no module path provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-      let root_path = parse_path s in
+      let root_path = Parsing.Parser.path_of_string s in
       (* Find out the package name, create the directory. *)
       let pkg_dir =
         match List.rev root_path with
@@ -825,10 +814,11 @@ let cmd_search =
         | None -> Core.Sig_state.dummy
         | Some r ->
             Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
-            Core.Sig_state.of_sign (sign_of_path (parse_path r))
+            Core.Sig_state.of_sign
+              (sign_of_path (Parsing.Parser.path_of_string r))
       in
       let dbpath = !Tool.Indexing.the_dbpath in
-      Printf.printf "%s" (Tool.Indexing.search_cmd_txt ss s ~dbpath)
+      Tool.Indexing.search_cmd_txt ss ~dbpath Format.std_formatter s
 
 (*-------------------------------------------------------------------------*)
 (** uninstall command *)
@@ -902,7 +892,8 @@ let cmd_websearch =
         | None -> Core.Sig_state.dummy
         | Some r ->
             Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
-            Core.Sig_state.of_sign (sign_of_path (parse_path r))
+            Core.Sig_state.of_sign
+              (sign_of_path (Parsing.Parser.path_of_string r))
       in
       let header =
         match !header with

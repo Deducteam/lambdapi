@@ -30,6 +30,17 @@ let is_prefix : string -> string -> bool =
   let len_s = S.length s in
   len_p <= len_s && S.sub s 0 len_p = p
 
+let remove_prefix (prefix:string) (s:string): string =
+  if is_prefix prefix s then
+    let len_p = S.length prefix in
+    S.sub s len_p (S.length s - len_p)
+  else s
+
+let _ =
+  assert (remove_prefix "" "a" = "a");
+  assert (remove_prefix "a" "ba" = "ba");
+  assert (remove_prefix "a" "ab" = "b")
+
 let for_all : (char -> bool) -> string -> bool =
  fun p s ->
   let len_s = S.length s in
@@ -46,12 +57,19 @@ let is_valid_utf_8 s = B.is_valid_utf_8 (bos s)
 let string_of_file f =
   let ic = open_in f in
   let n = in_channel_length ic in
-  let s = Bytes.create n in
+  let s = B.create n in
   really_input ic s 0 n;
   close_in ic;
-  Bytes.to_string s
+  B.to_string s
 
 let is_string_literal (s:string): bool =
   let n = S.length s in n >= 2 && S.get s 0 = '"' && S.get s (n-1) = '"'
 
+let add_quotes (n:string): string = "\""^n^"\""
+
 let remove_quotes (n:string): string = S.sub n 1 (S.length n - 2)
+
+let _ =
+  let f s = remove_quotes (add_quotes s) = s in
+  assert (f "");
+  assert (f "ab")

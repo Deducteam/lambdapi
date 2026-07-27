@@ -1,4 +1,4 @@
-(** Translate the parser-level AST to Dedukti. *)
+(** Translate parser-level commands to Dedukti. *)
 
 open Lplib open Base open Extra
 open Common open Pos open Error
@@ -6,12 +6,9 @@ open Parsing open Syntax
 open Format
 open Core open Eval open Term
 
-let raw_ident : string pp = fun ppf s -> Dk.ident ppf s
+let ident : p_ident pp = fun ppf {elt;_} -> Dk.ident ppf elt
 
-let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
-
-let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
-  out ppf "%a%a" Dk.path mp raw_ident s
+let qident : p_qident pp = fun ppf {elt;_} -> Dk.qid ppf elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -81,9 +78,9 @@ and param : p_term option -> string -> p_ident option pp = fun a sep ppf id ->
 and params : string -> p_params pp = fun sep ppf (ids,a,_) ->
   match ids, a with
   | None::_, None ->
-      fatal_no_pos "Cannot translate \"_\" parameters with no type."
+      fatal_no_pos "Cannot translate \"_\" binder parameters with no type."
   | Some {pos;_}::_, None ->
-      fatal pos "Cannot translate parameters with no type."
+      fatal pos "Cannot translate binder parameters with no type."
   | _ -> List.iter (out ppf "%a" (param a sep)) ids
 
 and params_list : string -> p_params list pp = fun sep ppf ->
@@ -200,8 +197,9 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   match elt with
   | P_query q -> query ppf q
   | P_require(None,ps) ->
-      List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.path elt) ps
-  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg; p_sym_typ;
+      List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.mident elt) ps
+  | P_symbol{p_sym_prf=Some(_,{elt=P_proof_abort;_}); _} -> ()
+  | P_symbol{p_sym_mod; p_sym_kw=_; p_sym_nam=n; p_sym_arg; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
       let ms = partition_modifiers p_sym_mod in
       begin match get_ac_typ pos ms p_sym_arg p_sym_typ with
@@ -234,16 +232,16 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_builtin _
   | P_unif_rule _
   | P_coercion _
-    -> () (*FIXME?*)
-  | P_inductive _
+    -> ()
+  | P_inductive _ (*FIXME*)
   | P_open _
   | P_require_as _
-  | P_notation _ (* FIXME: accept quantifier notations *)
+  | P_notation _
   | P_opaque _
   | P_require(Some _,_)
   | P_symbol{p_sym_prf=Some _; _}
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 
-let ast : ast pp = fun ppf -> Stream.iter (command ppf)
+let commands : p_commands pp = fun ppf -> Stream.iter (command ppf)
 
-let print : ast -> unit = ast std_formatter
+let print : p_commands -> unit = commands std_formatter

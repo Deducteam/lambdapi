@@ -2,7 +2,7 @@
 
 by Quentin Garchery (May 2021). */
 
-require open tests.OK.Set tests.OK.Prop tests.OK.FOL tests.OK.Eq tests.OK.Pos tests.OK.Bool;
+require open tests.OK.Pos;
 
 inductive ℤ : TYPE ≔ // \BbbZ
 | Z0 : ℤ
@@ -37,17 +37,17 @@ with isZneg (Zneg _) ↪ true;
 
 // Discriminate constructors
 
-symbol Zpos≠Z0 p : π (Zpos p ≠ Z0) ≔
+opaque symbol Zpos≠Z0 p : π (Zpos p ≠ Z0) ≔
 begin
   assume n h; refine ind_eq h (λ n, istrue(isZ0 n)) ⊤ᵢ
 end;
 
-symbol Zneg≠Z0 p : π (Zneg p ≠ Z0) ≔
+opaque symbol Zneg≠Z0 p : π (Zneg p ≠ Z0) ≔
 begin
   assume n h; refine ind_eq h (λ n, istrue(isZ0 n)) ⊤ᵢ
 end;
 
-symbol Zpos≠Zneg p q : π (Zpos p ≠ Zneg q) ≔
+opaque symbol Zpos≠Zneg p q : π (Zpos p ≠ Zneg q) ≔
 begin
   assume x y h; refine ind_eq h (λ n, istrue(isZneg n)) ⊤ᵢ
 end;
@@ -88,17 +88,17 @@ with pred_double (Zneg $p) ↪ Zneg (I $p);
 
 // Interaction of opp and doubling functions
 
-symbol double_opp z : π (double (— z) = — double z) ≔
+opaque symbol double_opp z : π (double (— z) = — double z) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol succ_double_opp z : π (succ_double (— z) = — pred_double z) ≔
+opaque symbol succ_double_opp z : π (succ_double (— z) = — pred_double z) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol pred_double_opp z : π (pred_double (— z) = — succ_double z) ≔
+opaque symbol pred_double_opp z : π (pred_double (— z) = — succ_double z) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
@@ -117,7 +117,7 @@ with sub H      (I $q) ↪ Zneg (O $q)
 with sub H      (O $q) ↪ Zneg (pos_pred_double $q)
 with sub H       H     ↪ Z0;
 
-symbol sub_same z : π (sub z z = Z0) ≔
+opaque symbol sub_same z : π (sub z z = Z0) ≔
 begin
   induction
    { assume x xrec; simplify; rewrite xrec; reflexivity }
@@ -125,7 +125,7 @@ begin
    { reflexivity }
 end;
 
-symbol sub_opp x y : π (— sub x y = sub y x) ≔
+opaque symbol sub_opp x y : π (— sub x y = sub y x) ≔
 begin
   induction
   // case I
@@ -150,15 +150,24 @@ symbol + : ℤ → ℤ → ℤ;
 notation + infix right 20;
 
 rule Z0      + $y      ↪ $y
-with $x      + Z0      ↪ $x
+with Zpos $x + Z0      ↪ Zpos $x
+with Zneg $x + Z0      ↪ Zneg $x
 with Zpos $x + Zpos $y ↪ Zpos (add $x $y)
 with Zpos $x + Zneg $y ↪ sub $x $y
 with Zneg $x + Zpos $y ↪ sub $y $x
 with Zneg $x + Zneg $y ↪ Zneg (add $x $y);
 
+opaque symbol +Z0 x : π (x + Z0 = x) ≔
+begin
+  induction
+    {reflexivity}
+    {reflexivity}
+    {reflexivity} 
+end;
+
 // Interaction of addition with opposite
 
-symbol distr_—_+ x y : π (— (x + y) = — x + — y) ≔
+opaque symbol distr_—_+ x y : π (— (x + y) = — x + — y) ≔
 begin
   induction
   // case Z0
@@ -179,7 +188,7 @@ end;
 
 // Commutativity of addition
 
-symbol +_com x y : π (x + y = y + x) ≔
+opaque symbol +_com x y : π (x + y = y + x) ≔
 begin
   induction
   // case Z0
@@ -200,32 +209,32 @@ end;
 
 // Interaction of succ and doubling functions
 
-symbol pred_double_succ x : π (pred_double (x + Zpos H) = succ_double x) ≔
+opaque symbol pred_double_succ x : π (pred_double (x + Zpos H) = succ_double x) ≔
 begin
   induction
    { reflexivity }
-   { assume x; simplify; rewrite pos_pred_double_succ; reflexivity }
+   { assume x; simplify; rewrite addnH; rewrite pos_pred_double_succ; reflexivity }
    { induction { reflexivity } { reflexivity } { reflexivity } }
 end;
 
-symbol succ_pred_double x : π (pred_double x + Zpos H = double x) ≔
+opaque symbol succ_pred_double x : π (pred_double x + Zpos H = double x) ≔
 begin
   induction
    { reflexivity }
-   { assume x; simplify; rewrite succ_pos_pred_double; reflexivity }
+   { assume x; simplify; rewrite addnH; rewrite succ_pos_pred_double; reflexivity }
    { reflexivity }
 end;
 
-symbol succ_double_carac x : π (succ_double x = double x + Zpos H) ≔
+opaque symbol succ_double_carac x : π (succ_double x = double x + Zpos H) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol double_succ x : π (double (x + Zpos H) = succ_double x + Zpos H) ≔
+opaque symbol double_succ x : π (double (x + Zpos H) = succ_double x + Zpos H) ≔
 begin
   induction
    { reflexivity }
-   { reflexivity }
+   { assume n; simplify; rewrite addnH; reflexivity }
    { induction { reflexivity } { reflexivity } { reflexivity } }
 end;
 
@@ -235,7 +244,7 @@ symbol - x y ≔ x + — y;
 
 notation - infix left 20;
 
-symbol -_same z : π (z + — z = Z0) ≔
+opaque symbol -_same z : π (z + — z = Z0) ≔
 begin
   induction
    { reflexivity }
@@ -245,7 +254,7 @@ end;
 
 // Associativity
 
-symbol sub_succ x y : π (sub (succ x) y = sub x y + Zpos H) ≔
+opaque symbol sub_succ x y : π (sub (succ x) y = sub x y + Zpos H) ≔
 begin
   induction
   // case I
@@ -260,7 +269,7 @@ begin
     induction
       { assume y h; simplify; rewrite left succ_pred_double; reflexivity }
       { assume y h; simplify; rewrite succ_double_carac; reflexivity }
-      { simplify; rewrite succ_pos_pred_double; reflexivity } }
+      { simplify; rewrite addnH; rewrite succ_pos_pred_double; reflexivity } }
   // case H
   { induction
      { induction { reflexivity } { reflexivity } { reflexivity } }
@@ -268,26 +277,26 @@ begin
      { reflexivity } }
 end;
 
-symbol add_Zpos_succ x p : π (x + Zpos (succ p) = (x + Zpos p) + Zpos H) ≔
+opaque symbol add_Zpos_succ x p : π (x + Zpos (succ p) = (x + Zpos p) + Zpos H) ≔
 begin
   induction
-   { reflexivity }
-   { assume x p; simplify; rewrite add_succ_right; reflexivity }
+   { assume n; simplify; rewrite addnH; reflexivity}
+   { assume x p; simplify; rewrite add_succ_right; rewrite addnH; reflexivity }
    { assume x p; simplify; rewrite sub_succ; reflexivity }
 end;
 
-symbol sub_add_Zpos a b c : π (sub a b + Zpos c = sub (add a c) b) ≔
+opaque symbol sub_add_Zpos a b c : π (sub a b + Zpos c = sub (add a c) b) ≔
 begin
   assume a b c;
   refine ind_ℙeano (λ c, sub a b + Zpos c = sub (add a c) b) _ _ c
   // case H
-  { simplify; rewrite sub_succ; reflexivity }
+  { simplify; rewrite addnH; rewrite sub_succ; reflexivity }
   // case succ
   { assume r rrec; rewrite add_Zpos_succ; rewrite rrec;
     rewrite add_succ_right; rewrite sub_succ; reflexivity }
 end;
 
-symbol sub_add_Zneg a b c : π (sub a b + Zneg c = sub a (add b c)) ≔
+opaque symbol sub_add_Zneg a b c : π (sub a b + Zneg c = sub a (add b c)) ≔
 begin
   assume a b c;
   rewrite left sub_opp (add b c) a;
@@ -295,7 +304,7 @@ begin
   rewrite distr_—_+; rewrite sub_opp; reflexivity;
 end;
 
-symbol +_assoc x y z : π ((x + y) + z = x + (y + z)) ≔
+opaque symbol +_assoc x y z : π ((x + y) + z = x + (y + z)) ≔
 begin
   induction
   { reflexivity }
@@ -313,7 +322,7 @@ begin
 
      { assume y;
        induction
-         { reflexivity }
+         { rewrite +Z0; rewrite +Z0; reflexivity}
          // case Zpos - Zneg - Zpos
          { assume z; simplify; rewrite sub_add_Zpos; rewrite +_com;
            rewrite sub_add_Zpos; rewrite add_com; reflexivity }
@@ -325,7 +334,7 @@ begin
       { reflexivity }
       { assume y;
         induction
-          { reflexivity }
+          { simplify; rewrite +Z0; reflexivity }
           // case Zneg - Zpos - Zpos
           { assume z; simplify; rewrite sub_add_Zpos; reflexivity }
           // case Zneg - Zpos - Zneg
@@ -356,11 +365,16 @@ with Zpos $p ≐ Zpos $q ↪ compare $p $q
 with Zpos _  ≐ Zneg _  ↪ Gt
 with Zneg _  ≐ Z0      ↪ Lt
 with Zneg _  ≐ Zpos _  ↪ Lt
-with Zneg $p ≐ Zneg $q ↪ compare $q $p;
+with Zneg $p ≐ Zneg $q ↪ opp (compare $p $q);
+
+symbol Zneg≐ p q : π ((Zneg p ≐ Zneg q) = compare q p) ≔
+begin
+  assume p q; rewrite compare_com; reflexivity
+end;
 
 // ≐ decides the equality of integers
 
-symbol ≐_decides x y : π (x ≐ y = Eq ⇒ x = y) ≔
+opaque symbol ≐_decides x y : π (x ≐ y = Eq ⇒ x = y) ≔
 begin
   induction
   // case Z0
@@ -379,12 +393,15 @@ begin
     induction
      { assume H; apply ⊥ₑ; refine Lt≠Eq H }
      { assume y H; apply ⊥ₑ; refine Lt≠Eq H }
-     { assume y H; rewrite compare_decides y x H; reflexivity } }
+     { assume y H;
+       have H' : π (compare y x = Eq)
+       { refine ind_eq (eq_sym (Zneg≐ x y)) (λ c, c = Eq) H };
+       rewrite compare_decides y x H'; reflexivity } }
 end;
 
 // Commutative properties of ≐
 
-symbol ≐_com x y : π (x ≐ y = opp (y ≐ x)) ≔
+opaque symbol ≐_com x y : π (x ≐ y = opp (y ≐ x)) ≔
 begin
   induction
   // case Z0
@@ -403,7 +420,7 @@ begin
      { assume y; simplify; rewrite compare_acc_com; reflexivity } }
 end;
 
-symbol ≐_opp x y : π (— x ≐ — y = opp (x ≐ y)) ≔
+opaque symbol ≐_opp x y : π (— x ≐ — y = opp (x ≐ y)) ≔
 begin
   induction
   // case Z0
@@ -419,43 +436,43 @@ begin
     induction
       { reflexivity }
       { reflexivity }
-      { assume y; simplify; rewrite compare_acc_com; reflexivity } }
+      { assume y; simplify; rewrite opp_idem; reflexivity } }
 end;
 
 // General results
 
-symbol simpl_right x a : π ((x + a) - a = x) ≔
+opaque symbol simpl_right x a : π ((x + a) - a = x) ≔
 begin
   assume x a; simplify; rewrite +_assoc;
-  rewrite -_same; reflexivity;
+  rewrite -_same; rewrite +Z0; reflexivity;
 end;
 
-symbol simpl_inv_right x a : π ((x - a) + a = x) ≔
+opaque symbol simpl_inv_right x a : π ((x - a) + a = x) ≔
 begin
   assume x a; simplify; rewrite +_assoc;
-  rewrite .[— a + a] +_com; rewrite -_same; reflexivity;
+  rewrite .[— a + a] +_com; rewrite -_same; rewrite +Z0; reflexivity;
 end;
 
 // ≐ with 0
 
-symbol ≐_double x : π ((double x ≐ Z0) = (x ≐ Z0)) ≔
+opaque symbol ≐_double x : π ((double x ≐ Z0) = (x ≐ Z0)) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol ≐_pred_double x :
+opaque symbol ≐_pred_double x :
   π (pred_double x ≐ Z0 = case_Comp (x ≐ Z0) Lt Lt Gt) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol ≐_succ_double x :
+opaque symbol ≐_succ_double x :
   π (succ_double x ≐ Z0 = case_Comp (x ≐ Z0) Gt Lt Gt) ≔
 begin
   induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
-symbol ≐_pos_sub x y : π ((sub x y ≐ Z0) = compare x y) ≔
+opaque symbol ≐_pos_sub x y : π ((sub x y ≐ Z0) = compare x y) ≔
 begin
   induction
   // case I
@@ -476,7 +493,7 @@ begin
   { induction { reflexivity } { reflexivity } { reflexivity } }
 end;
 
-symbol ≐_sub x y : π ((x ≐ y) = (x + — y ≐ Z0)) ≔
+opaque symbol ≐_sub x y : π ((x ≐ y) = (x + — y ≐ Z0)) ≔
 begin
   induction
   // case Z0
@@ -492,12 +509,12 @@ begin
     induction
      { reflexivity }
      { reflexivity }
-     { assume y; simplify; rewrite ≐_pos_sub; reflexivity } }
+     { assume y; simplify; rewrite ≐_pos_sub; rewrite compare_com; reflexivity } }
 end;
 
 // Compatibility of comparison with the addition
 
-symbol ≐_compat_add x y z : π ((x ≐ y) = (x + z ≐ y + z)) ≔
+opaque symbol ≐_compat_add x y z : π ((x ≐ y) = (x + z ≐ y + z)) ≔
 begin
   assume x y z;
   rewrite ≐_sub; rewrite .[x in _ = x] ≐_sub;
@@ -520,7 +537,7 @@ notation ≥ infix 10;
 symbol > x y ≔ ¬ (x ≤ y);
 notation > infix 10;
 
-symbol <_≤ x y : π (x < y ⇒ x ≤ y) ≔
+opaque symbol <_≤ x y : π (x < y ⇒ x ≤ y) ≔
 begin
   assume x y;
   refine ind_Comp (λ u, istrue(isLt u) ⇒ istrue(isGt u) ⇒ ⊥) _ _ _ (x ≐ y)
@@ -531,7 +548,7 @@ end;
 
 // Compatibility of directional comparison operators
 
-symbol ≤_compat_add x y a : π (x ≤ y ⇒ x + a ≤ y + a) ≔
+opaque symbol ≤_compat_add x y a : π (x ≤ y ⇒ x + a ≤ y + a) ≔
 begin
   assume x y a; simplify;
   assume H; refine fold_⇒ _; rewrite ≐_sub;
@@ -539,19 +556,19 @@ begin
   rewrite .[y + a] +_com; rewrite distr_—_+;
   rewrite left +_assoc a (— a) (— y); rewrite -_same;
   rewrite left +_assoc x Z0 (— y); simplify; refine fold_⇒ _;
-  rewrite left ≐_sub x y; refine H;
+  rewrite +Z0; rewrite left ≐_sub x y; refine H;
 end;
 
-symbol <_compat_add x y a : π (x < y ⇒ x + a < y + a) ≔
+opaque symbol <_compat_add x y a : π (x < y ⇒ x + a < y + a) ≔
 begin
   assume x y a; simplify; assume H; rewrite ≐_sub;
   rewrite +_assoc; rewrite .[y + a] +_com;
   rewrite distr_—_+; rewrite left +_assoc a (— a) (— y);
-  rewrite -_same; rewrite left +_assoc;
-  simplify; rewrite left ≐_sub; refine H;
+  rewrite -_same; rewrite left +_assoc; rewrite +Z0; 
+  rewrite left ≐_sub; refine H;
 end;
 
-symbol ≤_compat_≤ x y : π (Z0 ≤ x ⇒ Z0 ≤ y ⇒ Z0 ≤ x + y) ≔
+opaque symbol ≤_compat_≤ x y : π (Z0 ≤ x ⇒ Z0 ≤ y ⇒ Z0 ≤ x + y) ≔
 begin
   induction
    { assume y h H; refine H }
@@ -559,11 +576,11 @@ begin
      induction
       { assume h1 h2; refine h1 }
       { assume y h h' i; refine i }
-      { assume y h f h'; refine f ⊤ᵢ } }
+      { assume y h f i; refine f ⊤ᵢ } }
   { assume x y f h i; refine f ⊤ᵢ }
 end;
 
-symbol <_compat_≤ x y : π (Z0 < x ⇒ Z0 ≤ y ⇒ Z0 < x + y) ≔
+opaque symbol <_compat_≤ x y : π (Z0 < x ⇒ Z0 ≤ y ⇒ Z0 < x + y) ≔
 begin
   induction
    { assume y f h; apply ⊥ₑ; refine f }
@@ -577,14 +594,14 @@ end;
 
 // Reflexivity
 
-symbol ≤_refl x : π (x ≤ x) ≔
+opaque symbol ≤_refl x : π (x ≤ x) ≔
 begin
   assume x; refine ≤_compat_add Z0 Z0 x _; refine (λ x, x);
 end;
 
 // Antisymmetry
 
-symbol ≤_antisym x y : π (x ≤ y ⇒ y ≤ x ⇒ x = y) ≔
+opaque symbol ≤_antisym x y : π (x ≤ y ⇒ y ≤ x ⇒ x = y) ≔
 begin
   assume x y;
   have e : π (¬ (istrue(isGt (x ≐ y))) ⇒ ¬ (istrue(isGt (y ≐ x))) ⇒ x = y)
@@ -598,7 +615,7 @@ end;
 
 // Transitivity theorems
 
-symbol ≤_trans x y z : π (x ≤ y ⇒ y ≤ z ⇒ x ≤ z) ≔
+opaque symbol ≤_trans x y z : π (x ≤ y ⇒ y ≤ z ⇒ x ≤ z) ≔
 begin
    assume x y z lxy lyz;
    have H : π (Z0 ≤ (z + — y) + (y + — x))
@@ -613,7 +630,7 @@ begin
    refine ≤_compat_add Z0 (z - x) x;
 end;
 
-symbol <_trans_1 x y z : π (x < y ⇒ y ≤ z ⇒ x < z) ≔
+opaque symbol <_trans_1 x y z : π (x < y ⇒ y ≤ z ⇒ x < z) ≔
 begin
   assume x y z lxy lyz;
   have H : π (Z0 < (z + — y) + (y + — x))
@@ -627,7 +644,7 @@ begin
   refine <_compat_add Z0 (z - x) x;
 end;
 
-symbol <_trans_2 x y z : π (x ≤ y ⇒ y < z ⇒ x < z) ≔
+opaque symbol <_trans_2 x y z : π (x ≤ y ⇒ y < z ⇒ x < z) ≔
 begin
   assume x y z lxy lyz;
   have H : π (Z0 < (z + — y) + (y + — x))
@@ -653,8 +670,6 @@ with Zpos $x * Zneg $y ↪ Zneg (mul $x $y)
 with Zneg $x * Zpos $y ↪ Zneg (mul $x $y)
 with Zneg $x * Zneg $y ↪ Zpos (mul $x $y);
 
-// TO BE CONTINUED (theorems about multiplication)
-
 // shortcuts
 
 symbol _1 ≔ Zpos _1;
@@ -674,8 +689,6 @@ builtin "int_zero" ≔ Z0;
 builtin "int_positive" ≔ Zpos;
 builtin "int_negative" ≔ Zneg;
 
-compute _2 - _3;
-
 // enable parsing of integers in decimal notation
 
 builtin "0" ≔ Z0;
@@ -693,5 +706,3 @@ builtin "10" ≔ _10;
 builtin "+" ≔ +;
 builtin "*" ≔ *;
 builtin "-" ≔ —;
-
-type -42;

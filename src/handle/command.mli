@@ -13,7 +13,7 @@ val too_long : float Stdlib.ref
 val sr_check : bool Stdlib.ref
 
 (** Type alias for a function that compiles a Lambdapi module. *)
-type compiler = Common.Path.t -> Sign.t
+type compiler = sig_state -> Path.t -> Sign.t
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode

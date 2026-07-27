@@ -5,11 +5,13 @@ open Common
 
 (** {3 Atomic pattern constructor representation} *)
 
+type pvar = int * int array
+
 (** Representation of an atomic pattern constructor. *)
 module TC =
   struct
     (** Atomic pattern constructor. Term are identified by these constructors
-        in the  trees. During  matching (in {!val:Eval.tree_walk}),  terms are
+        in the trees. During matching in [Eval.tree_walk], terms are
         transformed into these constructors to get the right sub-tree. *)
     type t =
       | Symb of Path.t * string * int
@@ -25,7 +27,7 @@ module TC =
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
-        of {!type:Term.sym}) may lead to several constructors, with different
+        of [Term.sym]) may lead to several constructors, with different
         effective arities. In the pattern “f g (g $x)” for example, symbol [g]
         is used with arity 0 (first occurence) and 1 (second occurence). *)
 
@@ -47,15 +49,15 @@ module TCMap = Map.Make(TC)
 
 (** Representation of a branching conditions. *)
 type tree_cond =
-  | CondNL of int * int
+  | CondNL of pvar * pvar
   (** Are the terms at the given indices convertible? We enforce the invariant
       that the first element is a point of reference, which appears in all the
       convertibility conditions involving a given non-linear variable. *)
-  | CondFV of int * int array
+  | CondFV of pvar
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
 
-(** {b NOTE} that when performing a {!constructor:tree_cond.CondFV} check, we
+(** {b NOTE} that when performing a [tree_cond.CondFV] check, we
     are concerned about variables that were bound in the term being reduced
     and that may appear free while deconstructing it.  If the term being
     reduced contains free variables, those can appear in a subterm even if not
@@ -63,7 +65,9 @@ type tree_cond =
 
 let tree_cond : tree_cond pp = fun ppf tc ->
   match tc with
-  | CondNL(i, j) -> out ppf "Nl(%d, %d)" i j
+  | CondNL((i,xs), (j,ys)) ->
+      out ppf "Nl(%d[%a],%d[%a])"
+        i (Array.pp int ",") xs j (Array.pp int ",") ys
   | CondFV(i, _) -> out ppf "Fv(%d)" i
 
 (** Substitution of variables in a RHS. During the filtering process, some
@@ -73,10 +77,10 @@ let tree_cond : tree_cond pp = fun ppf tc ->
     substitutes variable [v] of the RHS by term [p] of array [v]. In the case
     of higher order patterns, [p] may need to be itself subsituted  with {e
     bound} variables [xs] collected when traversing binders. *)
-type rhs_substit = (int * (int * int array)) list
+type rhs_substit = (int * pvar) list
 
 (** Representation of a tree. The definition relies on parameters since module
-    {!module:Term} depends on the current module, and that would thus produce
+    [Term] depends on the current module, and that would thus produce
     a dependency cycle. However it should be understood that parameter ['a]
     will only be instantiated with [Term.rule]. *)
 type 'a tree =
@@ -99,8 +103,8 @@ type 'a tree =
   | Eos of 'a tree * 'a tree
   (** End of stack node, branches on left tree if the stack is finished, on
      the right if it isn't.  Required when there are rules with a lower arity
-     than some other rule above and when {!field:Term.sym.sym_mstrat} is
-     {!constructor:Term.match_strat.Sequen}. *)
+     than some other rule above and when [Term.sym.sym_mstrat] is
+     [Term.match_strat.Sequen]. *)
   | Node of
       { swap : int
       (** Indicates on which term of the input stack (counting from the head),
@@ -149,7 +153,7 @@ let rec tree_capacity : 'r tree -> int = fun tr ->
       if r.store then c + 1 else c
 
 (** A tree with its capacity and as lazy structures. For the definition of
-   the capacity, see {!val:Tree_type.tree_capacity}. Laziness allows to
+   the capacity, see [Tree_type.tree_capacity]. Laziness allows to
    (sometimes) avoid creating several times the same trees when the rules are
    not given in one go. *)
 type 'a dtree = int Lazy.t * 'a tree Lazy.t

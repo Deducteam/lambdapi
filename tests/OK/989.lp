@@ -1,7 +1,7 @@
 symbol Prop : TYPE;
 injective symbol Prf : Prop → TYPE;
 builtin "Prop" ≔ Prop;
-builtin "P" ≔ Prf;
+builtin "Prf" ≔ Prf;
 
 symbol Set : TYPE; 
 injective symbol τ : Set → TYPE;

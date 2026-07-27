@@ -23,33 +23,33 @@ val eta_equality : bool Timed.ref
 
 (** Tags for rewriting configuration. *)
 type rw_tag =
-  [ `NoBeta (** If true, no beta-reduction is performed. *)
-  | `NoRw (** If true, no user-defined rewrite rule is used. *)
-  | `NoExpand (** If true, definitions are not expanded. *) ]
+  | NoBeta (** If true, no beta-reduction is performed. *)
+  | NoRw (** If true, no user-defined rewrite rule is used. *)
+  | NoExpand (** If true, definitions are not expanded. *)
 
 (** Functions that use the rewriting engine and accept an optional argument
     [tags] of type [rw_tag list] have the following behaviour.
     - If the argument is not given, then no tag is active and the rewrite
       engine is not constrained: it uses user defined reduction rules, it
-      expands variable definitions (that are stored in the {!ctxt}) and
+      expands variable definitions (that are stored in the [ctxt]) and
       performs beta reductions.
     - Each tag if present disables some functionality of the rewrite
       engine. The descriptions of the functionalities are given in the
-      documentation of {!rw_tag}. *)
+      documentation of [rw_tag]. *)
 
-(** Reduction functions also accept an optional {!problem} that is used to
+(** Reduction functions also accept an optional problem that is used to
     store metavariables that may be created while rewriting. Such
     metavariables may be created by particular rewrite rules (such as
     unification rules), but not by rules declared with [rule t ↪ u;]. *)
 
-(** {b NOTE} that all reduction functions, and {!eq_modulo}, may reduce
+(** {b NOTE} that all reduction functions, and [eq_modulo], may reduce
     in-place some subterms of the reduced term. *)
 
 (** [whnf ?tags c t] computes a whnf of the term [t] in context [c]. *)
 val whnf : ?tags:rw_tag list -> ctxt -> term -> term
 
-(** [whnf ?tags c t] returns some whnf of the term [t] in context [c] if it is
-    different from [t]. *)
+(** [whnf_opt ?tags c t] returns [None] if [t] is in whnf, and [Some u] where
+    [u] is some whnf of [t] otherwise. *)
 val whnf_opt : ?tags:rw_tag list -> ctxt -> term -> term option
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context

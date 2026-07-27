@@ -14,6 +14,9 @@ type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 (** [make key name desc] registers a new logger and returns its pp. *)
 val make : char -> string -> string -> logger_pp
 
+(** Check that [c] is a registered key. *)
+val is_registered : char -> bool
+
 (** [set_debug value key] enables or disables the loggers corresponding to
    every character of [str] according to [value]. *)
 val set_debug : bool -> string -> unit
@@ -32,5 +35,8 @@ val reset_loggers : ?default:string -> unit -> unit
 (** [log_summary ()] gives the keys and descriptions for logging options. *)
 val log_summary : unit -> (char * string) list
 
-(** [set_debug_in b c f x] sets [c] logger to [b] for evaluating [f x]. *)
-val set_debug_in : bool -> char -> ('a -> 'b) -> 'a -> 'b
+(** [log_in d f x] sets loggers in [d] to [true] for evaluating [f x]. *)
+val log_in: string -> ('a -> 'b) -> 'a -> 'b
+
+(** [no_logging f x] deactivates logging while executing [f x]. *)
+val no_logging: ('a -> 'b) -> 'a -> 'b

@@ -9,7 +9,7 @@ open Proof
 open Goal
 
 (** Type alias for a function that compiles a Lambdapi module. *)
-type compiler = Path.t -> Sign.t
+type compiler = sig_state -> Path.t -> Sign.t
 
 (** Register a check for the type of the builtin symbols "nat_zero" and
     "nat_succ". *)
@@ -74,12 +74,12 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-      fatal pos "Module aliases cannot be open."
+    fatal pos "Module aliases cannot be open."
   | _ ->
-      (* Check that [p] has been required. *)
-      match Path.Map.find_opt p !loaded with
-      | None -> fatal pos "Module \"%a\" needs to be required first." path p
-      | Some _ -> rec_open (not prv) ss p
+    (* Check that [p] has been required. *)
+    match Path.Map.find_opt p !loaded with
+    | None -> fatal pos "Module \"%a\" needs to be required first." Path.pp p
+    | Some _ -> rec_open (not prv) ss p
 
 (** [rec_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument
@@ -94,7 +94,7 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
     else
       begin
         (* Compile [p] (this adds it to [Sign.loaded]). *)
-        let sign = compile p in
+        let sign = compile ss p in
         (* Recurse on the dependencies of [p]. *)
         let f p _ ss = rec_require compile ss p in
         let ss = Path.Map.fold f !(sign.sign_deps) ss in
@@ -115,14 +115,10 @@ let rec rec_require : compiler -> sig_state -> Path.t -> sig_state =
 let handle_require_as :
       compiler -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss {elt=p;_} {elt=id;_} ->
-  if Path.Map.mem p !(ss.signature.sign_deps) then ss
-  else
-    begin
-      let ss = rec_require compile ss p in
-      let alias_path = StrMap.add id p ss.alias_path in
-      let path_alias = Path.Map.add p id ss.path_alias in
-      {ss with alias_path; path_alias}
-    end
+  let ss = rec_require compile ss p in
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_require compile bo ss p] handles the command [require p] with
     [compile] as compilation function (passed as argument to avoid cyclic
@@ -137,17 +133,21 @@ let handle_require compile bo ss {elt=p;_} =
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> prop * expo * match_strat =
+let handle_modifiers :
+ p_modifier list -> prop * expo * match_strat * (*opaq:*)bool =
   fun ms ->
-  let rec get_modifiers ((props, expos, strats) as acc) = function
+  let rec get_modifiers ((props, expos, strats, opaq) as acc) = function
     | [] -> acc
-    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats) ms
-    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats) ms
+    | {elt=P_prop _;_} as p::ms ->
+        get_modifiers (p::props, expos, strats, opaq) ms
+    | {elt=P_expo _;_} as e::ms ->
+        get_modifiers (props, e::expos, strats, opaq) ms
     | {elt=P_mstrat _;_} as s::ms ->
-        get_modifiers (props, expos, s::strats) ms
-    | {elt=P_opaq;_}::ms -> get_modifiers acc ms
+        get_modifiers (props, expos, s::strats, opaq) ms
+    | {elt=P_opaq;_}::ms ->
+        get_modifiers (props, expos, strats, true) ms
   in
-  let props, expos, strats = get_modifiers ([],[],[]) ms in
+  let props, expos, strats, opaq = get_modifiers ([],[],[],false) ms in
   let prop =
     match props with
     | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
@@ -176,12 +176,13 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
     | [] -> Eager
     | _ -> assert false
   in
-  (prop, expo, strat)
+  (prop, expo, strat, opaq)
 
-(** [handle_inductive_symbol ss e p strat x xs a] handles the command
-    [e p strat symbol x xs : a] with [ss] as the signature state.
-    The command is at position [pos].
-    On success, an updated signature state and the new symbol are returned. *)
+(** [handle_inductive_symbol ss expo prop strat id declpos xs a] handles the
+    command [expo prop strat symbol id xs : a] with [ss] as the signature
+    state. /!\ Use [declpos] as its position (used in commands exporting
+    signatures). On success, an updated signature state and the new symbol are
+    returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     -> p_ident -> popt -> p_params list -> p_term -> sig_state * sym =
   fun ss expo prop mstrat ({elt=name;pos} as id) declpos xs typ ->
@@ -249,7 +250,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require(bo,ps) ->
       (List.fold_left (handle_require compile bo) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
+  | P_open(_,b,ps) -> (List.fold_left (handle_open b) ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
@@ -269,7 +270,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
       (* /!\ Update decision trees without adding the rules themselves. It is
          important for local confluence checking. *)
-      SymMap.iter Tree.update_dtree map;
+      SymMap.iter Tree.add_and_update map;
       let sign = ss.signature in
       (* Local confluence checking. *)
       Tool.Lcr.check_cps pos sign srs map;
@@ -284,15 +285,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      begin
-        match StrMap.find_opt n ss.builtins with
-        | Some s' when s' == s ->
-          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
-        | _ ->
-          Builtin.check ss pos n s;
-          Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
-          (Sig_state.add_builtin ss n s, None, None)
-      end
+      Builtin.check n ss pos s;
+      Console.out 2 (Color.gre "builtin \"%s\" ≔ %a") n sym s;
+      (Sig_state.add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
@@ -301,7 +296,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
         | _ -> assert false
-      and real = LibTerm.count_products Eval.whnf [] !(s.sym_type) in
+      and real =
+        LibTerm.count_products ~impl:s.sym_impl Eval.whnf [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Check that the notation is compatible with the theory. *)
@@ -335,32 +331,34 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let r = scope_rule true ss h in
-      Sign.add_rule ss.signature r;
-      Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 (Color.gre "unif_rule %a") sym_rule r;
+      let (s,r1) as x = scope_rule true ss h in
+      let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
+      let r2 = {r1 with lhs} in
+      Sign.add_rules ss.signature s [r1;r2];
+      Tree.update Unif_rule.equiv;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
+      Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
       Sign.add_rule ss.signature r;
-      Tree.update_dtree Coercion.coerce [];
+      Tree.update Coercion.coerce;
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
-  | P_inductive(ms, params, p_ind_list) ->
+  | P_inductive(_, ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, expo, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat, opaq) = handle_modifiers ms in
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
         fatal pos "Pattern matching strategy modifiers cannot be used on \
                        inductive types.";
-      (* Add inductive types in the signature. *)
+      if opaq then
+        fatal pos "Inductive types cannot be declared opaque.";
+      (* Add inductive types in the signature, all at position [pos]. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          (* All inductive types are declared at position [pos]
-             so that constructors are declared afterwards. *)
-          let id = {id with pos} in
           handle_inductive_symbol ss expo Const Eager id pos params pt in
         (ss, ind_sym::ind_sym_list)
       in
@@ -370,13 +368,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let params =
         List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
       (* Add constructors in the signature. *)
+      let cons_pos = shift 1 pos in (* after types *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id pos
-            params pt in
-          (ss, cons_sym::cons_sym_list)
+            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+          in (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
           List.fold_left add_cons_sym (ss, []) p_cons_list in
@@ -407,6 +405,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
+      let rec_pos = shift 2 pos in (* after types and constructors *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
@@ -414,12 +413,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let (ss, rec_sym) =
           Console.out 2 (Color.gre "symbol %a : %a")
             uid rec_name term rec_typ;
-          (* Recursors are declared after the types and constructors. *)
-          let pos = after (pos_end pos) in
+          (* Add recursors in the signature, all at position [shift 2 pos]. *)
           let id = Pos.make pos rec_name in
           let r =
-            Sig_state.add_symbol ss expo Defin Eager false id
-             None rec_typ [] None
+            Sig_state.add_symbol ss expo Defin Eager false id rec_pos
+              rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -436,7 +434,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Console.out 2 (Color.gre "rule %a") sym_rule r
       in
       no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
-      List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
+      List.iter Tree.update rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
       List.iter2
@@ -447,8 +445,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         rec_sym_list;
       (ss, None, None)
 
-  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
-              p_sym_def} ->
+  | P_symbol {p_sym_mod;p_sym_kw=_;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;
+              p_sym_prf;p_sym_def} ->
     (* We check that the identifier is not already used. *)
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
@@ -461,8 +459,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | _ -> ()
     end;
     (* Verify modifiers. *)
-    let prop, expo, mstrat = handle_modifiers p_sym_mod in
-    let opaq = List.exists Syntax.is_opaq p_sym_mod in
+    let prop, expo, mstrat, opaq = handle_modifiers p_sym_mod in
     let pdata_prv = opaq || expo = Privat in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
@@ -505,7 +502,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Build proof data. *)
-    let pdata =
+    let pdata, qres =
       (* Type of the symbol. *)
       let t, a =
         match a with
@@ -533,10 +530,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             | Some (t,a) -> Some (Pos.make pos t), a
       in
       (* Get tactics and proof end. *)
-      let pdata_proof, pe =
+      let pdata_proof, pe, qres =
         match p_sym_prf with
-        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end
-        | Some (ts, pe) -> ts, pe
+        | None -> [], Pos.make (Pos.pos_end pos) P_proof_end, None
+        | Some (ts, pe) -> ts, pe, Some (fun () -> "OK")
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
@@ -571,7 +568,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              fatal pe.pos "The proof is not finished:@.%a" goals ps;
+              fatal pe.pos
+                ~err_desc:(Format.asprintf "Proof state:@.%a@." goals ps)
+                "The proof is not finished.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
@@ -585,27 +584,30 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = add_goals_of_problem p [] in
-        if p_sym_def then
-          (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p a 0 in
-          let g = Goal.of_meta m in
-          let ps = {proof_name = p_sym_nam; proof_term = Some m;
-                    proof_goals = g :: proof_goals} in
-          match pt, t with
-          | Some pt, Some t ->
-              let gt = match g with Typ gt -> gt | _ -> assert false in
-              Tactic.tac_refine ~check:false pt.pos ps gt proof_goals p t.elt
-          | _, _ -> Tactic.tac_solve pos ps
-        else
-          let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
-          Tactic.tac_solve pos ps
+        let ps =
+          if p_sym_def then
+            (* Add a new focused goal for the definition. *)
+            let m = LibMeta.fresh p a 0 in
+            let proof_goals =
+              match t with
+              | Some t ->
+                  (* Refine the focused goal with the given term. *)
+                  LibMeta.set p m (bind_mvar [||] t.elt);
+                  proof_goals
+              | _ -> Goal.of_meta m :: proof_goals
+            in
+            {proof_name = p_sym_nam; proof_term = Some m; proof_goals}
+          else
+            {proof_name = p_sym_nam; proof_term = None; proof_goals}
+        in
+        Tactic.tac_solve pos ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
-      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
+      ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in
-      (ss, Some pdata, None)
+      (ss, Some pdata, qres)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -624,23 +626,23 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "%s" m
+  | Timeout                   as e                    -> raise e
+  | Fatal(Some(Some(_)),_, _) as e                    -> raise e
+  | Fatal(None         ,m, err_desc)      -> fatal pos ~err_desc "%s" m
+  | Fatal(Some(None)   ,m, err_desc)      -> fatal pos ~err_desc "%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+(** [handle compile ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
-    {!module:Tactic} The function [compile_mod] is used to compile required
+    {!module:Tactic} The function [compile] is used to compile required
     modules recursively. *)
 let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
-  fun compile_mod ss cmd ->
+  fun compile ss cmd ->
   LibMeta.reset_meta_counter ();
-  (* We provide the compilation function to the handle commands, so that
+  (* We provide the compilation function to the handle command, so that
      "require" is able to compile files. *)
-  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  let (ss, p, _) = get_proof_data compile ss cmd in
   match p with
   | None -> ss
   | Some d ->

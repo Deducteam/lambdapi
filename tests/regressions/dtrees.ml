@@ -7,7 +7,7 @@ open Core
 let () =
   Library.set_lib_root (Some "/tmp");
   Timed.(Console.verbose := 0);
-  let sign = Compile.PureUpToSign.compile_file "../OK/boolean.lp" in
+  let sign = Library.restore_after Compile.compile_file "../OK/boolean.lp" in
   let ss = Sig_state.of_sign sign in
   (* Regular symbol *)
   let sym =

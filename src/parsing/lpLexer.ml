@@ -13,16 +13,22 @@ let remove_last : lexbuf -> string = fun lb ->
 let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
-exception SyntaxError of strloc
+(* true when the error is an unrecoverable tokenization error;
+   false when it is a potentially recoverable parsing error *)
+exception SyntaxError of bool * strloc
 
-let syntax_error : Lexing.position * Lexing.position -> string -> 'a =
-  fun pos msg -> raise (SyntaxError (Pos.make_pos pos msg))
+let syntax_error
+ : ?recoverable:bool -> Lexing.position * Lexing.position -> string -> 'a
+ = fun ?(recoverable=true) pos msg ->
+    raise (SyntaxError (recoverable,Pos.make_pos pos msg))
 
+(* raises an unrecoverable lexing error; do not use in the parser *)
 let fail : lexbuf -> string -> 'a = fun lb msg ->
-  syntax_error (lexing_positions lb) msg
+  syntax_error ~recoverable:false (lexing_positions lb) msg
 
+(* raises an unrecoverable lexing error; do not use in the parser *)
 let invalid_character : lexbuf -> 'a = fun lb ->
-  fail lb "Invalid character"
+  fail lb "Invalid character."
 
 (** Tokens. *)
 type token =
@@ -33,11 +39,13 @@ type token =
   | ABORT
   | ADMIT
   | ADMITTED
+  | ALL_HYPS
   | APPLY
   | AS
   | ASSERT of bool (* true for "assertnot" *)
   | ASSOCIATIVE
   | ASSUME
+  | ASSUMPTION
   | BEGIN
   | BUILTIN
   | CHANGE
@@ -49,7 +57,9 @@ type token =
   | END
   | EVAL
   | FAIL
+  | FIRST_HYP
   | FLAG
+  | FOCUS
   | GENERALIZE
   | HAVE
   | IN
@@ -111,6 +121,9 @@ type token =
   | COLON
   | DOT
   | EQUIV
+  | EXISTS  (* only in Rocq *)
+  | FORALL  (* only in Rocq *)
+  | FUN     (* only in Rocq *)
   | HOOK_ARROW
   | LAMBDA
   | L_CU_BRACKET
@@ -121,6 +134,7 @@ type token =
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
+  | THICKARROW (* only in Rocq *)
   | TURNSTILE
   | UNDERSCORE
   | VBAR
@@ -138,25 +152,21 @@ let space = [%sedlex.regexp? Chars " \t\n\r"]
 let digit = [%sedlex.regexp? '0' .. '9']
 let nat = [%sedlex.regexp? Plus digit]
 let int = [%sedlex.regexp? nat | '-', nat]
-let float = [%sedlex.regexp? int, '.', Plus digit]
+let float = [%sedlex.regexp? int, '.', nat]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
+let positive_digit = [%sedlex.regexp? '1' .. '9']
 
 (** Identifiers.
 
    There are two kinds of identifiers: regular identifiers and escaped
-   identifiers of the form ["{|...|}"].
+   identifiers of the form [{|...|}].
 
    Modulo those surrounding brackets, escaped identifiers allow to use as
    identifiers keywords or filenames that are not regular identifiers.
 
    An escaped identifier denoting a filename or directory is unescaped before
-   accessing to it. Hence, the module ["{|a b|}"] refers to the file ["a b"].
-
-   Identifiers need to be normalized so that an escaped identifier, once
-   unescaped, is not regular. To this end, every identifier of the form
-   ["{|s|}"] with s regular, is understood as ["s"] (function
-   [remove_useless_escape] below).
+   accessing to it. Hence, the module [{|a b|}] refers to the file [a b].
 
    Finally, identifiers must not be empty, so that we can use the empty string
    for the path of ghost signatures. *)
@@ -172,45 +182,68 @@ let is_regid : string -> bool = fun s ->
   | regid, eof -> true
   | _ -> false
 
+(** [escape s] escapes [s] if [s] is not regular. This is used to convert
+    irregular module path elements to valid identifiers. *)
+let escape (s:string): string = if is_regid s then s else Escape.escape s
+
 (** Unqualified escaped identifiers are any non-empty sequence of characters
     (except "|}") between "{|" and "|}". *)
 let nobars = [%sedlex.regexp? Star (Compl '|')]
 let escid = [%sedlex.regexp?
     "{|", nobars, '|', Star ('|' | Compl (Chars "|}"), nobars, '|'), '}']
 
-(** [escape s] converts a string [s] into an escaped identifier if it is not
-   regular. We do not check whether [s] contains ["|}"]. FIXME? *)
-let escape s = if is_regid s then s else Escape.escape s
+let id = [%sedlex.regexp? regid | escid]
 
-(** [remove_useless_escape s] replaces escaped regular identifiers by their
-   unescape form. *)
-let remove_useless_escape : string -> string = fun s ->
-  let s' = Escape.unescape s in if is_regid s' then s' else s
+let rec comment next i lb =
+  match%sedlex lb with
+  | eof -> fail lb "Unterminated comment."
+  | "*/" -> if i=0 then next lb else comment next (i-1) lb
+  | "/*" -> comment next (i+1) lb
+  | any -> comment next i lb
+  | _ -> invalid_character lb
+
+let rec qid expl ids lb =
+  match%sedlex lb with
+  | oneline_comment -> qid expl ids lb
+  | "/*" -> comment (qid expl ids) 0 lb
+  | int -> QINT(List.rev ids, Utf8.lexeme lb)
+  | regid, '.' -> qid expl (remove_last lb :: ids) lb
+  | escid, '.' -> qid expl (remove_last lb :: ids) lb
+  | regid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | escid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
 
 (** Lexer. *)
-let rec token lb =
+let rec token ~allow_rocq_syntax lb =
+  let ifrocq t = if allow_rocq_syntax then t else UID(Utf8.lexeme lb) in
   match%sedlex lb with
 
   (* end of file *)
   | eof -> EOF
 
   (* spaces *)
-  | space -> token lb
+  | space -> token ~allow_rocq_syntax lb
 
   (* comments *)
-  | oneline_comment -> token lb
-  | "/*" -> comment token 0 lb
+  | oneline_comment -> token ~allow_rocq_syntax lb
+  | "/*" -> comment (token ~allow_rocq_syntax) 0 lb
 
   (* keywords *)
   | "abort" -> ABORT
   | "admit" -> ADMIT
   | "admitted" -> ADMITTED
+  | "all_hyps" -> ALL_HYPS
   | "apply" -> APPLY
   | "as" -> AS
   | "assert" -> ASSERT false
   | "assertnot" -> ASSERT true
   | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
+  | "assumption" -> ASSUMPTION
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
   | "change" -> CHANGE
@@ -221,8 +254,13 @@ let rec token lb =
   | "debug" -> DEBUG
   | "end" -> END
   | "eval" -> EVAL
+  | "exists" -> ifrocq EXISTS (* only in Rocq *)
   | "fail" -> FAIL
+  | "first_hyp" -> FIRST_HYP
   | "flag" -> FLAG
+  | "focus" -> FOCUS
+  | "forall" -> ifrocq FORALL  (* only in Rocq *)
+  | "fun" -> ifrocq FUN        (* only in Rocq *)
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
@@ -275,11 +313,13 @@ let rec token lb =
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | int -> INT(Utf8.lexeme lb)
   | float -> FLOAT(Utf8.lexeme lb)
-  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
+  | string -> STRINGLIT(Utf8.lexeme lb)
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
   | 0x2192 (* → *) -> ARROW
+  | "->" -> ifrocq ARROW       (* only in Rocq *)
+  | "=>" -> ifrocq THICKARROW  (* only in Rocq *)
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
@@ -300,55 +340,33 @@ let rec token lb =
   | '_' -> UNDERSCORE
 
   (* identifiers *)
-  | regid -> UID(Utf8.lexeme lb)
-  | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
-  | '@', regid -> UID_EXPL(remove_first lb)
-  | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
+  | id -> UID(Utf8.lexeme lb)
+  | '@', id -> UID_EXPL(remove_first lb)
   | '?', nat -> UID_META(int_of_string(remove_first lb))
-  | '$', regid -> UID_PATT(remove_first lb)
-  | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
-  | '$', nat -> UID_PATT(remove_first lb)
+  | '?', '0', nat -> fail lb "Forbidden metavariable name."
+  | '?', id -> fail lb "Forbidden metavariable name."
+  | '$', nat -> fail lb "Forbidden pattern variable name."
+  | '$', '0', nat -> fail lb "Forbidden pattern variable name."
+  | '$', id -> UID_PATT(remove_first lb)
 
-  | regid, '.' -> qid false [remove_last lb] lb
-  | escid, '.' -> qid false [remove_useless_escape(remove_last lb)] lb
-  | '@', regid, '.' -> qid true [remove_ends lb] lb
-  | '@', escid, '.' -> qid true [remove_useless_escape(remove_ends lb)] lb
+  | id, '.' -> qid false [remove_last lb] lb
+  | '@', id, '.' -> qid true [remove_ends lb] lb
 
   (* invalid character *)
   | _ -> invalid_character lb
 
-and qid expl ids lb =
-  match%sedlex lb with
-  | oneline_comment -> qid expl ids lb
-  | "/*" -> comment (qid expl ids) 0 lb
-  | int -> QINT(List.rev ids, Utf8.lexeme lb)
-  | regid, '.' -> qid expl (remove_last lb :: ids) lb
-  | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
-  | regid ->
-    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
-    else QID(Utf8.lexeme lb :: ids)
-  | escid ->
-    if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
-    else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
-  | _ -> fail lb ("Invalid identifier: \"" ^ Utf8.lexeme lb ^ "\".")
-
-and comment next i lb =
-  match%sedlex lb with
-  | eof -> fail lb "Unterminated comment."
-  | "*/" -> if i=0 then next lb else comment next (i-1) lb
-  | "/*" -> comment next (i+1) lb
-  | any -> comment next i lb
-  | _ -> invalid_character lb
-
 (** [token lb] is a lexing function on [lb] that can be passed to a parser. *)
-let token : lexbuf -> token * Lexing.position * Lexing.position =
-  fun lb -> try Sedlexing.with_tokenizer token lb () with
-  | MalFormed -> fail lb "Not Utf8 encoded file"
-  | InvalidCodepoint k ->
-      fail lb ("Invalid Utf8 code point " ^ string_of_int k)
+let token :
+  allow_rocq_syntax:bool ->
+   lexbuf -> token * Lexing.position * Lexing.position =
+  fun ~allow_rocq_syntax lb ->
+    try Sedlexing.with_tokenizer (token ~allow_rocq_syntax) lb () with
+    | MalFormed -> fail lb "Not Utf8 encoded file."
+    | InvalidCodepoint k ->
+       fail lb ("Invalid Utf8 code point \""^string_of_int k^"\".")
 
 let dummy_token = (EOF, Lexing.dummy_pos, Lexing.dummy_pos)
 
-let token =
+let token ~allow_rocq_syntax =
   let r = ref dummy_token in fun lb ->
-  Debug.(record_time Lexing (fun () -> r := token lb)); !r
+  Debug.(record_time Lexing (fun () -> r := token ~allow_rocq_syntax lb)); !r

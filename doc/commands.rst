@@ -88,6 +88,10 @@ type definition, assuming that the following builtins are defined:
 
 An inductive type can have 0 or more constructors.
 
+The ``inductive`` keyword can be preceded by ``private`` or
+``protected``. This makes the type and constructor symbols ``private``
+or ``protected`` respectively.
+
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
 
@@ -182,8 +186,8 @@ are:
     ``+`` is not a valid term anymore. To locally deactivate a
     notation, you can use ``(+)`` or ``@+`` instead.
 
-  * A symbol declared as infix must have a type of the form ``A → A →
-    A``.
+  * A symbol declared as infix must have a type of the form ``Π x:_, Π
+    y:_, _`` when removing implicit arguments.
 
   * The additional keyword ``left`` declares the symbol associative to
     the left, that is, ``x + y + z`` is parsed as ``(x + y) +
@@ -205,6 +209,9 @@ are:
 
    notation ¬ prefix 5;
    notation ! postfix 10;
+
+  * A symbol declared as prefix/postfix must have a type of the form
+    ``Π x:_, _`` when removing implicit arguments.
 
   * Infix, prefix and postfix operators share the same levels of
     priority. Hence, depending on the priorities, ``-x + z`` is
@@ -247,7 +254,7 @@ The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previou
 ------------------
 
 Puts into scope the symbols of the previously required modules given
-in arguments. It can also be combined with the ``require`` command.
+in arguments.
 
 Non-private ``open`` commands are transitively inherited: if A opens B
 and B opens C, then the symbols of C are also put in scope in the
@@ -275,13 +282,14 @@ modules. These symbols can be used by prefixing them with their module
 path: if a module ``Stdlib.Bool`` declares a symbol ``true`` then,
 after ``require Stdlib.Bool``, one can use ``true`` by writing
 ``Stdlib.Bool.true``. It is possible to get rid of the prefix by using
-the ``open`` command.
+an :ref:`open` command afterwards, or by writing ``require open
+Stdlib.Bool`` (see the :ref:`open` command for more details).
 
 Dependencies are transitively inherited: if A requires B and B
 requires C, then the symbols of C are also imported in the current
 environment.
 
-A required module also can be aliased.
+A non-open required module can be aliased as follows:
 
 ::
 
@@ -405,7 +413,7 @@ Other examples of patterns are available in `patterns.lp <https://github.com/Ded
 
 Allows to declare or define a symbol as follows:
 
-*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
+*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` [*term*]] [``begin`` *proof* ``end``] ``;``
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
@@ -546,13 +554,15 @@ commands :ref:`notation` and :ref:`builtin`.
 ``unif_rule``
 -----------------
 
-The unification engine can be guided using
-*unification rules*. Given a unification problem ``t ≡ u``, if the
-engine cannot find a solution, it will try to match the pattern
-``t ≡ u`` against the defined rules (modulo commutativity of ≡)
-and rewrite the problem to the
-right-hand side of the matched rule. Variables of the RHS that do
-not appear in the LHS are replaced by fresh metavariables on rule application.
+The unification engine can be guided by *unification rules* of the
+form ``t ≡ u ↪ [t₁ ≡ u₁; …; tₙ ≡ uₙ]``. When a unification problem ``t
+≡ u`` cannot be solved with the default unification algorithm, the
+unification engine tries to rewrite that problem with one of the
+user-defined unification rules (modulo commutativity of ≡). If it
+succeeds to rewrite it to ``[t₁ ≡ u₁; …; tₙ ≡ uₙ]``, then the
+unification engine replaces ``t ≡ u`` by ``[t₁ ≡ u₁; …; tₙ ≡ uₙ]``,
+and tries to solve those new unification problems. Variables of the
+RHS that do not appear in the LHS are replaced by fresh metavariables.
 
 Examples:
 

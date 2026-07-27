@@ -10,7 +10,7 @@ builtin "all" ≔ ∀;
 
 notation ∀ quantifier;
 
-rule π (∀ $f) ↪ Π x, π ($f x);
+rule π (`∀ x, $f.[x]) ↪ Π x, π $f.[x];
 
 // Existential quantification
 
@@ -20,15 +20,15 @@ builtin "ex" ≔ ∃;
 
 notation ∃ quantifier;
 
-constant symbol ∃ᵢ [a p] (x:τ a) : π (p x) → π (∃ p);
+constant symbol ∃ᵢ [a p] (x:τ a) : π (p x) → π (`∃ x, p x);
 
-symbol ∃ₑ [a p] : π (∃ p) → Π [q], (Π x:τ a, π (p x) → π q) → π q;
+symbol ∃ₑ [a p] : π (`∃ x, p x) → Π [q], (Π x:τ a, π (p x) → π q) → π q;
 
 rule ∃ₑ (∃ᵢ $x $px) $f ↪ $f $x $px;
 
 // properties
 
-opaque symbol ¬∃ [a] p : π (¬ (∃ p) ⇒ `∀ x : τ a, ¬ (p x)) ≔
+opaque symbol ¬∃ [a] p : π (¬ (`∃ x, p x) ⇒ `∀ x : τ a, ¬ (p x)) ≔
 begin
 assume a p not_ex_p x px; apply not_ex_p; apply ∃ᵢ x px
 end;

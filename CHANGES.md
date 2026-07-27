@@ -7,13 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- CLI command `deindex` to remove constants from the index.
+- In interactive mode, indexing of symbols from current development (as well as currently required files) and their deindexing when files are closed are now automatically supported.
+- Filtering of search results using regular expressions.
+- Support for basic Rocq syntax when interpreting queries with the `search` or `websearch` commands (forall, ->, fun, exists).
+- Allow the `--require` flag to be used multiple times with the `search` and `websearch` commands.
+- Ambiguity due to overloaded symbols is now solved by normalisation.
+- Streaming of results in command line search.
+- Support `Plac` in rewriting rules.
 - Decimal numbers can now be qualified by a module path so that one can use the decimal notation with different types in the same file.
+- Tactic `assumption` which proves a goal if it is an instance of an assumption.
+- Tactic `focus n` which makes goal n the current goal.
+- Tactic `first_hyp t` which iterates parameterized tactic term t with each hypothsis as parameter until it succeeds.
+- Tactic `#print` to print a symbol or the current goal.
+- Export to Lean.
+- Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
+- Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
 
 ### Changed
 
-- `simplify` now fails if the goal cannot be simplified.
-- Position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
-- Change lp parser based on menhir by one written by hand to provide more helpful error messages while being equally efficient.
+- Tactic `simplify` now fails if the goal cannot be simplified.
+- Parser: change lp parser based on Menhir by one written by hand to provide more helpful error messages while being equally efficient.
+- Tactic `eval`: replace full SNF reduction of tactic terms by a more incremental reduction strategy using WHNF and recursively reducing only subterms that are tactic terms. Infer the type and solve unification constraints of tactic terms before reduction and interpretation as tactics.
+- Syntax: do not identify {|a|} and a when a is a regular identifier anymore.
+- Dedukti export: translate a module path A.B.C to C, and check that C is a valid module name in Dedukti.
+- LSP server: position of the error is removed from diagnostics when the error occurs in the file currently open in the editor.
+- Syntax of search query is modified as follows : `in` is used instead of `|` (filtering). `with` is used instead of `,` (conjunction). `|` is used instead of `;` (disjunction).
+- Type of `#assume` in order to generate a new symbol and use it inside a tactic term.
+- Errors occurring while a proof is in progress now report the proof state: the goals a failing tactic was applied to, the goals before and after the tactic for a subproof-count mismatch, and the remaining goals when a proof is unfinished at `end`. The state is printed after the error message, which stays unchanged. The LSP server does not attach the proof state to tactic failures since editors display it themselves.
+
+### Fixed
+
+- Convertibility test of non-linear higher-order pattern variables in rule LHS.
+- Syntactical errors in Dedukti export.
+- Weak head normal form test.
+- Handling of module aliases.
+- Dedukti export.
+- Stack_overflow exception due large number of search results.
+- Parser fix: the (ne)list combinator did not backtrack the stream in case of
+  failure in the middle of the parsing of a list item
+- Selection of the library mapping with the longest matching prefix in
+  `path_of_file`: with nested mappings, the computed module path could get a
+  duplicated directory component.
+- LSP server: go-to-definition and hover on qualified identifiers, and session
+  state leaking between open documents.
+- LSP server: the success ("OK") diagnostic of a command or tactic is now
+  shown on its introducing keyword ("symbol", "rule", "assume", …), instead
+  of underlining the whole command or tactic (symbol body, rule right-hand
+  side, proof, etc.).
 
 ## 3.0.0 (2025-07-16)
 

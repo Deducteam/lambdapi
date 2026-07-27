@@ -31,18 +31,34 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with each ``xᵢ`` replaced by
 ``hᵢ``.
 
-.. _fail:
+.. _assumption:
+
+``assumption``
+--------------
+
+Proves the current goal if it is (an instance of) an hypothesis.
+
+.. _change:
 
 ``change``
----------
+----------
 
 ``change t`` replaces the current goal ``u`` by ``t``, if ``t ≡ u``.
+
+.. _fail:
 
 ``fail``
 --------
 
 Always fails. It is useful when developing a proof to stop at some
 particular point.
+
+.. _focus:
+
+``focus``
+---------
+
+``focus n`` moves the n-th goal (n≥2) to position 1.
 
 .. _generalize:
 
@@ -148,7 +164,9 @@ The user should define those symbols using builtins as follows :
 
 ::
 
-   builtin "T"   ≔ … // : U → TYPE
+   builtin "Set" ≔ … // : TYPE
+   builtin "T"   ≔ … // : Set → TYPE
+   builtin "Prop"≔ … // : TYPE
    builtin "P"   ≔ … // : Prop → TYPE
    builtin "bot" ≔ … // : Prop
    builtin "top" ≔ … // : Prop
@@ -157,8 +175,8 @@ The user should define those symbols using builtins as follows :
    builtin "or"  ≔ … // : Prop → Prop → Prop
    builtin "imp" ≔ … // : Prop → Prop → Prop
    builtin "eqv" ≔ … // : Prop → Prop → Prop
-   builtin "all" ≔ … // : Π x: U, (T x → Prop) → Prop
-   builtin "ex"  ≔ … // : Π x: U, (T x → Prop) → Prop
+   builtin "all" ≔ … // : Π a:Set, (T a → Prop) → Prop
+   builtin "ex"  ≔ … // : Π a:Set, (T a → Prop) → Prop
 
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.

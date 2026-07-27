@@ -107,9 +107,9 @@ type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
 (** [find_sym ~prt ~prv b ss qid] returns the symbol corresponding to the
     possibly qualified identifier [qid], or raises [Fatal]. The boolean [b]
     indicates if the error message should mention variables when [qid] is
-    unqualified. [~prt] indicates whether {!constructor:Term.expo.Protec}
+    unqualified. [~prt] indicates whether [Term.expo.Protec]
     symbols from other modules are allowed. [~prv] indicates whether
-    {!constructor:Term.expo.Privat} symbols are allowed. *)
+    [Term.expo.Privat] symbols are allowed. *)
 let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
   let s =
     match mp with
@@ -126,23 +126,23 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%s." Path.pp mp s
+          try Sign.find sign s
+          with Not_found -> fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
     | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
-          if mp <> ss.signature.sign_path then
-            if not (Path.Map.mem mp !(ss.signature.sign_deps)) then
-              fatal pos "No module %a required." Path.pp mp;
+          if mp <> ss.signature.sign_path
+             && not (Path.Map.mem mp !(ss.signature.sign_deps))
+          then fatal pos "No module %a required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%s." Path.pp mp s
+          try Sign.find sign s
+          with Not_found -> fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
   in
   match (prt, prv, s.sym_expo) with
@@ -152,3 +152,19 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
       fatal pos "Protected symbol not allowed here."
   | (_    , false, Privat) -> fatal pos "Private symbol not allowed here."
   | _                      -> s
+
+(** [update_ext_sym_dtrees b ss] updates the decision trees of external
+    symbols by adding (resp. removing) extra rules if [b] is true
+    (resp. false). *)
+let update_ext_sym_dtrees (b:bool) (ss:sig_state): unit =
+  Path.Map.iter (fun p dd ->
+      let sign = try Path.Map.find p !loaded with Not_found -> assert false in
+      StrMap.iter (fun n sd ->
+          let s = try Sign.find sign n with Not_found -> assert false in
+          if sd.rules <> [] then
+            if b then Tree.update s
+            else let neq r1 r2 = not (eq_lhs r1 r2) in
+              let is_not_extra r = List.for_all (neq r) sd.rules in
+              Tree.set_dtree s (List.filter is_not_extra !(s.sym_rules))
+        ) dd.dep_symbols
+    ) !(ss.signature.sign_deps)

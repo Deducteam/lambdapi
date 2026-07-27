@@ -2,7 +2,7 @@ constant symbol Prop : TYPE;      // Type of propositions
 injective symbol π : Prop → TYPE; // Interpretation of propositions in TYPE
 
 builtin "Prop"     ≔ Prop;
-builtin "P"     ≔ π;
+builtin "Prf"     ≔ π;
 
 symbol Nat : TYPE;
 

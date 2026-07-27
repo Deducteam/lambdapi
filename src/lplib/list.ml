@@ -120,8 +120,8 @@ let rec same_length : 'a list -> 'b list -> bool = fun l1 l2 ->
   | _ -> false
 
 (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
-    defaulting to [Stdlib.compare].
-    @raise Invalid_argument if [l] is empty. *)
+    defaulting to [Stdlib.compare]. Raises [Invalid_argument] if [l] is
+    empty. *)
 let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
  fun ?(cmp = Stdlib.compare) li ->
   match li with
@@ -131,7 +131,7 @@ let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
     L.fold_left max h t
 
 (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
-    @raise Not_found if [k] is not a key of [l]. *)
+    Raises [Not_found] if [k] is not a key of [l]. *)
 let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k ->
   let rec loop = function
     | [] -> raise Not_found
@@ -151,9 +151,8 @@ let rec remove_phys_dups : 'a list -> 'a list = function
 (** [destruct l i] returns a triple [(left_rev, e, right)] where [e] is the
     [i]-th element of [l], [left_rev] is the reversed prefix of [l] up to its
     [i]-th element (excluded), and [right] is the remaining suffix of [l]
-    (starting at its [i+1]-th element).
-    @raise Invalid_argument when [i < 0].
-    @raise Not_found when [i ≥ length v]. *)
+    (starting at its [i+1]-th element). Raises [Invalid_argument] if [i < 0],
+    and [Not_found] if [i ≥ length v]. *)
 let destruct : 'a list -> int -> 'a list * 'a * 'a list =
   let rec destruct l i r =
     match r, i with
@@ -232,12 +231,18 @@ let _ =
      && insert_uniq Stdlib.compare 7 l = [2;4;6;7]
      && insert_uniq Stdlib.compare 4 l == l)
 
-(** [split_last l] returns [(l',x)] if [l = append l' [x]], and
-@raise Invalid_argument otherwise. *)
+(** [split_last l] returns [(l',x)] if [l = append l' [x]], and raises
+    [Invalid_argument] otherwise. *)
 let split_last : 'a list -> 'a list * 'a = fun l ->
   match rev l with
   | hd::tl -> (rev tl, hd)
   | [] -> invalid_arg "split_last: empty list"
+
+(** [last l] returns the last element of [l] if [l] is not empty, and raises
+    [Invalid_argument] otherwise. *)
+let last =
+  let rec aux x l = match l with [] -> x | y::l -> aux y l in
+  function x::l -> aux x l | [] -> invalid_arg "last"
 
 (** [rev_mapi f [x1;..;xn]] returns [f (n-1) xn; ..; f 0 x1]. *)
 let rev_mapi f =
@@ -247,8 +252,8 @@ let rev_mapi f =
     | x::l -> aux (f i x :: acc) (i+1) l
   in aux [] 0
 
-(** [swap i xs] put the i-th element (counted from 0) of [xs] at the head.
-@raise Invalid_argument if the i-th element does not exist. *)
+(** [swap i xs] puts the i-th element (counted from 0) of [xs] at the head.
+    Raises [Invalid_argument] if the i-th element does not exist. *)
 let swap : int -> 'a list -> 'a list = fun i xs ->
   let rec swap acc i xs =
     match (i, xs) with
@@ -279,8 +284,8 @@ let rec remove_heads n = function
 
 (** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first
     element of [l] satisying [f], [l1] is the sub-list of [l] preceding [x],
-    and [l2] is the sub-list of [l] following [x]: [l = l1 :: x :: l2].
-@raise Not_found if there is no element of [l] satisying [f]. *)
+    and [l2] is the sub-list of [l] following [x]: [l = l1 :: x :: l2]. Raise
+    [Not_found] if there is no element of [l] satisying [f]. *)
 let split : ('a -> bool) -> 'a list -> 'a list * 'a * 'a list = fun f ->
   let rec split acc = function
     | [] -> raise Not_found
@@ -309,3 +314,24 @@ let pos : ('a -> bool) -> 'a list -> int = fun f ->
     | [] -> raise Not_found
     | x::xs -> if f x then k else pos (k+1) xs
   in pos 0
+
+(** [move_nth n l] moves the nth element of l (counting from 0) to its front,
+    or raises [Invalid_argument]. *)
+let move_nth (n:int) (l:'a list): 'a list =
+  let rec move (acc:'a list) n l =
+    match l with
+     | [] -> invalid_arg "remove_nth"
+     | x::l -> if n <= 0 then x :: rev_append acc l
+               else move (x::acc) (n-1) l
+  in move [] n l
+
+(* unit tests *)
+let _ =
+  let l = [0;1;2;3;4] in
+  assert (move_nth 2 l = [2;0;1;3;4]);
+  assert (move_nth 0 l = l);
+  assert (move_nth 4 l = [4;0;1;2;3])
+
+(* Tail recursive implementation of List.append for
+   OCaml < 5.1 *)
+let (@) l1 l2 = rev_append (rev l1) l2

@@ -27,6 +27,7 @@ let _ = let open LpLexer in
     ; "assertnot", ASSERT true
     ; "associative", ASSOCIATIVE
     ; "assume", ASSUME
+    ; "assumption", ASSUMPTION
     ; "begin", BEGIN
     ; "builtin", BUILTIN
     ; "commutative", COMMUTATIVE
@@ -36,6 +37,7 @@ let _ = let open LpLexer in
     ; "end", END
     ; "fail", FAIL
     ; "flag", FLAG
+    ; "focus", FOCUS
     ; "generalize", GENERALIZE
     ; "have", HAVE
     ; "in", IN
@@ -96,9 +98,8 @@ let raw_path : Path.t pp = List.pp raw_ident "."
 let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
 let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
-  match mp with
-  | [] -> raw_ident ppf s
-  | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
+  if mp = [] || mp = Sign.Ghost.path then raw_ident ppf s
+  else out ppf "%a.%a" raw_path mp raw_ident s
 
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
@@ -125,7 +126,7 @@ let rec term : p_term pp = fun ppf t ->
       match ts with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf ".[%a]" (Array.pp func "; ") ts
+      | Some ts -> out ppf ".[%a]" (Array.pp func ";") ts
     in
     match (t.elt, priority) with
     | (P_Type              , _    ) -> out ppf "TYPE"
@@ -153,7 +154,7 @@ let rec term : p_term pp = fun ppf t ->
           ident x params_list xs typ a func t func u
     | (P_NLit([],i)        , _    ) -> out ppf "%s" i
     | (P_NLit(p,i)         , _    ) -> out ppf "%a.%s" raw_path p i
-    | (P_SLit(s)           , _    ) -> out ppf "\"%s\"" s
+    | (P_SLit(s)           , _    ) -> string ppf s
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (P_Appl _, `Atom)
@@ -243,35 +244,60 @@ let assertion : p_assertion pp = fun ppf a ->
   | P_assert_typing (t, a) -> out ppf "@[%a@ : %a@]" term t term a
   | P_assert_conv (t, u)   -> out ppf "@[%a@ ≡ %a@]" term t term u
 
-let relation ppf s = string ppf (match s with Exact -> " =" | Inside -> " >")
+let relation ppf s =
+  string ppf (match s with Exact -> " = " | Inside -> " > ")
 
 let where elt ppf = function
   | Spine x -> out ppf "spine%a" elt x
   | Conclusion x -> out ppf "concl%a" elt x
   | Hypothesis x -> out ppf "hyp%a" elt x
 
+  let f ppf x = string ppf x
 let search_constr ppf = function
-  | QType x -> out ppf "type%a" (Option.pp (where (Option.pp relation))) x
-  | QXhs(i,None) -> out ppf "rule%a" (Option.pp relation) i
-  | QXhs(i,Some Lhs) -> out ppf "lhs%a" (Option.pp relation) i
-  | QXhs(i,Some Rhs) -> out ppf "rhs%a" (Option.pp relation) i
+  | QType x -> out ppf "%a" (Option.pp
+    (where (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation))) x
+  | QXhs(i,None) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Lhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
+  | QXhs(i,Some Rhs) -> out ppf "%a"
+    (Option.pp ~none_case:(fun _ -> string ppf " >= ") relation) i
 
 let generalize ppf b = if b then string ppf " generalize"
 
 let search_base ppf = function
-  | QName s -> out ppf "name %s" s
+  | QName s -> out ppf "name = %s" s
   | QSearch(t,g,None) -> out ppf "anywhere%a%a" generalize g term t
   | QSearch(t,g,Some c) ->
       out ppf "%a%a%a" search_constr c generalize g term t
 
-let op ppf o = string ppf (match o with Union -> "; " | Intersect -> ", ")
+let op ppf o = string ppf (match o with
+    Union -> " | "
+  | Intersect -> " with ")
 
-let filter ppf (Path s) = out ppf " | %s" s
+let filter ppf f =
+  match f with
+  | Path s -> out ppf " in %s" s
+  | RegExp s -> out ppf " in \"%s\"" s
 
 let rec search ppf = function
   | QBase b -> search_base ppf b
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
   | QFilter(q,f) -> out ppf "%a%a" search q filter f
+
+let print : print pp = fun ppf p ->
+  match p with
+  | Verbose -> out ppf " verbose"
+  | Debug -> out ppf " debug"
+  | Flag -> out ppf " flag"
+  | Prover -> out ppf " prover"
+  | Prover_timeout -> out ppf " prover_timeout"
+  | Goal -> ()
+  | Symbol qid -> out ppf " %a" qident qid
+  | Unif_rule -> out ppf " unif_rule"
+  | Coerce_rule -> out ppf " coerce_rule"
+  | String s -> out ppf " %s" (String.add_quotes s)
+  | Builtin -> out ppf " builtin"
 
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
@@ -280,14 +306,14 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
+  | P_query_flag("", _) -> out ppf "flag"
   | P_query_flag(s, b) ->
       out ppf "flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
   | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
-  | P_query_print None -> out ppf "print"
-  | P_query_print(Some qid) -> out ppf "print %a" qident qid
+  | P_query_print p -> out ppf "print%a" print p
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search q -> out ppf "search %a" search q
@@ -296,12 +322,16 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
+  | P_tac_all_hyps t -> out ppf "all_hyps %a" term t
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_assumption -> out ppf "assumption"
   | P_tac_change t -> out ppf "change %a" term t
   | P_tac_eval t -> out ppf "eval %a" term t
   | P_tac_fail -> out ppf "fail"
+  | P_tac_first_hyp t -> out ppf "first_hyp %a" term t
+  | P_tac_focus n -> out ppf "focus %s" n
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
@@ -351,16 +381,16 @@ let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
   | P_builtin (s, qid) -> out ppf "@[builtin \"%s\"@ ≔ %a@]" s qident qid
-  | P_inductive (_, _, []) -> assert false (* not possible *)
-  | P_inductive (ms, xs, i :: il) ->
+  | P_inductive (_, _, _, []) -> assert false (* not possible *)
+  | P_inductive (_, ms, xs, i :: il) ->
     let with_ind ppf i = out ppf "@,%a" (inductive "with") i in
     out ppf "@[<v>@[%a%a@]%a%a@]"
       modifiers ms (List.pp params " ") xs
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open(false,ps) -> out ppf "open %a" (List.pp path " ") ps
-  | P_open(true,ps) -> out ppf "private open %a" (List.pp path " ") ps
+  | P_open(_,false,ps) -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(_,true,ps) -> out ppf "private open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (None, ps) -> out ppf "require %a" (List.pp path " ") ps
   | P_require (Some false, ps) ->
@@ -373,7 +403,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
     let with_rule ppf r = out ppf "@.%a" (rule "with") r in
     rule "rule" ppf r; List.iter (with_rule ppf) rs
   | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+    { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf; p_sym_def } ->
     begin
       out ppf "@[<v>@[<2>%asymbol %a%a%a%a%a@]%a@]"
@@ -391,5 +421,5 @@ let command : p_command pp = fun ppf { elt; _ } ->
   end;
   out ppf ";"
 
-let ast : ast pp = fun ppf ->
+let commands : p_commands pp = fun ppf ->
   Stream.iter ((command +| unit "@.") ppf)

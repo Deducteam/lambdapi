@@ -85,3 +85,5 @@ let files : (string -> bool) -> string -> string list = fun chk ->
         let acc, dirs = Array.fold_left f (acc, dirs) (Sys.readdir d) in
         files acc dirs
   in fun d -> files [] [d]
+
+let default (fmt:('a, 'b, 'c, 'd, 'e, 'f) format6) = fmt
