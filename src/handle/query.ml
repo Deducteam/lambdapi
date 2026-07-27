@@ -4,7 +4,7 @@ open Common open Error open Pos
 open Parsing open Syntax
 open Core open Term open Print
 open Proof
-open Lplib open Base
+open Lplib open Base open Extra
 open Timed
 
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
@@ -95,8 +95,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     | Some ps -> Proof.meta_of_key ps
   in
   let scope ?(typ=false) = Scope.scope_term ~typ ~mok true ss env in
-  let ctxt = Env.to_ctxt env in
-  let p = new_problem() in
+  let term =
+    let idmap = Env.names (Proof.focus_env ps) in
+    let idmap =
+        StrMap.fold (fun n _ -> Name.add_name n) ss.in_scope idmap in
+    term_in idmap
+  in
   match elt with
   | P_query_print Debug ->
     let a = Logger.get_activated_loggers() in
@@ -221,18 +225,17 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
        | None -> fatal pos "Not in a proof"
        | Some pst ->
            match pst.proof_term with
-           | Some m ->
-               let ids = Env.names (Proof.focus_env ps) in
-               return (term_in ids) (mk_Meta(m,[||]))
+           | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | P_query_search q ->
       let dbpath = Path.default_dbpath in
       return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
       let t = scope pt and a = scope ~typ:true pa in
+      let ctxt = Env.to_ctxt env in
+      let p = new_problem() in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         typing (ctxt, t, a);
-      (* Check that [a] is typable by a sort. *)
       let (a, _) = check_sort pos p ctxt a in
       let result =
         try ignore (check pos p ctxt t a); true
@@ -242,13 +245,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_assert(must_fail, P_assert_conv(pt,pu)) ->
       let t = scope pt and u = scope pu in
+      let ctxt = Env.to_ctxt env in
+      let p = new_problem() in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         constr (ctxt, t, u);
-      (* Check that [t] is typable. *)
       let (t, a) = infer pt.pos p ctxt t in
-      (* Check that [u] is typable. *)
       let (u, b) = infer pu.pos p ctxt u in
-      (* Check that [t] and [u] have the same type. *)
       p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
         if !p.unsolved = [] then begin
@@ -266,11 +268,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
+      let ctxt = Env.to_ctxt env in
+      let p = new_problem() in
       let t = Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)) in
-      let ids = Env.names (Proof.focus_env ps) in
-      return (term_in ids) t
+      return term t
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
+      let ctxt = Env.to_ctxt env in
+      let p = new_problem() in
       let t = Eval.eval cfg ctxt (fst (infer pt.pos p ctxt t)) in
-      let ids = Env.names (Proof.focus_env ps) in
-      return (term_in ids) t
+      return term t

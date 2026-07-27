@@ -168,3 +168,7 @@ let update_ext_sym_dtrees (b:bool) (ss:sig_state): unit =
               Tree.set_dtree s (List.filter is_not_extra !(s.sym_rules))
         ) dd.dep_symbols
     ) !(ss.signature.sign_deps)
+
+(** [names ss] returns the set of all the symbol names in scope. *)
+let names (ss:sig_state): StrSet.t =
+  StrMap.fold (fun n _ set -> StrSet.add n set) ss.in_scope StrSet.empty
