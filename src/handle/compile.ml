@@ -29,16 +29,16 @@ let source base =
     is stored in the corresponding object file if [!gen_obj] is [true]. The
     sig_state [ss] is only used to get the "String" builtin. *)
 let rec compile : Command.compiler = fun ss mp ->
-  if List.mem mp !loading then
+  if mp = Ghost.path then Ghost.sign
+  else if List.mem mp !loading then
     begin
       let base = file_of_path mp in
       fatal_msg "Circular dependency detected in \"%s\".@." (source base);
       fatal_msg "Dependency stack for module:@.";
       List.iter (fatal_msg "- %a@." Path.pp) !loading;
       fatal_no_pos "Build aborted."
-    end;
-  if mp = Ghost.path then Ghost.sign else
-  match Path.Map.find_opt mp !loaded with
+    end
+  else match Path.Map.find_opt mp !loaded with
   | Some sign -> sign
   | None ->
     let base = file_of_path mp in
@@ -77,6 +77,10 @@ let rec compile : Command.compiler = fun ss mp ->
     begin
       Console.out 2 (Color.blu "Load \"%s\"") obj;
       let sign = Sign.read obj in
+      if sign.sign_path <> mp then
+        fatal_no_pos "The file \"%s\" was compiled with a different \
+                      root_path. Remove it and compile it again." obj
+      else begin
       (* We recursively load every module [mp'] on which [mp] depends. *)
       Path.Map.iter (fun mp' _ -> ignore (compile ss mp')) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
@@ -97,6 +101,7 @@ let rec compile : Command.compiler = fun ss mp ->
       Ghost.iter update;
       if Stdlib.(!Common.Console.lsp_mod) then Tool.Indexing.index_sign sign;
       sign
+      end
     end
 
 (** [compile_file fname] looks for a package configuration file for [fname]
