@@ -698,6 +698,15 @@ let opt_dry_run =
 {|Do not install anything, only print the command that would be
   executed if the option was not given.|} }
 
+let run_command : bool -> string -> unit = fun dry_run cmd ->
+  if dry_run then Common.Console.out 1 "%s" cmd
+  else match Sys.command cmd with
+    | 0 -> ()
+    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
+    | exception Failure(msg) ->
+      Common.Error.fatal_msg "Command [%s] failed." cmd;
+      Common.Error.fatal_no_pos "Reported error: %s." msg
+
 let cmd_install =
   let summary = "Install the given files." in
   let c = add_command
@@ -707,8 +716,45 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
-  Install.run_install (*FIXME*)Config.default_config !dry_run
-    (parse_options c.options args)
+    let time = Timed.Time.save () in
+    let install file =
+      Timed.Time.restore time;
+      let dest =
+        if Filename.basename file = Parsing.Package.pkg_file then
+          begin
+            let path = Parsing.Package.((read file).root_path) in
+            let lib_root =
+              match !Common.Library.lib_root with
+              | None -> assert false
+              | Some p -> p
+            in
+            let dir = List.fold_left Filename.concat lib_root path in
+            Filename.concat dir Parsing.Package.pkg_file
+          end
+        else
+          begin
+            Parsing.Package.apply_config file;
+            Common.Library.install_path file
+          end
+      in
+      (* Create directories as needed for [dest]. *)
+      let cmd =
+        let dest_dir = Filename.dirname dest in
+        String.concat " " ["mkdir"; "-p"; dest_dir]
+        (* Use short options for POSIX compliance. *)
+      in
+      run_command !dry_run cmd;
+      (* Copy files. *)
+      let cmd =
+        let file = Filename.quote file in
+        String.concat " "
+          ["cp"; "-p"; "-f"; file; dest]
+          (* Use short options for POSIX compliance. See
+        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
+      in
+      run_command !dry_run cmd
+    in
+    List.iter install (parse_options c.options args)
 
 (*-------------------------------------------------------------------------*)
 (** lsp command *)
@@ -825,7 +871,28 @@ let cmd_uninstall =
   | [] -> Common.Error.fatal_no_pos "no package file provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-  Install.run_uninstall (*FIXME*)Config.default_config !dry_run s
+    let p = Parsing.Package.read s in
+    (* Compute the expected installation directory. *)
+    let lib_root =
+      match !Common.Library.lib_root with
+      | None -> assert false
+      | Some p -> p
+    in
+    let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
+    let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
+    (* Check that a package is indeed installed there. *)
+    if not (Sys.file_exists pkg_file) then
+      Common.Error.fatal_no_pos "Specified package is not installed.";
+    (* Check that the installed package has the expected name. *)
+    let installed_name = Parsing.Package.((read pkg_file).package_name) in
+    if p.package_name <> installed_name then
+      Common.Error.fatal_no_pos
+        "Unexpected package [%s] installed under the same \
+         root path intended for specified package [%s]."
+        installed_name p.package_name;
+    (* Do the actual uninstallation. *)
+    let cmd = "rm -r " ^ Filename.quote pkg_dir in
+    run_command !dry_run cmd
 
 (*-------------------------------------------------------------------------*)
 (** websearch command *)
