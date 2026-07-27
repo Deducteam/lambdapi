@@ -1,43 +1,3 @@
-let default_header =
-{|<style>
-  .snippet {
-    border: 1px solid grey;
-    color: red;
-    padding: 0 3px 0 3px;
-    line-height: 1.6;
-  }
-</style>
-<h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
-Search Engine</h1>
-<div id="descriptionSection" style="display: %%HIDE_DESCRIPTION%%">
-  <p>
-    The <b>search</b> button answers the query. Read the <a href=
-    "https://lambdapi.readthedocs.io/en/latest/query_language.html">
-    query language specification</a> to learn about the query language.
-    <br>The query language also uses the <a
-    href="https://lambdapi.readthedocs.io/en/latest/terms.html">
-    Lambdapi terms syntax</a>.<br> with the possibility to use,
-    for commodity, "forall" and "->"  instead of "Π" and "→" respectively
-    (results are displayed with the Unicode symbols "Π" and "→" though).
-    In particular, the following constructors can come handy for
-    writing queries:<br>
-    </p>
-    <ul>
-      <li>an anonymous function<span class="snippet">λ (x:A) y z,t</span>
-        mapping <span class="snippet">x</span>, <span class="snippet">y
-        </span> and <span class="snippet">z</span> (of type <span
-        class="snippet">A</span> for <span class="snippet">x</span>) to
-        <span class="snippet">t</span>.</li>
-      <li>a dependent product
-        <span class="snippet">forall (x:A) y z,T</span></li>
-      <li>a non-dependent product <span class="snippet">A -> T</span>
-       (syntactic sugar for <span class="snippet">forall x:A,T</span> when
-        <span class="snippet">x</span> does not occur in <span class=
-        "snippet">T</span>)</li>
-  </ul>
-</div>
-|}
-
 (*--------------------------------------------------------------------------*)
 (** Functions on strings *)
 (*--------------------------------------------------------------------------*)
@@ -440,6 +400,28 @@ let cmd_dtree =
       Format.printf "%a" Tool.Tree_graphviz.to_dot sym
 
 (*-------------------------------------------------------------------------*)
+(** deindex command *)
+(*-------------------------------------------------------------------------*)
+
+let cmd_deindex =
+  let summary =
+    "De-index all symbols whose path is a suffix of the given PATH." in
+  let c = add_command
+            { name = "deindex"
+            ; args = "[OPTION …] PATH"
+            ; summary
+            ; desc = summary
+            ; options = opt_db :: general_options } in
+  fun args ->
+  match parse_options c.options args with
+    | [] -> Common.Error.fatal_no_pos "no prefix provided"
+    | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+    | [p] ->
+      Tool.Indexing.deindex_path p;
+      let dbpath = !Tool.Indexing.the_dbpath in
+      Tool.Indexing.dump ~dbpath ()
+
+(*-------------------------------------------------------------------------*)
 (** export command *)
 (*-------------------------------------------------------------------------*)
 
@@ -630,11 +612,12 @@ let cmd_index =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | files ->
-  Tool.Indexing.load_rewriting_rules !rule_files;
   let time = Timed.Time.save() in
   let handle file =
     Timed.Time.restore time;
     Common.Console.reset_default();
+    Tool.Indexing.preserving_index Timed.Time.restore time;
+    Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
   in
   List.iter handle files
@@ -787,13 +770,24 @@ let cmd_parse =
 (** search command *)
 (*-------------------------------------------------------------------------*)
 
-let require = ref None
+let require = ref []
 
 let opt_require =
   { opt_name = "--require="
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> require := Some s)
+  ; opt_handle = Suffix("FILE", fun s -> require := s::!require)
   ; opt_desc = "FILE to be required before starting the search." }
+
+let sig_state_of_require() =
+  List.fold_left
+    (fun ss r ->
+       Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
+       Handle.Command.handle Handle.Compile.compile ss
+         (Common.Pos.none
+            (Parsing.Syntax.P_require
+               (Some false,
+                [Common.Pos.none (Parsing.Parser.path_of_string r)]))))
+    Core.Sig_state.dummy !require
 
 let cmd_search =
   let summary = "Query a database file." in
@@ -802,23 +796,17 @@ let cmd_search =
             ; args = "[OPTION …] QUERY"
             ; summary
             ; desc = summary
-            ; options = compile_options } in
+            ; options = opt_require :: compile_options } in
   fun args ->
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no query provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-      Tool.Indexing.load_rewriting_rules !rule_files;
-      let ss =
-        match !require with
-        | None -> Core.Sig_state.dummy
-        | Some r ->
-            Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
-            Core.Sig_state.of_sign
-              (sign_of_path (Parsing.Parser.path_of_string r))
-      in
-      let dbpath = !Tool.Indexing.the_dbpath in
-      Tool.Indexing.search_cmd_txt ss ~dbpath Format.std_formatter s
+    Tool.Indexing.load_rewriting_rules !rule_files;
+    Tool.Indexing.force_meta_rules_loading();
+    let ss = sig_state_of_require() in
+    let dbpath = !Tool.Indexing.the_dbpath in
+    Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss ~dbpath) s
 
 (*-------------------------------------------------------------------------*)
 (** uninstall command *)
@@ -886,24 +874,24 @@ let cmd_websearch =
   match parse_options c.options args with
   | _::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [] ->
-      Tool.Indexing.load_rewriting_rules !rule_files;
-      let ss =
-        match !require with
-        | None -> Core.Sig_state.dummy
-        | Some r ->
-            Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
-            Core.Sig_state.of_sign
-              (sign_of_path (Parsing.Parser.path_of_string r))
-      in
-      let header =
-        match !header with
-        | None -> default_header
-        | Some f -> Lplib.String.string_of_file f
-      in
-      let port = !port in
-      let dbpath = !Tool.Indexing.the_dbpath in
-      let path_in_url = !url in
-      Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url ()
+    Tool.Indexing.load_rewriting_rules !rule_files;
+    Tool.Indexing.force_meta_rules_loading();
+    let ss = sig_state_of_require() in
+    let header =
+      match !header with
+      | None ->
+        let file =
+          match Ressources.Mysites.Sites.server_resources with
+          | [] -> assert false
+          | x :: _ -> x
+        in
+        Lplib.String.string_of_file (file ^ "/default/description.html")
+      | Some file -> Lplib.String.string_of_file file
+    in
+    let port = !port in
+    let dbpath = !Tool.Indexing.the_dbpath in
+    let path_in_url = !url in
+    Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url ()
 
 (*-------------------------------------------------------------------------*)
 (** main procedure *)
@@ -934,6 +922,7 @@ Do "lambdapi COMMAND -h" to get more information on each command.
       done
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
+  | "deindex"::args -> cmd_deindex args
   | "export"::args -> cmd_export args
   | "index"::args -> cmd_index args
   | "init"::args -> cmd_init args
