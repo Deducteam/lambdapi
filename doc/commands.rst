@@ -186,8 +186,8 @@ are:
     ``+`` is not a valid term anymore. To locally deactivate a
     notation, you can use ``(+)`` or ``@+`` instead.
 
-  * A symbol declared as infix must have a type of the form ``A → A →
-    A``.
+  * A symbol declared as infix must have a type of the form ``Π x:_, Π
+    y:_, _`` when removing implicit arguments.
 
   * The additional keyword ``left`` declares the symbol associative to
     the left, that is, ``x + y + z`` is parsed as ``(x + y) +
@@ -209,6 +209,9 @@ are:
 
    notation ¬ prefix 5;
    notation ! postfix 10;
+
+  * A symbol declared as prefix/postfix must have a type of the form
+    ``Π x:_, _`` when removing implicit arguments.
 
   * Infix, prefix and postfix operators share the same levels of
     priority. Hence, depending on the priorities, ``-x + z`` is
