@@ -217,6 +217,11 @@ let opt_lib_root =
   if OPAM_SWITCH_PREFIX is set or it uses /usr/local/lib/lambdapi/lib_root.|}
 }
 
+let set_lib_root() =
+  match !Common.Library.lib_root with
+  | None -> Common.Library.set_lib_root None
+  | _ -> ()
+
 let opt_map_dir =
   { opt_name = "--map-dir="
   ; opt_short = None
@@ -346,9 +351,9 @@ let sign_of_path p =
   match !timeout with
   | None -> Handle.Compile.compile ss p
   | Some i ->
-      try Lplib.Extra.timeout i (Handle.Compile.compile ss) p
-      with Lplib.Extra.Timeout ->
-        Common.Error.fatal_no_pos "timeout for checking %a." Common.Path.pp p
+    try Lplib.Extra.timeout i (Handle.Compile.compile ss) p
+    with Lplib.Extra.Timeout ->
+      Common.Error.fatal_no_pos "timeout for checking %a." Common.Path.pp p
 
 let compile file =
   sign_of_path (Common.Library.path_of_file Parsing.LpLexer.escape file)
@@ -365,15 +370,16 @@ let cmd_check =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | f::files ->
-      Parsing.Package.apply_config f;
-      let time = Timed.Time.save() in
-      ignore (compile f);
-      let handle file =
-        Timed.Time.restore time;
-        Common.Console.reset_default();
-        ignore (compile file)
-      in
-      List.iter handle files
+    set_lib_root();
+    Parsing.Package.apply_config f;
+    let time = Timed.Time.save() in
+    ignore (compile f);
+    let handle file =
+      Timed.Time.restore time;
+      Common.Console.reset_default();
+      ignore (compile file)
+    in
+    List.iter handle files
 
 (*-------------------------------------------------------------------------*)
 (** decision-tree command *)
@@ -403,6 +409,7 @@ let cmd_dtree =
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
+    set_lib_root();
     Parsing.Package.apply_config (Sys.getcwd());
     let sym =
       Timed.(Common.Console.verbose := 0);
@@ -441,6 +448,7 @@ let cmd_deindex =
     | [] -> Common.Error.fatal_no_pos "no prefix provided"
     | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
     | [p] ->
+      set_lib_root();
       Tool.Indexing.deindex_path p;
       let dbpath = !Tool.Indexing.the_dbpath in
       Tool.Indexing.dump ~dbpath ()
@@ -475,12 +483,12 @@ let output = ref None
 let check_output l =
   match !output with
   | None ->
-      Common.Error.fatal_no_pos
-        "the output format must be given before the other options"
+    Common.Error.fatal_no_pos
+      "the output format must be given before the other options"
   | Some o ->
-      if not (List.mem o l) then
-        Common.Error.fatal_no_pos "option invalid with format %s"
-          (string_of_output o)
+    if not (List.mem o l) then
+      Common.Error.fatal_no_pos "option invalid with format %s"
+        (string_of_output o)
 
 let opt_output =
   { opt_name = "--output"
@@ -581,36 +589,37 @@ let cmd_export =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | _::_::_ ->
-      Common.Error.fatal_no_pos
-        "the export command accepts only one file as argument"
+    Common.Error.fatal_no_pos
+      "the export command accepts only one file as argument"
   | [file] ->
-      let output =
-        match !output with
-        | None -> Common.Error.fatal_no_pos "no output format given"
-        | Some o -> o
-      in
-      begin
-        match output with
-        | RawDk | Lp | SttCoq | RawCoq -> ()
-        | _ -> Parsing.Package.apply_config (Filename.dirname file)
-      end;
-      let parse = Parsing.Parser.parse_file in
+    set_lib_root();
+    let output =
+      match !output with
+      | None -> Common.Error.fatal_no_pos "no output format given"
+      | Some o -> o
+    in
+    begin
       match output with
-      | Lp -> Parsing.Pretty.commands Format.std_formatter (parse file)
-      | Dk -> Export.Dk.sign (compile file)
-      | RawDk -> Export.Rawdk.print (parse file)
-      | Hrs -> Export.Hrs.sign Format.std_formatter (compile file)
-      | Xtc -> Export.Xtc.sign Format.std_formatter (compile file)
-      | RawCoq ->
-          Option.iter Export.Stt.set_renaming !renaming;
-          Export.Coq.print (parse file)
-      | SttCoq ->
-          Export.Stt.stt := true;
-          Option.iter Export.Stt.set_renaming !renaming;
-          Option.iter Export.Stt.set_encoding !encoding;
-          Option.iter Export.Stt.set_mapping !mapping;
-          Option.iter Export.Stt.set_requiring !requiring;
-          Export.Coq.print (parse file)
+      | RawDk | Lp | SttCoq | RawCoq -> ()
+      | _ -> Parsing.Package.apply_config (Filename.dirname file)
+    end;
+    let parse = Parsing.Parser.parse_file in
+    match output with
+    | Lp -> Parsing.Pretty.commands Format.std_formatter (parse file)
+    | Dk -> Export.Dk.sign (compile file)
+    | RawDk -> Export.Rawdk.print (parse file)
+    | Hrs -> Export.Hrs.sign Format.std_formatter (compile file)
+    | Xtc -> Export.Xtc.sign Format.std_formatter (compile file)
+    | RawCoq ->
+      Option.iter Export.Stt.set_renaming !renaming;
+      Export.Coq.print (parse file)
+    | SttCoq ->
+      Export.Stt.stt := true;
+      Option.iter Export.Stt.set_renaming !renaming;
+      Option.iter Export.Stt.set_encoding !encoding;
+      Option.iter Export.Stt.set_mapping !mapping;
+      Option.iter Export.Stt.set_requiring !requiring;
+      Export.Coq.print (parse file)
 
 (*-------------------------------------------------------------------------*)
 (** index command *)
@@ -636,15 +645,16 @@ let cmd_index =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | files ->
-  let time = Timed.Time.save() in
-  let handle file =
-    Timed.Time.restore time;
-    Common.Console.reset_default();
-    Tool.Indexing.preserving_index Timed.Time.restore time;
-    Tool.Indexing.load_rewriting_rules !rule_files;
-    Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
-  in
-  List.iter handle files
+    set_lib_root();
+    let time = Timed.Time.save() in
+    let handle file =
+      Timed.Time.restore time;
+      Common.Console.reset_default();
+      Tool.Indexing.preserving_index Timed.Time.restore time;
+      Tool.Indexing.load_rewriting_rules !rule_files;
+      Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
+    in
+    List.iter handle files
 
 (*-------------------------------------------------------------------------*)
 (** init command *)
@@ -663,29 +673,29 @@ let cmd_init =
   | [] -> Common.Error.fatal_no_pos "no module path provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
-      let root_path = Parsing.Parser.path_of_string s in
-      (* Find out the package name, create the directory. *)
-      let pkg_dir =
-        match List.rev root_path with
-        | []   -> assert false (* Unreachable. *)
-        | s::_ -> s
-      in
-      if Sys.file_exists pkg_dir then
-        Common.Error.fatal_no_pos "%s already exists." pkg_dir;
-      Unix.mkdir pkg_dir 0o700;
-      let write_file n pp =
-        let oc = open_out n in
-        let ppf = Format.formatter_of_out_channel oc in
-        pp ppf; Format.pp_print_flush ppf (); close_out oc
-      in
-      (* Write the package configuration file. *)
-      let pkg_file ppf =
-        Format.fprintf ppf "package_name = %s@.root_path    = %a@."
-          pkg_dir Common.Path.pp root_path
-      in
-      write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-      (* Write the Makefile and example file. *)
-      let makefile ppf = Format.fprintf ppf
+    let root_path = Parsing.Parser.path_of_string s in
+    (* Find out the package name, create the directory. *)
+    let pkg_dir =
+      match List.rev root_path with
+      | []   -> assert false (* Unreachable. *)
+      | s::_ -> s
+    in
+    if Sys.file_exists pkg_dir then
+      Common.Error.fatal_no_pos "%s already exists." pkg_dir;
+    Unix.mkdir pkg_dir 0o700;
+    let write_file n pp =
+      let oc = open_out n in
+      let ppf = Format.formatter_of_out_channel oc in
+      pp ppf; Format.pp_print_flush ppf (); close_out oc
+    in
+    (* Write the package configuration file. *)
+    let pkg_file ppf =
+      Format.fprintf ppf "package_name = %s@.root_path    = %a@."
+        pkg_dir Common.Path.pp root_path
+    in
+    write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
+    (* Write the Makefile and example file. *)
+    let makefile ppf = Format.fprintf ppf
 {|.POSIX:
 .SUFFIXES:
 
@@ -706,7 +716,7 @@ clean:
 .lp.lpo:
 	lambdapi check --gen-obj $<
 |} in
-      write_file (Filename.concat pkg_dir "Makefile") makefile
+    write_file (Filename.concat pkg_dir "Makefile") makefile
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
@@ -740,6 +750,7 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
+    set_lib_root();
     let time = Timed.Time.save () in
     let install file =
       Timed.Time.restore time;
@@ -833,8 +844,8 @@ let cmd_parse =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | files ->
-      let handle file = ignore (Parsing.Parser.parse_file file) in
-      List.iter handle files
+    let handle file = ignore (Parsing.Parser.parse_file file) in
+    List.iter handle files
 
 (*-------------------------------------------------------------------------*)
 (** search command *)
@@ -872,6 +883,7 @@ let cmd_search =
   | [] -> Common.Error.fatal_no_pos "no query provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
+    set_lib_root();
     Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
@@ -895,6 +907,7 @@ let cmd_uninstall =
   | [] -> Common.Error.fatal_no_pos "no package file provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
+    set_lib_root();
     let p = Parsing.Package.read s in
     (* Compute the expected installation directory. *)
     let lib_root =
@@ -965,6 +978,7 @@ let cmd_websearch =
   match parse_options c.options args with
   | _::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [] ->
+    set_lib_root();
     Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
