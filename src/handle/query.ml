@@ -4,14 +4,14 @@ open Common open Error open Pos
 open Parsing open Syntax
 open Core open Term open Print
 open Proof
-open Lplib open Base open Extra
+open Lplib open Base
 open Timed
 
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None ->
-      let ids = Ctxt.names ctx in let term = term_in ids in
+      let term = term_in (Ctxt.names ctx) in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
       if Unif.solve_noexn p then
@@ -19,19 +19,19 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
           if !p.unsolved = [] then (t, a)
           else
             begin
-              let ids = Ctxt.names ctx in let term = term_in ids in
+              let term = term_in (Ctxt.names ctx) in
               List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
               fatal pos "Failed to infer the type of %a." term t
             end
         end
       else
-        let ids = Ctxt.names ctx in let term = term_in ids in
+        let term = term_in (Ctxt.names ctx) in
         fatal pos "%a is not typable." term t
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
   let die () =
-    let ids = Ctxt.names ctx in let term = term_in ids in
+    let term = term_in (Ctxt.names ctx) in
     fatal pos "[%a] does not have type [%a]." term t term a
   in
   match Infer.check_noexn p ctx t a with
@@ -49,21 +49,21 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
   | None ->
-      let ids = Ctxt.names ctx in let term = term_in ids in
+      let term = term_in (Ctxt.names ctx) in
       fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
       if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then (t, s) else
             begin
-              let ids = Ctxt.names ctx in let term = term_in ids in
+              let term = term_in (Ctxt.names ctx) in
               List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
               fatal pos "Failed to check that [%a] is typable by a sort."
                 term s
             end
         end
       else
-        let ids = Ctxt.names ctx in let term = term_in ids in
+        let term = term_in (Ctxt.names ctx) in
         fatal pos "[%a] is not typable by a sort." term t
 
 (** Result of query displayed on hover in the editor. *)
@@ -95,12 +95,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     | Some ps -> Proof.meta_of_key ps
   in
   let scope ?(typ=false) = Scope.scope_term ~typ ~mok true ss env in
-  let term =
-    let idmap = Env.names (Proof.focus_env ps) in
-    let idmap =
-        StrMap.fold (fun n _ -> Name.add_name n) ss.in_scope idmap in
-    term_in idmap
-  in
+  let term = term_in (Env.names (Proof.focus_env ps)) in
   match elt with
   | P_query_print Debug ->
     let a = Logger.get_activated_loggers() in
