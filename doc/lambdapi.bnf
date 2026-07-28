@@ -5,7 +5,6 @@
 <file> ::= (<command> ";")*
 
 <command> ::= "opaque" <qid>
-            | "require" <qid>+
             | "require" [["private"] "open"] <qid>+
             | "require" <qid> "as" <uid>
             | ["private"] "open" <qid>+

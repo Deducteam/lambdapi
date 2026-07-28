@@ -2,29 +2,39 @@
 
 set -e
 
-lambdapi='dune exec lambdapi -- check'
+dune build
+
+clean () { rm -f tests/OK/*.lpo; }
+trap clean ERR
+
+lambdapi='_build/install/default/bin/lambdapi'
+mk=/tmp/lpo.mk
+jobs=32
 TIMEFORMAT="%Es"
 
-out=/tmp/lambdapi.output
+for f in why3 perf_rw_engine tutorial escape_path req.file.with.dot
+do
+    exclude="-a ! -name $f.lp $exclude"
+done
+FILES=`find tests/OK -maxdepth 1 -name '*.lp' $exclude | xargs`
 
-ok_tests() {
-    for f in 'tests/OK/a b/escape file.lp' tests/OK/*.lp tests/OK/*.dk
-    do
-        case $f in
-            tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
-            *)
-                echo lambdapi check $options $f ...
-                $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
-        esac
-    done
-}
+cat > $mk <<__END__
+FILES := $FILES
+default: \$(FILES:%.lp=%.lpo)
+%.lpo: %.lp
+	@echo lambdapi check \$(OPTION) \$<
+	@$lambdapi check -w -v0 \$(OPTION) \$<
+__END__
+for f in $FILES
+do
+    s=`awk -f tests/deps.awk $f`;
+    if test -n "$s"; then echo ${f}o: $s >> $mk; fi
+done
 
-rm -f 'tests/OK/a b/escape file.lpo' tests/OK/*.lpo
+clean
 
 echo "############ compile tests/OK files ############"
-options='-c -w'
-time ok_tests
+OPTION='-c' time make -j$jobs -f $mk
 
 echo "############ load tests/OK files ############"
-options='-w'
-time ok_tests
+time make -j$jobs -f $mk

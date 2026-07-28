@@ -52,9 +52,6 @@ let rec compile : Command.compiler = fun ss mp ->
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
-      (*let open Base in sout "loaded:";
-        Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
-        sout "\n%!";*)
       let a = Tactic.reset_admitted() in
       Sig_state.update_ext_sym_dtrees false ss;
       let consume =
@@ -78,8 +75,9 @@ let rec compile : Command.compiler = fun ss mp ->
       Console.out 2 (Color.blu "Load \"%s\"") obj;
       let sign = Sign.read obj in
       if sign.sign_path <> mp then
-        fatal_no_pos "The file \"%s\" was compiled with a different \
-                      root_path. Remove it and compile it again." obj
+        fatal_no_pos "The file \"%s\" has path \"%a\" instead of \"%a\". \
+                      Remove it and compile it again."
+          obj Path.pp sign.sign_path Path.pp mp
       else begin
       (* We recursively load every module [mp'] on which [mp] depends. *)
       Path.Map.iter (fun mp' _ -> ignore (compile ss mp')) !(sign.sign_deps);
