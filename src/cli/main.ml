@@ -323,7 +323,7 @@ let print_usage c =
   let cmp_opt o1 o2 = Stdlib.compare o1.opt_name o2.opt_name in
   List.iter print_option (List.sort cmp_opt c.options)
 
-let add_help c =
+let add_opt_help c =
   let handle = ref (fun () -> ()) in
   let o =
     { opt_name = "--help"
@@ -335,11 +335,11 @@ let add_help c =
   handle := (fun () -> print_usage c);
   c
 
-let cmd = Dynarray.create()
+let cmd = ref [] (*Dynarray.create()*)
 
 let add_command c =
-  let c = add_help c in
-  Dynarray.add_last cmd c;
+  let c = add_opt_help c in
+  cmd := c::!cmd (*Dynarray.add_last cmd c*);
   c
 
 (*-------------------------------------------------------------------------*)
@@ -743,7 +743,7 @@ let run_command : bool -> string -> unit = fun dry_run cmd ->
 let cmd_install =
   let summary = "Install the given files." in
   let c = add_command
-            { name = "init"
+            { name = "install"
             ; args = "[OPTION …] [FILE …]"
             ; summary
             ; desc = summary
@@ -897,7 +897,7 @@ let cmd_uninstall =
   let summary =
     "Uninstall the files corresponding to the given package file." in
   let _ = add_command
-            { name = "init"
+            { name = "uninstall"
             ; args = "[OPTION …] FILE.pkg"
             ; summary
             ; desc = summary
@@ -1017,13 +1017,16 @@ Do "lambdapi COMMAND -h" to get more information on each command.
 %sversion, --version%s
   Prints the version of lambdapi.
  |} b r b r b r b r;
-      for i = 0 to Dynarray.length cmd - 1 do
+      (*for i = 0 to Dynarray.length cmd - 1 do
+      let c = Dynarray.get cmd i in*)
+      let f c =
         Printf.printf
 {|
 %s%s%s
   %s
-|} b (Dynarray.get cmd i).name r (Dynarray.get cmd i).summary
-      done
+|} b c.name r c.summary
+      in List.iter f (List.sort Stdlib.compare !cmd)
+  (*done*)
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
