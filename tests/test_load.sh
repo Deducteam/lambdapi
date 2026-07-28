@@ -5,7 +5,7 @@ set -e
 dune build
 
 clean () { rm -f tests/OK/*.lpo; }
-#trap clean EXIT
+trap clean ERR
 
 lambdapi='_build/install/default/bin/lambdapi'
 mk=/tmp/lpo.mk
