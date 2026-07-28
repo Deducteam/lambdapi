@@ -2,7 +2,7 @@
 
 set -e
 
-lambdapi='dune exec -- lambdapi check'
+lambdapi='dune exec lambdapi -- check'
 TIMEFORMAT="%Es"
 
 out=/tmp/lambdapi.output
