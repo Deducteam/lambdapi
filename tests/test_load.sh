@@ -1,14 +1,16 @@
 #!/bin/bash
 
-clean () { rm -f tests/OK/*.lpo; }
-#trap clean EXIT
 set -e
 
-jobs=32
-lambdapi=_build/install/default/bin/lambdapi
-log=/tmp/lambdapi.output
-TIMEFORMAT="%Es"
+dune build
+
+clean () { rm -f tests/OK/*.lpo; }
+#trap clean EXIT
+
+lambdapi='_build/install/default/bin/lambdapi'
 mk=/tmp/lpo.mk
+jobs=32
+TIMEFORMAT="%Es"
 
 for f in why3 perf_rw_engine tutorial escape_path req.file.with.dot
 do

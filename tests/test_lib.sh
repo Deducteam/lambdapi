@@ -2,7 +2,9 @@
 
 set -e
 
-lambdapi=_build/install/default/bin/lambdapi
+dune build
+
+lambdapi='_build/install/default/bin/lambdapi'
 out=/tmp/lambdapi.output
 TIMEFORMAT="%Es"
 

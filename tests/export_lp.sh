@@ -2,9 +2,11 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o lp ############'
 
-lambdapi=_build/install/default/bin/lambdapi
+lambdapi='_build/install/default/bin/lambdapi'
 TIMEFORMAT="%Es"
 
 rm -rf /tmp/tests

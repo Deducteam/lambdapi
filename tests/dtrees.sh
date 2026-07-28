@@ -1,8 +1,10 @@
 #!/bin/sh
 
-echo '############ test decision-tree ############'
-
 set -uf
+
+dune build
+
+echo '############ test decision-tree ############'
 
 ko() {
     printf '\033[31mKO\033[0m %s\n' "$1"
@@ -13,7 +15,7 @@ ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
 }
 
-lambdapi=_build/install/default/bin/lambdapi
+lambdapi='_build/install/default/bin/lambdapi'
 cmd='decision-tree -v 0 -w --map-dir=tests:tests'
 
 out="$($lambdapi $cmd tests.OK.natural.+)"

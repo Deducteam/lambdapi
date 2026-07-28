@@ -2,11 +2,13 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o raw_dk ############'
 
-lambdapi=_build/install/default/bin/lambdapi
-TIMEFORMAT="%Es"
+lambdapi='_build/install/default/bin/lambdapi'
 outdir=/tmp/export_raw_dk
+TIMEFORMAT="%Es"
 
 reset_outdir() {
     rm -rf $outdir

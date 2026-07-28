@@ -2,9 +2,11 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o dk ############'
 
-lambdapi=_build/install/default/bin/lambdapi
+lambdapi='_build/install/default/bin/lambdapi'
 outdir=/tmp/export_dk
 TIMEFORMAT="%Es"
 
