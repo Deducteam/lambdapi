@@ -1,10 +1,11 @@
-(lang dune 3.7)
+(lang dune 3.18)
 (using dune_site 0.1)
-(generate_opam_files false)
+(maintenance_intent "(latest)")
+(generate_opam_files true)
 
 (name lambdapi)
 (source (github Deducteam/lambdapi))
-(authors "Deducteam")
+(authors "Deducteam and friends")
 (maintainers "dedukti-dev@inria.fr")
 (license CECILL-2.1)
 
@@ -14,7 +15,6 @@
  (name lambdapi)
  (synopsis "Proof assistant for the λΠ-calculus modulo rewriting")
  (description
-
 "Lambdapi is an interactive proof assistant for the λΠ-calculus modulo
 rewriting. It can call external automated theorem provers via Why3.
 The user manual is on https://lambdapi.readthedocs.io/.
@@ -25,7 +25,6 @@ on the VSCode Marketplace. Lambdapi can read Dedukti files. It
 includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF.")
-
  (depends
   (ocaml (>= 4.10))
   (dream-pure (>= 1.0.0~alpha2))
@@ -47,7 +46,7 @@ systems: Dedukti, Coq, HRS, CPF.")
   (lwt_ppx (>= 1))
   (uri (>= 1.1))
   (dune-site (>= 3.15))
-  (ppx_inline_test (>= v0.17))
+  (ppx_inline_test (>= v0.16.1))
  )
  (sites (share server_resources))
 )

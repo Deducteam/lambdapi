@@ -2,17 +2,14 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o dk ############'
 
-root=`pwd`
-
-lambdapi=${LAMBDAPI:-$root/_build/install/default/bin/lambdapi}
-dkcheck=${DKCHECK:-dk check}
-dkdep=${DKDEP:-dk dep}
-
-TIMEFORMAT="%Es"
-
+lambdapi='../../_build/install/default/bin/lambdapi'
+jobs=32
 outdir=/tmp/export_dk
+TIMEFORMAT="%Es"
 
 reset_outdir() {
     rm -rf $outdir
@@ -33,6 +30,8 @@ for f in *.lp
 do
     f=${f%.lp}
     case $f in
+        # takes too much time to check
+        perf_rw_engine);;
         # commutative and non associative symbol
         ac);;
         # protected symbol in rule LHS arguments
@@ -61,20 +60,15 @@ check() {
     echo
     echo check translated files ...
     cd $outdir
-    #https://github.com/Deducteam/Dedukti/issues/321
-    #dk_files=`$dkdep -q -s $dk_files`
     echo > Makefile <<__END__
 FILES := \$(wildcard *.dk)
 default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk
 	dk check -e \$<
 __END__
-    $dkdep -q *.dk >> Makefile
-    #echo $dkcheck -q -e $dk_files ...
-    #$dkcheck -q -e $dk_files
-    make
+    dk dep -q *.dk >> Makefile
+    make -j$jobs
     res=$?
-    cd $root
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
 }
