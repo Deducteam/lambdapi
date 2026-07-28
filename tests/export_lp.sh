@@ -21,7 +21,7 @@ translate() {
             tests/OK/why3*.lp);; #FIXME
             *) out=/tmp/$f
                echo "$f --> $out ..."
-               $lambdapi export -o lp -w -v 0 "$f" > "$out"
+               $lambdapi export -o lp -w -v0 "$f" > "$out"
                if test $? -ne 0; then echo KO; exit 1; fi
         esac
     done
