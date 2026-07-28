@@ -27,7 +27,7 @@ provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF.")
 
  (depends
-  (ocaml (>= 4.10))
+  (ocaml (>= 4.14))
   (dream-pure (>= 1.0.0~alpha2))
   (dream-httpaf (>= 1.0.0~alpha3))
   (dream (>= 1.0.0~alpha6))

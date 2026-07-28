@@ -335,11 +335,11 @@ let add_opt_help c =
   handle := (fun () -> print_usage c);
   c
 
-let cmd = ref [] (*Dynarray.create()*)
+let cmd = ref []
 
 let add_command c =
   let c = add_opt_help c in
-  cmd := c::!cmd (*Dynarray.add_last cmd c*);
+  cmd := c::!cmd
   c
 
 (*-------------------------------------------------------------------------*)
@@ -1017,8 +1017,6 @@ Do "lambdapi COMMAND -h" to get more information on each command.
 %sversion, --version%s
   Prints the version of lambdapi.
  |} b r b r b r b r;
-      (*for i = 0 to Dynarray.length cmd - 1 do
-      let c = Dynarray.get cmd i in*)
       let f c =
         Printf.printf
 {|
@@ -1026,7 +1024,6 @@ Do "lambdapi COMMAND -h" to get more information on each command.
   %s
 |} b c.name r c.summary
       in List.iter f (List.sort Stdlib.compare !cmd)
-  (*done*)
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
