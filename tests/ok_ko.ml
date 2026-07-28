@@ -19,7 +19,7 @@ let _ =
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "OK" in
   (* Remove files using a prover. *)
   let f = function
-    | "OK/perf_rw_engine.lp" (* too long *)
+    | "OK/perf_rw_engine.lp" (* takes too much time *)
     | "OK/why3.lp" | "OK/why3_quantifiers.lp" (* require an ATP *)
     | "OK/escape_path.lp" | "OK/req.file.with.dot.lp"
     | "OK/a b/escape file.lp"

@@ -35,7 +35,8 @@ check() {
     for f in /tmp/tests/OK/*.lp '/tmp/tests/OK/a b/escape file.lp'
     do
         case $f in
-            /tmp/tests/OK/why3*.lp);; #FIXME
+            /tmp/tests/OK/why3*.lp);; # FIXME
+            /tmp/tests/OK/perf_rw_engine.lp);; # takes too much time
             *) echo "lambdapi check $f ..."
                $lambdapi check -w -v 0 "$f"
                if test $? -ne 0; then echo KO; exit 1; fi

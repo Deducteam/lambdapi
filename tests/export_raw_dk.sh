@@ -30,6 +30,8 @@ for f in *.lp
 do
     f=${f%.lp}
     case $f in
+        # takes too much time to check
+        perf_rw_engine);;
         # commutative and non associative symbol
         ac);;
         # unicode character in module name
