@@ -52,9 +52,6 @@ let rec compile : Command.compiler = fun ss mp ->
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
-      (*let open Base in sout "loaded:";
-        Path.Map.iter (fun p _ -> sout " %a" Path.pp p) !loaded;
-        sout "\n%!";*)
       let a = Tactic.reset_admitted() in
       Sig_state.update_ext_sym_dtrees false ss;
       let consume =
