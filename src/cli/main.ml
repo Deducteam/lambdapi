@@ -44,9 +44,9 @@ let parse_map_dir s =
 type handle =
   | NoArg of (unit -> unit)
   | Next of string * (string -> unit)
-  (* the option takes an argument that is the next argument *)
+  (* takes the next Sys.argv element as argument *)
   | Suffix of string * (string -> unit)
-  (* the option takes an argument that is a suffix of the argument *)
+  (* takes the suffix of the current Sys.argv element as argument *)
 
 type opt =
   { opt_name: string (* must start with "--" *)
@@ -112,8 +112,7 @@ let parse_options options args =
           | Next(_,h) ->
             match other_args with
             | [] ->
-              Common.Error.fatal_no_pos
-                "option %s has no argument" arg
+              Common.Error.fatal_no_pos "option %s has no argument" arg
             | arg::other_args -> h arg; parse other_args
   in parse args
 
