@@ -7,6 +7,7 @@ dune build
 echo '############ test export -o raw_dk ############'
 
 lambdapi='_build/install/default/bin/lambdapi'
+jobs=32
 outdir=/tmp/export_raw_dk
 TIMEFORMAT="%Es"
 
@@ -87,7 +88,7 @@ default: \$(FILES:%.dk=%.dko)
 	dk check -e \$<
 __END__
     dk dep -q *.dk >> Makefile
-    make -j3
+    make -j$jobs
     res=$?
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
