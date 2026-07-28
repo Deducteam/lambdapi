@@ -2,9 +2,9 @@
 
 set -e
 
-lambdapi='dune exec -- lambdapi check'
+root=`pwd`
+lambdapi=${LAMBDAPI:-$root/_build/install/default/bin/lambdapi}
 TIMEFORMAT="%Es"
-
 out=/tmp/lambdapi.output
 
 ok_tests() {
@@ -14,7 +14,7 @@ ok_tests() {
             tests/OK/why3*.lp);; #FIXME
             *)
                 echo lambdapi check $options $f ...
-                $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
+                $lambdapi check "$f" > $out 2>&1 || (cat $out; exit 1)
         esac
     done
 }
