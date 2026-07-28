@@ -4,14 +4,8 @@ set -e
 
 echo '############ test export -o raw_dk ############'
 
-root=`pwd`
-
-lambdapi=${LAMBDAPI:-$root/_build/install/default/bin/lambdapi}
-dkcheck=${DKCHECK:-dk check}
-dkdep=${DKDEP:-dk dep}
-
+lambdapi=_build/install/default/bin/lambdapi
 TIMEFORMAT="%Es"
-
 outdir=/tmp/export_raw_dk
 
 reset_outdir() {
@@ -84,21 +78,16 @@ check() {
     echo
     echo check translated files ...
     cd $outdir
-    #https://github.com/Deducteam/Dedukti/issues/321
-    #dk_files=`$dkdep -q -s $dk_files`
     cat > Makefile <<__END__
 FILES := \$(wildcard *.dk)
 default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk
 	dk check -e \$<
 __END__
-    $dkdep -q *.dk >> Makefile
-    #echo $dkcheck -q -e $dk_files ...
-    #$dkcheck -q -e $dk_files
-    make
+    dk dep -q *.dk >> Makefile
+    make -j3
     res=$?
-    cd $root
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
 }
-check
+time check

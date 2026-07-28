@@ -2,11 +2,9 @@
 
 set -e
 
-lambdapi='dune exec -- lambdapi check'
-options='-w'
-TIMEFORMAT="%Es"
-
+lambdapi=_build/install/default/bin/lambdapi
 out=/tmp/lambdapi.output
+TIMEFORMAT="%Es"
 
 checkout_lib() {
     IFS='/' read -ra ADDR <<< "$1"
@@ -22,8 +20,8 @@ checkout_lib() {
 test_lib() {
     for f in $(find $1 -name '*.lp' -o -name '*.dk')
     do
-        echo lambdapi check $options $f ...
-        $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
+        echo lambdapi check $f ...
+        $lambdapi check -w "$f" > $out 2>&1 || (cat $out; exit 1)
     done
 }
 

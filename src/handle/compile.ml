@@ -78,8 +78,9 @@ let rec compile : Command.compiler = fun ss mp ->
       Console.out 2 (Color.blu "Load \"%s\"") obj;
       let sign = Sign.read obj in
       if sign.sign_path <> mp then
-        fatal_no_pos "The file \"%s\" was compiled with a different \
-                      root_path. Remove it and compile it again." obj
+        fatal_no_pos "The file \"%s\" has path \"%a\" instead of \"%a\". \
+                      Remove it and compile it again."
+          obj Path.pp sign.sign_path Path.pp mp
       else begin
       (* We recursively load every module [mp'] on which [mp] depends. *)
       Path.Map.iter (fun mp' _ -> ignore (compile ss mp')) !(sign.sign_deps);

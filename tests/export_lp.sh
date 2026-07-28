@@ -4,8 +4,7 @@ set -e
 
 echo '############ test export -o lp ############'
 
-lambdapi=${lambdapi:-_build/install/default/bin/lambdapi}
-
+lambdapi=_build/install/default/bin/lambdapi
 TIMEFORMAT="%Es"
 
 rm -rf /tmp/tests
@@ -43,5 +42,4 @@ check() {
 }
 time check
 
-#cd $root
 echo OK
