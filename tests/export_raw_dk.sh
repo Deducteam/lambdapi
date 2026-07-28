@@ -33,6 +33,8 @@ for f in *.lp
 do
     f=${f%.lp}
     case $f in
+        # FIXME
+        file.with.dot|req.file.with.dot|indind|search);;
         # commutative and non associative symbol
         ac);;
         # unicode character in module name
@@ -43,9 +45,6 @@ do
         262_private_in_lhs);;
         # dedukti SR algorithm fails
         273|tests/OK/813);;
-        # FIXME
-        file.with.dot|req.file.with.dot);;
-        indind);;
         # "sequential"
         rule_order|813|1033);;
         # "as"

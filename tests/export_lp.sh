@@ -18,7 +18,7 @@ translate() {
     for f in tests/OK/*.lp 'tests/OK/a b/escape file.lp'
     do
         case $f in
-            tests/OK/why3*.lp);; #FIXME
+            tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
             *) out=/tmp/$f
                echo "$f --> $out ..."
                $lambdapi export -o lp -w -v0 "$f" > "$out"

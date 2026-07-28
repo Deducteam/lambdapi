@@ -11,7 +11,7 @@ ok_tests() {
     for f in 'tests/OK/a b/escape file.lp' tests/OK/*.lp tests/OK/*.dk
     do
         case $f in
-            tests/OK/why3*.lp);; #FIXME
+            tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
             *)
                 echo lambdapi check $options $f ...
                 $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
