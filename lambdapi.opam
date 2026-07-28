@@ -39,7 +39,7 @@ depends: [
   "lwt_ppx" {>= "1"}
   "uri" {>= "1.1"}
   "dune-site" {>= "3.15"}
-  "ppx_inline_test" {>= "v0.17"}
+  "ppx_inline_test" {>= "v0.16.1"}
 ]
 build: [
   ["dune" "subst"] {dev}
