@@ -339,7 +339,7 @@ let cmd = ref []
 
 let add_command c =
   let c = add_opt_help c in
-  cmd := c::!cmd
+  cmd := c::!cmd;
   c
 
 (*-------------------------------------------------------------------------*)
@@ -1024,6 +1024,7 @@ Do "lambdapi COMMAND -h" to get more information on each command.
   %s
 |} b c.name r c.summary
       in List.iter f (List.sort Stdlib.compare !cmd)
+  (*done*)
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
