@@ -61,13 +61,13 @@ let read : string -> config_data = fun fname ->
   let root_path = Parser.path_of_string (get "root_path") in
   {package_name; root_path}
 
-(** [find_config fname] looks for a configuration file above [fname], which is
+(** [find fname] looks for a configuration file above [fname], which is
     typically a source file or an object file (it can also be a directory). If
     there is no configuration file in the same directory as [fname], then we
     look in the parent directory and so on, up to the root or as long as no
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
-let find_config : string -> string option = fun fname ->
+let find : string -> string option = fun fname ->
   let rec find dir =
     let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
@@ -78,10 +78,10 @@ let find_config : string -> string option = fun fname ->
   in
   find (Filename.normalize fname)
 
-(** [apply_config fname] attempts to find a configuration file from the
+(** [set_root_path fname] attempts to find a configuration file from the
    directory or file [fname], and applies the corresponding configuration. *)
-let apply_config : string -> unit = fun fname ->
-  match find_config fname with
+let set_root_path : string -> unit = fun fname ->
+  match find fname with
   | None           -> wrn None "Found no file \"%s\"." pkg_file
   | Some(cfg_file) ->
   let {root_path; _} = read cfg_file in

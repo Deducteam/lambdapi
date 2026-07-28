@@ -371,7 +371,7 @@ let cmd_check =
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | f::files ->
     set_lib_root();
-    Parsing.Package.apply_config f;
+    Parsing.Package.set_root_path f;
     let time = Timed.Time.save() in
     ignore (compile f);
     let handle file =
@@ -409,7 +409,7 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
     set_lib_root();
-    Parsing.Package.apply_config (Sys.getcwd());
+    Parsing.Package.set_root_path (Sys.getcwd());
     let sym =
       Timed.(Common.Console.verbose := 0);
       let sign = sign_of_path p in
@@ -600,7 +600,7 @@ let cmd_export =
     begin
       match output with
       | RawDk | Lp | SttCoq | RawCoq -> ()
-      | _ -> Parsing.Package.apply_config (Filename.dirname file)
+      | _ -> Parsing.Package.set_root_path (Filename.dirname file)
     end;
     let parse = Parsing.Parser.parse_file in
     match output with
@@ -767,7 +767,7 @@ let cmd_install =
           end
         else
           begin
-            Parsing.Package.apply_config file;
+            Parsing.Package.set_root_path file;
             Common.Library.install_path file
           end
       in
@@ -861,7 +861,7 @@ let opt_require =
 let sig_state_of_require() =
   List.fold_left
     (fun ss r ->
-       Parsing.Package.apply_config (Filename.concat (Sys.getcwd()) r);
+       Parsing.Package.set_root_path (Filename.concat (Sys.getcwd()) r);
        Handle.Command.handle Handle.Compile.compile ss
          (Common.Pos.none
             (Parsing.Syntax.P_require
