@@ -36,7 +36,7 @@ check() {
         case $f in
             /tmp/tests/OK/why3*.lp);; #FIXME
             *) echo "lambdapi check $f ..."
-               $lambdapi check -w -v 0 "$f"
+               $lambdapi check -w -v0 "$f"
                if test $? -ne 0; then echo KO; exit 1; fi
         esac
     done
