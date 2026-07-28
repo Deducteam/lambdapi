@@ -6,7 +6,7 @@ dune build
 
 echo '############ test export -o raw_dk ############'
 
-lambdapi='_build/install/default/bin/lambdapi'
+lambdapi='../../_build/install/default/bin/lambdapi'
 jobs=32
 outdir=/tmp/export_raw_dk
 TIMEFORMAT="%Es"
