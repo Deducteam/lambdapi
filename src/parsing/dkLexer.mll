@@ -13,8 +13,9 @@
 }
 
 let space   = [' ' '\t' '\r']
+let letter = ['a'-'z' 'A'-'Z' '0'-'9' '_' '!' '?' '\'' '+' '*' '~' '&' '^' '@' '=' '$' '%' '/' '<' '|' '-' '\\' '>']
+let ident = letter+
 let mident = ['a'-'z' 'A'-'Z' '0'-'9' '_']+
-let ident   = ['a'-'z' 'A'-'Z' '0'-'9' '_' '!' '?']['a'-'z' 'A'-'Z' '0'-'9' '_' '!' '?' '\'' ]*
 
 rule token = parse
   | space       { token lexbuf  }
