@@ -9,7 +9,7 @@
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 27.1
-;; Package-Requires: ((emacs "27.1") (eglot "1.6") (math-symbol-lists "1.2.1") (highlight "20190710.1527"))
+;; Package-Requires: ((emacs "30.2") (eglot "1.9") (math-symbol-lists "1.3.0") (highlight "20250815.1830"))
 
 ;;; Commentary:
 
