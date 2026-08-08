@@ -16,7 +16,7 @@ ok() {
 }
 
 lambdapi='_build/install/default/bin/lambdapi'
-cmd='decision-tree -v 0 -w --map-dir=tests:tests'
+cmd='decision-tree -v0 -w --map-dir=tests:tests'
 
 out="$($lambdapi $cmd tests.OK.natural.+)"
 if [ -z "$out" ]; then

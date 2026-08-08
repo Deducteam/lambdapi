@@ -23,7 +23,7 @@ FILES := $FILES
 default: \$(FILES:%.lp=%.lpo)
 %.lpo: %.lp
 	@echo lambdapi check \$(OPTION) \$<
-	@$lambdapi check -w -v 0 \$(OPTION) \$<
+	@$lambdapi check -w -v0 \$(OPTION) \$<
 __END__
 for f in $FILES
 do

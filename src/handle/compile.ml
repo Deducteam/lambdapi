@@ -105,5 +105,5 @@ let rec compile : Command.compiler = fun ss mp ->
 (** [compile_file fname] looks for a package configuration file for [fname]
     and compiles [fname]. *)
 let compile_file (fname:string): Sign.t =
-  Package.apply_config fname;
+  Package.set_root_path fname;
   compile Sig_state.dummy (path_of_file LpLexer.escape fname)
