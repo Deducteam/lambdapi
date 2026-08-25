@@ -2,6 +2,8 @@ open Core open Term
 open Common open Pos
 open Timed
 
+let index_version = "v.1.0.0"
+
 let lsp_input = Stdlib.ref ("","")
 
 type sym_name = Common.Path.t * string
@@ -24,11 +26,20 @@ let name_of_sym s = (s.sym_path, s.sym_name)
 
 let dump_to ~filename i =
  let ch = open_out_bin filename in
+ output_string ch index_version;
  Marshal.to_channel ch i [] ;
  close_out ch
 
 let restore_from ~filename =
   let ch = open_in_bin filename in
+
+  let buffer = Bytes.create (String.length index_version) in
+  really_input ch buffer 0 (String.length index_version);
+  if Bytes.unsafe_to_string buffer <> index_version then
+    Error.fatal_no_pos "Wrong search index version!
+      Please (re)move or regenerate the index DB
+      (default is ~/.LPSearch.db)";
+
   let i = Marshal.from_channel ch in
   close_in ch ;
   i
@@ -318,7 +329,9 @@ module DB = struct
       Type \"lambdapi index --help\" to learn how to create the index." msg ;
      Sym_nameMap.empty, Index.empty
 
- (* The persistent database *)
+ (* The persistent database.
+ Please increment the value of [index_version] in the header of this file
+ whenever the structure of db changes to prevent SIGSEGV to occur *)
  let db :
   ((string * string * int * int) Sym_nameMap.t *
    (item * position list) Index.db) Lazy.t ref =
