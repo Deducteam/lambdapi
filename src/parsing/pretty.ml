@@ -152,12 +152,14 @@ and wrap ec ppf t =
   | P_NLit _
   | P_SLit _
   | P_Expl _
-  | P_Wrap _ -> term ec ppf t
+  | P_Wrap _
+    -> term ec ppf t
   | P_Appl _
   | P_Arro _
   | P_Prod _
   | P_Abst _
-  | P_LLet _ -> out ppf "(@[<hv2>%a@])" (term ec) t
+  | P_LLet _
+    -> out ppf "(@[<hv2>%a@])" (term ec) t
 
 and env : bool -> p_term array option pp = fun ec ppf ts ->
   match ts with
@@ -180,6 +182,8 @@ and typ : bool -> p_term option pp = fun ec ppf t ->
   | Some t -> out ppf "@ : %a" (if simple_type t then term ec else wrap ec) t
 
 let term = term true
+let wrap = wrap true
+let env = env true
 let typ = typ true
 let params = params true
 let params_list = params_list true
@@ -316,7 +320,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_search q -> out ppf "search %a" search q
 
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
-  begin match elt with
+  match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
   | P_tac_all_hyps t -> out ppf "all_hyps %a" term t
@@ -353,7 +357,6 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  end
 
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
