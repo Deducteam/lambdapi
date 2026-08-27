@@ -1,6 +1,20 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/main.yml'
+      - 'lambdapi.opam'
+      - 'Makefile'
+      - 'dune-project'
+      - '**/dune'
+      - '**.ml'
+      - '**.mli'
+      - '**.mll'
+      - '**.mly'
+      - '**.dk'
+      - '**.lp'
+      - 'tests/lambdapi.pkg'
+      - '**/*.sh'
   push:
     paths:
       - '.github/workflows/main.yml'
