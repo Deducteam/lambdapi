@@ -3,10 +3,17 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/emacs.yml'
+      - 'editors/emacs/*.el'
+      - 'editors/emacs/*.sh'
+      - 'editors/emacs/Makefile'
   push:
     paths:
       - '.github/workflows/emacs.yml'
-      - 'editors/emacs/**'
+      - 'editors/emacs/*.el'
+      - 'editors/emacs/*.sh'
+      - 'editors/emacs/Makefile'
   workflow_dispatch:
 
 jobs:
