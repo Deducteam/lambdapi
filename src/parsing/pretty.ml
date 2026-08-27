@@ -130,7 +130,7 @@ let rec term : bool -> p_term pp = fun ec ppf t ->
   | P_NLit([],i) -> out ppf "%s" i
   | P_NLit(p,i) -> out ppf "%a.%s" raw_path p i
   | P_SLit s -> string ppf s
-  | P_Wrap t -> out ppf "(%a)" (term ec) t
+  | P_Wrap t -> out ppf "(@[<hv2>%a@])" (term ec) t
   | P_Expl t -> out ppf "[@[<hv2>%a@]]" (term ec) t
   | P_Appl(t,u) -> out ppf "@[%a@ %a@]" (term ec) t (wrap ec) u
   | P_Arro(a,b) -> out ppf "@[%a@ → %a@]" (wrap ec) a (term ec) b
@@ -157,7 +157,7 @@ and wrap ec ppf t =
   | P_Arro _
   | P_Prod _
   | P_Abst _
-  | P_LLet _ -> out ppf "(%a)" (term ec) t
+  | P_LLet _ -> out ppf "(@[<hv2>%a@])" (term ec) t
 
 and env : bool -> p_term array option pp = fun ec ppf ts ->
   match ts with
