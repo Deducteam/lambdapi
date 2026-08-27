@@ -179,23 +179,6 @@ and typ : bool -> p_term option pp = fun ec ppf t ->
   | None -> ()
   | Some t -> out ppf "@ : %a" (if simple_type t then term ec else wrap ec) t
 
-and wrap_typ : bool -> p_term pp = fun ec ppf t ->
-  match t.elt with
-  | P_Type
-  | P_Iden _
-  | P_Wild
-  | P_Meta _
-  | P_Patt _
-  | P_NLit _
-  | P_SLit _
-  | P_Expl _
-  | P_Wrap _ -> term ec ppf t
-  | P_Appl _
-  | P_Arro _
-  | P_Prod _
-  | P_Abst _
-  | P_LLet _ -> out ppf "(%a)" (term ec) t
-
 let term = term true
 let typ = typ true
 let params = params true
