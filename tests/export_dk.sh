@@ -45,11 +45,9 @@ do
         # require escaped module name
         π/utf_path|escape_path|'a b/escape file'|require_nondkmident|262_pair_ex_2|require_symbol);;
         # use builtin strings
-        Tactic|1374);;
-        # use Tactic
-        first_hyp|all_hyps);;
-        # requires an excluded file
-        assume|first_hyp);;
+        Tactic);;
+        # requires Tactic
+        1374|assume|first_hyp|all_hyps|1493);;
         # default case
         *) translate $f.lp;;
     esac

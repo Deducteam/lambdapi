@@ -196,8 +196,8 @@ and scope_parsed : ?find_sym:find_sym ->
 
 (** [add_impl ~find_sym k md ss env loc h impl args] scopes [args] and returns
     the application of [h] to the scoped arguments. [impl] is a boolean list
-    described the implicit arguments. Implicit arguments are added as
-    underscores before scoping. *)
+    describing what are the implicit arguments. Implicit arguments are added
+    as underscores before scoping. *)
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
