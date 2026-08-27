@@ -3,6 +3,16 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/ocaml.yml'
+      - 'lambdapi.opam'
+      - 'Makefile'
+      - 'dune-project'
+      - '**/dune'
+      - '**.ml'
+      - '**.mli'
+      - '**.mll'
+      - '**.mly'
   push:
     paths:
       - '.github/workflows/ocaml.yml'
