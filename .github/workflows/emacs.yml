@@ -33,5 +33,5 @@ jobs:
       - name: install lambdapi-mode
         run: |
           chmod +x installAndLaunch.sh
-          ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs ${{ matrix.eglot-version }} ${{ matrix.math-symbol-list-version }} ${{ matrix.highlight-version }}
+          ./installAndLaunch.sh ${{ matrix.eglot-version }} ${{ matrix.math-symbol-list-version }} ${{ matrix.highlight-version }}
         working-directory: editors/emacs/

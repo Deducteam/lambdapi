@@ -1,28 +1,27 @@
 #!/bin/bash
 
-set -ex
-NAME="$1" # lambdapi
-VERSION="$2" # defined in lambdapi-mode.el
-BIN="$3" # emacs binary, e.g. /snap/bin/emacs
-EGLOT_V="$4" # "0" to use the latest version
-MATH_SYMB_V="$5" # "0" to use the latest version
-HIGHLIGHT_V="$6" # "0" to use the latest version
+set -e
+
+EGLOT_V="$1" # "0" to use the latest version
+MATH_SYMB_V="$2" # "0" to use the latest version
+HIGHLIGHT_V="$3" # "0" to use the latest version
 
 # extracts from lambdapi-mode.el the smallest supported version of $pkg
-min_version_of_pkg() {
-    local pkg=$1
-    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
-}
+#min_version_of_pkg() {
+#    local pkg=$1
+#    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
+#}
 
-echo "📦 Installing Emacs ..."
-if [[ ! -f $BIN ]]; then sudo snap install emacs --classic; fi
+EMACS=/snap/bin/emacs
+if [[ ! -f $EMACS ]]; then
+    echo "Install Emacs ..."
+    sudo snap install emacs --classic
+fi
 
 ROOT=${ROOT=$HOME}
 
-echo "📁 Creating $ROOT/.emacs.d/ ..."
-mkdir -p $ROOT/.emacs.d
-
-echo "📝 Creating init.el ..."
+echo "Create $ROOT/.emacs.d/init.el ..."
+mkdir -p $ROOT/.emacs.d/elpa
 cat <<EOF > $ROOT/.emacs.d/init.el
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
@@ -34,9 +33,6 @@ cat <<EOF > $ROOT/.emacs.d/init.el
 (add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/highlight/"))
 (require 'highlight)
 EOF
-
-echo "Creating $ROOT/.emacs.d/elpa/ ..."
-mkdir -p $ROOT/.emacs.d/elpa/
 
 clone() {
     local url=$1
@@ -90,8 +86,9 @@ touch $ROOT/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
 checkout https://github.com/emacsmirror/highlight.git $HIGHLIGHT_V
 touch $ROOT/.emacs.d/elpa/highlight/highlight-autoloads.el
 
-echo "🚀 Install Emacs packages ..."
-$BIN --batch -l $ROOT/.emacs.d/init.el \
-  --eval "(package-install-file \"${NAME}-${VERSION}.tar\")"
+echo "Install lambdapi-mode ..."
+VERSION=$(sed -n 's/;; Version: //p' lambdapi-mode.el)
+$EMACS --batch -l $ROOT/.emacs.d/init.el \
+  --eval "(package-install-file \"lambdapi-mode-$VERSION.tar\")"
 
-echo "🎉 Emacs packages installed."
+echo "🎉 Installation successful."
