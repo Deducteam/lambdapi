@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 NAME="$1" # lambdapi
 VERSION="$2" # defined in lambdapi-mode.el
 BIN="$3" # emacs binary, e.g. /snap/bin/emacs
@@ -15,31 +15,33 @@ min_version_of_pkg() {
 }
 
 echo "📦 Installing Emacs ..."
-sudo snap install emacs --classic
+#sudo snap install emacs --classic
 
-echo "📁 Creating ~/.emacs.d/ ..."
-mkdir -p ~/.emacs.d
+ROOT=${ROOT=$HOME}
+
+echo "📁 Creating $ROOT/.emacs.d/ ..."
+mkdir -p $ROOT/.emacs.d
 
 echo "📝 Creating init.el ..."
-cat <<'EOF' > ~/.emacs.d/init.el
+cat <<EOF > $ROOT/.emacs.d/init.el
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (setq package-check-signature nil)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/eglot/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/eglot/"))
 (require 'eglot)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/math-symbol-lists/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/math-symbol-lists/"))
 (require 'math-symbol-lists)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/highlight/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/highlight/"))
 (require 'highlight)
 EOF
 
-echo "Creating ~/.emacs.d/elpa/ ..."
-mkdir -p ~/.emacs.d/elpa/
+echo "Creating $ROOT/.emacs.d/elpa/ ..."
+mkdir -p $ROOT/.emacs.d/elpa/
 
 clone() {
     local url=$1
     local name=`basename $url .git`
-    local dir=~/.emacs.d/elpa/$name
+    local dir=$ROOT/.emacs.d/elpa/$name
     if [[ -d "$dir" ]]; then
         echo "$name already cloned. Skipping."
     else
@@ -51,7 +53,7 @@ clone() {
 commit_of() {
     local name=$1
     local version=$2
-    local dir=~/.emacs.d/elpa/$name
+    local dir=$ROOT/.emacs.d/elpa/$name
     if [[ "$version" =~ ^.{8}\..{4}$ ]]; then
         git -C $dir rev-list -1 --after="$(printf "%s-%s-%s %s:%s\n" ${1:0:4} ${1:4:2} ${1:6:2} ${1:9:2} ${1:11:2})"
     else
@@ -62,14 +64,14 @@ commit_of() {
 branch() {
     local name=$1
     local version=$2
-    local dir=~/.emacs.d/elpa/$name
+    local dir=$ROOT/.emacs.d/elpa/$name
     if [[ "$version" -ne 0 ]]; then
         git -C $dir checkout $(commit_of $version)
     else
         git -C $dir checkout master
         version=$(git -C $dir log -1 --format=%cd --date=format:'%Y%m%d.%H%M')
     fi
-    echo "(define-package \"$name\" \"$version\")" > ~/.emacs.d/elpa/$name/$name-pkg.el
+    echo "(define-package \"$name\" \"$version\")" > $ROOT/.emacs.d/elpa/$name/$name-pkg.el
 }
 
 checkout() {
@@ -83,15 +85,13 @@ checkout() {
 checkout https://github.com/joaotavora/eglot.git $EGLOT_V
 
 checkout https://github.com/vspinu/math-symbol-lists.git $MATH_SYMB_V
-touch ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
+touch $ROOT/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
 
 checkout https://github.com/emacsmirror/highlight.git $HIGHLIGHT_V
-touch ~/.emacs.d/elpa/highlight/highlight-autoloads.el
+touch $ROOT/.emacs.d/elpa/highlight/highlight-autoloads.el
 
 echo "🚀 Install Emacs packages ..."
-PATH="$BIN:$PATH" emacs \
-  -l ~/.emacs.d/init.el \
-  --eval "(package-install-file \"${NAME}-${VERSION}.tar\")" \
-  --batch \
-  # --eval "(require-package 'math-symbol-lists)" \
-  echo "🎉 Emacs packages installed."
+$BIN --batch -l $ROOT/.emacs.d/init.el \
+  --eval "(package-install-file \"${NAME}-${VERSION}.tar\")"
+
+echo "🎉 Emacs packages installed."
