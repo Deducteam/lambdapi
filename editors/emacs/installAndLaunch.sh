@@ -8,13 +8,10 @@ EGLOT_V="$4" # "0" to use the latest version
 MATH_SYMB_V="$5" # "0" to use the latest version
 HIGHLIGHT_V="$6" # "0" to use the latest version
 
-convertVersionToCommitDate() {
-  local input="$1"
-  local date_part=${input%%.*}
-  printf "%s-%s-%s %s:%s\n" \
-    "${date_part:0:4}" \
-    "${date_part:4:2}" \
-    "${date_part:6:2}"
+# extracts from lambdapi-mode.el the smallest supported version of $pkg
+min_version_of_pkg() {
+    local pkg=$1
+    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
 }
 
 echo "📦 Installing Emacs ..."
@@ -39,45 +36,56 @@ EOF
 echo "Creating ~/.emacs.d/elpa/ ..."
 mkdir -p ~/.emacs.d/elpa/
 
-# [clone $branch $url] clones $url and checkout $branch (if <> 0) 
 clone() {
-    branch=$1
-    url=$2
-    name=`basename $url .git`
-    dir=~/.emacs.d/elpa/$name
-    if [ -d $dir ]; then
+    local url=$1
+    local name=`basename $url .git`
+    local dir=~/.emacs.d/elpa/$name
+    if [[ -d "$dir" ]]; then
         echo "$name already cloned. Skipping."
     else
-        if [[ $branch == "0" ]]; then
-            git clone --depth 1 $url $dir
-        else
-            git clone --depth 1 --branch $branch $url $dir
-        fi
+        git clone --depth 1 $url $dir
         echo "$name cloned to $dir."
     fi
 }
 
-# [version $pkg] returns the version of $pkg in lambdapi-mode.el 
-version() {
-    pkg=$1
-    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
+commit_of() {
+    local name=$1
+    local version=$2
+    local dir=~/.emacs.d/elpa/$name
+    if [[ "$version" =~ ^.{8}\..{4}$ ]]; then
+        git -C $dir rev-list -1 --after="$(printf "%s-%s-%s %s:%s\n" ${1:0:4} ${1:4:2} ${1:6:2} ${1:9:2} ${1:11:2})"
+    else
+        $version
+    fi
 }
 
-clone $EGLOT_V https://github.com/joaotavora/eglot.git
-if [[ $EGLOT_V == "0" ]]; then EGLOT_V=`version eglot`; fi
+branch() {
+    local name=$1
+    local version=$2
+    local dir=~/.emacs.d/elpa/$name
+    if [[ "$version" -ne 0 ]]; then
+        git -C $dir checkout $(commit_of $version)
+    else
+        git -C $dir checkout master
+        version=$(git -C $dir log -1 --format=%cd --date=format:'%Y%m%d.%H%M')
+    fi
+    echo "(define-package \"$name\" \"$version\")" > ~/.emacs.d/elpa/$name/$name-pkg.el
+}
 
-clone $MATH_SYMB_V https://github.com/vspinu/math-symbol-lists.git
-if [[ $MATH_SYMB_V == "0" ]]; then MATH_SYMB_V=`version math-symbol-lists`; fi
+checkout() {
+    local url=$1
+    local version=$2
+    local name=`basename $url .git`
+    clone $url
+    branch $name $version
+}
 
-clone $(convertVersionToCommitDate ${HIGHLIGHT_V}) https://github.com/emacsmirror/highlight.git
-if [[ $HIGHLIGHT_V == "0" ]]; then HIGHLIGHT_V=`version highlight`; fi
+checkout https://github.com/joaotavora/eglot.git $EGLOT_V
 
-echo "updating version in Elpa"
-echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
-echo "(define-package \"eglot\" \"${EGLOT_V}\")" > ~/.emacs.d/elpa/eglot/eglot-pkg.el
-echo "(define-package \"math-symbol-lists\" \"${MATH_SYMB_V}\")" > ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-pkg.el
-
+checkout https://github.com/vspinu/math-symbol-lists.git $MATH_SYMB_V
 touch ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
+
+checkout https://github.com/emacsmirror/highlight.git $HIGHLIGHT_V
 touch ~/.emacs.d/elpa/highlight/highlight-autoloads.el
 
 echo "🚀 Install Emacs packages ..."
