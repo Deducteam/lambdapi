@@ -15,7 +15,7 @@ min_version_of_pkg() {
 }
 
 echo "📦 Installing Emacs ..."
-#sudo snap install emacs --classic
+if [[ ! -f $BIN ]]; then sudo snap install emacs --classic; fi
 
 ROOT=${ROOT=$HOME}
 
