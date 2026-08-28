@@ -69,7 +69,7 @@ if [[ $EGLOT_V == "0" ]]; then EGLOT_V=`version eglot`; fi
 clone $MATH_SYMB_V https://github.com/vspinu/math-symbol-lists.git
 if [[ $MATH_SYMB_V == "0" ]]; then MATH_SYMB_V=`version math-symbol-lists`; fi
 
-clone $HIGHLIGHT_V https://github.com/emacsmirror/highlight.git
+clone $(convertVersionToCommitDate ${HIGHLIGHT_V}) https://github.com/emacsmirror/highlight.git
 if [[ $HIGHLIGHT_V == "0" ]]; then HIGHLIGHT_V=`version highlight`; fi
 
 echo "updating version in Elpa"
