@@ -14,7 +14,7 @@ on:
       - '**.dk'
       - '**.lp'
       - 'tests/lambdapi.pkg'
-      - '**/*.sh'
+      - 'tests/*.sh'
   push:
     paths:
       - '.github/workflows/main.yml'
@@ -29,7 +29,7 @@ on:
       - '**.dk'
       - '**.lp'
       - 'tests/lambdapi.pkg'
-      - '**/*.sh'
+      - 'tests/*.sh'
   workflow_dispatch:
 
 jobs:
