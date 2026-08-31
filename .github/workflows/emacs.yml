@@ -3,10 +3,17 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/emacs.yml'
+      - 'editors/emacs/*.el'
+      - 'editors/emacs/*.sh'
+      - 'editors/emacs/Makefile'
   push:
     paths:
       - '.github/workflows/emacs.yml'
-      - 'editors/emacs/**'
+      - 'editors/emacs/*.el'
+      - 'editors/emacs/*.sh'
+      - 'editors/emacs/Makefile'
   workflow_dispatch:
 
 jobs:
@@ -16,7 +23,7 @@ jobs:
       matrix:
         eglot-version: [1.9, 0]
         math-symbol-list-version: [1.2.1, 1.3, 0]
-        highlight-version: [20250724.2154, 20250815.1830, 0]
+        highlight-version: [20190710.1527, 20250815.1830, 0]
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -26,5 +33,5 @@ jobs:
       - name: install lambdapi-mode
         run: |
           chmod +x installAndLaunch.sh
-          ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs ${{ matrix.eglot-version }} ${{ matrix.math-symbol-list-version }} ${{ matrix.highlight-version }}
+          ./installAndLaunch.sh ${{ matrix.eglot-version }} ${{ matrix.math-symbol-list-version }} ${{ matrix.highlight-version }}
         working-directory: editors/emacs/

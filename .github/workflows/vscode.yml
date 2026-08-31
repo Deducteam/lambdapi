@@ -1,6 +1,11 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/vscode.yml'
+      - 'editors/vscode/Makefile'
+      - 'editors/vscode/src/*.ts'
+      - 'editors/vscode/**.json'
   push:
     paths:
       - '.github/workflows/vscode.yml'
