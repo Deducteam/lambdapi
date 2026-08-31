@@ -122,21 +122,21 @@ let print_option o =
     begin
       match o.opt_handle with
       | NoArg _ ->
-        Printf.printf "%s%s%s\n  %s" b o.opt_name r o.opt_desc
+        Printf.printf "\n%s%s%s\n  %s\n" b o.opt_name r o.opt_desc
       | Next(arg,_) ->
-        Printf.printf "%s%s %s%s\n  %s" b o.opt_name arg r o.opt_desc
+        Printf.printf "\n%s%s %s%s\n  %s\n" b o.opt_name arg r o.opt_desc
       | Suffix(arg,_) ->
-        Printf.printf "%s%s%s%s\n  %s" b o.opt_name arg r o.opt_desc
+        Printf.printf "\n%s%s%s%s\n  %s\n" b o.opt_name arg r o.opt_desc
     end
   | Some s ->
     match o.opt_handle with
     | NoArg _ ->
-      Printf.printf "%s%s, %s%s\n  %s" b s o.opt_name r o.opt_desc
+      Printf.printf "\n%s%s, %s%s\n  %s\n" b s o.opt_name r o.opt_desc
     | Next(arg,_) ->
-      Printf.printf "%s%s %s, %s %s%s\n  %s"
+      Printf.printf "\n%s%s %s, %s %s%s\n  %s\n"
         b s arg o.opt_name arg r o.opt_desc
     | Suffix(arg,_) ->
-      Printf.printf "%s%s%s, %s%s%s\n  %s"
+      Printf.printf "\n%s%s%s, %s%s%s\n  %s\n"
         b s arg o.opt_name arg r o.opt_desc
 
 (*--------------------------------------------------------------------------*)
@@ -323,16 +323,13 @@ let print_usage c =
   List.iter print_option (List.sort cmp_opt c.options)
 
 let add_opt_help c =
-  let handle = ref (fun () -> ()) in
   let o =
     { opt_name = "--help"
     ; opt_short = Some "-h"
     ; opt_desc = "Print this help."
-    ; opt_handle = NoArg !handle }
+    ; opt_handle = NoArg (fun () -> print_usage c) }
   in
-  let c = { c with options = o::c.options } in
-  handle := (fun () -> print_usage c);
-  c
+  { c with options = o::c.options }
 
 let cmd = ref []
 
