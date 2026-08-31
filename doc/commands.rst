@@ -83,8 +83,8 @@ type definition, assuming that the following builtins are defined:
 
 ::
 
-   ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
-   ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
+   ￼builtin "Prop" ≔ …; // : TYPE, for the type of propositions
+   ￼builtin "P"    ≔ …; // : Prop → TYPE, interpretation of propositions as types
 
 An inductive type can have 0 or more constructors.
 
@@ -357,7 +357,7 @@ Patterns can contain abstractions ``λx, _`` and the user may attach an
 environment made of *distinct* bound variables to a pattern variable
 to indicate which bound variable can occur in the matched term. The
 environment is a semicolon-separated list of variables enclosed in
-square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
+square brackets preceded by a dot: ``.[x;y;…]``. For instance, a
 term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
 if ``y`` does not freely occur in ``t``.
 
@@ -523,7 +523,7 @@ Examples:
    constant symbol zero : Nat;
    constant symbol succ (x:Nat) : Nat;
    symbol add : Nat → Nat → Nat;
-   opaque symbol add0 n : add n 0 = n ≔ begin ... end; // theorem
+   opaque symbol add0 n : add n 0 = n ≔ begin … end; // theorem
    injective symbol double n ≔ add n n;
    constant symbol list : Nat → TYPE;
    constant symbol nil : List zero;

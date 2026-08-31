@@ -106,21 +106,21 @@ The system can also print the values of various types using a decimal notation b
 
 ::
    
-   builtin "nat_zero" ≔ ...; // : N
-   builtin "nat_succ" ≔ ...; // : N → N
+   builtin "nat_zero" ≔ …; // : N
+   builtin "nat_succ" ≔ …; // : N → N
 
 * Positive natural numbers in base 2:
 
 ::
    
-   builtin "pos_one" ≔ ...; // : P
-   builtin "pos_double" ≔ ...; // : P → P
-   builtin "pos_succ_double" ≔ ...; // : P → P
+   builtin "pos_one" ≔ …; // : P
+   builtin "pos_double" ≔ …; // : P → P
+   builtin "pos_succ_double" ≔ …; // : P → P
 
 * Integer numbers in base 2:
 
 ::
    
-   builtin "int_zero" ≔ ...; // : Z
-   builtin "int_positive" ≔ ...; // : P → Z
-   builtin "int_negative" ≔ ...; // : P → Z
+   builtin "int_zero" ≔ …; // : Z
+   builtin "int_positive" ≔ …; // : P → Z
+   builtin "int_negative" ≔ …; // : P → Z

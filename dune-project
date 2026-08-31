@@ -26,7 +26,7 @@ includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF.")
  (depends
-  (ocaml (>= 4.10))
+  (ocaml (>= 4.14))
   (dream-pure (>= 1.0.0~alpha2))
   (dream-httpaf (>= 1.0.0~alpha3))
   (dream (>= 1.0.0~alpha6))
@@ -40,7 +40,6 @@ systems: Dedukti, Coq, HRS, CPF.")
   (camlp-streams (>= 5))
   (why3 (>= 1.8))
   (yojson (>= 1.6))
-  (cmdliner (>= 1.1))
   (stdlib-shims (>= 0.1))
   (odoc :with-doc)
   (lwt_ppx (>= 1))
