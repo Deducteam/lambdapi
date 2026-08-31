@@ -59,8 +59,9 @@ test_why3: lambdapi
 
 .PHONY: test_libs
 test_libs: lambdapi
-	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
 	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-zenon.git
+	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
 
 #### Library tests ###########################################################
 
