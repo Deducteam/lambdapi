@@ -20,7 +20,7 @@ reset_outdir
 translate() {
     out=$outdir/${1%.lp}.dk
     echo "$1 --> $out ..."
-    $lambdapi export -w -v0 -o dk $1 > $out
+    $lambdapi export -w -v 0 -o dk $1 > $out
     if test $? -ne 0; then echo KO; exit 1; fi
 }
 
