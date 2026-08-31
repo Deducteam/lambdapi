@@ -154,10 +154,10 @@ let opt_debug =
   Stdlib.String.concat "" (List.map f (Common.Logger.log_summary())) }
 
 let opt_verbose =
-  { opt_name = "--verbose="
+  { opt_name = "--verbose"
   ; opt_short = Some "-v"
   ; opt_handle =
-      Suffix("INT",
+      Next("INT",
              fun v -> Common.Console.set_default_verbose (nat_of_string v))
   ; opt_desc =
 {|Set the verbosity level to INT. A value smaller or equal to 0 will disable

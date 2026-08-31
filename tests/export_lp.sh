@@ -22,7 +22,7 @@ translate() {
             tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
             *) out=/tmp/$f
                echo "$f --> $out ..."
-               $lambdapi export -o lp -w -v0 "$f" > "$out"
+               $lambdapi export -o lp -w -v 0 "$f" > "$out"
                if test $? -ne 0; then echo KO; exit 1; fi
         esac
     done
@@ -38,7 +38,7 @@ check() {
             /tmp/tests/OK/why3*.lp);; # FIXME
             /tmp/tests/OK/perf_rw_engine.lp);; # takes too much time
             *) echo "lambdapi check $f ..."
-               $lambdapi check -w -v0 "$f"
+               $lambdapi check -w -v 0 "$f"
                if test $? -ne 0; then echo KO; exit 1; fi
         esac
     done
