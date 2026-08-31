@@ -46,7 +46,7 @@ let rec term oc t =
   | P_Prod(xs,u) -> prod oc xs u
   | P_LLet(x,xs,a,u,v) ->
     string oc "let "; ident oc x; params_list oc xs; typopt oc a;
-    string oc " := "; term oc u; string oc " in "; term oc v
+    string oc " := "; term oc u; string oc " ; "; term oc v
   | P_Wrap u -> term oc u
   | P_Appl _ ->
       let default h ts =
@@ -151,7 +151,7 @@ let command oc {elt; pos} =
     if not (is_mapped p_sym_nam.elt) then
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
-            string oc "theorem "; ident oc p_sym_nam;
+            string oc "nonrec theorem "; ident oc p_sym_nam;
             top_params_list oc p_sym_arg; string oc " : "; term oc a;
             string oc " := by apply "; term oc t; string oc "\n"
           | true, Some t, _, _ ->

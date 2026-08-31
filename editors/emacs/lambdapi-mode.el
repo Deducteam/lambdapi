@@ -38,7 +38,8 @@
         (modify-syntax-entry ?\; ". 23" syn-table)
         syn-table))
 
-(setq short-diags-enabled nil)
+(defvar short-diags-enabled nil
+  "Whether diagnostic locations are shortened before display.")
 
 ;; Keywords (legacy syntax)
 (defconst lambdapi-legacy-font-lock-keywords

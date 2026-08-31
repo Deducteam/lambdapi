@@ -1,6 +1,11 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/vscode.yml'
+      - 'editors/vscode/Makefile'
+      - 'editors/vscode/src/*.ts'
+      - 'editors/vscode/**.json'
   push:
     paths:
       - '.github/workflows/vscode.yml'
@@ -29,7 +34,7 @@ jobs:
       - name: checking out lambdapi repo ...
         uses: actions/checkout@v7
       - name: Use Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
       - name: install-dependencies

@@ -196,8 +196,8 @@ and scope_parsed : ?find_sym:find_sym ->
 
 (** [add_impl ~find_sym k md ss env loc h impl args] scopes [args] and returns
     the application of [h] to the scoped arguments. [impl] is a boolean list
-    described the implicit arguments. Implicit arguments are added as
-    underscores before scoping. *)
+    describing what are the implicit arguments. Implicit arguments are added
+    as underscores before scoping. *)
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
@@ -332,13 +332,12 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Wild, M_Patt) -> mk_Wild
   | (P_Wild, (M_RHS _|M_Term _)) -> mk_Plac typ
 
-  | (P_Meta({elt;pos} as mk,ts),
+  | (P_Meta({elt;pos},ts),
     (M_Term {m_term_meta_of_key;_} | M_SearchPatt(m_term_meta_of_key,_))) -> (
       match m_term_meta_of_key elt with
       | None ->
-          fatal pos "Metavariable %a not found among generated variables: \
-                     metavariables can only be created by the system."
-            Pretty.meta_ident mk
+          fatal pos "Metavariable %d not found among generated variables: \
+                     metavariables can only be created by the system." elt
       | Some m -> mk_Meta (m, Array.map (scope ?find_sym (k+1) md ss env) ts))
   | (P_Meta(_), _) -> fatal pos "Metavariables are not allowed here."
 

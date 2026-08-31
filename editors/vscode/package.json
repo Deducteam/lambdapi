@@ -185,6 +185,6 @@
   "dependencies": {
     "@vscode/vsce": "^3.9.2",
     "fs-extra": "^9.0.1",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.0"
   }
 }
