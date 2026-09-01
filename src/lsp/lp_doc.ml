@@ -212,7 +212,13 @@ let check_text ~doc =
     match error with
     | None -> logs, diags
     | Some(pos,msg) ->
-      logs @ [((1, (Pos.popt_to_string (Some pos) ^ ": " ^ msg)), Some pos)],
+      logs @ [
+        ((1,
+        (Pos.popt_to_string
+          ~print_dirname:false
+          ~print_fname:false
+          (Some pos) ^ ": " ^ msg)),
+        Some pos)],
       diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
