@@ -136,11 +136,17 @@ let process_cmd _file (nodes,st,dg,logs) cmd =
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
           (* if error in the same file, use the precise location *)
-          Some l', msg, Pos.popt_to_string (Some l') ^ msg
+          Some l',
+          msg,
+          Pos.popt_to_string
+            ~print_dirname:false
+            ~print_fname:false
+            (Some l') ^ " " ^ msg
         else
           (* else, use the location of the command *)
-          cmd_loc, Pos.popt_to_string (Some l') ^ "\n" ^ msg
-            , Pos.popt_to_string (Some l') ^ "\n" ^ msg
+          cmd_loc,
+          Pos.popt_to_string (Some l') ^ "\n" ^ msg,
+          Pos.popt_to_string (Some l') ^ "\n" ^ msg
     (* Otherwise,
       cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
     | _, Some l' -> cmd_loc, msg, Pos.popt_to_string (l') ^ "\n" ^ msg
