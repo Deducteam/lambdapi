@@ -205,7 +205,9 @@ let check_text ~doc =
   let logs, diags =
     match error with
     | None -> logs, diags
-    | Some(pos,msg) -> logs @ [((1, msg), Some pos)], diags @ [pos,1,msg,None]
+    | Some(pos,msg) ->
+      logs @ [((1, (Pos.popt_to_string (Some pos) ^ ": " ^ msg)), Some pos)],
+      diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
   let doc = { doc with nodes; final=Some(final); map; logs } in
