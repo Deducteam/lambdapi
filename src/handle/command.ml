@@ -74,12 +74,12 @@ let handle_open : bool -> sig_state -> p_path -> sig_state =
   (* Check that [p] is not an alias. *)
   match p with
   | [a] when StrMap.mem a ss.alias_path ->
-      fatal pos "Module aliases cannot be open."
+    fatal pos "Module aliases cannot be open."
   | _ ->
-      (* Check that [p] has been required. *)
-      match Path.Map.find_opt p !loaded with
-      | None -> fatal pos "Module \"%a\" needs to be required first." path p
-      | Some _ -> rec_open (not prv) ss p
+    (* Check that [p] has been required. *)
+    match Path.Map.find_opt p !loaded with
+    | None -> fatal pos "Module \"%a\" needs to be required first." Path.pp p
+    | Some _ -> rec_open (not prv) ss p
 
 (** [rec_require compile ss p] handles the command [require p] with [ss] as
     signature state and [compile] as compilation function (passed as argument
@@ -270,7 +270,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
       (* /!\ Update decision trees without adding the rules themselves. It is
          important for local confluence checking. *)
-      SymMap.iter Tree.update_dtree map;
+      SymMap.iter Tree.add_and_update map;
       let sign = ss.signature in
       (* Local confluence checking. *)
       Tool.Lcr.check_cps pos sign srs map;
@@ -296,7 +296,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
         | _ -> assert false
-      and real = LibTerm.count_products Eval.whnf [] !(s.sym_type) in
+      and real =
+        LibTerm.count_products ~impl:s.sym_impl Eval.whnf [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Check that the notation is compatible with the theory. *)
@@ -334,14 +335,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let lhs = match r1.lhs with [x;y] -> [y;x] | _ -> assert false in
       let r2 = {r1 with lhs} in
       Sign.add_rules ss.signature s [r1;r2];
-      Tree.update_dtree Unif_rule.equiv [];
+      Tree.update Unif_rule.equiv;
       Console.out 2 (Color.gre "unif_rule %a") sym_rule x;
       Console.out 2 (Color.gre "unif_rule %a") sym_rule (s,r2);
       (ss, None, None)
   | P_coercion c ->
       let r = scope_rule false ss c in
       Sign.add_rule ss.signature r;
-      Tree.update_dtree Coercion.coerce [];
+      Tree.update Coercion.coerce;
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
@@ -433,7 +434,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Console.out 2 (Color.gre "rule %a") sym_rule r
       in
       no_wrn (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
-      List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
+      List.iter Tree.update rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
       List.iter2

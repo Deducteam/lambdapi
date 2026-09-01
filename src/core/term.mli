@@ -36,8 +36,6 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-val is_ac: prop -> bool
-
 (** Type for free variables. *)
 type var
 
@@ -344,8 +342,12 @@ val get_args : term -> term * term list
     of the list of arguments. *)
 val get_args_len : term -> term * term list * int
 
-(** Total orders terms. *)
+(** Total order on terms (modulo alpha-equivalence). *)
 val cmp : term cmp
+
+(** Equality on terms (modulo alpha-equivalence) and rules. *)
+val eq : term eq
+val eq_lhs : rule eq
 
 (** Construction functions of the private type term. They ensure some
    invariants:
@@ -477,10 +479,13 @@ val lhs : sym_rule -> term
 val rhs : sym_rule -> term
 
 (** Basic printing function (for debug). *)
+val qsym : sym pp
+
 module Raw : sig
   val var : var pp
   val sym : sym pp
   val term : term pp
+  val sym_rule : sym_rule pp
   val ctxt : ctxt pp
 end
 

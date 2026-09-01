@@ -38,8 +38,6 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-let is_ac = function Commu | Assoc _ | AC _ -> true | _ -> false
-
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
@@ -369,6 +367,9 @@ let mk_right_comb : sym -> term list -> term -> term = fun s ->
   List.fold_right (mk_bin s)
 
 (** Printing functions for debug. *)
+let var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
+let sym : sym pp = fun ppf s -> string ppf s.sym_name
+let qsym : sym pp = fun ppf s -> out ppf "%a.%s" Path.pp s.sym_path s.sym_name
 let rec term : term pp = fun ppf t ->
   match unfold t with
   | Bvar (InSub k) -> out ppf "`%d" k
@@ -390,8 +391,6 @@ let rec term : term pp = fun ppf t ->
   | LLet(a,t,(n,b,e)) ->
       out ppf "let %s:%a ≔ %a in %a#(%a)"
         n.binder_name term a term t terms e term b
-and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
-and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf -> out ppf "[%a]" (Array.pp term ",")
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
@@ -479,6 +478,11 @@ and cmp_binder : binder cmp =
     (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
+
+and eq : term eq = fun t u -> cmp t u = 0
+
+and eq_lhs r1 r2 =
+  try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
@@ -957,6 +961,9 @@ type sym_rule = sym * rule
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
+let sym_rule : sym_rule pp = fun ppf (s,r) ->
+  out ppf "%a%a ↪ %a" sym s (List.pp (prefix " " term) "") r.lhs term r.rhs
+
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
@@ -1006,6 +1013,7 @@ module Raw = struct
   let var = var let _ = var
   let sym = sym let _ = sym
   let term = term let _ = term
+  let sym_rule = sym_rule let _ = sym_rule
   let ctxt = ctxt let _ = ctxt
 end
 

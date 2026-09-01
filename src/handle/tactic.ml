@@ -17,7 +17,9 @@ let log = log.pp
     new compiled module. *)
 let admitted_initial_value = min_int
 let admitted : int Stdlib.ref = Stdlib.ref admitted_initial_value
-let reset_admitted() = Stdlib.(admitted := admitted_initial_value)
+let reset_admitted() =
+  Stdlib.(let a = !admitted in admitted := admitted_initial_value; a)
+let restore_admitted (a:int) = Stdlib.(admitted := a)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
     of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
@@ -273,7 +275,14 @@ let p_term (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_term =
     match unfold t with
     | Type -> P_Type
     | Symb s ->
-      let mp = if StrMap.mem s.sym_name ss.in_scope then [] else s.sym_path in
+      let mp =
+        match StrMap.find_opt s.sym_name ss.in_scope with
+        | Some s' when s' == s -> []
+        | _ ->
+          match Path.Map.find_opt s.sym_path ss.path_alias with
+          | Some a -> [a]
+          | _ -> s.sym_path
+      in
       let expl = s.sym_impl <> [] in
       let t = P_Iden(Pos.make pos (mp,s.sym_name),expl) in
       if !(s.sym_nota) = NoNotation then t else P_Wrap (Pos.make pos t)
@@ -783,7 +792,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         if List.length new_ps.proof_goals < List.length ps.proof_goals
         then new_ps
         else handle new_ps tac
-        with Fatal _ -> ps
+        with Fatal(_,s,_) ->
+          if Logger.log_enabled() then log "repeat stopped with: %s" s; ps
       end
   | P_tac_and(t1,t2) -> handle (handle ps t1) t2
   | P_tac_eval pt ->

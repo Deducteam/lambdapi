@@ -119,7 +119,9 @@ let link : t -> unit = fun sign ->
       match unfold t with
       | Type
       | Kind
-      | Vari _ -> t
+      | Vari _
+      | Plac _
+        -> t
       | Symb s -> mk_Symb(link_symb s)
       | Prod(a,b) -> mk_Prod(link_term a, binder link_term b)
       | Abst(a,b) -> mk_Abst(link_term a, binder link_term b)
@@ -128,7 +130,6 @@ let link : t -> unit = fun sign ->
       | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
       | Bvar _ -> assert false
       | Meta _ -> assert false
-      | Plac _ -> assert false
       | Wild -> assert false
       | TRef _ -> assert false
     in link_term
@@ -156,7 +157,7 @@ let link : t -> unit = fun sign ->
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule sd.rules;
         Option.iter (fun n -> s.sym_nota := n) sd.nota;
-        Tree.update_dtree s []
+        Tree.update s
       in
       StrMap.iter g sm
   in
@@ -195,14 +196,15 @@ let unlink : t -> unit = fun sign ->
     | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_term (snd(unbind b))
     | Appl(a,b) -> unlink_term a; unlink_term b
     | Meta _ -> assert false
-    | Plac _ -> assert false
     | Wild   -> assert false
     | TRef _ -> assert false
     | Bvar _ -> assert false
+    | Plac _
     | Vari _
     | Patt _
     | Type
-    | Kind -> ()
+    | Kind
+      -> ()
   in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
@@ -248,7 +250,11 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
     create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name pos
       (cleanup typ) (minimize_impl impl)
   in
-  sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
+  let f = function
+    | None -> Some sym
+    | Some _ -> fatal_no_pos "Bug: symbol %a already declared." Term.qsym sym
+  in
+  sign.sign_symbols := StrMap.update name.elt f !(sign.sign_symbols);
   if Stdlib.(!Common.Console.lsp_mod) then
     Stdlib.(!add_symbol_callback ~path:sign.sign_path sym) ;
   sym
@@ -265,9 +271,13 @@ let write : t -> string -> unit = fun sign fname ->
      preserving a valid copy of the written signature in the parent
      process. *)
   match Unix.fork () with
-  | 0 -> let oc = open_out fname in
-         unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
-         close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
+  | 0 ->
+    begin
+      let oc = open_out fname in
+      try unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
+        close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
+      with e -> close_out oc; Sys.remove fname; raise e
+    end
   | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
 
 let write s n = Debug.(record_time Writing (fun () -> write s n))
@@ -304,7 +314,9 @@ let read : string -> t = fun fname ->
     match unfold t with
     | Type
     | Kind
-    | Vari _ -> ()
+    | Vari _
+    | Plac _
+      -> ()
     | Symb s -> shallow_reset_sym s
     | Prod(a,b)
     | Abst(a,b) -> reset_term a; reset_term (snd (unbind b))
@@ -315,7 +327,6 @@ let read : string -> t = fun fname ->
     | TRef _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false
-    | Plac _ -> assert false
   in
   let reset_rule r =
     List.iter reset_term r.lhs;
