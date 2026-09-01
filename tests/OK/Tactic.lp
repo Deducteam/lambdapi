@@ -92,10 +92,6 @@ builtin "why3" ≔ #why3;
 constant symbol #with_goal : (Prop → Tactic) → Tactic;
 builtin "with_goal" ≔ #with_goal;
 
-constant symbol #change : Tactic;
-builtin "change" ≔ #change;
-
->>>>>>> dk/master
 // defined tactics
 
 symbol nothing ≔ #try #fail;

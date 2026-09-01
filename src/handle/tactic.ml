@@ -427,8 +427,8 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
           try
             match Hashtbl.find c s.sym_name, ts with
             | T_admit, _ -> P_tac_admit
-            | T_and, [t1;t2] -> P_tac_and(tac_eval t1, tac_eval t2)
-            | T_and, _ -> assert false
+            | T_compose, [t1;t2] -> P_tac_and(tac_eval t1, tac_eval t2)
+            | T_compose, _ -> assert false
             | T_all_hyps, [t] -> P_tac_all_hyps (p_term t)
             | T_all_hyps, _ -> assert false
             | T_apply, [_;t] -> P_tac_apply (p_term t)
@@ -462,13 +462,10 @@ let p_tactic (ss:Sig_state.t) (g:goal) (env:Env.t) (pos:Pos.popt) (t:term)
             | T_print, [t] ->
               let arg =
                 match unfold t with
-                | Symb s ->
-                  let n = s.sym_name in
-                  if n = String.add_quotes "" then None
-                  else Some(Pos.make pos (s.sym_path, n))
+                | Symb s -> s.sym_name
                 | _ -> fatal pos "not a symbol or string literal: %a" term t
               in
-              P_tac_query (Pos.make pos (P_query_print arg))
+              P_tac_query (Pos.make pos (P_query_print (String arg)))
             | T_print, _ -> assert false
             | T_refine, [t] -> P_tac_refine(p_term_of_string_term pos t)
             | T_refine, _ -> assert false
@@ -618,6 +615,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_try, [t] -> ps, mk(P_tac_try(tac_eval t))
             | T_try, _ -> assert false
             | T_why3, _ -> ps, mk(P_tac_why3 None)
+            | T_with_goal, [t] -> ps, mk (P_tac_with_goal(p_term t))
+            | T_with_goal, _ -> assert false
           with Not_found ->
             fatal pos "Unhandled tactic expression: %a." term t
         end
@@ -927,7 +926,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       let t = scope t in
       let t = mk_Appl (t, goal) in
       if (Logger.log_enabled ()) then log "WITH_GOAL [%a]\n" term t;
-      handle ps (p_tactic ss g env pos t)
+      let ps,t = p_tactic ps g env pos t in
+      handle ps t
   | P_tac_try t ->
       begin try handle ps t with Fatal _ -> ps end
   | P_tac_orelse(t1,t2) ->
@@ -952,7 +952,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
           fatal pt.pos "Cannot infer the type of [%a]" term t
       | Some(t,_) ->
         if Unif.solve_noexn p then
-          let t = p_tactic ss g env pos t in handle ps t
+          let ps,t = p_tactic ps g env pos t in handle ps t
         else fatal pos "Cannot solve typing constraints for [%a]" term t
 
   in handle
