@@ -105,7 +105,7 @@ assert ⊢ val (O (I H)) ≡ 6;
 opaque opaque symbol valS x : π(val (succ x) = val x +1) ≔
 begin
   induction
-  { assume x h; simplify; rewrite h; reflexivity }
+  { assume x h; simplify; rewrite h; simplify; rewrite addn0; rewrite addnS; reflexivity}
   { assume x h; reflexivity }
   { reflexivity }
 end;
@@ -125,8 +125,11 @@ opaque opaque symbol val≠0 x : π(val x ≠ 0) ≔
 begin
   induction
   { assume x h; refine s≠0 }
-  { assume x h; simplify; assume i;
-    apply h (∧ₑ₁ (∧ₑ₁ (addn_eq0 (val x) (val x)) i))
+  { assume x h; simplify; assume i; 
+    have i' :  π ((val x + (val x)) = 0)
+      {rewrite left .[x in ((_ + x) = _)] addn0 (val x);
+      refine i};
+    apply h (∧ₑ₁ (∧ₑ₁ (addn_eq0 (val x) (val x)) i'))
   }
   { refine s≠0 }
 end;
@@ -141,22 +144,46 @@ begin
   induction
   { assume x h; induction
     { simplify; assume y i j; rewrite h y _
-        { apply 2*_inj; apply +1_inj; apply j }
+        { apply 2*_inj; apply +1_inj; 
+          have j' : π ((((val x + (val x + 0)) +1) = ((val y + (val y + 0)) +1)) ⇒ (((val x + val x) +1) = ((val y + val y) +1)))
+            {rewrite addn0; rewrite addn0; assume h0; refine h0};
+        apply (j' j) }
         { reflexivity }
     }
-    { simplify; assume y i j; apply ⊥ₑ; apply odd≠even (val x) (val y) j }
-    { simplify; assume i; apply ⊥ₑ; apply 2*val≠0 x; apply +1_inj; apply i }
+    { simplify; assume y i j; apply ⊥ₑ; 
+      have H: π ((((val x + (val x + 0)) +1) = (val y + (val y + 0))) ⇒ (((val x + val x) +1) = (val y + val y)))
+        {rewrite addn0; rewrite addn0; assume h0; refine h0};
+      apply odd≠even (val x) (val y) (H j) }
+    { simplify; assume i; apply ⊥ₑ; apply 2*val≠0 x; apply +1_inj; 
+      have H: π ((((val x + (val x + 0)) +1) = 1) ⇒ (((val x + val x) +1) = 1))
+        {rewrite addn0; assume h0; refine h0};
+    apply (H i) }
   }
   { assume x h; induction
     { simplify; assume y i j; apply ⊥ₑ;
-      apply odd≠even (val y) (val x) (eq_sym j) }
-    { simplify; assume y i j; apply feq O; apply h; apply 2*_inj; apply j }
-    { assume i; apply ⊥ₑ; apply odd≠even 0 (val x); symmetry; apply i }
+    have H: π (((val x + (val x + 0)) = ((val y + (val y + 0)) +1)) ⇒ ((val x + val x) = ((val y + val y) +1)))
+        {rewrite addn0; rewrite addn0; assume h0; refine h0};
+      apply odd≠even (val y) (val x) (eq_sym (H j)) }
+    { simplify; assume y i j; apply feq O; apply h; apply 2*_inj; 
+      have H: π (((val x + (val x + 0)) = (val y + (val y + 0))) ⇒ ((val x + val x) = (val y + val y)))
+        {rewrite addn0; rewrite addn0; assume h0; refine h0};
+    apply (H j) }
+    { assume i; apply ⊥ₑ; apply odd≠even 0 (val x); symmetry; simplify; 
+      have H: π ((val (O x) = val H) ⇒ ((val x + val x) = 1))
+        {simplify val; simplify *; simplify *; simplify *; rewrite addn0; assume h0; refine h0};
+    apply (H i)
+    }
   }
   { induction
     { simplify; assume x h i; apply ⊥ₑ; apply val≠0 x; apply 2*=0; apply +1_inj;
-      symmetry; apply i }
-    { simplify; assume x h i; apply ⊥ₑ; apply odd≠even 0 (val x); apply i }
+      symmetry; 
+      have H: π ((1 = ((val x + (val x + 0)) +1)) ⇒ (1 = ((val x + val x) +1)))
+        {rewrite addn0; assume h0; refine h0};
+      apply (H i) }
+    { simplify; assume x h i; apply ⊥ₑ; apply odd≠even 0 (val x); simplify; 
+      have H: π ((1 = (val x + (val x + 0))) ⇒ (1 = (val x + val x)))
+        {rewrite addn0; assume h0; refine h0};
+    apply (H i) }
     { reflexivity }
   }
 end;
@@ -196,16 +223,53 @@ rule add (I $x) (I $q) ↪ O (add_carry $x $q)
 with add (I $x) (O $q) ↪ I (add $x $q)
 with add (O $x) (I $q) ↪ I (add $x $q)
 with add (O $x) (O $q) ↪ O (add $x $q)
-with add $x      H      ↪ succ $x
-with add H      $y      ↪ succ $y;
+with add (I $x) H      ↪ O (succ $x)
+with add (O $x) H      ↪ I $x
+with add H      (I $q) ↪ O (succ $q)
+with add H      (O $q) ↪ I $q
+with add H      H      ↪ O H;
+
+opaque symbol addnH n : π (add n H = succ n)≔
+begin
+  induction
+    {reflexivity}
+    {reflexivity}
+    {reflexivity}
+end;
+
+opaque symbol addHn n : π (add H n = succ n)≔
+begin
+  induction
+    {reflexivity}
+    {reflexivity}
+    {reflexivity}
+end;
 
 rule add_carry (I $x) (I $q) ↪ I (add_carry $x $q)
 with add_carry (I $x) (O $q) ↪ O (add_carry $x $q)
 with add_carry (O $x) (I $q) ↪ O (add_carry $x $q)
 with add_carry (O $x) (O $q) ↪ I (add $x $q)
-with add_carry $x      H      ↪ add $x (O H)
-with add_carry H      $y      ↪ add (O H) $y;
-// for efficiency reasons last cases should not be 'succ (succ $x)'
+with add_carry (I $x) H      ↪ I (succ $x)
+with add_carry (O $x) H      ↪ O (succ $x)
+with add_carry H      (I $q) ↪ I (succ $q)
+with add_carry H      (O $q) ↪ O (succ $q)
+with add_carry H      H      ↪ I H;
+
+opaque symbol add_carryH n : π (add_carry n H = add n (O H))≔
+begin
+  induction
+    {assume n h; simplify; rewrite addnH; reflexivity }
+    {assume n h; simplify; rewrite addnH; reflexivity }
+    {reflexivity}
+end;
+
+opaque symbol add_carryHn n : π (add_carry H n = add (O H) n)≔
+begin
+  induction
+    {assume n h; simplify; rewrite addHn; reflexivity }
+    {assume n h; simplify; rewrite addHn; reflexivity }
+    {reflexivity}
+end;
 
 // Check that 7 + 5 = 12
 assert ⊢ add (I (I H)) (I (O H)) ≡ O (O (I H));
@@ -224,7 +288,7 @@ begin
     induction
       { reflexivity }
       { assume q h; simplify; rewrite prec; reflexivity }
-      { reflexivity } }
+      { rewrite addnH;  simplify; reflexivity } }
   // case O
   { assume p prec;
     induction
@@ -251,14 +315,17 @@ begin
       { reflexivity }
       { reflexivity } }
   // case H
-  { induction { reflexivity } { reflexivity } { reflexivity } }
+  { induction 
+    { assume q h; simplify; rewrite addHn; reflexivity }
+    { assume q h; simplify; rewrite addHn; reflexivity } 
+    { reflexivity } }
 end;
 
 opaque symbol add_succ_right x y : π (add x (succ y) = succ (add x y)) ≔
 begin
   refine ind_ℙeano (λ x, `∀ y, add x (succ y) = succ (add x y)) _ _
   // case H
-  { reflexivity }
+  { assume n; rewrite addHn; rewrite addHn; reflexivity }
   // case succ
   { assume x xrec y;
     rewrite add_succ; rewrite add_succ; rewrite xrec; reflexivity }
@@ -270,7 +337,7 @@ opaque symbol add_assoc x y z : π (add (add x y) z = add x (add y z)) ≔
 begin
   refine ind_ℙeano (λ x, `∀ y, `∀ z, add (add x y) z = add x (add y z)) _ _
   // case H
-  { refine add_succ }
+  { assume m n; rewrite addHn; rewrite addHn; refine add_succ m n }
   // case succ
   { assume x xrec y z;
     rewrite add_succ; rewrite add_succ; rewrite add_succ;
@@ -283,7 +350,7 @@ opaque symbol add_com x y : π (add x y = add y x) ≔
 begin
   refine ind_ℙeano (λ x, `∀ y, add x y = add y x) _ _
   // case H
-  { reflexivity }
+  { assume n; rewrite addHn; rewrite addnH; reflexivity}
   // case succ
   { assume x xrec y;
     rewrite add_succ; rewrite add_succ_right; rewrite xrec; reflexivity }
@@ -546,7 +613,7 @@ opaque symbol compare_compat_add a x y :
 begin
   refine ind_ℙeano (λ a, `∀ x, `∀ y, compare (add x a) (add y a) = compare x y) _ _
   // case H
-  { assume x y; refine compare_succ_succ x y Eq }
+  { assume x y; rewrite addnH; rewrite addnH; refine compare_succ_succ x y Eq }
   // case succ
   { assume a arec x y;
     rewrite add_succ_right; rewrite add_succ_right; rewrite left arec x y;

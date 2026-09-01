@@ -12,16 +12,14 @@ on the VSCode Marketplace. Lambdapi can read Dedukti files. It
 includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF."""
-x-maintenance-intent: ["(latest)"]
 maintainer: ["dedukti-dev@inria.fr"]
-authors: ["Deducteam"]
+authors: ["Deducteam and friends"]
 license: "CECILL-2.1"
 homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 depends: [
-  "dune" {>= "3.7"}
-  "dune-site" {>= "3.17"}
-  "ocaml" {>= "4.10"}
+  "dune" {>= "3.18"}
+  "ocaml" {>= "4.14"}
   "dream-pure" {>= "1.0.0~alpha2"}
   "dream-httpaf" {>= "1.0.0~alpha3"}
   "dream" {>= "1.0.0~alpha6"}
@@ -35,13 +33,12 @@ depends: [
   "camlp-streams" {>= "5"}
   "why3" {>= "1.8"}
   "yojson" {>= "1.6"}
-  "cmdliner" {>= "1.1"}
   "stdlib-shims" {>= "0.1"}
   "odoc" {with-doc}
   "lwt_ppx" {>= "1"}
   "uri" {>= "1.1"}
   "dune-site" {>= "3.15"}
-  "ppx_inline_test"
+  "ppx_inline_test" {>= "v0.16.1"}
 ]
 build: [
   ["dune" "subst"] {dev}
@@ -60,3 +57,4 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
+x-maintenance-intent: ["(latest)"]

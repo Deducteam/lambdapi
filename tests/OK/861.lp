@@ -32,9 +32,10 @@ symbol =_refl [T] (x : π T) : π (x = x) ≔ λ P px, px;
 symbol =_ind [T] (x y : π T) : π (x = y) → Π P, π (P y) → π (P x)
 ≔ λ eqxy, eqxy (λ t, t = y) (=_refl y);
 
-builtin "P"     ≔ π;
 builtin "Prop"  ≔ Prop;
-builtin "T"     ≔ π;
+builtin "Prf"     ≔ π;
+builtin "Set"   ≔ Prop;
+builtin "El"     ≔ π;
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;
 builtin "eqind" ≔ =_ind;

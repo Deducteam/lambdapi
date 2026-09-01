@@ -4,7 +4,7 @@ constant symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // `p
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 symbol ⊥: Prop;
 symbol a: Prop;

@@ -14,7 +14,7 @@ symbol τ : Set → TYPE;
 symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 symbol π : Prop → TYPE;
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 (a:Set) inductive L : TYPE ≔
 | nil  : L a

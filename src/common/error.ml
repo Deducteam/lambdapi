@@ -40,7 +40,7 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
     description of the error, displayed differently from the error itself. *)
 exception Fatal of Pos.popt option * string * string
 
-(** [fatal_str fmt] may be called an arbitrary number of times to build up the
+(** [fatal_msg fmt] may be called an arbitrary number of times to build up the
     error message of the [fatal] or [fatal_no_pos] functions prior to  calling
     them. Note that the messages are stored in a buffer that is flushed by the
     [fatal] or [fatal_no_pos] function. Hence, they must be called. *)
@@ -50,8 +50,7 @@ let fatal_msg : 'a outfmt -> 'a =
 (** [fatal popt fmt] raises the [Fatal(popt,msg,err_desc)] exception, in which
     [msg] is built from the format [fmt] (provided the necessary arguments).
     [err_desc] continues the error message and is printed in normal format
-    instead of red color*)
-
+    instead of red color. *)
 let fatal : Pos.popt -> ?err_desc:string -> ('a,'b) koutfmt -> 'a =
   fun pos ?(err_desc="") fmt ->
   let err_desc _ =

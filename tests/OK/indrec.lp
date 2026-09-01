@@ -6,7 +6,7 @@ constant symbol Prop : TYPE;
 builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE;
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 constant symbol ⊤ : Prop;
 constant symbol top : π ⊤;

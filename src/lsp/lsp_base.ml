@@ -10,6 +10,7 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Lplib
 open Common
 open Handle
 
@@ -31,13 +32,26 @@ let mk_reply ~id ~result =
 let mk_event m p   =
   `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
+(* LSP positions are 0-based, non-negative, and require start <= end.
+   Lambdapi lines are 1-based, and generated symbols carry virtual
+   positions violating the other two constraints (see the NOTE on
+   generated symbols in [Core.Term]): hence shift lines, floor at 0,
+   and collapse inverted ranges to their start. *)
+let json_of_range l1 c1 l2 c2 : J.t =
+  let max0 n = if n < 0 then 0 else n in
+  let l1 = max0 (l1 - 1) and c1 = max0 c1 in
+  let l2 = max0 (l2 - 1) and c2 = max0 c2 in
+  let l2, c2 = if (l2, c2) < (l1, c1) then l1, c1 else l2, c2 in
+  `Assoc ["start", `Assoc ["line", `Int l1; "character", `Int c1];
+          "end",   `Assoc ["line", `Int l2; "character", `Int c2]]
+
 let mk_range (p : Pos.pos) : J.t =
-  let open Pos in
-  let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
-    p
-  in
-  `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
-          "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
+  Pos.(json_of_range p.start_line p.start_col p.end_line p.end_col)
+
+let mk_range_of_interval (r : Range.t) : J.t =
+  let s = Range.interval_start r and e = Range.interval_end r in
+  json_of_range (Range.line s) (Range.column s)
+    (Range.line e) (Range.column e)
 
 let json_of_goal (hyps, concl) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in

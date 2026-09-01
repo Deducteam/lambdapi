@@ -83,9 +83,6 @@ let raw_ident : string pp = fun ppf s ->
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
-let meta_ident : p_meta_ident pp = fun ppf {elt;_} ->
-  out ppf "%d" elt
-
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
   | Some(id) -> out ppf "%a" ident id
@@ -112,80 +109,84 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
 
-(** The possible priority levels are [`Func] (top level, including abstraction
-   and product), [`Appl] (application) and [`Atom] (smallest priority). *)
-type priority = [`Func | `Appl | `Atom]
+let rec simple_type t =
+  match t.elt with
+  | P_Arro(_,u) -> simple_type u
+  | P_Prod _ -> false
+  | _ -> true
 
-let rec term : p_term pp = fun ppf t ->
-  let empty_context = ref true in
-  let rec atom ppf t = pp `Atom ppf t
-  and appl ppf t = pp `Appl ppf t
-  and func ppf t = pp `Func ppf t
-  and pp priority ppf t =
-    let env ppf ts =
-      match ts with
-      | None -> ()
-      | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf ".[%a]" (Array.pp func ";") ts
-    in
-    match (t.elt, priority) with
-    | (P_Type              , _    ) -> out ppf "TYPE"
-    | (P_Iden(qid,false)   , _    ) -> out ppf "%a" qident qid
-    | (P_Iden(qid,true )   , _    ) -> out ppf "@@%a" qident qid
-    | (P_Wild              , _    ) -> out ppf "_"
-    | (P_Meta(mid,ts)      , _    ) ->
-        out ppf "?%a%a" meta_ident mid env (Some ts)
-    | (P_Patt(idopt,ts)    , _    ) -> out ppf "$%a%a" param_id idopt env ts
-    | (P_Appl(t,u)         , `Appl)
-    | (P_Appl(t,u)         , `Func) -> out ppf "@[%a@ %a@]" appl t atom u
-    | (P_Arro(a,b)         , `Func) -> out ppf "@[%a@ → %a@]" appl a func b
-    | (P_Abst(xs,t)        , `Func) ->
-        let fn (ids,_,_) = List.for_all ((=) None) ids in
-        let ec = !empty_context in
-        empty_context := ec && List.for_all fn xs;
-        out ppf "@[<2>λ%a,@ %a@]"
-          params_list xs
-          func t;
-        empty_context := ec
-    | (P_Prod(xs,b)        , `Func) ->
-        out ppf "@[<2>Π%a,@ %a@]" params_list xs func b
-    | (P_LLet(x,xs,a,t,u)  , `Func) ->
-        out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
-          ident x params_list xs typ a func t func u
-    | (P_NLit([],i)        , _    ) -> out ppf "%s" i
-    | (P_NLit(p,i)         , _    ) -> out ppf "%a.%s" raw_path p i
-    | (P_SLit(s)           , _    ) -> string ppf s
-    | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
-    | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
-    | (P_Appl _, `Atom)
-    | ((P_Arro _|P_Abst _|P_Prod _|P_LLet _), (`Atom|`Appl))
-      -> out ppf "(@[<hv2>%a@])" func t
-  in
-  let rec toplevel ppf t =
-    match t.elt with
-    | P_Abst(xs,t) -> out ppf "@[<2>λ%a,@ %a@]" params_list xs toplevel t
-    | P_Prod(xs,b) -> out ppf "@[<2>Π%a,@ %a@]" params_list xs toplevel b
-    | P_Arro(a,b) -> out ppf "@[%a@ → %a@]" appl a toplevel b
-    | P_LLet(x,xs,a,t,u) ->
-        out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
-          ident x params_list xs typ a toplevel t toplevel u
-    | _ -> func ppf t
-  in
-  toplevel ppf t
+let no_named_param (ids,_,_) = List.for_all ((=) None) ids
 
-and params : p_params pp = fun ppf (ids, t, b) ->
-  if b then out ppf "@[[@,@[<2>%a%a@]@,]@]" param_ids ids typ t
-  else match t with
-    | Some t -> out ppf "@[(@,@[<2>%a : %a@]@,)@]" param_ids ids term t
-    | None -> out ppf "@[@,@[<2>%a@]@,@]" param_ids ids
+let rec term : bool -> p_term pp = fun ec ppf t ->
+  match t.elt with
+  | P_Type -> out ppf "TYPE"
+  | P_Iden(qid,false) -> out ppf "%a" qident qid
+  | P_Iden(qid,true) -> out ppf "@@%a" qident qid
+  | P_Wild -> out ppf "_"
+  | P_Meta({elt=id;_},ts) ->
+    out ppf "?%d%a" id (env ec) (Some ts)
+  | P_Patt(idopt,ts) ->
+    out ppf "$%a%a" param_id idopt (env ec) ts
+  | P_NLit([],i) -> out ppf "%s" i
+  | P_NLit(p,i) -> out ppf "%a.%s" raw_path p i
+  | P_SLit s -> string ppf s
+  | P_Wrap t -> out ppf "(@[<hv2>%a@])" (term ec) t
+  | P_Expl t -> out ppf "[@[<hv2>%a@]]" (term ec) t
+  | P_Appl(t,u) -> out ppf "@[%a@ %a@]" (term ec) t (wrap ec) u
+  | P_Arro(a,b) -> out ppf "@[%a@ → %a@]" (wrap ec) a (term ec) b
+  | P_Abst(xs,t) ->
+    let ec = ec && List.for_all no_named_param xs in
+    out ppf "@[<2>λ%a,@ %a@]" (params_list ec) xs (term ec) t
+  | P_Prod(xs,b) -> out ppf "@[<2>Π%a,@ %a@]" (params_list ec) xs (term ec) b
+  | P_LLet(x,xs,a,t,u) ->
+    out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
+      ident x (params_list ec) xs (typ ec) a (term ec) t (term ec) u
+
+and wrap ec ppf t =
+  match t.elt with
+  | P_Type
+  | P_Iden _
+  | P_Wild
+  | P_Meta _
+  | P_Patt _
+  | P_NLit _
+  | P_SLit _
+  | P_Expl _
+  | P_Wrap _
+    -> term ec ppf t
+  | P_Appl _
+  | P_Arro _
+  | P_Prod _
+  | P_Abst _
+  | P_LLet _
+    -> out ppf "(@[<hv2>%a@])" (term ec) t
+
+and env : bool -> p_term array option pp = fun ec ppf ts ->
+  match ts with
+  | None -> ()
+  | Some [||] when ec -> ()
+  | Some ts -> out ppf ".[%a]" (Array.pp (term ec) ";") ts
+
+and params : bool -> p_params pp = fun ec ppf (ids, t, b) ->
+  if b then out ppf "@[[@,@[<2>%a%a@]@,]@]" param_ids ids (typ ec) t
+  else out ppf "@[(@,@[<2>%a%a@]@,)@]" param_ids ids (typ ec) t
 
 (* starts with a space if the list is not empty *)
-and params_list : p_params list pp = fun ppf ->
-  List.iter (out ppf "@ %a" params)
+and params_list : bool -> p_params list pp = fun ec ppf ->
+  List.iter (out ppf "@ %a" (params ec))
 
 (* starts with a space if <> None *)
-and typ : p_term option pp = fun ppf t ->
-  Option.iter (out ppf "@ : %a" term) t
+and typ : bool -> p_term option pp = fun ec ppf t ->
+  match t with
+  | None -> ()
+  | Some t -> out ppf "@ : %a" (if simple_type t then term ec else wrap ec) t
+
+let term = term true
+let wrap = wrap true
+let env = env true
+let typ = typ true
+let params = params true
+let params_list = params_list true
 
 let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
   out ppf "%s %a ↪ %a" kw term l term r
@@ -285,6 +286,20 @@ let rec search ppf = function
   | QOp(q1,o,q2) -> out ppf "%a%a%a" search q1 op o search q2
   | QFilter(q,f) -> out ppf "%a%a" search q filter f
 
+let print : print pp = fun ppf p ->
+  match p with
+  | Verbose -> out ppf " verbose"
+  | Debug -> out ppf " debug"
+  | Flag -> out ppf " flag"
+  | Prover -> out ppf " prover"
+  | Prover_timeout -> out ppf " prover_timeout"
+  | Goal -> ()
+  | Symbol qid -> out ppf " %a" qident qid
+  | Unif_rule -> out ppf " unif_rule"
+  | Coerce_rule -> out ppf " coerce_rule"
+  | String s -> out ppf " %s" (String.add_quotes s)
+  | Builtin -> out ppf " builtin"
+
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
@@ -292,20 +307,20 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_debug(_,"") -> out ppf "debug"
   | P_query_debug(true ,s) -> out ppf "debug +%s" s
   | P_query_debug(false,s) -> out ppf "debug -%s" s
+  | P_query_flag("", _) -> out ppf "flag"
   | P_query_flag(s, b) ->
       out ppf "flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
   | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
-  | P_query_print None -> out ppf "print"
-  | P_query_print(Some qid) -> out ppf "print %a" qident qid
+  | P_query_print p -> out ppf "print%a" print p
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search q -> out ppf "search %a" search q
 
 let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
-  begin match elt with
+  match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
   | P_tac_all_hyps t -> out ppf "all_hyps %a" term t
@@ -368,16 +383,16 @@ let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
   | P_builtin (s, qid) -> out ppf "@[builtin \"%s\"@ ≔ %a@]" s qident qid
-  | P_inductive (_, _, []) -> assert false (* not possible *)
-  | P_inductive (ms, xs, i :: il) ->
+  | P_inductive (_, _, _, []) -> assert false (* not possible *)
+  | P_inductive (_, ms, xs, i :: il) ->
     let with_ind ppf i = out ppf "@,%a" (inductive "with") i in
     out ppf "@[<v>@[%a%a@]%a%a@]"
       modifiers ms (List.pp params " ") xs
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open(false,ps) -> out ppf "open %a" (List.pp path " ") ps
-  | P_open(true,ps) -> out ppf "private open %a" (List.pp path " ") ps
+  | P_open(_,false,ps) -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(_,true,ps) -> out ppf "private open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (None, ps) -> out ppf "require %a" (List.pp path " ") ps
   | P_require (Some false, ps) ->
@@ -390,7 +405,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
     let with_rule ppf r = out ppf "@.%a" (rule "with") r in
     rule "rule" ppf r; List.iter (with_rule ppf) rs
   | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+    { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf; p_sym_def } ->
     begin
       out ppf "@[<v>@[<2>%asymbol %a%a%a%a%a@]%a@]"
@@ -408,5 +423,5 @@ let command : p_command pp = fun ppf { elt; _ } ->
   end;
   out ppf ";"
 
-let ast : ast pp = fun ppf ->
+let commands : p_commands pp = fun ppf ->
   Stream.iter ((command +| unit "@.") ppf)

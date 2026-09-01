@@ -2,17 +2,14 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o raw_dk ############'
 
-root=`pwd`
-
-lambdapi=${LAMBDAPI:-$root/_build/install/default/bin/lambdapi}
-dkcheck=${DKCHECK:-dk check}
-dkdep=${DKDEP:-dk dep}
-
-TIMEFORMAT="%Es"
-
+lambdapi='../../_build/install/default/bin/lambdapi'
+jobs=32
 outdir=/tmp/export_raw_dk
+TIMEFORMAT="%Es"
 
 reset_outdir() {
     rm -rf $outdir
@@ -33,6 +30,10 @@ for f in *.lp
 do
     f=${f%.lp}
     case $f in
+        # FIXME
+        file.with.dot|req.file.with.dot|indind);;
+        # takes too much time to check
+        perf_rw_engine);;
         # commutative and non associative symbol
         ac);;
         # unicode character in module name
@@ -43,9 +44,6 @@ do
         262_private_in_lhs);;
         # dedukti SR algorithm fails
         273|tests/OK/813);;
-        # FIXME
-        file.with.dot|req.file.with.dot);;
-        indind);;
         # "sequential"
         rule_order|813|1033);;
         # "as"
@@ -59,11 +57,11 @@ do
         # module alias
         alias);;
         # proofs
-        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change|assumption|focus|assume|first_hyp|all_hyps|with_goal);;
+        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit|change|assumption|focus|assume|first_hyp|all_hyps|with_goal|1435_part2|1435);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|Tactic|1374|Option|String|HOL|Impred|PropExt|Classic|Comp|Pos|Z|1217|1151|B1|B2|C1|C2|C3|Epsilon|1313|FunExt|Prod|Conj|Disj|ExtraRules|Univ|1493);;
         # "inductive"
-        strictly_positive_*|inductive|989|904|830|341|1392);;
+        strictly_positive_*|inductive|989|904|830|341|1392|1407);;
         # underscore in query
         unif_hint|patterns|let|767);;
         # abstracted variable type in rule LHS
@@ -84,21 +82,16 @@ check() {
     echo
     echo check translated files ...
     cd $outdir
-    #https://github.com/Deducteam/Dedukti/issues/321
-    #dk_files=`$dkdep -q -s $dk_files`
     cat > Makefile <<__END__
 FILES := \$(wildcard *.dk)
 default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk
 	dk check -e \$<
 __END__
-    $dkdep -q *.dk >> Makefile
-    #echo $dkcheck -q -e $dk_files ...
-    #$dkcheck -q -e $dk_files
-    make
+    dk dep -q *.dk >> Makefile
+    make -j$jobs
     res=$?
-    cd $root
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
 }
-check
+time check

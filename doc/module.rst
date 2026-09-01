@@ -17,7 +17,7 @@ root* (a folder under which all libraries are installed).
 By default, the library root is ``/usr/local/lib/lambdapi/lib_root`` or
 ``$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root`` if ``OPAM_SWITCH_PREFIX``
 is defined. An alternative library root can be specified using the environment
-variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line flag <options>`
+variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line option <cli>`
 ``--lib-root``.
 
 The typical case is when we want to access a module of some installed
@@ -34,7 +34,7 @@ under development. In that case, the development folder can
 be mapped under the library root, similarly to what would
 happen when mounting a volume in a file system. There are two ways of
 doing that, the first one is to use the ``--map-dir MOD:DIR``
-:doc:`command line option </options>`.
+:doc:`command line option </cli>`.
 However, the best way is to use a package configuration file.
 
 Package configuration file
@@ -75,7 +75,7 @@ Example of configuration file (syntax reference):
    # There are two used keys for now:
    package_name = my_package_name
    root_path    = a.b.c
-   # We will use more entries later (e.g., authors, version, ...)
+   # We will use more entries later (e.g., authors, version, …)
 
 Installation procedure for third-party packages
 -----------------------------------------------
