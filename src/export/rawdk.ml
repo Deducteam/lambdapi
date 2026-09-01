@@ -135,9 +135,12 @@ let rec remove_wraps ({elt;_} as t) =
 
 let rule : p_rule pp =
   let varset ppf set = List.pp string ", " ppf (StrSet.elements set) in
-  fun ppf {elt=(l,r);_} ->
-  out ppf "[%a] %a --> %a.@."
-    varset (pvars_lhs l) term (remove_wraps l) term r
+  fun ppf {elt=(l,r,w);_} ->
+  if w = P_None then
+    out ppf "[%a] %a --> %a.@."
+      varset (pvars_lhs l) term (remove_wraps l) term r
+  else
+    fatal None "Cannot translate conditional rules."
 
 type modifiers
   = prop list * expo list * match_strat list * p_modifier_aux list
