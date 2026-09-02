@@ -823,6 +823,7 @@ let cmd_lsp =
   | _::_ -> Common.Error.fatal_no_pos "invalid argument"
   | _ ->
     set_lib_root();
+    Common.Console.lsp_mod := true;
     Lsp.Lp_lsp.main !standard_lsp !log_file
 
 (*-------------------------------------------------------------------------*)
