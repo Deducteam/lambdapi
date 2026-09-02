@@ -130,33 +130,34 @@ let process_cmd _file (nodes,st,dg,logs) cmd =
     in
     nodes, st, dg_proof @ dg, logs
 
-  | Cmd_Error(loc, msg) ->
+  | Cmd_Error(err_loc, err_msg) ->
     let nodes = { cmd; exec = false; goals = [] } :: nodes in
-    let cmd_loc, diag, log = match cmd_loc, loc with
+    let loc, diag_msg, log_msg = match cmd_loc, err_loc with
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
-          (* if error in the same file, use the precise location *)
+          (* if the error is in the same file as the command,
+            we set the diag/log position to the error position
+            and add the error position in the log message *)
           let log_msg =
             let form = Format.formatter_of_buffer lp_logger in
             Color.update_with_color form;
             Format.fprintf (form) (Color.red "[%s] %s") (Pos.popt_to_string
               ~print_dirname:false
               ~print_fname:false
-              (Some l')) msg;
+              (Some l')) err_msg;
             Format.pp_print_flush form ();
             buf_get_and_clear lp_logger
           in
-          Some l', msg, log_msg
+          Some l', err_msg, log_msg
         else
-          (* else, use the location of the command *)
+          (* otherwise we set the diag/log position to the command position
+            and add the error position to both the diag and log messages *)
           cmd_loc,
-          Pos.popt_to_string (Some l') ^ "\n" ^ msg,
-          Pos.popt_to_string (Some l') ^ "\n" ^ msg
-    (* Otherwise,
-      cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
-    | _, Some l' -> cmd_loc, msg, Pos.popt_to_string (l') ^ "\n" ^ msg
-    | _, None -> cmd_loc, msg, msg in
-    nodes, st, (cmd_loc, 1, diag, None) :: dg, ((1, log), cmd_loc) :: logs
+          Pos.popt_to_string (Some l') ^ "\n" ^ err_msg,
+          Pos.popt_to_string (Some l') ^ "\n" ^ err_msg
+    | _, Some l' -> cmd_loc, err_msg, Pos.popt_to_string (l') ^ "\n" ^ err_msg
+    | _, None -> cmd_loc, err_msg, err_msg in
+    nodes, st, (loc, 1, diag_msg, None) :: dg, ((1, log_msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
