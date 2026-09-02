@@ -136,12 +136,17 @@ let process_cmd _file (nodes,st,dg,logs) cmd =
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
           (* if error in the same file, use the precise location *)
-          Some l',
-          msg,
-          Pos.popt_to_string
-            ~print_dirname:false
-            ~print_fname:false
-            (Some l') ^ " " ^ msg
+          let log_msg =
+            let form = Format.formatter_of_buffer lp_logger in
+            Color.update_with_color form;
+            Format.fprintf (form) (Color.red "[%s] %s") (Pos.popt_to_string
+              ~print_dirname:false
+              ~print_fname:false
+              (Some l')) msg;
+            Format.pp_print_flush form ();
+            buf_get_and_clear lp_logger
+          in
+          Some l', msg, log_msg
         else
           (* else, use the location of the command *)
           cmd_loc,
@@ -212,14 +217,18 @@ let check_text ~doc =
     match error with
     | None -> logs, diags
     | Some(pos,msg) ->
-      logs @ [
-        ((1,
+      let log_msg =
+        let form = Format.formatter_of_buffer lp_logger in
+        Color.update_with_color form;
+        Format.fprintf (form) (Color.red "[%s] %s")
         (Pos.popt_to_string
           ~print_dirname:false
           ~print_fname:false
-          (Some pos) ^ ": " ^ msg)),
-        Some pos)],
-      diags @ [pos,1,msg,None]
+          (Some pos)) msg;
+        Format.pp_print_flush form ();
+        buf_get_and_clear lp_logger
+      in
+      logs @ [((1, log_msg),Some pos)], diags @ [pos,1,msg,None]
   in
   let map = Pure.rangemap cmds in
   let doc = { doc with nodes; final=Some(final); map; logs } in
