@@ -824,6 +824,7 @@ let cmd_lsp =
   | _ ->
     set_lib_root();
     Common.Console.lsp_mod := true;
+    Pure.set_initial_time();
     Lsp.Lp_lsp.main !standard_lsp !log_file
 
 (*-------------------------------------------------------------------------*)
