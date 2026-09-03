@@ -87,6 +87,7 @@ Overview of directories and files
 
   * ``command.ml``: command handling
   * ``compile.ml``: file parsing and compiling (.lpo files)
+  * ``gconf.ml``: builtins needed to build current goal (tactic #with_goal)
   * ``inductive.ml``: generation of induction principles
   * ``query.ml``: handling of queries (commands that do not change the signature or the proof state)
 

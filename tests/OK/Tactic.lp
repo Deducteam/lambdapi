@@ -89,6 +89,9 @@ builtin "try" ≔ #try;
 constant symbol #why3 : Tactic;
 builtin "why3" ≔ #why3;
 
+constant symbol #with_goal : (Prop → Tactic) → Tactic;
+builtin "with_goal" ≔ #with_goal;
+
 // defined tactics
 
 symbol nothing ≔ #try #fail;
