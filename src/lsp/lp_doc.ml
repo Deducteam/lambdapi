@@ -133,6 +133,7 @@ let process_cmd _file (nodes,st,dg,logs) cmd =
   | Cmd_Error(err_loc, err_msg) ->
     let nodes = { cmd; exec = false; goals = [] } :: nodes in
     let loc, diag_msg, log_msg = match cmd_loc, err_loc with
+    | _, Some None -> cmd_loc, err_msg, err_msg
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
           (* if the error is in the same file as the command,
@@ -155,8 +156,9 @@ let process_cmd _file (nodes,st,dg,logs) cmd =
           cmd_loc,
           Pos.popt_to_string (Some l') ^ "\n" ^ err_msg,
           Pos.popt_to_string (Some l') ^ "\n" ^ err_msg
-    | _, Some l' -> cmd_loc, err_msg, Pos.popt_to_string (l') ^ "\n" ^ err_msg
-    | _, None -> cmd_loc, err_msg, err_msg in
+    | None, _ -> assert false
+    | _, None -> assert false
+    in
     nodes, st, (loc, 1, diag_msg, None) :: dg, ((1, log_msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
