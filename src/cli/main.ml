@@ -821,7 +821,11 @@ let cmd_lsp =
   fun args ->
   match parse_options c.options args with
   | _::_ -> Common.Error.fatal_no_pos "invalid argument"
-  | _ -> Lsp.Lp_lsp.main !standard_lsp !log_file
+  | _ ->
+    set_lib_root();
+    Common.Console.lsp_mod := true;
+    Pure.set_initial_time();
+    Lsp.Lp_lsp.main !standard_lsp !log_file
 
 (*-------------------------------------------------------------------------*)
 (** parse command *)
