@@ -43,6 +43,6 @@ DeMorgan2 : A:Prop -> B:Prop -> prf (imp (or A B) (not (and (not A) (not B)))). 
 
 U:Type.
 
-forall       : (U->Prop) -> Prop.
-forall_intro : P:(U->Prop) -> (x:U -> prf (P x)) -> prf (forall P).
-forall_elim  : P:(U->Prop) -> prf (forall P) -> x:U -> prf (P x).
+forall       : (U -> Prop) -> Prop.
+forall_intro : P:(U -> Prop) -> (x:U -> prf (P x)) -> prf (forall P).
+forall_elim  : P:(U -> Prop) -> prf (forall P) -> x:U -> prf (P x).
