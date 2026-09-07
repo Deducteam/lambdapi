@@ -1041,4 +1041,9 @@ Do "lambdapi COMMAND -h" to get more information on each command.
 
 let _ =
   Common.Error.handle_exceptions
+  (match (List.tl (Array.to_list Sys.argv)) with
+  | "lsp" :: _ ->
+    let log_oc = open_out_gen [Open_append; Open_creat] 0o777 !log_file in
+    Format.formatter_of_out_channel log_oc
+  | _ -> Format.err_formatter)
     (fun () -> main (List.tl (Array.to_list Sys.argv)))

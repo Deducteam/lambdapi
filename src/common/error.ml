@@ -69,17 +69,20 @@ let fatal_optional_position pos = match pos with
   | None -> fatal_no_pos
   | Some p -> fatal p
 
-(** [handle_exceptions f] runs [f ()] in an exception handler and handles both
+(** [handle_exceptions formatter f] runs [f ()] in an exception  handler  and
+    handles both
     expected and unexpected exceptions by displaying a graceful error message.
+    Error messages are written to [formatter].
     In case of an error, the program is (irrecoverably) stopped with exit code
     [1] (indicating failure). Hence, [handle_exceptions] should only be called
     by the main program logic, not by the internals. *)
-let handle_exceptions : (unit -> unit) -> unit = fun f ->
+let handle_exceptions : Format.formatter -> (unit -> unit) -> unit =
+  fun formatter f ->
   let exit_with : type a b. string -> (a,b) koutfmt -> a = fun err_desc fmt ->
-    Color.update_with_color Format.err_formatter;
-    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;
+    Color.update_with_color formatter;
+    Format.kfprintf (fun _ -> Color.update_with_color formatter;
     (Format.kfprintf (fun _ -> exit 1)
-      Format.err_formatter "%s" err_desc)) Format.err_formatter
+      formatter "%s" err_desc)) formatter
       (Color.red (fmt ^^ "@."))
   in
   try f () with
