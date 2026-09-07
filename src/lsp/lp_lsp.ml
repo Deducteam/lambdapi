@@ -90,6 +90,7 @@ let do_open ofmt params =
   do_check_text ofmt ~doc
 
 let do_change ofmt params =
+  if 0 == 0 then assert false;
   let document = dict_field "textDocument" params in
   let uri, version  =
     string_field "uri" document,
@@ -366,11 +367,25 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()
 
-let protect_dispatch p f x =
-  try f x
+let protect_dispatch ~ofmt p f x =
+  try f ofmt x
   with
   | exn ->
     let bt = Printexc.get_backtrace () in
+    let msg =
+      `Assoc [
+        ("jsonrpc", `String "2.0");
+        ("method", `String "window/showMessage");
+        ("params", `Assoc [
+          ("type", `Int 1);
+          let error_msg = Printf.sprintf
+            "[FATAL ERROR] Function %s terminated unexpectedly.
+            [EXCEPTION] %s\n[STACK] %s"
+            p Printexc.(to_string exn) bt in
+          ("message", `String (error_msg));
+          ]);
+          ] in
+    LIO.send_json ofmt msg;
     LIO.log_error ("[error] {"^p^"}") Printexc.(to_string exn);
     LIO.log_error "[BT]" bt;
     F.pp_print_flush !LIO.debug_fmt ()
@@ -392,8 +407,8 @@ let dispatch_message ofmt dict =
   (* Symbols in the document *)
   | "textDocument/documentSymbol" ->
     (* XXX to investigate *)
-    protect_dispatch "do_symbols"
-      (do_symbols ofmt ~id) params
+    protect_dispatch ~ofmt "do_symbols"
+      (do_symbols ~id) params
 
   | "textDocument/hover" ->
     (try hover_symInfo ofmt ~id params
@@ -408,16 +423,16 @@ let dispatch_message ofmt dict =
 
   (* Notifications *)
   | "textDocument/didOpen" ->
-    protect_dispatch "didOpen"
-      (do_open ofmt) params
+    protect_dispatch ~ofmt "didOpen"
+      do_open params
 
   | "textDocument/didChange" ->
-    protect_dispatch "didChange"
-      (do_change ofmt) params
+    protect_dispatch ~ofmt "didChange"
+      do_change params
 
   | "textDocument/didClose" ->
-    protect_dispatch "didClose"
-      (do_close ofmt) params
+    protect_dispatch ~ofmt "didClose"
+      do_close params
 
   | "exit" ->
     exit 0
@@ -436,8 +451,22 @@ let process_input ofmt (com : J.t) =
     LIO.log_object msg obj
   | exn ->
     let bt = Printexc.get_backtrace () in
-    LIO.log_error "[BT]" bt;
+    let msg =
+      `Assoc [
+        ("jsonrpc", `String "2.0");
+        ("method", `String "window/showMessage");
+        ("params", `Assoc [
+          ("type", `Int 1);
+          let error_msg = Printf.sprintf
+            "[FATAL ERROR]  unexpected Fatal Error.
+            [EXCEPTION] %s\n[STACK] %s"
+            Printexc.(to_string exn) bt in
+          ("message", `String (error_msg));
+          ]);
+          ] in
+    LIO.send_json ofmt msg;
     LIO.log_error "process_input" (Printexc.to_string exn);
+    LIO.log_error "[BT]" bt;
     (* Send a null reply so the client doesn't hang *)
     let id = oint_field "id" (U.to_assoc com) in
     if id <> 0 then begin
@@ -476,6 +505,20 @@ let main std log_file =
   try loop ()
   with exn ->
     let bt = Printexc.get_backtrace () in
+    let msg =
+      `Assoc [
+        ("jsonrpc", `String "2.0");
+        ("method", `String "window/showMessage");
+        ("params", `Assoc [
+          ("type", `Int 1);
+          let error_msg = Printf.sprintf
+            "[FATAL ERROR] Server crashed due to unxpected error!.
+            [EXCEPTION] %s\n[STACK] %s"
+            Printexc.(to_string exn) bt in
+          ("message", `String (error_msg));
+        ]);
+      ] in
+    LIO.send_json oc msg;
     LIO.log_error "[fatal error]" Printexc.(to_string exn);
     LIO.log_error "[BT]" bt;
     F.pp_print_flush !LIO.debug_fmt ();
