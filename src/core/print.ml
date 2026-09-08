@@ -186,8 +186,7 @@ let are_quant_args : term list -> bool = fun args ->
 
 let rec wrap idmap ppf t =
   match unfold t with
-  | Abst _ | LLet _ | Appl _ -> out ppf "(%a)" (term_in idmap) t
-  | Prod(_,b) when binder_occur b -> out ppf "(%a)" (term_in idmap) t
+  | Abst _ | LLet _ | Appl _ | Prod _ -> out ppf "(%a)" (term_in idmap) t
   | _ -> term_in idmap ppf t
 
 and appl idmap ppf h ts =
