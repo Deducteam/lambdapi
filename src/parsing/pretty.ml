@@ -109,9 +109,9 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
 
-let rec simple_type t =
+let rec needs_wrap t =
   match t.elt with
-  | P_Arro(_,u) -> simple_type u
+  | P_Arro(_,u) -> needs_wrap u
   | P_Prod _ -> false
   | _ -> true
 
@@ -179,7 +179,7 @@ and params_list : bool -> p_params list pp = fun ec ppf ->
 and typ : bool -> p_term option pp = fun ec ppf t ->
   match t with
   | None -> ()
-  | Some t -> out ppf "@ : %a" (if simple_type t then term ec else wrap ec) t
+  | Some t -> out ppf "@ : %a" (if needs_wrap t then term ec else wrap ec) t
 
 let term = term true
 let wrap = wrap true
