@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [5.5.0]
+        ocaml-version: [5.5.1]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo
