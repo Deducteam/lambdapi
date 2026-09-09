@@ -32,6 +32,16 @@ let mk_reply ~id ~result =
 let mk_event m p   =
   `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
+let mk_logMessage ?(t=1) m =
+  `Assoc
+  [ "jsonrpc", `String "2.0";
+    "method", `String "window/logMessage";
+    "params", `Assoc [
+      "type", `Int t;
+      "message", `String m
+    ]
+  ]
+
 (* LSP positions are 0-based, non-negative, and require start <= end.
    Lambdapi lines are 1-based, and generated symbols carry virtual
    positions violating the other two constraints (see the NOTE on

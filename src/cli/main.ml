@@ -1040,10 +1040,21 @@ Do "lambdapi COMMAND -h" to get more information on each command.
   | s::_ -> Common.Error.fatal_no_pos "unknown command: %s" s
 
 let _ =
-  Common.Error.handle_exceptions
-  (match (List.tl (Array.to_list Sys.argv)) with
+  match (List.tl (Array.to_list Sys.argv)) with
   | "lsp" :: _ ->
-    let log_oc = open_out_gen [Open_append; Open_creat] 0o777 !log_file in
-    Format.formatter_of_out_channel log_oc
-  | _ -> Format.err_formatter)
-    (fun () -> main (List.tl (Array.to_list Sys.argv)))
+    let handler =
+      fun _msg _fmt error_msg ->
+        let j = Lsp.Lsp_base.mk_logMessage error_msg in
+        (* send notification to user and log it in the log file *)
+        Lsp.Lsp_io.send_json Format.std_formatter j;
+        (* send log to client (will be visible in protocle output logs) *)
+        Printf.eprintf
+          "Lambdapi LSP server crashed unexpentendly: %s\n%!" error_msg;
+        exit 1
+    in
+    Common.Error.handle_exceptions
+      ~handler
+      (fun () -> main (List.tl (Array.to_list Sys.argv)))
+  | _ ->
+    Common.Error.handle_exceptions
+      (fun () -> main (List.tl (Array.to_list Sys.argv)))
