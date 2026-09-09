@@ -343,7 +343,7 @@ let add_command c =
 (*-------------------------------------------------------------------------*)
 
 let sign_of_path p =
-  let ss = Core.Sig_state.of_sign (Core.Sign.create []) in
+  let ss = Core.Sig_state.dummy in
   match !timeout with
   | None -> Handle.Compile.compile ss p
   | Some i ->
@@ -368,10 +368,10 @@ let cmd_check =
   | f::files ->
     set_lib_root();
     Parsing.Package.set_root_path f;
-    let time = Timed.Time.save() in
+    let t0 = Timed.Time.save() in
     ignore (compile f);
     let handle file =
-      Timed.Time.restore time;
+      Timed.Time.restore t0;
       Common.Console.reset_default();
       ignore (compile file)
     in

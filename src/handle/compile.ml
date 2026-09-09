@@ -86,14 +86,30 @@ let rec compile : Command.compiler = fun ss mp ->
       (* Since the ghost signature is implicitly loaded but not linked, we
          need to explicitly update the decision tree of ghost symbols and the
          type of string literals with the String builtin. *)
+      (* We first search for the symbol corresponding to the builtin
+         "String" among loaded signatures. *)
+      let search_string_type() =
+        let exception Found of Core.Term.sym in
+        try
+          Path.Map.iter
+            (fun _ sign ->
+               match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
+               | Some s -> raise (Found s)
+               | None -> ()
+            ) !loaded;
+          Console.out 0 "Didn't find the builtin \"String\"."; assert false
+        with Found s -> Term.mk_Symb s
+      in
+      let string_type =
+        let string = ref None in
+        fun () ->
+          match !string with
+          | None -> let t = search_string_type() in string := Some t; t
+          | Some t -> t
+      in
       let update s =
         if String.is_string_literal s.Term.sym_name then
-          match Builtin.get_opt ss "String" with
-          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
-          | None ->
-          match Extra.StrMap.find_opt "String" !(sign.sign_builtins) with
-          | Some sym_String -> s.sym_type := Term.mk_Symb sym_String
-          | None -> assert false
+          s.sym_type := string_type()
         else Tree.update s
       in
       Ghost.iter update;
