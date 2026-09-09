@@ -9,7 +9,7 @@ trap clean ERR
 
 lambdapi='_build/install/default/bin/lambdapi'
 mk=/tmp/lpo.mk
-jobs=1 #32
+jobs=$(nproc)
 TIMEFORMAT="%Es"
 
 # excluded test files
