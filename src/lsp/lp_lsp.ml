@@ -90,7 +90,6 @@ let do_open ofmt params =
   do_check_text ofmt ~doc
 
 let do_change ofmt params =
-  if 0 == 0 then assert false;
   let document = dict_field "textDocument" params in
   let uri, version  =
     string_field "uri" document,
