@@ -69,13 +69,11 @@ let fatal_optional_position pos = match pos with
   | None -> fatal_no_pos
   | Some p -> fatal p
 
-(** [handle_exceptions formatter f] runs [f ()] in an exception  handler  and
-    handles both
-    expected and unexpected exceptions by displaying a graceful error message.
-    Error messages are written to [formatter].
-    In case of an error, the program is (irrecoverably) stopped with exit code
-    [1] (indicating failure). Hence, [handle_exceptions] should only be called
-    by the main program logic, not by the internals. *)
+(** [handle_exceptions handler f]  runs [f ()] in an  exception [handler]  to
+    handle expected and unexpected exceptions. The default handler displays a
+    graceful error message and (irrecoverably)  stops  the  program with exit
+    code [1] (indicating  failure). Hence, [handle_exceptions] should only be
+    called by the main program logic, not by the internals. *)
 let handle_exceptions
   ?(handler = fun err_desc fmt->
     Color.update_with_color Format.err_formatter;
