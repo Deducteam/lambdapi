@@ -1044,12 +1044,7 @@ let _ =
   | "lsp" :: _ ->
     let handler =
       fun _msg _fmt error_msg ->
-        let j = Lsp.Lsp_base.mk_logMessage error_msg in
-        (* send notification to user and log it in the log file *)
-        Lsp.Lsp_io.send_json Format.std_formatter j;
-        (* send log to client (will be visible in protocle output logs) *)
-        Printf.eprintf
-          "Lambdapi LSP server crashed unexpentendly: %s\n%!" error_msg;
+        Lsp.Lsp_io.notify_failure error_msg;
         exit 1
     in
     Common.Error.handle_exceptions

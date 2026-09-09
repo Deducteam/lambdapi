@@ -54,3 +54,11 @@ let send_json fmt obj =
   let msg  = F.asprintf "%a" J.(pretty_print ~std:true) obj in
   let size = String.length msg         in
   F.fprintf fmt "Content-Length: %d\r\n\r\n%s%!" size msg
+
+let notify_failure error_msg =
+  let j = Lsp_base.mk_showMessage error_msg in
+  (* send notification to user and log it in the log file *)
+  send_json Format.std_formatter j;
+  (* send log to client (will be visible in protocle output logs) *)
+  Printf.eprintf
+    "%s\n%!" error_msg

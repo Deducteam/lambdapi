@@ -371,22 +371,11 @@ let protect_dispatch ~ofmt p f x =
   with
   | exn ->
     let bt = Printexc.get_backtrace () in
-    let msg =
-      `Assoc [
-        ("jsonrpc", `String "2.0");
-        ("method", `String "window/showMessage");
-        ("params", `Assoc [
-          ("type", `Int 1);
-          let error_msg = Printf.sprintf
-            "[FATAL ERROR] Function %s terminated unexpectedly.
-            [EXCEPTION] %s\n[STACK] %s"
-            p Printexc.(to_string exn) bt in
-          ("message", `String (error_msg));
-          ]);
-          ] in
-    LIO.send_json ofmt msg;
-    LIO.log_error ("[error] {"^p^"}") Printexc.(to_string exn);
-    LIO.log_error "[BT]" bt;
+    let error_msg = Printf.sprintf
+      "[fatal error] Function %s terminated unexpectedly.!.
+      [BT] %s\n%s" p Printexc.(to_string exn) bt
+    in
+    Lsp_io.notify_failure error_msg;
     F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
@@ -448,24 +437,18 @@ let process_input ofmt (com : J.t) =
   with
   | U.Type_error (msg, obj) ->
     LIO.log_object msg obj
+  | Not_found ->
+    let bt = Printexc.get_backtrace () in
+    LIO.log_error "process_input" "Document not found!";
+    LIO.log_error "[BT]" bt;
   | exn ->
     let bt = Printexc.get_backtrace () in
-    let msg =
-      `Assoc [
-        ("jsonrpc", `String "2.0");
-        ("method", `String "window/showMessage");
-        ("params", `Assoc [
-          ("type", `Int 1);
-          let error_msg = Printf.sprintf
-            "[FATAL ERROR]  unexpected Fatal Error.
-            [EXCEPTION] %s\n[STACK] %s"
-            Printexc.(to_string exn) bt in
-          ("message", `String (error_msg));
-          ]);
-          ] in
-    LIO.send_json ofmt msg;
-    LIO.log_error "process_input" (Printexc.to_string exn);
-    LIO.log_error "[BT]" bt;
+    let error_msg = Printf.sprintf
+      "[fatal error] unexpected Fatal Error.!.
+      [BT] %s\n%s"
+      Printexc.(to_string exn) bt
+    in
+    Lsp_io.notify_failure error_msg;
     (* Send a null reply so the client doesn't hang *)
     let id = oint_field "id" (U.to_assoc com) in
     if id <> 0 then begin
@@ -492,6 +475,7 @@ let main std log_file =
      tactic failures. *)
   Handle.Proof.state_on_error := false;
   (* Console.verbose := 4; *)
+  (* if 0 == 0 then assert false; *)
 
   let rec loop () =
     let com = LIO.read_request stdin in
@@ -502,24 +486,17 @@ let main std log_file =
     loop ()
   in
   try loop ()
-  with exn ->
+  with
+  | End_of_file ->
+    LIO.log_error "[BT]" "Connection closed by client. Stoping the server"
+  | exn ->
     let bt = Printexc.get_backtrace () in
-    let msg =
-      `Assoc [
-        ("jsonrpc", `String "2.0");
-        ("method", `String "window/showMessage");
-        ("params", `Assoc [
-          ("type", `Int 1);
-          let error_msg = Printf.sprintf
-            "[FATAL ERROR] Server crashed due to unxpected error!.
-            [EXCEPTION] %s\n[STACK] %s"
-            Printexc.(to_string exn) bt in
-          ("message", `String (error_msg));
-        ]);
-      ] in
-    LIO.send_json oc msg;
-    LIO.log_error "[fatal error]" Printexc.(to_string exn);
-    LIO.log_error "[BT]" bt;
+    let error_msg = Printf.sprintf
+      "[fatal error] Server crashed due to unxpected error!.
+      [BT] %s\n%s"
+      Printexc.(to_string exn) bt
+    in
+    Lsp_io.notify_failure error_msg;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
     (* close_out lp_oc; *)

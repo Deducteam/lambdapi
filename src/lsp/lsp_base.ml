@@ -32,10 +32,10 @@ let mk_reply ~id ~result =
 let mk_event m p   =
   `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
-let mk_logMessage ?(t=1) m =
+let mk_showMessage ?(t=1) m =
   `Assoc
   [ "jsonrpc", `String "2.0";
-    "method", `String "window/logMessage";
+    "method", `String "window/showMessage";
     "params", `Assoc [
       "type", `Int t;
       "message", `String m

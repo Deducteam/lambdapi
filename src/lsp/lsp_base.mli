@@ -22,7 +22,7 @@ val mk_range : Pos.pos -> J.t
 
 val mk_range_of_interval : Range.t -> J.t
 
-val mk_logMessage : ?t:int -> string -> J.t
+val mk_showMessage : ?t:int -> string -> J.t
 
 val mk_reply : id:int -> result:J.t -> J.t
 
