@@ -1043,8 +1043,8 @@ let _ =
   match (List.tl (Array.to_list Sys.argv)) with
   | "lsp" :: _ ->
     let handler =
-      fun _msg _fmt error_msg ->
-        Lsp.Lsp_io.notify_failure error_msg;
+      fun err_desc error_msg ->
+        Lsp.Lsp_io.notify_failure (error_msg ^ "\n" ^ err_desc);
         exit 1
     in
     Common.Error.handle_exceptions
