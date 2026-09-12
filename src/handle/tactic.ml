@@ -226,6 +226,7 @@ type tactic =
   | T_symmetry
   | T_try
   | T_why3
+  | T_with_goal
 
 type config = (string,tactic) Hashtbl.t
 
@@ -263,6 +264,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "symmetry" T_symmetry;
   add "try" T_try;
   add "why3" T_why3;
+  add "with_goal" T_with_goal;
   t
 
 (** [p_term pos t] converts the term [t] into a p_term at position [pos]. *)
@@ -298,6 +300,7 @@ let p_term (ss:Sig_state.t) (pos:popt): int StrMap.t -> term -> p_term =
         let id = Pos.make pos (base_name x) in
         P_LLet(id,[],Some(term idmap a),term idmap t,term idmap' b)
     | Meta _ -> P_Wild
+    | Plac _ -> P_Wild
     | _ -> fatal pos "Unhandled term expression: %a." Print.term t
   in term
 
@@ -379,7 +382,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       then Some new_ps
       else None
     with Fatal _ -> None
-
   (* [p_tactic ss g env pos t] weak head normalizes [t] and converts the
      result into a p_tactic. *)
   and p_tactic (ps:proof_state) (g:goal) (env:Env.t) (pos:Pos.popt)
@@ -476,11 +478,13 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_try, [t] -> ps, mk(P_tac_try(tac_eval t))
             | T_try, _ -> assert false
             | T_why3, _ -> ps, mk(P_tac_why3 None)
+            | T_with_goal, [l;t] ->
+                ps, mk (P_tac_with_goal (p_term l,p_term t))
+            | T_with_goal, _ -> assert false
           with Not_found ->
             fatal pos "Unhandled tactic expression: %a." term t
         end
       | _ -> fatal pos "Unhandled tactic expression: %a." term t
-
   and handle ps ({elt;pos} as tac) =
   if Logger.log_enabled() then log "%a" Pretty.tactic tac;
   match ps.proof_goals with
@@ -781,6 +785,25 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
         | _ -> assert false
       end
+  | P_tac_with_goal (l,t) ->
+      let l = scope l in
+      let univ = Builtin.get ss pos [] "Univ" in
+      let eps = Builtin.get ss pos [] "Type" in
+      let eps a = mk_Appl(mk_Appl(mk_Symb eps,l),a) in
+      let p = new_problem() in
+      let n = List.length env in
+      let ul = mk_Appl (mk_Symb univ, l) in
+      let m = LibMeta.fresh p (Env.to_prod env ul) n in
+      let goal = mk_Meta(m,Env.to_terms env) in
+      let c = (ctxt g, eps goal, gt.goal_type) in
+      p := {!p with to_solve = c::!p.to_solve};
+      if not (Unif.solve_noexn p) || !p.unsolved <> [] || !p.to_solve <> []
+      then fatal pos "Cannot unify goal with (U %a)" term l;
+      let t = scope t in
+      let t = mk_Appl (t, goal) in
+      if (Logger.log_enabled ()) then log "WITH_GOAL [%a]" term goal;
+      let ps,t = p_tactic ps g env pos t in
+      handle ps t
   | P_tac_try t ->
       begin try handle ps t with Fatal _ -> ps end
   | P_tac_orelse(t1,t2) ->
