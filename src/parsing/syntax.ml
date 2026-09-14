@@ -280,7 +280,7 @@ type p_tactic_aux =
   | P_tac_admit
   | P_tac_and of p_tactic * p_tactic
   | P_tac_all_hyps of p_term
-  | P_tac_apply of p_term
+  | P_tac_apply of int option * p_term
   | P_tac_assume of p_ident option list
   | P_tac_assumption
   | P_tac_change of p_term
@@ -554,8 +554,8 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_all_hyps t1, P_tac_all_hyps t2
   | P_tac_first_hyp t1, P_tac_first_hyp t2
-  | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
+  | P_tac_apply (s1,t1), P_tac_apply (s2,t2) -> s1=s2 && eq_p_term t1 t2
   | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
       eq_p_ident i1 i2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
@@ -755,7 +755,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_eval t
     | P_tac_refine t
     | P_tac_all_hyps t
-    | P_tac_apply t
+    | P_tac_apply (_,t)
     | P_tac_change t
     | P_tac_first_hyp t
     | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)

@@ -324,7 +324,8 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_admit -> out ppf "admit"
   | P_tac_and(t1,t2) -> out ppf "%a; %a" tactic t1 tactic t2
   | P_tac_all_hyps t -> out ppf "all_hyps %a" term t
-  | P_tac_apply t -> out ppf "apply %a" term t
+  | P_tac_apply (None,t) -> out ppf "apply %a" term t
+  | P_tac_apply (Some n,t) -> out ppf "apply [%d] %a" n term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
   | P_tac_assumption -> out ppf "assumption"
