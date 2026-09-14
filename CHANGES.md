@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
 - add a version number to the header of the index db file to prevent crash of LP when the structure of db changes.
 - tactic `#abstract e P t` abstracts e from P and calls tactic `t` with the abstraction as parameter
+- tactic `#napply` takes as first argument the number of parameters to add.
 
 ### Changed
 
