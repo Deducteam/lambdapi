@@ -7,10 +7,6 @@ require open tests.OK.String tests.OK.Univ;
 constant symbol Tactic : TYPE;
 builtin "Tactic" ≔ Tactic;
 
-symbol #abstract : Π [l l':L] [a:U l] (e: η a) (P:U l'),
-                   (Π Q:η a → U l', (η P → η (Q e)) → Tactic) → Tactic;
-builtin "abstract" ≔ #abstract;
-
 constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
 

@@ -199,7 +199,6 @@ let get_prod_ids env =
 
 (** Builtin tactic names. *)
 type tactic =
-  | T_abstract
   | T_admit
   | T_all_hyps
   | T_apply
@@ -237,7 +236,6 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
     let s = Builtin.get ss pos [] n in
     Hashtbl.add t s.sym_name v
   in
-  add "abstract" T_abstract;
   add "admit" T_admit;
   add "all_hyps" T_all_hyps;
   add "apply" T_apply;
@@ -401,30 +399,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             (*FIXME: compute config only once in a proof*)
             let c = get_config ss pos in
             match Hashtbl.find c s.sym_name, ts with
-            | T_abstract, [_; _; _; e; t; Abst (u, bi)] -> begin
-               match Eval.whnf ctx u with
-                 Prod(tte,_) -> begin
-                   let p = Rewrite.bind_pattern e t in
-                   let bi = subst bi (mk_Abst (tte,p)) in
-                   let ctx = Env.to_ctxt env in
-                   let bi = match Eval.whnf ctx bi with
-                     | Abst (ty, bi) ->
-                         begin match Eval.whnf ctx ty with
-                         | Prod(te, _) ->
-                             let v = new_var "x" in
-                             subst bi (mk_Abst (te, bind_var v (mk_Vari v)))
-                         | _ ->
-                             fatal pos "ABSTRACT fails on type: %a\n" term ty
-                         end
-                     | bi ->
-                         fatal pos "ABSTRACT fails on term: %a\n" term bi
-                   in
-                   if Logger.log_enabled() then log "ABSTRACT %a\n" term bi;
-                   ps, mk(P_tac_eval(p_term bi))
-                 end
-               | _ -> assert false
-              end
-            | T_abstract, _ -> assert false
             | T_admit, _ -> ps, mk P_tac_admit
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
