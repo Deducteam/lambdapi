@@ -1097,7 +1097,7 @@ and tactic (lb:'token lexbuf): p_tactic =
       let pos1 = current_pos lb in
       consume_token lb;
       let t = term lb in
-      extend_pos lb (*__FUNCTION__*) pos1 (P_tac_apply t)
+      extend_pos lb (*__FUNCTION__*) pos1 (P_tac_apply (None,t))
   | ASSUME ->
       let pos1 = current_pos lb in
       consume_token lb;

@@ -428,7 +428,10 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
             | T_admit, _ -> ps, mk P_tac_admit
             | T_all_hyps, [t] -> ps, mk(P_tac_all_hyps(p_term t))
             | T_all_hyps, _ -> assert false
-            | T_apply, [_;_;t] -> ps, mk(P_tac_apply(p_term t))
+            | T_apply, [s;_;_;t] ->
+                let s = String.trim (string_of_term pos s) in
+                let n = try Some (int_of_string s) with Failure _ -> None in
+                ps, mk(P_tac_apply(n, p_term t))
             | T_apply, _ -> assert false
             | T_assume, [prefix;_;_;Abst(_, t)] ->
               begin
@@ -586,17 +589,21 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     if ps' == ps then
       fatal pos "(all_hyps %a) fails on all assumptions." term t
     else ps'
-  | P_tac_apply pt ->
+  | P_tac_apply (n,pt) ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
-        let c = Env.to_ctxt env in
-        let p = new_problem () in
-        match Infer.infer_noexn p c t with
+        match n with
+        | Some v -> v
         | None ->
-            let ids = Ctxt.names c in let term = term_in ids in
-            fatal pos "(%a) is not typable." term t
-        | Some (_, a) -> LibTerm.count_products Eval.whnf c a
+            let c = Env.to_ctxt env in
+            let p = new_problem () in
+            match Infer.infer_noexn p c t with
+            | None ->
+                let ids = Ctxt.names c in
+                let term = term_in ids in
+                fatal pos "(%a) is not typable." term t
+            | Some (_, a) -> LibTerm.count_products Eval.whnf c a
       in
       let t = scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs (new_problem()) t
@@ -678,7 +685,7 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     let idmap = get_names g in
     let f (_,(v,_,_)) =
       let v = p_term ss pos idmap (mk_Vari v) in
-      progress ps (Pos.make pos (P_tac_apply v))
+      progress ps (Pos.make pos (P_tac_apply (None,v)))
     in
     begin match List.find_map f gt.goal_hyps with
       | None -> fatal pos "tactic assumption failed"

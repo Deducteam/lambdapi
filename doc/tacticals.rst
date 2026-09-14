@@ -28,7 +28,7 @@ The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.co
    builtin "abstract" ≔ … // : Π [l l':L] [a:U l] (e: η a) (P:U l'), 
                    (Π Q:η a → U l', (η P → η (Q e)) → Tactic) → Tactic;
    builtin "all_hyps" ≔ …; // : (Π [l] [a:U l], η a → T) → T
-   builtin "apply" ≔ …; // : Π [l] [a:U l], η a → T
+   builtin "apply" ≔ …; // : String → Π [l] [a:U l], η a → T
    builtin "assume" ≔ …; // : String → Π [l] [a:U l], (η a → T) → T
    builtin "assumption" ≔ …; // : T
    builtin "change" := …; // : Π [l] [a:U l], η a → T

@@ -232,7 +232,7 @@ let _ =
                                          tac))
                        tac))))));
   register_typ "all_hyps" (arr t1 tac);
-  register_typ "apply" t1;
+  register_typ "apply" (arr str t1);
   register_typ "assume" (arr str t2);
   register_typ "assumption" tac;
   register_typ "change" t1;
