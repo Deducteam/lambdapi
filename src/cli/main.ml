@@ -1040,16 +1040,35 @@ Do "lambdapi COMMAND -h" to get more information on each command.
   | s::_ -> Common.Error.fatal_no_pos "unknown command: %s" s
 
 let _ =
-  match (List.tl (Array.to_list Sys.argv)) with
+  let args = List.tl (Array.to_list Sys.argv) in
+  let handler = match (args) with
   | "lsp" :: _ ->
-    let handler =
       fun err_desc error_msg ->
         Lsp.Lsp_io.notify_failure (error_msg ^ "\n" ^ err_desc);
         exit 1
-    in
-    Common.Error.handle_exceptions
-      ~handler
-      (fun () -> main (List.tl (Array.to_list Sys.argv)))
   | _ ->
-    Common.Error.handle_exceptions
-      (fun () -> main (List.tl (Array.to_list Sys.argv)))
+    fun err_desc ->
+    Lplib.Color.update_with_color Format.err_formatter;
+    Format.kfprintf
+      (fun _ ->
+        Lplib.Color.update_with_color Format.err_formatter;
+        (
+          Format.kfprintf (fun _ -> exit 1)
+          Format.err_formatter "%s"
+          err_desc
+        )
+      )
+      Format.err_formatter
+      (Lplib.Color.red ("%s" ^^ "@."))
+  in
+  try
+    main (args)
+  with
+  | Common.Error.Fatal(None,    msg, desc) ->
+      handler desc msg
+  | Common.Error.Fatal(Some p, msg, desc) ->
+      handler desc ((Common.Pos.popt_to_string p) ^ msg)
+  | e ->
+      handler "" (Printf.sprintf "Uncaught [%s].\n%s"
+        (Printexc.to_string e)
+        (Printexc.get_backtrace()))

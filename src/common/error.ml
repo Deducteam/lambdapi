@@ -68,29 +68,3 @@ let fatal_no_pos : ?err_desc:string -> ('a,'b) koutfmt -> 'a =
 let fatal_optional_position pos = match pos with
   | None -> fatal_no_pos
   | Some p -> fatal p
-
-(** [handle_exceptions handler f]  runs [f ()] in an  exception [handler]  to
-    handle expected and  unexpected  exceptions. [handler] is a function that
-    takes the error message and the  description of the error [err_desc]. The
-    default handler displays a graceful error message before  (irrecoverably)
-    stoping  the  program  with  exit  code [1] (indicating  failure). Hence,
-    [handle_exceptions] should only be called  by the main program logic, not
-    by the internals. *)
-let handle_exceptions
-  ?(handler = fun err_desc ->
-    Color.update_with_color Format.err_formatter;
-    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;
-    (Format.kfprintf (fun _ -> exit 1)
-      Format.err_formatter "%s" err_desc)) Format.err_formatter
-      (Color.red ("%s" ^^ "@."))
-  )
-  f =
-  try f () with
-  | Fatal(None,    msg, desc) ->
-      handler desc msg
-  | Fatal(Some(p), msg, desc) ->
-      handler desc ((Pos.popt_to_string p) ^ msg)
-  | e ->
-      handler "" (Printf.sprintf "Uncaught [%s].\n%s"
-        (Printexc.to_string e)
-        (Printexc.get_backtrace()))
