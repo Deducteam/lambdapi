@@ -366,16 +366,25 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()
 
-let protect_dispatch ~ofmt p f x =
-  try f ofmt x
+let notify_fatal_error message exn =
+  let bt = Printexc.get_backtrace () in
+  let error_msg = Printf.sprintf
+    "%s\n      [BT] %s\n%s"
+    message Printexc.(to_string exn) bt
+  in
+  Lsp_io.notify_failure error_msg
+
+(** [protect_dispatch fct_name fct params] runs function [fct] on  parameters
+    [params] handling exceptions if any by notifying the user with appropiate
+    message and exception details *)
+
+let protect_dispatch fct_name fct params =
+  try fct params
   with
   | exn ->
-    let bt = Printexc.get_backtrace () in
-    let error_msg = Printf.sprintf
-      "[fatal error] Function %s terminated unexpectedly.!.
-      [BT] %s\n%s" p Printexc.(to_string exn) bt
-    in
-    Lsp_io.notify_failure error_msg;
+    notify_fatal_error
+      (Printf.sprintf "[fatal error] Function %s terminated unexpectedly!"
+        fct_name) exn;
     F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
@@ -395,8 +404,8 @@ let dispatch_message ofmt dict =
   (* Symbols in the document *)
   | "textDocument/documentSymbol" ->
     (* XXX to investigate *)
-    protect_dispatch ~ofmt "do_symbols"
-      (do_symbols ~id) params
+    protect_dispatch "do_symbols"
+      (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
     (try hover_symInfo ofmt ~id params
@@ -411,16 +420,16 @@ let dispatch_message ofmt dict =
 
   (* Notifications *)
   | "textDocument/didOpen" ->
-    protect_dispatch ~ofmt "didOpen"
-      do_open params
+    protect_dispatch "didOpen"
+      (do_open ofmt) params
 
   | "textDocument/didChange" ->
-    protect_dispatch ~ofmt "didChange"
-      do_change params
+    protect_dispatch "didChange"
+      (do_change ofmt) params
 
   | "textDocument/didClose" ->
-    protect_dispatch ~ofmt "didClose"
-      do_close params
+    protect_dispatch "didClose"
+      (do_close ofmt) params
 
   | "exit" ->
     exit 0
@@ -442,13 +451,7 @@ let process_input ofmt (com : J.t) =
     LIO.log_error "process_input" "Document not found!";
     LIO.log_error "[BT]" bt;
   | exn ->
-    let bt = Printexc.get_backtrace () in
-    let error_msg = Printf.sprintf
-      "[fatal error] unexpected Fatal Error.!.
-      [BT] %s\n%s"
-      Printexc.(to_string exn) bt
-    in
-    Lsp_io.notify_failure error_msg;
+    notify_fatal_error "[fatal error] unexpected Fatal Error!" exn;
     (* Send a null reply so the client doesn't hang *)
     let id = oint_field "id" (U.to_assoc com) in
     if id <> 0 then begin
@@ -475,7 +478,6 @@ let main std log_file =
      tactic failures. *)
   Handle.Proof.state_on_error := false;
   (* Console.verbose := 4; *)
-  (* if 0 == 0 then assert false; *)
 
   let rec loop () =
     let com = LIO.read_request stdin in
@@ -490,13 +492,8 @@ let main std log_file =
   | End_of_file ->
     LIO.log_error "[BT]" "Connection closed by client. Stoping the server"
   | exn ->
-    let bt = Printexc.get_backtrace () in
-    let error_msg = Printf.sprintf
-      "[fatal error] Server crashed due to unxpected error!.
-      [BT] %s\n%s"
-      Printexc.(to_string exn) bt
-    in
-    Lsp_io.notify_failure error_msg;
+    notify_fatal_error
+      "[fatal error] Server crashed due to unxpected error!." exn;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
     (* close_out lp_oc; *)
