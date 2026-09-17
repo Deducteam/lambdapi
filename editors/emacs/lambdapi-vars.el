@@ -40,12 +40,14 @@
     "eval"
     "in"
     "inductive"
+    "instance"
     "let"
     "notation"
     "open"
     "require"
     "rule"
     "symbol"
+    "typeclass"
     "unif_rule"
     "with")
   "Commands that enrich the signature.")

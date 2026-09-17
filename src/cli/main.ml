@@ -343,7 +343,7 @@ let add_command c =
 (*-------------------------------------------------------------------------*)
 
 let sign_of_path p =
-  let ss = Core.Sig_state.dummy in
+  let ss = Handle.Elpi_handle.Sig_state.dummy in
   match !timeout with
   | None -> Handle.Compile.compile ss p
   | Some i ->
@@ -415,7 +415,8 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
           Common.Error.fatal_no_pos "Unknown ghost symbol %s." id
       else
         try Core.Sig_state.find_sym ~prt:true ~prv:true
-              (Core.Sig_state.of_sign sign) (Common.Pos.none qid)
+              (Handle.Elpi_handle.Sig_state.of_sign sign)
+              (Common.Pos.none qid)
         with Not_found ->
           Common.Error.fatal_no_pos "Unknown symbol %a.%s."
             Common.Path.pp p id
@@ -867,7 +868,7 @@ let sig_state_of_require() =
             (Parsing.Syntax.P_require
                (Some false,
                 [Common.Pos.none (Parsing.Parser.path_of_string r)]))))
-    Core.Sig_state.dummy !require
+    Handle.Elpi_handle.Sig_state.dummy !require
 
 let cmd_search =
   let summary = "Query a database file." in

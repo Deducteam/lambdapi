@@ -6,7 +6,7 @@ dune build
 
 echo '############ test export -o lp ############'
 
-lambdapi='_build/install/default/bin/lambdapi'
+lambdapi='dune exec -- lambdapi'
 TIMEFORMAT="%Es"
 
 rm -rf /tmp/tests

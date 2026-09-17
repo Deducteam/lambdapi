@@ -4,7 +4,7 @@ set -e
 
 dune build
 
-lambdapi='_build/install/default/bin/lambdapi'
+lambdapi='dune exec -- lambdapi'
 out=/tmp/lambdapi.output
 TIMEFORMAT="%Es"
 

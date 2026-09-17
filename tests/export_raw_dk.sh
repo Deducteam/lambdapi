@@ -6,7 +6,7 @@ dune build
 
 echo '############ test export -o raw_dk ############'
 
-lambdapi='../../_build/install/default/bin/lambdapi'
+lambdapi='dune exec -- lambdapi'
 jobs=32
 outdir=/tmp/export_raw_dk
 TIMEFORMAT="%Es"
@@ -72,6 +72,8 @@ do
         547);;
         # aborted proof
         simp_beta);;
+        # type classes
+        elpi_isa_test|elpitest);;
         # default case:
         *) translate $f.lp;;
     esac

@@ -5,6 +5,9 @@
 <file> ::= (<command> ";")*
 
 <command> ::= "opaque" <qid>
+            | "typeclass" <qid>
+            | "instance" <qid>
+            | "require" <qid>+
             | "require" [["private"] "open"] <qid>+
             | "require" <qid> "as" <uid>
             | ["private"] "open" <qid>+
@@ -28,6 +31,8 @@
              | "injective"
              | "opaque"
              | "sequential"
+             | "typeclass"
+             | "instance"
 
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
 
@@ -125,7 +130,7 @@
 
 <rwpatt> ::= <term>
             | "in" <term>
-            | "in" <uid> "in" <term>
+            | "in" <uid> "in" Package.apply_config fname;<term>
             | <term> "in" <term> ["in" <term>]
             | <term> "as" <uid> "in" <term>
 
