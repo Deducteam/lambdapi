@@ -352,16 +352,6 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym ->
   | Failure -> Common.Error.fatal pos "elpi: failure in add_instance"
   | NoMoreSteps -> assert false
 
-(** Flag "elpi_trace". When set on, calls to elpi will write the elpi
-    trace in file /tmp/rawtrace.tmp.json *)
-let trace = Common.Console.register_flag "elpi_trace" false
-
-(** If flag "elpi_trace" is on, causes elpi to write traces in file
-    /tmp/rawtrace.tmp.json *)
-let set_elpi_trace () = if Timed.(!trace) then let _ = Setup.trace
-  ["-trace-on";"json";"/tmp/rawtrace.tmp.json";"-trace-at";
-    "1";"9999";"-trace-only";"user"] in ()
-
 (* we set the state, Elpi.API.Query lacks this function *)
 (** [solve_with_tc ?ctxmap ss pos p] tries to solve problem [p]
     by repeatedly calling {!val:Unif.solve_noexn} and the
@@ -401,9 +391,7 @@ let solve_with_tc : ?ctxtmap: Term.ctxt IntMap.t ->
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
       let query = Elpi.API.RawQuery.compile_raw_term
         (Sig_state.get_solver ss pos) query in
-      if !trace then (let _ = Setup.trace
-        ["-trace-on";"json";"/tmp/rawtrace.tmp.json";"-trace-at";
-        "1";"9999";"-trace-only";"user"] in ());
+      set_elpi_trace();
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; pp_ctx; _} ->
           let _ = readback_assignments ~pp_ctx pos state in

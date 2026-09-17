@@ -317,3 +317,13 @@ let readback_assignments ?pp_ctx pos st =
             meta.Term.meta_value := Some t;
             st
     ) mmap st
+
+(** Flag "elpi_trace". When set on, calls to elpi will write the elpi
+    trace in file /tmp/rawtrace.tmp.json *)
+let trace = Common.Console.register_flag "elpi_trace" false
+
+(** If flag "elpi_trace" is on, causes elpi to write traces in file
+    /tmp/rawtrace.tmp.json *)
+let set_elpi_trace () = if Timed.(!trace) then let _ = Setup.trace
+  ["-trace-on";"json";"/tmp/rawtrace.tmp.json";"-trace-at";
+    "1";"9999";"-trace-only";"user"] in ()
