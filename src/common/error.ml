@@ -65,6 +65,6 @@ let fatal_no_pos : ?err_desc:string -> ('a,'b) koutfmt -> 'a =
       raise (Fatal(None, Format.flush_str_formatter (), err_desc)) in
     Format.kfprintf cont Format.str_formatter fmt
 
-let fatal_optional_position pos = match pos with
+let fatal_optional_position = function
   | None -> fatal_no_pos
   | Some p -> fatal p

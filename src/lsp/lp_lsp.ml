@@ -374,21 +374,20 @@ let notify_fatal_error message exn =
   in
   Lsp_io.notify_failure error_msg
 
-(** [protect_dispatch fct_name fct params] runs function [fct] on  parameters
-    [params] handling exceptions if any by notifying the user with appropiate
-    message and exception details *)
+(** [protect_dispatch fct_name fct params] runs function [fct] on parameters
+    [params] handling exceptions if any by notifying the user with appropriate
+    message and exception details. *)
 
 let protect_dispatch fct_name fct params =
   try fct params
-  with
-  | exn ->
+  with exn ->
     notify_fatal_error
       (Printf.sprintf "[fatal error] Function %s terminated unexpectedly!"
         fct_name) exn;
     F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
-   theading model there is not a lot of difference yet; something to
+   threading model there is not a lot of difference yet; something to
    think for the future. *)
 let dispatch_message ofmt dict =
   let id     = oint_field "id" dict in
@@ -460,31 +459,23 @@ let process_input ofmt (com : J.t) =
     end
 
 let main std log_file =
-
   Printexc.record_backtrace true;
   LSP.std_protocol := std;
-
   let oc = F.std_formatter in
-
   let debug_oc = open_out_gen [Open_append;Open_creat] 511 log_file in
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
-
   (* XXX: Capture better / per sentence. *)
-  (* let lp_oc = open_out "log-lp.txt" in *)
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
   Error.err_fmt := lp_fmt;
   (* Editors display the proof state themselves, so do not attach it to
      tactic failures. *)
   Handle.Proof.state_on_error := false;
-  (* Console.verbose := 4; *)
-
   let rec loop () =
     let com = LIO.read_request stdin in
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
-    (* flush lp_oc ;*)
     loop ()
   in
   try loop ()
@@ -493,10 +484,9 @@ let main std log_file =
     LIO.log_error "[BT]" "Connection closed by client. Stoping the server"
   | exn ->
     notify_fatal_error
-      "[fatal error] Server crashed due to unxpected error!." exn;
+      "[fatal error] Server crashed due to unexpected error!" exn;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
-    (* close_out lp_oc; *)
     close_out debug_oc
 
 let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"
