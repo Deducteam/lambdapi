@@ -366,24 +366,20 @@ let hover_symInfo ofmt ~id params =
     LIO.log_error "hover_symInfo" (Printexc.to_string e);
     send_null ()
 
-let notify_fatal_error message exn =
-  let bt = Printexc.get_backtrace () in
-  let error_msg = Printf.sprintf
-    "%s\n      [BT] %s\n%s"
-    message Printexc.(to_string exn) bt
-  in
-  Lsp_io.notify_failure error_msg
+let notify_fatal_error msg exn =
+  Lsp_io.notify_failure
+    (Printf.sprintf
+       "fatal error: %s\nuncaught exception: %s\nbacktrace:\n%s"
+       msg (Printexc.to_string exn) (Printexc.get_backtrace()))
 
 (** [protect_dispatch fct_name fct params] runs function [fct] on parameters
     [params] handling exceptions if any by notifying the user with appropriate
     message and exception details. *)
-
 let protect_dispatch fct_name fct params =
   try fct params
   with exn ->
     notify_fatal_error
-      (Printf.sprintf "[fatal error] Function %s terminated unexpectedly!"
-        fct_name) exn;
+      (Printf.sprintf "function %s terminated unexpectedly" fct_name) exn;
     F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
@@ -450,7 +446,7 @@ let process_input ofmt (com : J.t) =
     LIO.log_error "process_input" "Document not found!";
     LIO.log_error "[BT]" bt;
   | exn ->
-    notify_fatal_error "[fatal error] unexpected Fatal Error!" exn;
+    notify_fatal_error "dispatch_message terminated unexpectedly" exn;
     (* Send a null reply so the client doesn't hang *)
     let id = oint_field "id" (U.to_assoc com) in
     if id <> 0 then begin
@@ -481,10 +477,9 @@ let main std log_file =
   try loop ()
   with
   | End_of_file ->
-    LIO.log_error "[BT]" "Connection closed by client. Stoping the server"
+    LIO.log_error "main" "Connection closed by client. Stoping the server"
   | exn ->
-    notify_fatal_error
-      "[fatal error] Server crashed due to unexpected error!" exn;
+    notify_fatal_error "server crashed unexpectedly" exn;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
     close_out debug_oc
