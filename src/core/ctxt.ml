@@ -5,9 +5,21 @@ open Lplib open Extra
 open Timed
 open Common open Name
 
+(** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
+    an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
+    extension of context [ctx] with the assumption that [x] has type [a] (only
+    if [x] occurs in [t], or [~keep:true]).
+    If [def] is of the form [Some(u)], the context also
+    registers the term [u] as the definition of variable [x]. *)
+let unbind : ?keep:bool -> 'a actxt -> 'a -> term option -> binder ->
+  var * term * 'a actxt =
+  fun ?(keep=false) ctx a def b ->
+  let (x, t) = unbind b in
+  (x, t, if keep || binder_occur b then (x, a, def) :: ctx else ctx)
+
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and raises [Not_found] otherwise. *)
-let type_of : var -> ctxt -> term = fun x ctx ->
+let type_of : var -> 'a actxt -> 'a = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it

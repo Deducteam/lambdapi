@@ -125,6 +125,8 @@ let string_of_token =
   | VERBOSE -> q"verbose"
   | WHY3 -> q"why3"
   | WITH -> q"with"
+  | TYPECLASS -> q"typeclass"
+  | INSTANCE -> q"instance"
 
 let string_of_tokens = List.fold_left (fun s t -> s^", "^string_of_token t)
 
@@ -544,16 +546,6 @@ and command (lb:'token lexbuf) : p_command =
  let pos1 = current_pos lb in
  let p_sym_mod = list modifier_tks modifier lb in
  match p_sym_mod with
- | [{elt=P_opaq;_}] ->
-    begin match current_token lb with
-    | UID _
-    | QID _ ->
-       let i = qid lb in
-       extend_pos lb (*__FUNCTION__*) pos1 (P_opaque i)
-    | SYMBOL ->
-       extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
-    | _ -> expected lb "" [UID"";QID[];SYMBOL]
-    end
  | [{elt=P_expo Term.Privat;_}] ->
     begin match current_token lb with
     | OPEN -> extend_pos lb (*__FUNCTION__*) pos1 (open_ false true lb)
@@ -564,6 +556,22 @@ and command (lb:'token lexbuf) : p_command =
     | INDUCTIVE ->
         extend_pos lb (*__FUNCTION__*) pos1 (inductive_cmd p_sym_mod lb)
     | _ -> expected lb "" [OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE]
+    end
+ | [{elt;_}] when List.mem elt [P_opaq; P_typeclass; P_typeclass_instance] ->
+    begin match current_token lb with
+    | UID _
+    | QID _ ->
+       let i = qid lb in
+       let cmd = match elt with
+         | P_opaq -> P_opaque i
+         | P_typeclass -> P_type_class i
+         | P_typeclass_instance -> P_type_class_instance i
+         | _ -> assert false
+       in
+       extend_pos lb (*__FUNCTION__*) pos1 cmd
+    | SYMBOL ->
+       extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
+    | _ -> expected lb "" [UID"";QID[];SYMBOL]
     end
  | _::_ ->
     begin match current_token lb with
@@ -707,7 +715,7 @@ and constructor (lb:'token lexbuf): p_ident * p_term =
 
 and modifier_tks =
   [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;OPAQUE;
-   PRIVATE;PROTECTED;SEQUENTIAL]
+   PRIVATE;PROTECTED;SEQUENTIAL;TYPECLASS;INSTANCE]
 and modifier (lb:'token lexbuf): p_modifier =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -737,6 +745,14 @@ and modifier (lb:'token lexbuf): p_modifier =
       let pos1 = current_pos lb in
       consume_token lb;
       extend_pos lb (*__FUNCTION__*) pos1 P_opaq
+  | TYPECLASS ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 P_typeclass
+  | INSTANCE ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 P_typeclass_instance
   | PRIVATE ->
       let pos1 = current_pos lb in
       consume_token lb;

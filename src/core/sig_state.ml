@@ -15,16 +15,44 @@ open Timed
 open Term
 open Sign
 
-(** State of the signature, including aliasing and accessible symbols. *)
+(** State of the signature, including aliasing and accessible symbols.
+    the tc_solver is an option so that sig_states can be created before
+    elpi is initialized. *)
 type sig_state =
-  { signature : Sign.t                    (** Current signature. *)
-  ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
-  ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
-  ; path_alias: string Path.Map.t         (** Path to alias map. *)
-  ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; open_paths : Path.Set.t               (** Open modules. *) }
+  { signature      : Sign.t                     (** Current signature. *)
+  ; in_scope       : sym StrMap.t               (** Symbols in scope.  *)
+  ; alias_path     : Path.t StrMap.t            (** Alias to path map. *)
+  ; path_alias     : string Path.Map.t          (** Path to alias map. *)
+  ; builtins       : sym StrMap.t                        (** Builtins. *)
+  ; active_tc      : SymSet.t                            (** Active TC *)
+  ; tc_solver_prog : Elpi.API.Compile.program option     (** TC solver *)
+  ; add_tc_instance: sig_state -> popt -> sym ->
+    Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update   *)
+  ; open_paths     : Path.Set.t                          (** Open modules. *)
+}
 
 type t = sig_state
+
+(** [get_solver ss pos] accesses the current tc solver of [ss],
+    failing if it was not yet initialized *)
+let get_solver : sig_state -> popt -> Elpi.API.Compile.program = fun ss pos ->
+  match ss.tc_solver_prog with Some p -> p
+  | _ -> fatal pos "tc_solver was not initialized"
+
+(** [add_tc ss sym pos] generates a new signature state from [ss]
+    by adding [sym] as an active typeclass. *)
+let add_tc : sig_state -> sym -> sig_state = fun ss sym ->
+  Sign.add_tc ss.signature sym;
+  {ss with active_tc = SymSet.add sym ss.active_tc}
+
+  (** [add_tci ss sym pos] generates a new signature state from [ss]
+    by compiling [sym] to an instance in its typeclass solver.
+    Fails if the solver was not yet initialized or if the conclusion of
+    [sym]'s type cannot be recognised as a typeclass *)
+let add_tci : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
+  Sign.add_tci ss.signature sym;
+  let tc_solver = get_solver ss pos in
+  {ss with tc_solver_prog = Some (ss.add_tc_instance ss pos sym tc_solver) }
 
 (** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
     signature state from [ss] by creating a new symbol with expo [e], property
@@ -32,9 +60,9 @@ type t = sig_state
     optional definition [def]. [pos] is the position of the declaration
     without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
-    -> bool -> strloc -> popt -> term -> bool list -> term option ->
-    sig_state * sym =
-  fun ss expo prop mstrat opaq id pos typ impl def ->
+    -> bool -> strloc -> popt -> term -> bool list -> bool -> bool ->
+    term option -> sig_state * sym =
+  fun ss expo prop mstrat opaq id pos typ impl tc tci def ->
   let sym =
     Sign.add_symbol ss.signature expo prop mstrat opaq id pos typ impl in
   begin
@@ -42,6 +70,8 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     | Some t when not opaq -> sym.sym_def := Some (cleanup t)
     | _ -> ()
   end;
+  let ss = if tc then add_tc ss sym else ss in
+  let ss = if tci then add_tci ss sym pos else ss in
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
@@ -74,14 +104,42 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   let builtins = StrMap.add b s ss.builtins in
   {ss with builtins}
 
-(** [open_sign ss sign] extends the signature state [ss] with every symbol of
-   the signature [sign]. This has the effect of putting these symbols in the
-   scope, possibly masking symbols with the same name. *)
-let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
+(** [open_sign pos ss sign] extends the signature state [ss] with every
+   symbol, typeclass and instance of the signature [sign]. This has the effect
+   of putting these symbols in the scope, possibly masking symbols with
+   the same name. *)
+let open_sign : popt -> sig_state -> Sign.t -> sig_state = fun pos ss sign ->
   let f _key _v1 v2 = Some v2 in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
-  {ss with in_scope; open_paths}
+  let active_tc = SymSet.union ss.active_tc !(sign.sign_tc) in
+  let ss = {ss with active_tc} in
+  let accumulate_all =
+    List.fold_right (ss.add_tc_instance ss pos) !(sign.sign_tci)
+  in
+  let tc_solver_prog = Option.map accumulate_all ss.tc_solver_prog in
+  {ss with in_scope; open_paths; tc_solver_prog}
+
+(** [of_sign_and_solver sign solver add_instance] creates a new sig_state
+    with tc-solver [solver], self-update function [add_instance], along with
+    signature [sign] and open it and the ghost signature as well, assuming
+    that [sign] has been created using [Sign.create].
+*)
+let of_sign_and_solver : Sign.t -> Elpi.API.Compile.program ->
+  (t -> popt -> sym -> Elpi.API.Compile.program -> Elpi.API.Compile.program)
+  -> sig_state = fun signature prog update ->
+  let ss =
+    { signature
+    ; in_scope = StrMap.empty
+    ; alias_path = StrMap.empty
+    ; path_alias = Path.Map.empty
+    ; builtins = StrMap.empty
+    ; active_tc = SymSet.empty
+    ; tc_solver_prog = Some prog
+    ; add_tc_instance = update
+    ; open_paths = Path.Set.empty }
+  in
+  open_sign None (open_sign None ss Ghost.sign) signature
 
 (** [of_sign sign] creates a new sig_state with signature [sign] and open it
     and the ghost signature as well, assuming that [sign] has been created
@@ -93,9 +151,20 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; alias_path = StrMap.empty
     ; path_alias = Path.Map.empty
     ; builtins = StrMap.empty
+    ; active_tc = SymSet.empty
+    ; tc_solver_prog = None
+    ; add_tc_instance = (fun _ pos _ _ -> Common.Error.fatal pos
+        "cannot add instance, tc solver was not initialized")
     ; open_paths = Path.Set.empty }
   in
-  open_sign (open_sign ss Ghost.sign) signature
+  open_sign None (open_sign None ss Ghost.sign) signature
+
+(** [of_sign_and_solver sign solver add_instance] creates a new sig_state
+    with tc-solver [solver] and self-update function [add_instance].
+*)
+let of_solver : Elpi.API.Compile.program -> (t -> popt -> sym ->
+  Elpi.API.Compile.program -> Elpi.API.Compile.program) -> sig_state =
+  of_sign_and_solver (Sign.create [])
 
 (** Dummy [sig_state]. *)
 let dummy : sig_state = of_sign (Sign.create [])
