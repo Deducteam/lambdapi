@@ -603,7 +603,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Tactic.tac_solve pos ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
-        "Some metavariables could not be solved: a proof must be given";
+        "Some metavariables could not be solved: a proof must be given.";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in
