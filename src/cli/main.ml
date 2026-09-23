@@ -1042,30 +1042,21 @@ let main = function
 
 let _ =
   let args = List.tl (Array.to_list Sys.argv) in
-  let handler =
+  let handler msg desc =
     match args with
     | "lsp" :: _ ->
-      fun err_desc error_msg ->
-        Lsp.Lsp_io.notify_failure (error_msg ^ "\n" ^ err_desc);
-        exit 1
+      Lsp.Lsp_io.notify_failure (msg ^ "\n" ^ desc);
+      exit 1
     | _ ->
-      fun err_desc ->
-        Lplib.Color.update_with_color Format.err_formatter;
-        Format.kfprintf
-          (fun _ ->
-             Lplib.Color.update_with_color Format.err_formatter;
-             Format.kfprintf (fun _ -> exit 1)
-               Format.err_formatter "%s" err_desc
-          )
-          Format.err_formatter
-          (Lplib.Color.red ("%s" ^^ "@."))
+      Lplib.Color.update_with_color Format.err_formatter;
+      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc
   in
   try main args
   with
-  | Common.Error.Fatal(None, msg, desc) -> handler desc msg
+  | Common.Error.Fatal(None, msg, desc) -> handler msg desc
   | Common.Error.Fatal(Some p, msg, desc) ->
-    handler desc (Common.Pos.popt_to_string p ^ msg)
+    handler (Format.asprintf "[%a] %s" Common.Pos.pp p msg) desc
   | e ->
-    handler "" (Printf.sprintf "Uncaught [%s].\n%s"
-                  (Printexc.to_string e)
-                  (Printexc.get_backtrace()))
+    handler
+      ("Uncaught exception: " ^ Printexc.to_string e ^ ".")
+      (Printexc.get_backtrace())
