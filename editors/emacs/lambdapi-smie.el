@@ -79,6 +79,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
   '((ident)
       (env (ident)
            (env ";" env))
+      (inductiv_term)
       (rw-patt)
       (args (ident)
             ("{" ident ":" term "}")
@@ -173,8 +174,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (constructor (args ":" term))
       (constructors (constructor) (constructors "|" constructors))
       ;; FIX ME
-      (inductive (ident "," args ":" term "≔" constructors))
-      (inductives (inductive) (inductives "with" inductives))
+      (inductive (inductiv_term ":" term "≔" constructors))
+      ;; (inductives (inductive) (inductives "with" inductives))
       (rule (term "↪" term))
       (rules (rule) (rules "with" rules))
       ;; (side ("left")
