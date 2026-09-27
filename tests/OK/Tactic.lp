@@ -32,7 +32,7 @@ notation & infix right 10;
 constant symbol #fail : Tactic;
 builtin "fail" ≔ #fail;
 
-constant symbol #first_hyp: (Π [l] [a:U l], η a → Tactic) → Tactic;
+constant symbol #first_hyp: (Π l (a:U l), η a → Tactic) → Tactic;
 builtin "first_hyp" ≔ #first_hyp;
 
 constant symbol #focus : String → Tactic;

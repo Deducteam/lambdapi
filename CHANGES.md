@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   shown on its introducing keyword ("symbol", "rule", "assume", …), instead
   of underlining the whole command or tactic (symbol body, rule right-hand
   side, proof, etc.).
+- Tactics first_hyp and all_hyps made compatible with \eta signatures. 
+  Tactic first_hyp considers #nothing has a success.
 
 ## 3.0.0 (2025-07-16)
 

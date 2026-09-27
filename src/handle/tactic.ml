@@ -536,6 +536,23 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   (* Function for checking that an identifier is not already in use. *)
   let check id =
     if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
+  (* tries to apply tactic t on context variable v *)
+  let apply_context ps c g v t =
+    let mk_Level = mk_Symb (Builtin.get ss pos [] "Level") in
+    let mk_Univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let mk_univ l = mk_Appl (mk_Univ, l) in
+    let n = List.length env in
+    let args = Env.to_terms env in
+    let p = new_problem() in
+    let ml = mk_Meta(LibMeta.fresh p (Env.to_prod env mk_Level) n,args) in
+    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (mk_univ ml)) n,args) in
+    let t = mk_Appl(mk_Appl(mk_Appl(t,ml),mt),mk_Vari v) in
+    match Infer.infer_noexn p c t with
+    | Some _ ->
+        if Unif.solve_noexn p && !p.unsolved = [] then
+          let ps, t = p_tactic ps g env pos t in handle ps t
+        else fatal pos "Typing error in tactic application on hyp"
+    | _ -> fatal pos "Typing error in tactic application on hyp" in
   match elt with
   | P_tac_fail
   | P_tac_query _
@@ -545,17 +562,11 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
     let t = scope t in
-    let l = mk_Symb (Builtin.get ss pos [] "Level") in
-    let try_assumption (ps: proof_state) (_,(v,a,_)): proof_state =
+    let c = Env.to_ctxt env in
+    let try_assumption (ps: proof_state) (_,(v,_,_)): proof_state =
       match ps.proof_goals with
       | [] -> fatal pos "all_hyps called on empty goal list."
-      | g :: _ ->
-        let p = new_problem() in
-        let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
-        let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
-        try let ps, t = p_tactic ps g env pos t in handle ps t
-        with Fatal _ -> ps
-    in
+      | g :: _ -> try apply_context ps c g v t with Fatal _ -> ps in
     let ps' = List.fold_left try_assumption ps gt.goal_hyps in
     if ps' == ps then
       fatal pos "(all_hyps %a) fails on all assumptions." term t
@@ -612,12 +623,9 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       end
   | P_tac_first_hyp pt ->
     let t = scope pt in
-    let l = mk_Symb (Builtin.get ss pos [] "Level") in
-    let f (_,(v,a,_)) =
-      let p = new_problem() in
-      let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
-      let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
-      let ps, t = p_tactic ps g env pos t in progress ps t
+    let c = Env.to_ctxt env in
+    let f (_,(v,_,_)) =
+      try Some (apply_context ps c g v t) with _ -> None
     in
     begin match List.find_map f gt.goal_hyps with
     | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
