@@ -84,7 +84,7 @@ and arrow oc u v = paren oc u; string oc " -> "; term oc v
 and abst oc xs u =
   string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
 and prod oc xs u =
-  string oc "∀"; params_list_in_abs oc xs; string oc ", "; term oc u
+  string oc "∀"; params_list_in_prod oc xs; string oc ", "; term oc u
 
 and paren oc t =
   let default() = char oc '('; term oc t; char oc ')' in
@@ -106,23 +106,31 @@ and params oc ((ids,t,b) as x) =
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
 
-and top_params oc ((ids,a,_) as x) =
-  params oc x;
+and is_set_params (_,a,_) =
   match a with
   | Some{elt=P_Iden(id,_);_} ->
-    begin
-      match QidMap.find_opt id.elt !encoding with
-      | Some Set ->
-        let nonempty oc id =
+    begin match QidMap.find_opt id.elt !encoding with
+      | Some Set -> true
+      | _ -> false
+    end
+  | _ -> false
+
+and top_params oc ((ids,_,_) as x) =
+  params oc x;
+  if is_set_params x then
+    let nonempty oc id =
           string oc " [Nonempty "; param_id oc id; char oc ']'
         in List.iter (nonempty oc) ids
-      | _ -> ()
-    end
-  | _ -> ()
+  else ()
 
 and params_list oc = List.iter (prefix " " params oc)
 
 and top_params_list oc = List.iter (prefix " " top_params oc)
+
+and params_list_in_prod oc l =
+  match l with
+  | [(_,_,false) as x] when not (is_set_params x) -> params_list_in_abs oc l
+  | _ -> top_params_list oc l
 
 and params_list_in_abs oc l =
   match l with
