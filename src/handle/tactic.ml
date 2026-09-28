@@ -537,16 +537,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   let check id =
     if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
   (* tries to apply tactic t on context variable v *)
-  let apply_context ps c g v t =
-    let mk_Level = mk_Symb (Builtin.get ss pos [] "Level") in
-    let mk_Univ = mk_Symb (Builtin.get ss pos [] "Univ") in
-    let mk_univ l = mk_Appl (mk_Univ, l) in
-    let n = List.length env in
-    let args = Env.to_terms env in
+  let apply_hyp ps c g v t level univ n args =
+    let u l = mk_Appl (univ, l) in
     let p = new_problem() in
-    let ml = mk_Meta(LibMeta.fresh p (Env.to_prod env mk_Level) n,args) in
-    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (mk_univ ml)) n,args) in
-    let t = mk_Appl(mk_Appl(mk_Appl(t,ml),mt),mk_Vari v) in
+    let ml = mk_Meta(LibMeta.fresh p (Env.to_prod env level) n,args) in
+    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (u ml)) n,args) in
+    let t = add_args t [ml; mt; mk_Vari v] in
     match Infer.infer_noexn p c t with
     | Some _ ->
         if Unif.solve_noexn p && !p.unsolved = [] then
@@ -563,10 +559,15 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_all_hyps t ->
     let t = scope t in
     let c = Env.to_ctxt env in
+    let level = mk_Symb (Builtin.get ss pos [] "Level") in
+    let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let n = List.length env in
+    let args = Env.to_terms env in
     let try_assumption (ps: proof_state) (_,(v,_,_)): proof_state =
       match ps.proof_goals with
       | [] -> fatal pos "all_hyps called on empty goal list."
-      | g :: _ -> try apply_context ps c g v t with Fatal _ -> ps in
+      | g :: _ ->
+          try apply_hyp ps c g v t level univ n args with Fatal _ -> ps in
     let ps' = List.fold_left try_assumption ps gt.goal_hyps in
     if ps' == ps then
       fatal pos "(all_hyps %a) fails on all assumptions." term t
@@ -624,9 +625,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_first_hyp pt ->
     let t = scope pt in
     let c = Env.to_ctxt env in
+    let level = mk_Symb (Builtin.get ss pos [] "Level") in
+    let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let n = List.length env in
+    let args = Env.to_terms env in
     let f (_,(v,_,_)) =
-      try Some (apply_context ps c g v t) with _ -> None
-    in
+      try Some (apply_hyp ps c g v t level univ n args) with _ -> None in
     begin match List.find_map f gt.goal_hyps with
     | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
     | Some new_ps -> new_ps
