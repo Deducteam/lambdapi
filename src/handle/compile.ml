@@ -72,8 +72,8 @@ let rec compile : Command.compiler = fun ss mp ->
         sign
       with LpLexer.UnfinishedProof(log_msg, _, _) ->
         let pos, msg = match log_msg with
-        | {pos=Some pos;elt} -> pos,elt
-        |_ -> assert false in
+        | { pos=Some p; elt } -> p, elt
+        | _ -> assert false in
         Parsing.Parser.parser_fatal pos "Syntax error. %s" msg
     end
     else

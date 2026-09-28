@@ -13,11 +13,11 @@ let remove_last : lexbuf -> string = fun lb ->
 let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
-(** true when a proof is syntactly broken. i.e. a missing end token, wrong
+(** true when a proof is syntactly  broken. i.e.  a missing end token, wrong
    tactic name, ...etc. [strloc] is the located error message describing the
-   syntactic error in the proof, [Syntax.p_symbol] is a wrapper for a symbol,
+   syntactic error in the proof, [Syntax.p_symbol] is a wrapper for a symbol
    [popt] is the position of the node corresponding to the symbol. Initiated
-   to None and updated by the command function.*)
+   to None and updated by the [command] function.*)
 exception UnfinishedProof of strloc * Syntax.p_symbol * popt
 
 (* true when the error is an unrecoverable tokenization error;
