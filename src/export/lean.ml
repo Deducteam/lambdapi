@@ -193,7 +193,7 @@ Returns:
     ident oc p_sym_nam;
     match ty with
     | { elt = P_Type; _ } ->
-        string oc " :";
+        string oc " : ";
         string oc "Nonempty ";
         ident oc p_sym_nam
     | { elt = P_Arro (_, _); _ } ->
