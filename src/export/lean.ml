@@ -27,13 +27,13 @@ let typ_arity h =
       end
   | _ -> 0
 
-let is_id_Set id =
+let is_Set id =
   match QidMap.find_opt id.elt !encoding with
   | Some Set -> true
   | _ -> false
 
 let is_typ_Set = function
-  | Some{elt=P_Iden(id,_);_} -> is_id_Set id
+  | Some{elt=P_Iden(id,_);_} -> is_Set id
   | _ -> false
 
 let nonempty oc =
@@ -148,8 +148,8 @@ let openings = ref []
 (* [is_typ_constr t = true] iff [t] is of the form [Set -> .. -> Set]. *)
 let rec is_typ_constr {elt;_} =
   match elt with
-  | P_Iden(id,_) -> is_id_Set id
-  | P_Arro({elt=P_Iden(id,_);_},t) -> is_id_Set id && is_typ_constr t
+  | P_Iden(id,_) -> is_Set id
+  | P_Arro({elt=P_Iden(id,_);_},t) -> is_Set id && is_typ_constr t
   | _ -> false
 
 (* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Som(u,n)] where
@@ -160,8 +160,8 @@ let replace_Set_by_Type =
   let n = ref 0 in
   let rec aux ({elt;_} as t)=
     match elt with
-    | P_Iden(id,_) when is_id_Set id -> incr n; {t with elt=P_Type}
-    | P_Arro({elt=P_Iden(id,_);_} as u, v) when is_id_Set id ->
+    | P_Iden(id,_) when is_Set id -> incr n; {t with elt=P_Type}
+    | P_Arro({elt=P_Iden(id,_);_} as u, v) when is_Set id ->
       incr n; {t with elt=P_Arro({u with elt=P_Type}, aux v)}
     | _ -> raise Exit
   in
