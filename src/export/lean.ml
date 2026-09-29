@@ -158,7 +158,7 @@ let rec is_typ_constr {elt;_} =
    [replace_Set_by_Type t = None]*)
 let replace_Set_by_Type =
   let n = ref 0 in
-  let rec aux ({elt;_} as t)=
+  let rec aux ({elt;_} as t) =
     match elt with
     | P_Iden(id,_) when is_Set id -> incr n; {t with elt=P_Type}
     | P_Arro({elt=P_Iden(id,_);_} as u, v) when is_Set id ->
@@ -254,6 +254,6 @@ let print : string -> p_commands -> unit = fun file cmds ->
                               ;"linter.style.longLine"];
     newline oc;
     List.iter (open_mod oc) (List.rev !openings);
-    string oc ("\nnamespace "^Filename.chop_extension file^"\n");
+    string oc ("\nnamespace "^Filename.chop_extension file^"\n\n");
     command oc cmd;
     commands oc cmds
