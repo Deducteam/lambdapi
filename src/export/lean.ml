@@ -140,98 +140,36 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
-let req_mod oc p = string oc "import "; path oc p; string oc "\n"
-let open_mod oc p = string oc "open "; path oc p; string oc "\n"
+let req_mod oc p = string oc "import "; path oc p; newline oc
+let open_mod oc p = string oc "open "; path oc p; newline oc
 
 let openings = ref []
 
-(** Exports a type constructor after replacing
-all occurrences of Set with Type (0).
-In that case, it also generates the
-corresponding Nonempty instance based on its arity.
-*)
-let export_types oc p_sym_nam ty =
-(*
-Replace every occurrence of Set by Type.
-Returns:
-  - the rewritten type,
-  - whether the whole type is a type constructor,
-  - the number of Type arguments occurring in the constructor. *)
-  let rec normalize_type ty =
-    match ty with
-    | { elt = P_Iden (id, _); pos } ->
-        begin
-          match QidMap.find_opt id.elt !encoding with
-          | Some Set ->
-              ({ elt = P_Type; pos }, true, 1)
-          | _ ->
-              (ty, false, 0)
-        end
-    | { elt = P_Arro (lhs, rhs); pos } ->
-        let lhs', lhs_ok, lhs_count = normalize_type lhs in
-        if not lhs_ok then
-          (ty, false, 0)
-        else
-          let rhs', rhs_ok, rhs_count = normalize_type rhs in
-          if rhs_ok then
-            ({ elt = P_Arro (lhs', rhs'); pos },
-             true,
-             lhs_count + rhs_count)
-          else
-            (ty, false, 0)
-    | _ ->
-        (ty, false, 0)
+(* [is_typ_constr t = true] iff [t] is of the form [Set -> .. -> Set]. *)
+let rec is_typ_constr {elt;_} =
+  match elt with
+  | P_Iden(id,_) -> is_id_Set id
+  | P_Arro({elt=P_Iden(id,_);_},t) -> is_id_Set id && is_typ_constr t
+  | _ -> false
+
+(* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Som(u,n)] where
+   [u] is a copy of [t] where every occurrence of Set has been replaced by
+   TYPE, and [n>=0] is the number of replacements - 1. Otherwise,
+   [replace_Set_by_Type t = None]*)
+let replace_Set_by_Type =
+  let n = ref 0 in
+  let rec aux ({elt;_} as t)=
+    match elt with
+    | P_Iden(id,_) when is_id_Set id -> incr n; {t with elt=P_Type}
+    | P_Arro({elt=P_Iden(id,_);_} as u, v) when is_id_Set id ->
+      incr n; {t with elt=P_Arro({u with elt=P_Type}, aux v)}
+    | _ -> raise Exit
   in
-  (* Print the parameters of a type constructor:
-       a0 a1 ... an *)
-  let print_type_parameters n =
-    if n > 0 then begin
-      string oc "a0";
-      for i = 1 to n - 1 do
-        string oc " a";
-        string oc (string_of_int i)
-      done
-    end
-  in
-  (* Print the corresponding axiom of type
-  Nonempty and add it as an instance. *)
-  let print_nonempty_instance ty arity =
-    string oc "\n@[instance]\naxiom ne_";
-    ident oc p_sym_nam;
-    match ty with
-    | { elt = P_Type; _ } ->
-        string oc " : ";
-        string oc "Nonempty ";
-        ident oc p_sym_nam
-    | { elt = P_Arro (_, _); _ } ->
-        let n = arity - 1 in
-        if n > 0 then
-        begin
-          string oc " (";
-          print_type_parameters n;
-          string oc " : Type) : ";
-          string oc "Nonempty ";
-          begin
-            string oc "(";
-            ident oc p_sym_nam;
-            string oc " ";
-            print_type_parameters n;
-            char oc ')'
-          end
-        end
-        else begin
-          string oc " : Nonempty ";
-          ident oc p_sym_nam
-        end
-    | _ -> ()
-  in
-  let ty', is_type_constructor, arity = normalize_type ty in
-  begin
-    term oc ty';
-    if is_type_constructor then
-      print_nonempty_instance ty' arity
-  end;
-  string oc "\n"
+  fun t -> n := 0; try Some(aux t, !n - 1) with Exit -> None
+
+let typ_vars oc n =
+  if n > 0 then
+    (string oc "a0"; for i = 1 to n - 1 do string oc " a"; int oc i done)
 
 let command oc {elt; pos} =
   begin match elt with
@@ -251,20 +189,33 @@ let command oc {elt; pos} =
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             string oc "nonrec theorem "; ident oc p_sym_nam;
             top_params_list oc p_sym_arg; string oc " : "; term oc a;
-            string oc " := by apply "; term oc t; string oc "\n"
+            string oc " := by apply "; term oc t; newline oc
           | true, Some t, _, _ ->
             if List.exists is_opaq p_sym_mod then string oc "opaque "
             else string oc "@[reducible]\nnoncomputable def ";
             ident oc p_sym_nam;
             top_params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t; string oc "\n"
+            string oc " := "; term oc t; newline oc
           | false, _, [], Some t ->
             string oc "axiom "; ident oc p_sym_nam; string oc " : ";
-            export_types oc p_sym_nam t
+            begin match replace_Set_by_Type t with
+            | None -> term oc t
+            | Some(t,n) -> term oc t;
+              string oc "\n@[instance]\naxiom ne_"; ident oc p_sym_nam;
+              if n > 0 then begin
+                string oc " ("; typ_vars oc n; string oc " : Type)"
+              end;
+              string oc " : Nonempty";
+              if n > 0 then begin
+                string oc " ("; ident oc p_sym_nam; char oc ' ';
+                typ_vars oc n; char oc ')'
+              end
+            end;
+            newline oc
           | false, _, _, Some t ->
             string oc "axiom "; ident oc p_sym_nam;
             string oc " : ∀"; top_params_list oc p_sym_arg; string oc ", ";
-            term oc t; string oc "\n"
+            term oc t; newline oc
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."
@@ -301,7 +252,7 @@ let print : string -> p_commands -> unit = fun file cmds ->
                               ;"linter.style.missingEnd"
                               ;"linter.unusedVariables"
                               ;"linter.style.longLine"];
-    string oc "\n";
+    newline oc;
     List.iter (open_mod oc) (List.rev !openings);
     string oc ("\nnamespace "^Filename.chop_extension file^"\n");
     command oc cmd;
