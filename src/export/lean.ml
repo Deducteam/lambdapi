@@ -30,6 +30,18 @@ let typ_arity h =
       end
   | _ -> 0
 
+let is_id_Set id =
+  match QidMap.find_opt id.elt !encoding with
+  | Some Set -> true
+  | _ -> false
+
+let is_typ_Set = function
+  | Some{elt=P_Iden(id,_);_} -> is_id_Set id
+  | _ -> false
+
+let nonempty oc =
+  List.iter (fun id -> string oc " [Nonempty "; param_id oc id; char oc ']')
+
 (** Translation of terms. *)
 
 let rec term oc t =
@@ -106,35 +118,25 @@ and params oc ((ids,t,b) as x) =
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
 
-and is_set_params (_,a,_) =
-  match a with
-  | Some{elt=P_Iden(id,_);_} ->
-    begin match QidMap.find_opt id.elt !encoding with
-      | Some Set -> true
-      | _ -> false
-    end
-  | _ -> false
-
-and top_params oc ((ids,_,_) as x) =
-  params oc x;
-  if is_set_params x then
-    let nonempty oc id =
-          string oc " [Nonempty "; param_id oc id; char oc ']'
-        in List.iter (nonempty oc) ids
-  else ()
+and top_params oc ((ids,a,_) as x) =
+  params oc x; if is_typ_Set a then nonempty oc ids
 
 and params_list oc = List.iter (prefix " " params oc)
 
 and top_params_list oc = List.iter (prefix " " top_params oc)
 
+(* same as top_params_list but avoid some parentheses *)
 and params_list_in_prod oc l =
   match l with
-  | [(_,_,false) as x] when not (is_set_params x) -> params_list_in_abs oc l
+  | [(ids,a,_) as x] ->
+    if is_typ_Set a then (char oc ' '; params oc x; nonempty oc ids)
+    else params_list_in_abs oc l
   | _ -> top_params_list oc l
 
+(* same as params_list but avoid some parentheses *)
 and params_list_in_abs oc l =
   match l with
-  | [ids,t,false] -> char oc ' '; param_ids oc ids; typopt oc t
+  | [(_,_,false) as x] -> char oc ' '; raw_params oc x
   | _ -> params_list oc l
 
 and typopt oc t = Option.iter (prefix " : " term oc) t
