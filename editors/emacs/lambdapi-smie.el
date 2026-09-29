@@ -88,8 +88,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (term ("TYPE")
              ("_")
              (ident)
-             ("?" ident "[" env "]")    ; ?M[x;y;z]
-             ("$" ident "[" env "]")    ; $X[x;y;z]
+             ("?" ident "[" env "]")
+             ("$" ident "[" env "]")
              ("`" ident args "," term) ; quantifier syntax
              (term "→" term)
              ("λ" args "," term)
