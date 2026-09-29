@@ -157,8 +157,11 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       )
       (constructor (args ":" term))
       (constructors (constructor) (constructors "|" constructors))
-      ;; FIX ME
-      (inductive (ident args ":" term "≔" constructors))
+      (inductive ("inductive" ident args ":" term "≔" constructors))
+      (winductives (inductive)
+                   (inductive "with" winductives)
+      )
+      (inductives (inductive) (inductive "with" winductives))
 
 
       (unif-rule-rhs
@@ -167,7 +170,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
        (unif-rule-rhs ";" unif-rule-rhs))
 ;;      (symdec ("symbol" args ":" term))
 ;;      (indcons (args ":" term) ("|" args ":" term))
-      (inddec (inddec "with" args ":" term "≔" indcons))
+;;      (inddec (inddec "with" args ":" term "≔" indcons))
       (rules (rules "with" term "↪" term))
       (open-command ("open" ident))
       (command
@@ -179,7 +182,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
 ;;               ("constant" symdec)
                ("flag" ident "off")
                ("flag" ident "on")
-               ("injective" "inductive" inddec)
+;;               ("injective" "inductive" inddec)
 ;;               ("injective" symdec)
 ;;               ("associative" symdec)
 ;;               ("commutative" symdec)
@@ -190,12 +193,12 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("notation" ident "postfix" term)
                ("notation" ident "quantifier")
                (open-command)
-               ("opaque" "inductive" inddec)
+;;               ("opaque" "inductive" inddec)
 ;;               ("opaque" symdec)
-               ("private" "inductive" inddec)
+;;               ("private" "inductive" inddec)
 ;;               ("private" symdec)
                ("private" open-command)
-               ("protected" "inductive" inddec)
+;;               ("protected" "inductive" inddec)
 ;;               ("protected" symdec)
                ("prover" ident)
                ("prover_timeout" ident)
