@@ -162,8 +162,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                    (inductive "with" winductives)
       )
       (inductives (inductive) (inductive "with" winductives))
-
-
+      (rule (term "↪" term))
+      (rules (rule) (rules "with" rules))
       (unif-rule-rhs
        (term "≡" term)
         (term "[" unif-rule-rhs "]")
@@ -171,7 +171,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
 ;;      (symdec ("symbol" args ":" term))
 ;;      (indcons (args ":" term) ("|" args ":" term))
 ;;      (inddec (inddec "with" args ":" term "≔" indcons))
-      (rules (rules "with" term "↪" term))
+;;      (rules (rules "with" term "↪" term))
       (open-command ("open" ident))
       (command
              (modifiers "symbol" args ":" term "≔" term "begin" proof "abort")
@@ -220,7 +220,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
    (smie-bnf->prec2
     lambdapi-smie-bnf
     '((assoc ":") (assoc "|"))
-;;    '((assoc ";") (assoc "≔"))
+    '((assoc "with"))
     '((assoc ";") (assoc "↪"))
     '((assoc "≡") (assoc ",") (assoc "in") (assoc "→"))
   )))
