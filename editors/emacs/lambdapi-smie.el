@@ -153,31 +153,17 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                  ("opaque" modifier)
                  ("private" modifier)
                  ("protected" modifier)
-                 ("sequential" modifier)
-      )
+                 ("sequential" modifier))
       (constructor (args ":" term))
       (constructors (constructor) (constructors "|" constructors))
-      (inductive ("inductive" ident args ":" term "≔" constructors))
+      ;; FIX ME : should be term args but raises an error Adjacent non-terminals
+      (ident_args)
+      (inductive (ident_args ":" term "≔" constructors))
       (winductives (inductive)
-                   (inductive "with" winductives)
-      )
+                   (inductive "with" winductives))
       (inductives (inductive) (inductive "with" winductives))
       (rule (term "↪" term))
       (rules (rule) (rules "with" rules))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       (unif-rule-rhs (equation) (unif-rule-rhs ";" unif-rule-rhs))
       (open-command ("open" ident))
       (popen   ("private" open-command)
@@ -186,51 +172,27 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("require" ident "as" ident)
                ("require" open-command)
                (open-command)
-               ;;FIX ME : Private both opener and modifier
                ("require" popen)
-               (popen)
-      )
+               (popen))
       (command (reqopen)
-             (modifiers "symbol" args ":" term "≔" term "begin" proof "abort")
-             (modifiers "symbol" args ":" term "≔" term "begin" proof "admitted")
-             (modifiers "symbol" args ":" term "≔" term "begin" proof "end")
+               (query)
+               (modifiers "symbol" args ":" term)
+               (modifiers "symbol" args ":" term ("≔" term))
+               (modifiers "symbol" args ":" term "≔" term "begin" proof "abort")
+               (modifiers "symbol" args ":" term "≔" term "begin" proof "admitted")
+               (modifiers "symbol" args ":" term "≔" term "begin" proof "end")
+               (modifiers "inductive" inductive)
                ("builtin" ident "≔" term)
-               ("debug" ident)
-;;               ("constant" symdec)
-               ("flag" ident "off")
-               ("flag" ident "on")
-;;               ("injective" "inductive" inddec)
-;;               ("injective" symdec)
-;;               ("associative" symdec)
-;;               ("commutative" symdec)
                ("notation" ident "infix" "left" term)
                ("notation" ident "infix" "right" term)
                ("notation" ident "infix" term)
                ("notation" ident "prefix" term)
                ("notation" ident "postfix" term)
                ("notation" ident "quantifier")
-;;               (open-command)
-;;               ("opaque" "inductive" inddec)
-;;               ("opaque" symdec)
-;;               ("private" "inductive" inddec)
-;;               ("private" symdec)
-;;               ("private" open-command)
-;;               ("protected" "inductive" inddec)
-;;               ("protected" symdec)
-               ("prover" ident)
-               ("prover_timeout" ident)
-               ("require" ident "as" ident)
-               ("require" ident)
                ("rule" rules)
-	             ("coerce_rule" term "↪" term)
-               ("verbose" ident)
-               (query)
-               ("unif_rule" term "≡" term "↪" unif-rule-rhs)
-;;               (symdec)
-        )
-    (commands (command) (commands ";" commands))
-  )
-)
+               ("coerce_rule" rule)
+               ("unif_rule" equation "↪" "[" unif-rule-rhs "]"))
+      (commands (command) (commands ";" commands))))
 
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
@@ -239,6 +201,10 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
     '((assoc ":") (assoc "|"))
     '((assoc "with"))
     '((assoc ";") (assoc "↪"))
+    '((assoc "coerce_rule") (assoc "↪"))
+    ;; FIX ME : Check priority rules
+    '((assoc "≡") (assoc "↪"))
+    '((assoc "unif_rule") (assoc "≡"))
     '((assoc "≡") (assoc ",") (assoc "in") (assoc "→"))
   )))
 
