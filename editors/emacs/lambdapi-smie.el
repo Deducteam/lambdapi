@@ -164,16 +164,33 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (inductives (inductive) (inductive "with" winductives))
       (rule (term "↪" term))
       (rules (rule) (rules "with" rules))
-      (unif-rule-rhs
-       (term "≡" term)
-        (term "[" unif-rule-rhs "]")
-       (unif-rule-rhs ";" unif-rule-rhs))
-;;      (symdec ("symbol" args ":" term))
-;;      (indcons (args ":" term) ("|" args ":" term))
-;;      (inddec (inddec "with" args ":" term "≔" indcons))
-;;      (rules (rules "with" term "↪" term))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      (unif-rule-rhs (equation) (unif-rule-rhs ";" unif-rule-rhs))
       (open-command ("open" ident))
-      (command
+      (popen   ("private" open-command)
+               (open-command))
+      (reqopen ("require" ident)
+               ("require" ident "as" ident)
+               ("require" open-command)
+               (open-command)
+               ;;FIX ME : Private both opener and modifier
+               ("require" popen)
+               (popen)
+      )
+      (command (reqopen)
              (modifiers "symbol" args ":" term "≔" term "begin" proof "abort")
              (modifiers "symbol" args ":" term "≔" term "begin" proof "admitted")
              (modifiers "symbol" args ":" term "≔" term "begin" proof "end")
@@ -192,12 +209,12 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("notation" ident "prefix" term)
                ("notation" ident "postfix" term)
                ("notation" ident "quantifier")
-               (open-command)
+;;               (open-command)
 ;;               ("opaque" "inductive" inddec)
 ;;               ("opaque" symdec)
 ;;               ("private" "inductive" inddec)
 ;;               ("private" symdec)
-               ("private" open-command)
+;;               ("private" open-command)
 ;;               ("protected" "inductive" inddec)
 ;;               ("protected" symdec)
                ("prover" ident)
