@@ -1,149 +1,94 @@
 #!/bin/bash
 
 set -e
-NAME="$1"
-VERSION="$2"
-BIN="$3"
-EGLOT_V="$4"
-MATH_SYMB_V="$5"
-HIGHLIGHT_V="$6"
 
-# For instance, one can run the scrupt with ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.5 1.3 20210318.2248 (Does not work because Eglot.V.1.5 is too old)
-# ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 1.18 1.3 20210318.2248 Does not work because Eglot repo stoped using tags since 2012.
-# For using the latest commit of a library just use version 0. For instance : ./installAndLaunch.sh lambdapi-mode 1.1.0 /snap/bin/emacs 0 1.3 0
+EGLOT_V="$1" # "0" to use the latest version
+MATH_SYMB_V="$2" # "0" to use the latest version
+HIGHLIGHT_V="$3" # "0" to use the latest version
 
-convertVersionToCommitDate() {
-  local input="$1"
-  local date_part=${input%%.*}
+# extracts from lambdapi-mode.el the smallest supported version of $pkg
+#min_version_of_pkg() {
+#    local pkg=$1
+#    sed -n -E "/;; Package-Requires:/ s/.*\(\b${pkg}\b +\"([^\"]+)\"\).*/\1/p" lambdapi-mode.el
+#}
 
-  printf "%s-%s-%s %s:%s\n" \
-    "${date_part:0:4}" \
-    "${date_part:4:2}" \
-    "${date_part:6:2}"
-}
+EMACS=/snap/bin/emacs
+if [[ ! -f $EMACS ]]; then
+    echo "Install Emacs ..."
+    sudo snap install emacs --classic
+fi
 
+ROOT=${ROOT=$HOME}
 
-echo "📦 Installation d'Emacs..."
-sudo snap install emacs --classic
-
-echo "📁 Préparation du dossier de configuration Emacs..."
-mkdir -p ~/.emacs.d
-
-echo "📝 Écriture du fichier init.el avec straight.el et Eglot 1.17..."
-cat <<'EOF' > ~/.emacs.d/init.el
+echo "Create $ROOT/.emacs.d/init.el ..."
+mkdir -p $ROOT/.emacs.d/elpa
+cat <<EOF > $ROOT/.emacs.d/init.el
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (setq package-check-signature nil)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/eglot/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/eglot/"))
 (require 'eglot)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/math-symbol-lists/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/math-symbol-lists/"))
 (require 'math-symbol-lists)
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/elpa/highlight/"))
+(add-to-list 'load-path (expand-file-name "$ROOT/.emacs.d/elpa/highlight/"))
 (require 'highlight)
 EOF
- echo "creating elpa folder"
- mkdir -p ~/.emacs.d/elpa/
 
-echo "cloning dependencies repos"
-if [ ! -d ~/.emacs.d/elpa/eglot ]; then
-  if [[ ${EGLOT_V} == "0" ]]; then  # ignore branch
-    git clone --depth 1 https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
-    EGLOT_V="1.9"
-  else
-    git clone --depth 1 --branch ${EGLOT_V} https://github.com/joaotavora/eglot.git ~/.emacs.d/elpa/eglot
-  fi
-  echo "Eglot cloned to " ~/.emacs.d/elpa/eglot
-else
-  echo "Eglot is already cloned. Skipping"
-fi
-if [ ! -d ~/.emacs.d/elpa/math-symbol-lists ]; then
-  if [[ ${MATH_SYMB_V} == "0" ]]; then # ignore branch
-    git clone --depth 1 https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
-    MATH_SYMB_V=1.2.1
-  else
-    git clone --depth 1 --branch v${MATH_SYMB_V} https://github.com/vspinu/math-symbol-lists.git ~/.emacs.d/elpa/math-symbol-lists
-  fi
-  echo "math-symbol-lists cloned to " ~/.emacs.d/elpa/math-symbol-lists
-else
-  echo "math-symbol-lists is already cloned. Skipping"
-fi
+clone() {
+    local url=$1
+    local name=`basename $url .git`
+    local dir=$ROOT/.emacs.d/elpa/$name
+    if [[ -d "$dir" ]]; then
+        echo "$name already cloned. Skipping."
+    else
+        git clone --depth 1 $url $dir
+        echo "$name cloned to $dir."
+    fi
+}
 
-if [ ! -d ~/.emacs.d/elpa/highlight ]; then
-  commit_date=$(convertVersionToCommitDate ${HIGHLIGHT_V})
-  git clone https://github.com/emacsmirror/highlight.git ~/.emacs.d/elpa/highlight
-  echo "cheking out to ${commit_date}. If commit does not exist (i.e. 0) it is just ignored."
-  if [[ ${HIGHLIGHT_V} == "0" ]]; then # ignore branch
-    # git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
-    HIGHLIGHT_V=20250815.1830
-  else
-    git -C ~/.emacs.d/elpa/highlight checkout $(git -C ~/.emacs.d/elpa/highlight rev-list -n 1 --after="${commit_date}" master)
-  fi
-  echo "highlight cloned to " ~/.emacs.d/elpa/highlight
-else
-  echo "Highlight is already cloned. Skipping"
-fi
+commit_of() {
+    local name=$1
+    local version=$2
+    local dir=$ROOT/.emacs.d/elpa/$name
+    if [[ "$version" =~ ^.{8}\..{4}$ ]]; then
+        git -C $dir rev-list -1 --after="$(printf "%s-%s-%s %s:%s\n" ${1:0:4} ${1:4:2} ${1:6:2} ${1:9:2} ${1:11:2})"
+    else
+        $version
+    fi
+}
 
-echo "updating version in Elpa"
-echo "(define-package \"highlight\" \"${HIGHLIGHT_V}\")" > ~/.emacs.d/elpa/highlight/highlight-pkg.el
-echo "(define-package \"eglot\" \"${EGLOT_V}\")" > ~/.emacs.d/elpa/eglot/eglot-pkg.el
-echo "(define-package \"math-symbol-lists\" \"${MATH_SYMB_V}\")" > ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-pkg.el
+branch() {
+    local name=$1
+    local version=$2
+    local dir=$ROOT/.emacs.d/elpa/$name
+    if [[ "$version" -ne 0 ]]; then
+        git -C $dir checkout $(commit_of $version)
+    else
+        git -C $dir checkout master
+        version=$(git -C $dir log -1 --format=%cd --date=format:'%Y%m%d.%H%M')
+    fi
+    echo "(define-package \"$name\" \"$version\")" > $ROOT/.emacs.d/elpa/$name/$name-pkg.el
+}
 
-touch ~/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
-touch ~/.emacs.d/elpa/highlight/highlight-autoloads.el
+checkout() {
+    local url=$1
+    local version=$2
+    local name=`basename $url .git`
+    clone $url
+    branch $name $version
+}
 
-echo "🚀 Premier lancement d’Emacs pour déclencher l’installation..."
-# (package-refresh-contents)
-PATH="$BIN:$PATH" emacs \
-  -l ~/.emacs.d/init.el \
-  --eval "(package-install-file \"${NAME}-${VERSION}.tar\")" \
-  --batch \
-#   # --eval "(require-package 'math-symbol-lists)" \
-echo "🎉 Terminé ! Lance Emacs normalement pour commencer à coder avec Eglot 1.17."
+checkout https://github.com/joaotavora/eglot.git $EGLOT_V
 
-# (use-package eglot)
-# (use-package math-symbol-lists)
-# (use-package highlight)
-# (require-package eglot)
-# (require-package math-symbol-lists)
-# (require-package highlight)
+checkout https://github.com/vspinu/math-symbol-lists.git $MATH_SYMB_V
+touch $ROOT/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el
 
-# curl highilight and math-symbol-lists from https://elpa.gnu.org/packages/math-symbol-lists.html
-# extract with tar --lzip -xvf math-symbol-lists-1.1.tar.lz
-# or lzip -d math-symbol-lists-1.2.1.el.lz
+checkout https://github.com/emacsmirror/highlight.git $HIGHLIGHT_V
+touch $ROOT/.emacs.d/elpa/highlight/highlight-autoloads.el
 
-# move to /home/abdelghani/.emacs.d/elpa/math-symbol-lists and /home/abdelghani/.emacs.d/elpa/highlight
-# echo ";; -*- no-byte-compile: t; lexical-binding: nil -*-
-#(define-package "highlight" "20210318.2248"
-#  "Highlighting commands."
-#  ()
-#  :url "https://www.emacswiki.org/emacs/download/highlight.el"
-#  :commit "28557cb8d99b96eb509aaec1334c7cdda162517f"
-#  :revdesc "28557cb8d99b"
-#  :keywords '("faces" "help" "local")
-#  :maintainers '(("Drew Adams (concat \"drew.adams\" \"oracle\" \".com\"" . "\"@\" ")))
-# " > elpa/highlight-20210318.2248/highlight-pkg.el
-# echo ";; -*- no-byte-compile: t; lexical-binding: nil -*-
-# (define-package "math-symbol-lists" "1.2.1"
-#   "Lists of Unicode math symbols and latex commands."
-#   ()
-#   :url "https://github.com/vspinu/math-symbol-lists"
-#   :commit "ac3eb053d3b576fcdd192b0ac6ad5090ea3a7079"
-#   :revdesc "ac3eb053d3b5"
-#   :keywords '("unicode" "symbols" "mathematics")
-#   :authors '(("Vitalie Spinu" . "spinuvit@gmail.com"))
-#   :maintainers '(("Vitalie Spinu" . "spinuvit@gmail.com")))
-# " > elpa/math-symbol-lists/math-symbol-lists-pkg.el
+echo "Install lambdapi-mode ..."
+VERSION=$(sed -n 's/;; Version: //p' lambdapi-mode.el)
+$EMACS --batch -l $ROOT/.emacs.d/init.el \
+  --eval "(package-install-file \"lambdapi-mode-$VERSION.tar\")"
 
-# REplace versions in *-pkg.el files
-
-
-# echo
-# PATH="$BIN:$PATH" emacs \
-#   --batch \
-#   -l ~/.emacs.d/init.el \
-#   --eval="(package-refresh-contents) "
-
-# echo "\
-# " >> ~/.emacs.d/init.el
-
-
+echo "🎉 Installation successful."

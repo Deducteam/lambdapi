@@ -10,7 +10,7 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-open Lplib open Extra
+open Lplib
 open Common
 open Core
 
@@ -59,17 +59,8 @@ let do_check_text ofmt ~doc =
     try
       Lp_doc.check_text ~doc
     with Common.Error.Fatal(_pos, msg, err_desc) ->
-      let loc : Pos.pos =
-        {
-          fname = Some(doc.uri);
-          start_line = 0;
-          start_col  = 0;
-          start_offset  = 0;
-          end_line = 0;
-          end_col = 0;
-          end_offset  = 0;
-        } in
-      (doc, Lp_doc.mk_error ~doc loc (msg ^ "\n" ^ err_desc))
+      (doc, Lp_doc.mk_error ~doc (Pos.file_start doc.uri)
+              (msg ^ "\n" ^ err_desc))
   in
   Hashtbl.replace doc_table doc.uri doc;
   Hashtbl.replace completed_table doc.uri doc;
@@ -131,9 +122,11 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
                   ]
   ]
 
+(* [file] is a plain filesystem path (as produced by
+   [Library.file_of_path]), never a URI. *)
 let mk_definfo file pos =
   `Assoc [
-      "uri", `String file
+      "uri", `String ("file://" ^ file)
     ; "range", LSP.mk_range pos
         ]
 
@@ -157,6 +150,7 @@ let do_symbols ofmt ~id params =
     let msg = LSP.mk_reply ~id ~result:`Null in
     LIO.send_json ofmt msg
   | Some ss ->
+    Pure.restore_time ss;
     let sym = Pure.get_symbols ss in
     let sym =
       Extra.StrMap.fold
@@ -228,13 +222,9 @@ let in_range ?loc (line, pos) =
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
-  List.find_opt (fun { ast; _ } ->
-      let loc = Pure.Command.get_pos ast in
-      let res = in_range ?loc (line,pos) in
-      let ls = Format.asprintf "%B l:%d p:%d / %a"
-                 res line pos Pos.pp loc in
-      LIO.log_error "get_node_at_pos" ("call: "^ls);
-      res
+  List.find_opt (fun { cmd; _ } ->
+      let loc = Pure.Command.get_pos cmd in
+      in_range ?loc (line,pos)
     ) doc.Lp_doc.nodes
 
 (** [get_first_error doc] returns the first error inferred from doc.logs *)
@@ -272,24 +262,6 @@ let rec get_goals ~doc ~line ~pos =
     | Some (v,_) -> Some v
 
 let get_logs ~doc ~line ~pos : string =
-  (* DEBUG LOG START *)
-  LIO.log_error "get_logs"
-    (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
-  let log_to_str ((sev, log), posopt) =
-    let pos_str =
-      match posopt with
-      | None -> "None"
-      | Some Pos.{start_line; start_col; _} ->
-          Printf.sprintf "(%d, %d)" start_line start_col
-    in
-    let log_str =
-      let len = String.length log in
-      Printf.sprintf "length: %d | %s" len (String.sub log 0 (min 30 len))in
-    Format.asprintf "element(severity:%d): %s -> %s\n " sev pos_str log_str
-  in
-  Lsp_io.log_error "get_logs"
-    (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
-  (* DEBUG LOG END *)
   let line = line+1 in
   let end_limit =
     match get_first_error doc with
@@ -318,20 +290,15 @@ let do_goals ofmt ~id params =
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
 
-let msg_fail hdr msg =
-  LIO.log_error hdr msg;
-  failwith msg
 
-let get_symbol : Range.point ->
-('a * 'b) RangeMap.t -> ('b * Range.t) option
+let get_symbol : Range.point -> 'a RangeMap.t -> ('a * Range.t) option
 = fun pos doc ->
 
   let open RangeMap in
 
   match (find pos doc) with
   | None -> None
-  | Some(interval, (_, token)) -> Some (token, interval)
-
+  | Some(interval, value) -> Some (value, interval)
 
 let do_definition ofmt ~id params =
 
@@ -341,134 +308,82 @@ let do_definition ofmt ~id params =
     let msg = LSP.mk_reply ~id ~result:`Null in
     LIO.send_json ofmt msg
   | Some ss ->
+    Pure.restore_time ss;
     let ln, pos = get_textPosition params in
 
-    (* Lines send by the client start at 0 *)
+    (* Lines sent by the client start at 0 *)
     let pt = Range.make_point (ln + 1) pos in
-    let sym_target =
-      match get_symbol pt doc.map with
-      | None -> "No symbol found"
-      | Some(token, _) -> token
-    in
-
-    (*Some printing in the log*)
-    LIO.log_error "token map" (RangeMap.to_string snd doc.map);
-    LIO.log_error "do_definition" sym_target;
-
-    let sym = Pure.get_symbols ss in
-    let map_pp : string =
-      Extra.StrMap.bindings sym
-      |> List.map (fun (key, sym) ->
-          Format.asprintf "{%s} / %s: @[%a@]"
-            key sym.Term.sym_name Pos.pp sym.sym_pos)
-      |> String.concat "\n"
-    in
-    LIO.log_error "symbol map" map_pp;
-
     let sym_info =
-      match StrMap.find_opt sym_target sym with
-      | None -> `Null
-      | Some s ->
-        match s.sym_pos with
+      match get_symbol pt doc.map with
+      | None ->
+        LIO.log_error "do_definition" "no symbol at point"; `Null
+      | Some (qid, _) ->
+        LIO.log_error "do_definition" (snd qid);
+        match Pure.find_sym ss qid with
         | None -> `Null
-        | Some pos ->
-        (* A JSON with the path towards the definition of the term
-          and its position is returned
-          /!\ : extension is fixed, only works for .lp files *)
-          mk_definfo
-            Library.(file_of_path s.Term.sym_path ^ lp_src_extension) pos
+        (* Ghost symbols (internal symbols used e.g. for unification
+           rules and string literals) have no user-facing definition
+           site one could jump to. *)
+        | Some s when s.Term.sym_path = Sign.Ghost.path -> `Null
+        | Some s ->
+          let file =
+            Library.(file_of_path s.Term.sym_path ^ lp_src_extension) in
+          let pos = Option.get (Pos.file_start file) s.sym_pos in
+          mk_definfo file pos
     in
     let msg = LSP.mk_reply ~id ~result:sym_info in
     LIO.send_json ofmt msg
 
 let hover_symInfo ofmt ~id params =
-
   let _, _, doc = grab_doc params in
   let ln, pos = get_textPosition params in
-
-  (* Positions sent by the client are one line late *)
   let pt = Range.make_point (ln + 1) pos in
-  LIO.log_error "searched point" (Range.point_to_string pt);
+  LIO.log_error "hover_symInfo" (Range.point_to_string pt);
 
-  (* The hovered token and its start/finish positions are stored *)
-  let sym_target, interval  =
-  match get_symbol pt doc.map with
-    | None ->
-      "No symbol found", (Range.make_interval pt pt)
-    (* VSCode highlights the token properly if the interval is extended to the
-       character next to it. This might be handled differently in other
-       editors in the future, but it is the most practical solution for
-       now. *)
-    | Some(token, range) ->
-      token, (Range.translate range 0 1)
+  let send_null () =
+    LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null)
   in
 
-  (* Some printing in the log *)
-  (* LIO.log_error "token map" (RangeMap.to_string snd doc.map);
-
-  LIO.log_error "hoverSymInfo" sym_target;
-  LIO.log_error "hoverSymInfo" (Range.interval_to_string interval); *)
-
   try
-    (* The information about the tokens is stored *)
-    let sym =
-      match doc.final with
-      | Some ss -> Pure.get_symbols ss
-      | None    -> raise (Error.fatal_no_pos("Root state is missing
-      probably because new_doc has raised exception")) in
+    let ss = match doc.final with
+      | Some ss -> ss
+      | None ->
+        raise (Error.fatal_no_pos "Final state is missing: the document \
+                                   was never successfully loaded") in
+    Pure.restore_time ss;
 
-    (* The start/finish positions are used to hover the full qualified term,
-      not just the token *)
-    let start = Range.interval_start interval
-    and finish = Range.interval_end interval in
+    match get_symbol pt doc.map with
+    | None -> send_null ()
+    | Some (qid, range) ->
+      match Pure.find_sym ss qid with
+      | None -> send_null ()
+      | Some sym_found ->
+        let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
+        let result = `Assoc [ "contents", `String sym_type
+                            ; "range", LSP.mk_range_of_interval range ] in
+        LIO.send_json ofmt (LSP.mk_reply ~id ~result)
+  with e ->
+    LIO.log_error "hover_symInfo" (Printexc.to_string e);
+    send_null ()
 
-    (* FIXME: types and typed conversion should take care of this *)
-    let sl, sc, fl, fc =
-      (Range.line start - 1),
-      (Range.column start - 1),
-      (Range.line finish - 1),
-      (Range.column finish - 1)
-    in
+let notify_fatal_error msg exn =
+  Lsp_io.notify_failure
+    (Printf.sprintf
+       "fatal error: %s\nuncaught exception: %s\nbacktrace:\n%s"
+       msg (Printexc.to_string exn) (Printexc.get_backtrace()))
 
-    let s = `Assoc["line", `Int sl; "character", `Int sc] in
-    let f = `Assoc["line", `Int fl; "character", `Int fc] in
-    let range = `Assoc["start", s; "end", f] in
-
-    let map_pp : string =
-      Extra.StrMap.bindings sym
-      |> List.map (fun (key, sym) ->
-          Format.asprintf "{%s} / %s: @[%a@]"
-            key sym.Term.sym_name Pos.pp sym.sym_pos)
-      |> String.concat "\n"
-    in
-    LIO.log_error "symbol map" map_pp;
-
-    let sym_found =
-      match StrMap.find_opt sym_target sym with
-      | None -> msg_fail "hover_SymInfo" "Sym not found"
-      | Some sym -> sym
-    in
-    let sym_type = Format.asprintf "%a" Core.Print.sym_type sym_found in
-    let result : J.t =
-      `Assoc [ "contents", `String sym_type; "range", range ] in
-    let msg = LSP.mk_reply ~id ~result in
-    LIO.send_json ofmt msg
-
-  with _ ->
-    let msg = LSP.mk_reply ~id ~result:`Null in
-    LIO.send_json ofmt msg
-
-let protect_dispatch p f x =
-  try f x
-  with
-  | exn ->
-    let bt = Printexc.get_backtrace () in
-    LIO.log_error ("[error] {"^p^"}") Printexc.(to_string exn);
-    LIO.log_error "[BT]" bt;
+(** [protect_dispatch fct_name fct params] runs function [fct] on parameters
+    [params] handling exceptions if any by notifying the user with appropriate
+    message and exception details. *)
+let protect_dispatch fct_name fct params =
+  try fct params
+  with exn ->
+    notify_fatal_error
+      (Printf.sprintf "function %s terminated unexpectedly" fct_name) exn;
     F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
-   theading model there is not a lot of difference yet; something to
+   threading model there is not a lot of difference yet; something to
    think for the future. *)
 let dispatch_message ofmt dict =
   let id     = oint_field "id" dict in
@@ -488,10 +403,12 @@ let dispatch_message ofmt dict =
       (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
-    hover_symInfo ofmt ~id params
+    (try hover_symInfo ofmt ~id params
+     with _ -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null))
 
   | "textDocument/definition" ->
-    do_definition ofmt ~id params
+    (try do_definition ofmt ~id params
+     with _ -> LIO.send_json ofmt (LSP.mk_reply ~id ~result:`Null))
 
   | "proof/goals" ->
     do_goals ofmt ~id params
@@ -524,51 +441,47 @@ let process_input ofmt (com : J.t) =
   with
   | U.Type_error (msg, obj) ->
     LIO.log_object msg obj
-  | exn ->
+  | Not_found ->
     let bt = Printexc.get_backtrace () in
+    LIO.log_error "process_input" "Document not found!";
     LIO.log_error "[BT]" bt;
-    LIO.log_error "process_input" (Printexc.to_string exn);
-    (*Send an "empty" answer with Null goals when exception occurs*)
-    let id     = oint_field "id" (U.to_assoc com) in
-    let goals = None in
-    let logs = "" in
-    let result = LSP.json_of_goals goals ~logs in
-    let msg = LSP.mk_reply ~id ~result in
-    LIO.send_json ofmt msg
+  | exn ->
+    notify_fatal_error "dispatch_message terminated unexpectedly" exn;
+    (* Send a null reply so the client doesn't hang *)
+    let id = oint_field "id" (U.to_assoc com) in
+    if id <> 0 then begin
+      let msg = LSP.mk_reply ~id ~result:`Null in
+      LIO.send_json ofmt msg
+    end
 
 let main std log_file =
-
   Printexc.record_backtrace true;
   LSP.std_protocol := std;
-
   let oc = F.std_formatter in
-
   let debug_oc = open_out_gen [Open_append;Open_creat] 511 log_file in
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
-
   (* XXX: Capture better / per sentence. *)
-  (* let lp_oc = open_out "log-lp.txt" in *)
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
   Error.err_fmt := lp_fmt;
-  (* Console.verbose := 4; *)
-
+  (* Editors display the proof state themselves, so do not attach it to
+     tactic failures. *)
+  Handle.Proof.state_on_error := false;
   let rec loop () =
     let com = LIO.read_request stdin in
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
-    (* flush lp_oc ;*)
     loop ()
   in
   try loop ()
-  with exn ->
-    let bt = Printexc.get_backtrace () in
-    LIO.log_error "[fatal error]" Printexc.(to_string exn);
-    LIO.log_error "[BT]" bt;
+  with
+  | End_of_file ->
+    LIO.log_error "main" "Connection closed by client. Stoping the server"
+  | exn ->
+    notify_fatal_error "server crashed unexpectedly" exn;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
-    (* close_out lp_oc; *)
     close_out debug_oc
 
 let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"

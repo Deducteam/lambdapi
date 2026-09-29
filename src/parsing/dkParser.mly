@@ -49,6 +49,7 @@
     let symbol lps p_sym_mod i ps p_sym_typ p_sym_trm =
       make_pos lps (P_symbol
         { p_sym_mod
+        ; p_sym_kw = None (* Dedukti has no "symbol" keyword. *)
         ; p_sym_nam = p_ident i
         ; p_sym_arg = List.map (fun (i,t) -> params i (Some t)) ps
         ; p_sym_typ

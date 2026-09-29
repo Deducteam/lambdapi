@@ -45,7 +45,7 @@ graph {
        1 -- 12 [label=<z<sub>0</sub>>];
        13 [label="0" shape="box"];
        12 -- 13 [label=<*>];
-       14 [label="($x ≡ z) ; ($y ≡ z)"];
+       14 [label="$x ≡ z ; $y ≡ z"];
        13 -- 14 [label=<*>];
        15 [label="1"];
        0 -- 15 [label=<El<sub>1</sub>>];
@@ -73,7 +73,7 @@ graph {
        25 -- 26 [label=<*>];
        27 [label=< ⊆ FV(3)> shape="diamond"];
        26 -- 27 [label=<*>];
-       28 [label="($b ≡ El $eb) ; (($a ≡ El $ea) ; ($c ≡ arrow $ea $eb))"];
+       28 [label="$b ≡ El $eb ; $a ≡ El $ea ; $c ≡ arrow $ea $eb"];
        27 -- 28 [label=<✓>];
        29 [label=<!>];
        27 -- 29 [label="!"];
@@ -99,7 +99,7 @@ graph {
        38 -- 39 [label=<+<sub>2</sub>>];
        40 [label="0" shape="box"];
        39 -- 40 [label=<*>];
-       41 [label="($x ≡ z) ; ($y ≡ z)"];
+       41 [label="$x ≡ z ; $y ≡ z"];
        40 -- 41 [label=<*>];
        42 [label="0" shape="box"];
        38 -- 42 [label=<fst<sub>2</sub>>];
@@ -123,7 +123,7 @@ graph {
        50 -- 51 [label=<*>];
        52 [label="0" shape="box"];
        51 -- 52 [label=<✓>];
-       53 [label="($b ≡ El $eb) ; (($a ≡ El $ea) ; ($c ≡ arrow $ea $eb))"];
+       53 [label="$b ≡ El $eb ; $a ≡ El $ea ; $c ≡ arrow $ea $eb"];
        52 -- 53 [label=<*>];
        54 [label=<!>];
        51 -- 54 [label="!"];

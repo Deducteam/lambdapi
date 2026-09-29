@@ -37,7 +37,7 @@ Examples of developments made with Lambdapi:
 
    about.rst
    getting_started.rst
-   options.rst
+   cli.rst
 
 .. toctree::
    :maxdepth: 2

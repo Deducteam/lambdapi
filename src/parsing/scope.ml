@@ -107,8 +107,15 @@ let scope_iden : ?find_sym:find_sym ->
   in
   find_qid ?find_sym prt prv ss env qid
 
-(** [fresh_patt name ts] creates a unique pattern variable applied to
-   [ts]. [name] is used as suffix if distinct from [None]. *)
+(** [fresh_patt nopt ts] creates a unique pattern variable applied to
+    [ts]. [nopt] is an optional name. If None, we use the pattern index as
+    name. /!\ To check whether a critical pair is typable, Lcr converts 1) a
+    pattern variable of index i and name n to a fresh meta m, 2) a meta m to a
+    fresh symbol of name n, 3) some unsolved equations into rewrite rules and,
+    finally, 4) a generated symbol n back to the pattern variable of index i
+    and name n it is coming from. Step 3) uses Term.cmp which compare symbols
+    by their names. It is therefore important that the mapping from pattern
+    variable indexes to pattern or symbol names is injective. *)
 let fresh_patt : lhs_data -> string option -> term array -> term =
   fun data nopt ts ->
   let fresh_index () =
@@ -128,7 +135,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       mk_Patt (Some i, name, ts)
   | None ->
       let i = fresh_index () in
-      mk_Patt (Some i, "", ts)
+      mk_Patt (Some i, string_of_int i, ts)
 
 (* used in desugaring decimal notations *)
 let strint = Array.init 11 string_of_int
@@ -189,8 +196,8 @@ and scope_parsed : ?find_sym:find_sym ->
 
 (** [add_impl ~find_sym k md ss env loc h impl args] scopes [args] and returns
     the application of [h] to the scoped arguments. [impl] is a boolean list
-    described the implicit arguments. Implicit arguments are added as
-    underscores before scoping. *)
+    describing what are the implicit arguments. Implicit arguments are added
+    as underscores before scoping. *)
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
@@ -325,13 +332,12 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Wild, M_Patt) -> mk_Wild
   | (P_Wild, (M_RHS _|M_Term _)) -> mk_Plac typ
 
-  | (P_Meta({elt;pos} as mk,ts),
+  | (P_Meta({elt;pos},ts),
     (M_Term {m_term_meta_of_key;_} | M_SearchPatt(m_term_meta_of_key,_))) -> (
       match m_term_meta_of_key elt with
       | None ->
-          fatal pos "Metavariable %a not found among generated variables: \
-                     metavariables can only be created by the system."
-            Pretty.meta_ident mk
+          fatal pos "Metavariable %d not found among generated variables: \
+                     metavariables can only be created by the system." elt
       | Some m -> mk_Meta (m, Array.map (scope ?find_sym (k+1) md ss env) ts))
   | (P_Meta(_), _) -> fatal pos "Metavariables are not allowed here."
 

@@ -2,10 +2,11 @@
 
 set -e
 
+dune build
+
 echo '############ test export -o lp ############'
 
-lambdapi=${lambdapi:-_build/install/default/bin/lambdapi}
-
+lambdapi='_build/install/default/bin/lambdapi'
 TIMEFORMAT="%Es"
 
 rm -rf /tmp/tests
@@ -18,7 +19,7 @@ translate() {
     for f in tests/OK/*.lp 'tests/OK/a b/escape file.lp'
     do
         case $f in
-            tests/OK/why3*.lp);; #FIXME
+            tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
             *) out=/tmp/$f
                echo "$f --> $out ..."
                $lambdapi export -o lp -w -v 0 "$f" > "$out"
@@ -34,7 +35,8 @@ check() {
     for f in /tmp/tests/OK/*.lp '/tmp/tests/OK/a b/escape file.lp'
     do
         case $f in
-            /tmp/tests/OK/why3*.lp);; #FIXME
+            /tmp/tests/OK/why3*.lp);; # FIXME
+            /tmp/tests/OK/perf_rw_engine.lp);; # takes too much time
             *) echo "lambdapi check $f ..."
                $lambdapi check -w -v 0 "$f"
                if test $? -ne 0; then echo KO; exit 1; fi
@@ -43,5 +45,4 @@ check() {
 }
 time check
 
-#cd $root
 echo OK

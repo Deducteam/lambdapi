@@ -59,7 +59,7 @@ Commenting regions
 ^^^^^^^^^^^^^^^^^^
 
 Lambdapi handles single-line and multi-line comments with ``//`` and 
-``/* ... */`` respectively. To comment a region in Emacs, select it and use
+``/* … */`` respectively. To comment a region in Emacs, select it and use
 ``M-;``.
 
 Entering unicode
@@ -172,7 +172,7 @@ Other relevant packages
   configure correctly Emacs’ unicode fonts
 * `rainbow-delimiters <https://github.com/Fanael/rainbow-delimiters>`__:
   to appreciate having a lot of parentheses
-* paredit: to help keeping the parentheses balanced
+* `paredit`_: to help keeping the parentheses balanced
 * `quickrun`_: for code evaluation
 
 To have everything configured using `use-package`_, use
@@ -193,3 +193,4 @@ To have everything configured using `use-package`_, use
 .. _opam: http://opam.ocaml.org
 .. _highlight: https://www.emacswiki.org/emacs/HighlightLibrary
 .. _math-symbol-lists: https://elpa.gnu.org/packages/math-symbol-lists.html
+.. _paredit: https://paredit.org/

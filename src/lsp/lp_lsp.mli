@@ -13,3 +13,4 @@
 val default_log_file : string
 
 val main : bool -> string -> unit
+(** [main standard_lsp log_file] starts the LSP server. *)

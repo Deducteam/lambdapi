@@ -205,12 +205,16 @@ let rec free_vars (t:term): VarSet.t =
         (fun t acc -> VarSet.union acc (free_vars t)) ts VarSet.empty
   | _ -> VarSet.empty
 
-(** [count_products norm a] returns the product arity of the term [a],
-    reducing codomains with [norm] if needed. *)
-let count_products : (ctxt -> term -> term) -> ctxt -> term -> int =
-  fun norm c ->
-  let rec count is_norm acc t =
-    match unfold t with
-    | Prod(_,b) -> count false (acc + 1) (subst b mk_Kind)
-    | _ -> if is_norm then acc else count true acc (norm c t)
-  in count false 0
+(** [count_products impl norm a] returns the product arity of the term [a],
+    not counting implicit arguments, reducing codomains with [norm] if
+    needed. *)
+let count_products :
+  ?impl:bool list  -> (ctxt -> term -> term) -> ctxt -> term -> int =
+  fun ?(impl=[]) norm c ->
+  let rec count is_norm impl acc t =
+    match unfold t, impl with
+    | Prod(_,b), [] -> count false [] (acc + 1) (subst b mk_Kind)
+    | Prod(_,b), true::impl -> count false impl acc (subst b mk_Kind)
+    | Prod(_,b), false::impl -> count false impl (acc + 1) (subst b mk_Kind)
+    | _ -> if is_norm then acc else count true impl acc (norm c t)
+  in count false impl 0

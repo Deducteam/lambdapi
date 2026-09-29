@@ -22,7 +22,7 @@ module LSP = Lsp_base
 let lp_logger = Buffer.create 100
 
 type doc_node =
-  { ast   : Pure.Command.t
+  { cmd   : Pure.Command.t
   ; exec  : bool
   (*; tactics : Proof.Tactic.t list*)
   ; goals : (Goal.info list * Pos.popt) list
@@ -54,6 +54,18 @@ let buf_get_and_clear buf =
   let res = Buffer.contents buf in
   Buffer.clear buf; res
 
+(* Format an error message with its position for logging. *)
+let format_error_msg error_msg error_pos =
+  let form = Format.formatter_of_buffer lp_logger in
+  Color.update_with_color form;
+  Format.fprintf (form) (Color.red "[%s] %s")
+    (Pos.popt_to_string
+      ~print_dirname:false
+      ~print_fname:false
+      (Some error_pos)) error_msg;
+  Format.pp_print_flush form ();
+  buf_get_and_clear lp_logger
+
 let process_pstep (pstate,diags,logs) tac nb_subproofs =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
@@ -63,7 +75,10 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
     let qres = match qres with None -> "OK" | Some x -> x in
-    pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    (* Show the success hint on the tactic's leading keyword only. This
+       tuple also anchors the goals panel (see [get_goals]), whose lookup
+       reads the start of the position: the start must not move. *)
+    pstate, (Tactic.keyword_pos tac, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     let goals = Some (current_goals pstate) in
@@ -83,27 +98,32 @@ let get_goals dg_proof =
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 
-let process_cmd _file (nodes,st,dg,logs) ast =
+let process_cmd _file (nodes,st,dg,logs) cmd =
   let open Pure in
   (* let open Timed in *)
   (* XXX: Capture output *)
   (* Console.out_fmt := lp_fmt;
    * Console.err_fmt := lp_fmt; *)
-  let cmd_loc = Command.get_pos ast in
-  let hndl_cmd_res = handle_command st ast in
+  let cmd_loc = Command.get_pos cmd in
+  let hndl_cmd_res = handle_command st cmd in
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
-    let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, qres, None in
+    let nodes = { cmd; exec = true; goals = [] } :: nodes in
+    (* Show the success hint on the command's introducing keyword only. *)
+    let ok_diag = Command.keyword_pos cmd, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
-    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
-    let goals = get_goals dg_proof in
-    let nodes = { ast; exec = true; goals } :: nodes in
+    (* Initial goals stay anchored at the symbol, for the goals panel. *)
+    let goals =
+      get_goals ((thm_loc, 4, "OK", Some start_goals) :: dg_proof) in
+    let nodes = { cmd; exec = true; goals } :: nodes in
+    (* Visible success hint on the "symbol" keyword, not on the symbol
+       name. *)
+    let dg_proof = (Command.keyword_pos cmd, 4, "OK", None) :: dg_proof in
     let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, qres)   ->
@@ -122,22 +142,28 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     in
     nodes, st, dg_proof @ dg, logs
 
-  | Cmd_Error(loc, msg) ->
-    let nodes = { ast; exec = false; goals = [] } :: nodes in
-    let cmd_loc, loc, diag, log = match cmd_loc, loc with
+  | Cmd_Error(err_loc, err_msg) ->
+    let nodes = { cmd; exec = false; goals = [] } :: nodes in
+    let loc, diag_msg, log_msg = match cmd_loc, err_loc with
+    | None, _ -> assert false
+    | _, None -> assert false
+    (* in case there is no error position, we use the command position. *)
+    | _, Some None -> cmd_loc, err_msg, err_msg
     | Some l, Some Some l' ->
         if l.fname = l'.fname then
-          (* if error in the same file, use the precise location *)
-          Some l', Some l', msg, Pos.popt_to_string (Some l') ^ msg
+          (* if the error is in the same file as the command,
+            we set the diag/log position to the error position
+            and add the error position in the log message *)
+          let log_msg = format_error_msg err_msg l' in
+          Some l', err_msg, log_msg
         else
-          (* else, use the location of the command *)
-          cmd_loc, Some l', Pos.popt_to_string (Some l') ^ "\n" ^ msg
-            , Pos.popt_to_string (Some l') ^ "\n" ^ msg
-    (* Otherwise,
-      cmd_loc doesn't change and loc is : option_default loc cmd_loc *)
-    | _, Some l' -> cmd_loc, l', msg, Pos.popt_to_string (l') ^ "\n" ^ msg
-    | _, None -> cmd_loc, cmd_loc, msg, msg in
-    nodes, st, (cmd_loc, 1, diag, None) :: dg, ((1, log), loc) :: logs
+          (* otherwise we set the diag/log position to the command position
+            and add the error position to both the diag and log messages *)
+          cmd_loc,
+          Pos.popt_to_string (Some l') ^ "\n" ^ err_msg,
+          Pos.popt_to_string (Some l') ^ "\n" ^ err_msg
+    in
+    nodes, st, (loc, 1, diag_msg, None) :: dg, ((1, log_msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root, logs =
@@ -148,17 +174,7 @@ let new_doc ~uri ~version ~text =
       let path = String.sub uri 7 (String.length uri - 7) in
       Some(Pure.initial_state path), []
     with Error.Fatal(_pos, msg, err_desc) ->
-      let loc : Pos.pos =
-        {
-          fname = Some(uri);
-          start_line = 0;
-          start_col  = 0;
-          start_offset  = 0;
-          end_line = 0;
-          end_col = 0;
-          end_offset  = 0
-        } in
-      (None, [(1, msg ^ "\n" ^ err_desc), Some(loc)])
+      (None, [(1, msg ^ "\n" ^ err_desc), Some (Pos.file_start uri)])
   in
   { uri;
     text;
@@ -207,7 +223,10 @@ let check_text ~doc =
   let logs, diags =
     match error with
     | None -> logs, diags
-    | Some(pos,msg) -> logs @ [((1, msg), Some pos)], diags @ [pos,1,msg,None]
+    | Some(error_pos,error_msg) ->
+      let log_msg = format_error_msg error_msg error_pos in
+      logs @ [((1, log_msg),Some error_pos)],
+      diags @ [error_pos,1,error_msg,None]
   in
   let map = Pure.rangemap cmds in
   let doc = { doc with nodes; final=Some(final); map; logs } in

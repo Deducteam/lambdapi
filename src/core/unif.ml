@@ -372,7 +372,7 @@ let solve : problem -> unit = fun p ->
   p := {!p with to_solve};
 
   (* We first try without normalizing wrt user-defined rules. *)
-  let tags = [`NoRw; `NoExpand] in
+  let tags = Eval.[NoRw;NoExpand] in
   let t1 = Eval.whnf ~tags c t1 and t2 = Eval.whnf ~tags c t2 in
   if Logger.log_enabled () then log "solve %a" constr (c,t1,t2);
   if Eval.pure_eq_modulo ~tags c t1 t2 then

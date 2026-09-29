@@ -7,8 +7,8 @@ symbol =_refl {T} (x : ε T) : ε (x = x);
 symbol =_ind {T} (x y : ε T) : ε (x = y) → Π P, ε (P y) → ε (P x);
 
 builtin "Prop"  ≔ Type;
-builtin "P"     ≔ ε;
-builtin "T"     ≔ ε;
+builtin "Prf"     ≔ ε;
+builtin "El"     ≔ ε;
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;
 builtin "eqind" ≔ =_ind;

@@ -212,7 +212,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
       match !mapping with
       | None       -> mapping := Some(mp, fp)
       | Some(_, p) ->
-          if String.(length p < length fp) then mapping := Some(mp, p)
+          if String.(length p < length fp) then mapping := Some(mp, fp)
   in
   LibMap.iter f !lib_mappings;
   (* Fail if there is none. *)
@@ -220,7 +220,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
     | None ->
-        fatal_msg "%s cannot be mapped under the library root.@." fname;
+        fatal_msg "\"%s\" cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in

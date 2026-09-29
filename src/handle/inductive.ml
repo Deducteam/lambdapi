@@ -32,7 +32,7 @@ type config =
 let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   let builtin = Builtin.get ss pos [] in
   { symb_Prop = builtin "Prop"
-  ; symb_prf  = builtin "P" }
+  ; symb_prf  = builtin "Prf" }
 
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)
@@ -294,8 +294,6 @@ let iter_rec_rules :
       popt -> inductive -> var array -> ind_pred_map
       -> (p_rule -> unit) -> unit =
   fun pos ind_list vs ind_pred_map f ->
-  (* Rules are declared after recursor declarations. *)
-  let rules_pos = shift (List.length ind_list + 1) (pos_end pos) in
   let n = Array.length vs in
 
   (* variable name used for a recursor case argument *)
@@ -325,6 +323,8 @@ let iter_rec_rules :
     P.appl (P.appl_wild head (List.length ts - n)) t
   in
 
+  let rule_pos = shift 3 pos in (* after types, constructors and recursors *)
+
   (* [gen_rule_cons ind_sym rec_sym cons_sym] generates the p_rule of the
      recursor [rec_sym] of the inductive type [ind_sym] for the constructor
      [cons_sym]. *)
@@ -347,7 +347,7 @@ let iter_rec_rules :
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      Pos.make rules_pos (arec ind_sym ts cons_arg, rhs)
+      Pos.make rule_pos (arec ind_sym ts cons_arg, rhs)
     in
     fold_cons_type pos ind_pred_map "" ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom

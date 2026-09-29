@@ -2,11 +2,13 @@
 
 constant symbol Set : TYPE;
 
+builtin "Set" ≔ Set;
+
 // Interpretation of set codes in TYPE
 
 injective symbol τ : Set → TYPE;
 
-builtin "T" ≔ τ;
+builtin "El" ≔ τ;
 
 // Propositional logic
 
@@ -18,7 +20,7 @@ builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE;
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 // Implication
 

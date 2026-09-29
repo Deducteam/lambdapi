@@ -8,17 +8,21 @@ builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // `p
 
-builtin "P" ≔ π;
+builtin "Prf" ≔ π;
 
 // true
 
 constant symbol ⊤ : Prop; // \top
+
+builtin "top" ≔ ⊤;
 
 constant symbol ⊤ᵢ : π ⊤;
 
 // false
 
 constant symbol ⊥ : Prop; // \bot
+
+builtin "bot" ≔ ⊤;
 
 constant symbol ⊥ₑ [p] : π ⊥ → π p;
 
@@ -27,6 +31,8 @@ constant symbol ⊥ₑ [p] : π ⊥ → π p;
 constant symbol ⇒ : Prop → Prop → Prop; // =>
 
 notation ⇒ infix right 5;
+
+builtin "imp" ≔ ⇒;
 
 rule π ($p ⇒ $q) ↪ π $p → π $q;
 
@@ -41,11 +47,15 @@ symbol ¬ p ≔ p ⇒ ⊥; // ~~ or \neg
 
 notation ¬ prefix 35;
 
+builtin "not" ≔ ¬;
+
 // conjunction
 
 constant symbol ∧ : Prop → Prop → Prop; // /\ or \wedge
 
 notation ∧ infix right 7;
+
+builtin "and" ≔ ∧;
 
 constant symbol ∧ᵢ [p q] : π p → π q → π (p ∧ q);
 symbol ∧ₑ₁ [p q] : π (p ∧ q) → π p;
@@ -57,6 +67,8 @@ constant symbol ∨ : Prop → Prop → Prop; // \/ or \vee
 
 notation ∨ infix right 6;
 
+builtin "or" ≔ ∨;
+
 constant symbol ∨ᵢ₁ [p q] : π p → π (p ∨ q);
 constant symbol ∨ᵢ₂ [p q] : π q → π (p ∨ q);
 symbol ∨ₑ [p q r] : π (p ∨ q) → (π p → π r) → (π q → π r) → π r;
@@ -66,6 +78,8 @@ symbol ∨ₑ [p q r] : π (p ∨ q) → (π p → π r) → (π q → π r) →
 symbol ⇔ p q ≔ (p ⇒ q) ∧ (q ⇒ p); // \Leftrightarrow
 
 notation ⇔ infix right 5;
+
+builtin "eqv" ≔ ⇔;
 
 opaque symbol ⇔_refl [p] : π (p ⇔ p) ≔
 begin
