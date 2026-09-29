@@ -262,10 +262,10 @@ let command oc {elt; pos} =
 
 let commands oc = Stream.iter (command oc)
 
-let handle_requires cs =
+let handle_requires cmds =
   let rec handle_next_elt() =
-    let x = Stream.next cs in
-    match x.elt with
+    let cmd = Stream.next cmds in
+    match cmd.elt with
     | P_require(b, ps) ->
         List.iter (req_mod stdout) ps;
         begin
@@ -274,21 +274,25 @@ let handle_requires cs =
           | _ -> ()
         end;
         handle_next_elt()
-    | _ -> Some x
+    | _ -> Some cmd
   in
   try handle_next_elt() with Stream.Failure -> None
 
-let print : string -> p_commands -> unit = fun file cs ->
+let set_option oc s =
+  string oc "set_option "; string oc s; string oc " false\n"
+
+let print : string -> p_commands -> unit = fun file cmds ->
   let oc = stdout in
-  Option.iter (fun s -> string oc ("import "^s^"\n")) !Stt.require;
-  match handle_requires cs with
+  Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
+  match handle_requires cmds with
   | None -> ()
-  | Some c ->
-    string oc "\nset_option linter.style.header false\n";
+  | Some cmd ->
+    List.iter (set_option oc) ["linter.style.header"
+                              ;"linter.style.missingEnd"
+                              ;"linter.unusedVariables"
+                              ;"linter.style.longLine"];
+    string oc "\n";
     List.iter (open_mod oc) (List.rev !openings);
     string oc ("\nnamespace "^Filename.chop_extension file^"\n");
-    string oc "set_option linter.style.missingEnd false\n";
-    string oc "set_option linter.unusedVariables false\n";
-    string oc "set_option linter.style.longLine false\n\n";
-    command oc c;
-    commands oc cs
+    command oc cmd;
+    commands oc cmds
