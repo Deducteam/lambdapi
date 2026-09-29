@@ -158,7 +158,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (constructor (args ":" term))
       (constructors (constructor) (constructors "|" constructors))
       ;; FIX ME
-      ;; (inductive (inductiv_term ":" term "≔" constructors))
+      (inductive (ident args ":" term "≔" constructors))
 
 
       (unif-rule-rhs
