@@ -113,6 +113,7 @@
     (modify-syntax-entry ?\n "> " table)
     (modify-syntax-entry ?. "w" table)
     (modify-syntax-entry ?_ "w" table)
+    (modify-syntax-entry ?' "_" table)
     table)
   "Syntax table for lambdapi-mode.")
 
