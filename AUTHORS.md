@@ -8,6 +8,7 @@ Active Contributors
 - Bruno Barras (2025-)
 - Jean-Paul Bodeveix (2026-)
 - Ciarán Dunne (2026-)
+- Iván Martínez Comas (2026-)
 
 Past Contributors
 =================
