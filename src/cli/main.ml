@@ -254,7 +254,7 @@ let opt_timeout =
   as the specified number of seconds is elapsed.|} }
 
 let opt_too_long =
-  { opt_name = "--too-long"
+  { opt_name = "--too-long="
   ; opt_short = None
   ; opt_handle = Suffix("FLOAT",
                     fun v -> Handle.Command.too_long := float_of_string v)
@@ -270,18 +270,18 @@ let opt_no_sr_check =
       "Disable the verification that rewrite rules preserve typing." }
 
 let opt_db =
-  { opt_name = "--db="
+  { opt_name = "--db"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> Tool.Indexing.the_dbpath := v)
+  ; opt_handle = Next("FILE", fun v -> Tool.Indexing.the_dbpath := v)
   ; opt_desc =
       "Index file to use for search queries (default is ~/.LPSearch.db)." }
 
 let rule_files = ref []
 
 let opt_rules =
-  { opt_name = "--rules="
+  { opt_name = "--rules"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> rule_files := v::!rule_files)
+  ; opt_handle = Next("FILE", fun v -> rule_files := v::!rule_files)
   ; opt_desc =
 {|File holding rewriting rules applied before indexing. Use this option
   multiple times to fetch rules from several files.|} }
@@ -514,9 +514,9 @@ let opt_output =
 let encoding = ref None
 
 let opt_encoding =
-  { opt_name = "--encoding="
+  { opt_name = "--encoding"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
+  ; opt_handle = Next("FILE",
                       fun s -> check_output [SttCoq;SttLean];
                       encoding := Some s)
   ; opt_desc =
@@ -526,9 +526,9 @@ let opt_encoding =
 let mapping = ref None
 
 let opt_mapping =
-  { opt_name = "--mapping="
+  { opt_name = "--mapping"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
+  ; opt_handle = Next("FILE",
                       fun s -> check_output [SttCoq;SttLean];
                       mapping := Some s)
   ; opt_desc =
@@ -539,10 +539,10 @@ let opt_mapping =
 let requiring = ref None
 
 let opt_requiring =
-  { opt_name = "--requiring="
+  { opt_name = "--requiring"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
+      Next("MODULES",
              fun s ->
                 check_output [SttCoq;RawCoq;SttLean;RawLean];
                 requiring := Some s)
@@ -552,10 +552,10 @@ let opt_requiring =
 let renaming = ref None
 
 let opt_renaming =
-  { opt_name = "--renaming="
+  { opt_name = "--renaming"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
+      Next("FILE",
              fun s ->
                 check_output [SttCoq;RawCoq;SttLean;RawLean];
                 renaming := Some s)
@@ -565,10 +565,10 @@ let opt_renaming =
 
 let tvs_file = ref None
 let opt_arities =
-  { opt_name = "--arities="
+  { opt_name = "--arities"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE.tvs",
+      Next("FILE.tvs",
              fun s -> check_output [SttLean];
              tvs_file := Some s)
   ; opt_desc =
@@ -893,7 +893,7 @@ let cmd_parse =
 let require = ref []
 
 let opt_require =
-  { opt_name = "--require="
+  { opt_name = "--require"
   ; opt_short = None
   ; opt_handle = Suffix("FILE", fun s -> require := s::!require)
   ; opt_desc = "FILE to be required before starting the search." }
@@ -977,17 +977,17 @@ let cmd_uninstall =
 let header = ref None
 
 let opt_header =
-  { opt_name = "--header="
+  { opt_name = "--header"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> header := Some s)
+  ; opt_handle = Next("FILE", fun s -> header := Some s)
   ; opt_desc = "html file to use as header of the server web page." }
 
 let url = ref ""
 
 let opt_url =
-  { opt_name = "--url="
+  { opt_name = "--url"
   ; opt_short = None
-  ; opt_handle = Suffix("STRING", fun s -> url := s)
+  ; opt_handle = Next("STRING", fun s -> url := s)
   ; opt_desc = "Path prefixes accepted by the server." }
 
 let port = ref 8080
