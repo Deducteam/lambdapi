@@ -90,7 +90,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              (ident)
              ("?" ident "[" env "]")
              ("$" ident "[" env "]")
-             ("`" ident args "," term)
+;;             ("`" ident args "," term)
              (term "→" term)
              ("λ" args "," term)
              ("λ" ident ":" term "," term)
@@ -198,10 +198,10 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
   (smie-prec2->grammar
    (smie-bnf->prec2
     lambdapi-smie-bnf
-;;    '((assoc ":") (assoc "|"))
-;;    '((assoc "with"))
-;;    '((assoc ";") (assoc "↪"))
-;;    '((assoc "coerce_rule") (assoc "↪"))
+    '((assoc "|"))
+    '((assoc "with"))
+    '((assoc ";"))
+    '((assoc "coerce_rule") (assoc "↪"))
     ;; FIX ME : Check priority rules
     '((assoc "≡") (assoc "↪"))
     '((assoc "unif_rule") (assoc "≡"))
@@ -222,80 +222,13 @@ The default lexer is used because the syntax is primarily made of sexps."
   (pcase (cons kind token)
     (`(:elem . basic) 0)
 
-    (`(:list-intro . ,(or "require" "open")) t)
-    (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
-
-    ;; tactics
-    (`(:before . "all_hyps") `(column . ,lambdapi-indent-basic))
-    (`(:before . "apply") `(column . ,lambdapi-indent-basic))
-    (`(:before . "assume") `(column . ,lambdapi-indent-basic))
-    (`(:before . "assumption") `(column . ,lambdapi-indent-basic))
-    (`(:before . "change") `(column . ,lambdapi-indent-basic))
-    (`(:before . "eval") `(column . ,lambdapi-indent-basic))
-    (`(:before . "fail") `(column . ,lambdapi-indent-basic))
-    (`(:before . "first_hyp") `(column . ,lambdapi-indent-basic))
-    (`(:before . "focus") `(column . ,lambdapi-indent-basic))
-    (`(:before . "generalize") `(column . ,lambdapi-indent-basic))
-    (`(:before . "have") `(column . ,lambdapi-indent-basic))
-    (`(:before . "induction") `(column . ,lambdapi-indent-basic))
-    (`(:before . "orelse") `(column . ,lambdapi-indent-basic))
-    (`(:before . "refine") `(column . ,lambdapi-indent-basic))
-    (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
-    (`(:before . "remove") `(column . ,lambdapi-indent-basic))
-    (`(:before . "repeat") `(column . ,lambdapi-indent-basic))
-    (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
-    (`(:before . "set") `(column . ,lambdapi-indent-basic))
-    (`(:before . "simplify") `(column . ,lambdapi-indent-basic))
-    (`(:before . "solve") `(column . ,lambdapi-indent-basic))
-    (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
-    (`(:before . "try") `(column . ,lambdapi-indent-basic))
-    (`(:before . "why3") `(column . ,lambdapi-indent-basic))
-
-    (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
-    (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
-
-    (`(:before . ,(or "assert" "assertnot" "compute"
-                      "print" "proofterm" "search" "type"))
-     (lambdapi--query-indent))
-
-    (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))
-
-    (`(,(or :before :list-intro) . ,(or "≔" ":")) (smie-rule-separator kind))
-    (`(:after . ,(or "≔" ":")) lambdapi-indent-basic)
-
-    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
+;;    (`(:list-intro . "begin") t)
     (`(:after . "begin") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "with" "coerce_rule" "unif_rule"))
-     (* 2 lambdapi-indent-basic))
-    (`(:after . "in") (smie-rule-parent))
-    (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "all_hyps" "apply" "assume" "assumption" "change"
-                     "eval" "fail" "focus" "first_hyp" "generalize" "have"
-                     "induction" "refine" "reflexivity" "remove" "rewrite"
-                     "set" "simplify" "solve" "symmetry" "why3"))
-     lambdapi-indent-basic)
-
-    ;; Toplevel
-    (`(:before . "associative") '(column . 0))
-    (`(:before . "begin") '(column . 0))
-    (`(:before . "builtin") '(column . 0))
-    (`(:before . "coerce_rule") '(column . 0))
-    (`(:before . "commutative") '(column . 0))
-    (`(:before . "constant") '(column . 0))
-    (`(:before . "debug") '(column . 0))
-    (`(:before . "flag") '(column . 0))
-    (`(:before . "inductive") '(column . 0))
-    (`(:before . "injective") '(column . 0))
-    (`(:before . "notation") '(column . 0))
-    (`(:before . "open") '(column . 0))
-    (`(:before . "private") '(column . 0))
-    (`(:before . "protected") '(column . 0))
-    (`(:before . "rule") '(column . 0))
-    (`(:before . "require") '(column . 0))
-    (`(:before . "symbol") '(column . 0))
-    (`(:before . "unif_rule") '(column . 0))
-    (`(:before . "verbose") '(column . 0))
-    (`(:before . "with") '(column . 0))))
+    (`(:after . ":") lambdapi-indent-basic)
+    (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
+    (`(:before . "with") (smie-rule-parent))
+;;    (`(:before . "with") '(column . 0))
+))
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here
