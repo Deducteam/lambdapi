@@ -27,13 +27,13 @@ let typ_arity h =
       end
   | _ -> 0
 
-let is_id_Set id =
+let is_Set id =
   match QidMap.find_opt id.elt !encoding with
   | Some Set -> true
   | _ -> false
 
 let is_typ_Set = function
-  | Some{elt=P_Iden(id,_);_} -> is_id_Set id
+  | Some{elt=P_Iden(id,_);_} -> is_Set id
   | _ -> false
 
 let nonempty oc =
@@ -140,10 +140,36 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
-let req_mod oc p = string oc "import "; path oc p; string oc "\n"
-let open_mod oc p = string oc "open "; path oc p; string oc "\n"
+let req_mod oc p = string oc "import "; path oc p; newline oc
+let open_mod oc p = string oc "open "; path oc p; newline oc
 
 let openings = ref []
+
+(* [is_typ_constr t = true] iff [t] is of the form [Set -> .. -> Set]. *)
+let rec is_typ_constr {elt;_} =
+  match elt with
+  | P_Iden(id,_) -> is_Set id
+  | P_Arro({elt=P_Iden(id,_);_},t) -> is_Set id && is_typ_constr t
+  | _ -> false
+
+(* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Some(u,n)] with
+   [u] a copy of [t] where each occurrence of Set has been replaced by TYPE,
+   and [n>=0] is the number of replacements - 1. Otherwise,
+   [replace_Set_by_Type t = None]. *)
+let replace_Set_by_Type =
+  let n = ref 0 in
+  let rec aux ({elt;_} as t) =
+    match elt with
+    | P_Iden(id,_) when is_Set id -> incr n; {t with elt=P_Type}
+    | P_Arro({elt=P_Iden(id,_);_} as u, v) when is_Set id ->
+      incr n; {t with elt=P_Arro({u with elt=P_Type}, aux v)}
+    | _ -> raise Exit
+  in
+  fun t -> n := 0; try let u = aux t in Some(u, !n - 1) with Exit -> None
+
+let typ_vars oc n =
+  if n > 0 then
+    (string oc "a0"; for i = 1 to n - 1 do string oc " a"; int oc i done)
 
 let command oc {elt; pos} =
   begin match elt with
@@ -163,20 +189,33 @@ let command oc {elt; pos} =
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             string oc "nonrec theorem "; ident oc p_sym_nam;
             top_params_list oc p_sym_arg; string oc " : "; term oc a;
-            string oc " := by apply "; term oc t; string oc "\n"
+            string oc " := by apply "; term oc t; newline oc
           | true, Some t, _, _ ->
             if List.exists is_opaq p_sym_mod then string oc "opaque "
             else string oc "@[reducible]\nnoncomputable def ";
             ident oc p_sym_nam;
             top_params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t; string oc "\n"
+            string oc " := "; term oc t; newline oc
           | false, _, [], Some t ->
             string oc "axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc "\n"
+            begin match replace_Set_by_Type t with
+            | None -> term oc t
+            | Some(t,n) -> term oc t;
+              string oc "\n@[instance]\naxiom ne_"; ident oc p_sym_nam;
+              if n > 0 then begin
+                string oc " ("; typ_vars oc n; string oc " : Type)"
+              end;
+              string oc " : Nonempty";
+              if n > 0 then begin
+                string oc " ("; ident oc p_sym_nam; char oc ' ';
+                typ_vars oc n; char oc ')'
+              end
+            end;
+            newline oc
           | false, _, _, Some t ->
             string oc "axiom "; ident oc p_sym_nam;
             string oc " : ∀"; top_params_list oc p_sym_arg; string oc ", ";
-            term oc t; string oc "\n"
+            term oc t; newline oc
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."
@@ -184,10 +223,10 @@ let command oc {elt; pos} =
 
 let commands oc = Stream.iter (command oc)
 
-let handle_requires s =
+let handle_requires cmds =
   let rec handle_next_elt() =
-    let x = Stream.next s in
-    match x.elt with
+    let cmd = Stream.next cmds in
+    match cmd.elt with
     | P_require(b, ps) ->
         List.iter (req_mod stdout) ps;
         begin
@@ -196,27 +235,25 @@ let handle_requires s =
           | _ -> ()
         end;
         handle_next_elt()
-    | _ -> Some x
+    | _ -> Some cmd
   in
   try handle_next_elt() with Stream.Failure -> None
 
-let print : string -> p_commands -> unit = fun file cs ->
+let set_option oc s =
+  string oc "set_option "; string oc s; string oc " false\n"
+
+let print : string -> p_commands -> unit = fun file cmds ->
   let oc = stdout in
   Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
-  match handle_requires cs with
+  match handle_requires cmds with
   | None -> ()
-  | Some c ->
-  List.iter (open_mod oc) (List.rev !openings);
-  string oc "\nnamespace ";
-  Option.iter
-    (fun s -> string oc
-                (try (Filename.chop_extension s)^"."
-                 with Invalid_argument _ -> "")) !require;
-  string oc (Filename.chop_extension file);
-  string oc "\n\n";
-  (*debugging options*)
-  string oc "set_option linter.style.missingEnd false\n";
-  string oc "set_option linter.unusedVariables false\n";
-  string oc "set_option linter.style.longLine false\n\n";
-  command oc c;
-  commands oc cs
+  | Some cmd ->
+    List.iter (set_option oc) ["linter.style.header"
+                              ;"linter.style.missingEnd"
+                              ;"linter.unusedVariables"
+                              ;"linter.style.longLine"];
+    newline oc;
+    List.iter (open_mod oc) (List.rev !openings);
+    string oc ("\nnamespace "^Filename.chop_extension file^"\n\n");
+    command oc cmd;
+    commands oc cmds
