@@ -152,7 +152,7 @@ let rec is_typ_constr {elt;_} =
   | P_Arro({elt=P_Iden(id,_);_},t) -> is_Set id && is_typ_constr t
   | _ -> false
 
-(* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Som(u,n)] where
+(* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Some(u,n)] where
    [u] is a copy of [t] where every occurrence of Set has been replaced by
    TYPE, and [n>=0] is the number of replacements - 1. Otherwise,
    [replace_Set_by_Type t = None]*)
@@ -165,7 +165,7 @@ let replace_Set_by_Type =
       incr n; {t with elt=P_Arro({u with elt=P_Type}, aux v)}
     | _ -> raise Exit
   in
-  fun t -> n := 0; try Some(aux t, !n - 1) with Exit -> None
+  fun t -> n := 0; try let u = aux t in Some(u, !n - 1) with Exit -> None
 
 let typ_vars oc n =
   if n > 0 then
