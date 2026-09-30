@@ -198,14 +198,14 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
   (smie-prec2->grammar
    (smie-bnf->prec2
     lambdapi-smie-bnf
-    '((assoc ":") (assoc "|"))
-    '((assoc "with"))
-    '((assoc ";") (assoc "↪"))
-    '((assoc "coerce_rule") (assoc "↪"))
+;;    '((assoc ":") (assoc "|"))
+;;    '((assoc "with"))
+;;    '((assoc ";") (assoc "↪"))
+;;    '((assoc "coerce_rule") (assoc "↪"))
     ;; FIX ME : Check priority rules
     '((assoc "≡") (assoc "↪"))
     '((assoc "unif_rule") (assoc "≡"))
-    '((assoc "≡") (assoc ",") (assoc "in") (assoc "→"))
+    '((assoc ",") (assoc "in") (assoc "→"))
   )))
 
 (defun lambdapi--smie-forward-token ()
