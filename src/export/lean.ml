@@ -155,7 +155,7 @@ let rec is_typ_constr {elt;_} =
 (* If [is_typ_constr t], then [replace_Set_by_Type t] returns [Some(u,n)] with
    [u] a copy of [t] where each occurrence of Set has been replaced by TYPE,
    and [n>=0] is the number of replacements - 1. Otherwise,
-   [replace_Set_by_Type t = None]*)
+   [replace_Set_by_Type t = None]. *)
 let replace_Set_by_Type =
   let n = ref 0 in
   let rec aux ({elt;_} as t) =
