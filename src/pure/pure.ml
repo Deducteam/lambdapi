@@ -90,6 +90,14 @@ let parse_text :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_string fname s);
     List.rev Stdlib.(!cmds), None
   with
+  | LpLexer.UnfinishedProof (m, s,pos) ->
+    begin
+      let cmd = {Pos.elt=Syntax.P_symbol s;Pos.pos=pos} in
+      Stdlib.(cmds := cmd :: !cmds);
+      let loc = match m.pos with
+      | Some pos -> pos | None -> assert false in
+      List.rev Stdlib.(!cmds), Some(loc, m.elt)
+    end
   | Fatal(Some(Some(pos)), msg, err_desc) ->
       List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
   | Fatal(Some(None)     , _  , _) -> assert false
@@ -108,6 +116,14 @@ let parse_file :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_file fname);
     List.rev Stdlib.(!cmds), None
   with
+  | LpLexer.UnfinishedProof (m, s, pos) ->
+    begin
+      let cmd = {Pos.elt=Syntax.P_symbol s;Pos.pos=pos} in
+      Stdlib.(cmds := cmd :: !cmds);
+      let loc = match m.pos with
+      | Some pos -> pos | None -> assert false in
+      List.rev Stdlib.(!cmds), Some(loc, m.elt)
+    end
   | Fatal(Some(Some(pos)), msg, desc) ->
       List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
   | Fatal(Some(None)     , _ , _ ) -> assert false
