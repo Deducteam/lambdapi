@@ -346,7 +346,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
-  | P_inductive(_, ms, params, p_ind_list) ->
+  | P_inductive(_, ms, params_list, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat, opaq) = handle_modifiers ms in
       if prop <> Defin then
@@ -359,21 +359,21 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add inductive types in the signature, all at position [pos]. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss expo Const Eager id pos params pt in
+          handle_inductive_symbol ss expo Const Eager id pos params_list pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
       (* Set parameters as implicit in the type of constructors. *)
-      let params =
-        List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
+      let params_list = List.map (fun (x,y,_) -> (x,y,true)) params_list in
       (* Add constructors in the signature. *)
       let cons_pos = shift 1 pos in (* after types *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+            handle_inductive_symbol
+              ss expo Const Eager id cons_pos params_list pt
           in (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -395,7 +395,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Compute data useful for generating the induction principles. *)
       let cfg = Inductive.get_config ss pos in
       let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-      let ind_nb_params = List.length params in
+      let ind_nb_params = nb_params params_list in
       let vs, env, ind_pred_map =
         Inductive.create_ind_pred_map pos cfg ind_nb_params ind_list
           a_str p_str x_str
