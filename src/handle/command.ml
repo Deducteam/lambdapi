@@ -406,6 +406,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Add the induction principles in the signature. *)
       let rec_pos = shift 2 pos in (* after types and constructors *)
+      let impl = List.init (ind_nb_params - 1) (fun _ -> true) in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
@@ -417,7 +418,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let id = Pos.make pos rec_name in
           let r =
             Sig_state.add_symbol ss expo Defin Eager false id rec_pos
-              rec_typ [] None
+              rec_typ impl None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
