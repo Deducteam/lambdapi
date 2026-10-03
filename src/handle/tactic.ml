@@ -174,7 +174,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
           LibMeta.make p ctx mt
         in
         (* Reverse to have goals properly sorted. *)
-        List.(rev (init (n - 1) fresh_meta))
+        List.rev (List.init n fresh_meta)
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
