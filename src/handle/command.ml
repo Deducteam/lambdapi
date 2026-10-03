@@ -406,7 +406,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Add the induction principles in the signature. *)
       let rec_pos = shift 2 pos in (* after types and constructors *)
-      let impl = List.init (ind_nb_params - 1) (fun _ -> true) in
+      let impl = List.init ind_nb_params (fun _ -> true) in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
