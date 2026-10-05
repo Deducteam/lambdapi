@@ -368,6 +368,20 @@ let new_name (prefix:string) (env:Env.t): string =
     !s
   else prefix
 
+(* [poly_tac_ty level univ typ tac] builds the term 
+   PI (l:level), PI (p: univ l), typ l p -> tac *)
+let poly_tac_ty level univ typ tac = 
+  let l = new_var "l" in
+  let p = new_var "p" in
+  let u l = mk_Appl (univ, l) in
+  let eps l u = add_args typ [l;u] in
+
+  mk_Prod (
+      level,
+      bind_var l
+        (mk_Prod (u (mk_Vari l), 
+                  bind_var p (mk_Arro (eps (mk_Vari l) (mk_Vari p), tac)))))
+
 (** [handle ss sym_pos priv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
 let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
@@ -540,8 +554,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   let apply_hyp ps c g v t level univ n args =
     let u l = mk_Appl (univ, l) in
     let p = new_problem() in
-    let ml = mk_Meta(LibMeta.fresh p (Env.to_prod env level) n,args) in
-    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (u ml)) n,args) in
+    let ml = mk_Meta(LibMeta.fresh p level 0,[||]) in
+    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (u ml)) n, args) in
     let t = add_args t [ml; mt; mk_Vari v] in
     match Infer.infer_noexn p c t with
     | Some _ ->
@@ -561,6 +575,16 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     let c = Env.to_ctxt env in
     let level = mk_Symb (Builtin.get ss pos [] "Level") in
     let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let typ = mk_Symb (Builtin.get ss pos [] "Type") in
+    let tac = mk_Symb (Builtin.get ss pos [] "Tactic") in
+    let ty = poly_tac_ty level univ typ tac in
+    let p = new_problem () in
+    let t = match Infer.check_noexn p c t ty with
+      | None -> fatal pos "Type error in all_hyps (%a)." term t
+      | Some u when Unif.solve_noexn p && !p.unsolved=[] -> u
+      | Some u ->
+          fatal pos "Type error in all_hyps: %a\n%a." term u problem p
+    in
     let n = List.length env in
     let args = Env.to_terms env in
     let try_assumption (ps: proof_state) (_,(v,_,_)): proof_state =
@@ -627,8 +651,18 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     let c = Env.to_ctxt env in
     let level = mk_Symb (Builtin.get ss pos [] "Level") in
     let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let typ = mk_Symb (Builtin.get ss pos [] "Type") in
+    let tac = mk_Symb (Builtin.get ss pos [] "Tactic") in
+    let ty = poly_tac_ty level univ typ tac in
     let n = List.length env in
     let args = Env.to_terms env in
+    let p = new_problem () in
+    let t = match Infer.check_noexn p c t ty with
+      | None -> fatal pos "Type error in first_hyp (%a)." term t
+      | Some u when Unif.solve_noexn p -> u
+      | Some u ->
+          fatal pos "Type error in first_hyp: %a\n%a." term u problem p
+    in
     let f (_,(v,_,_)) =
       try Some (apply_hyp ps c g v t level univ n args) with _ -> None in
     begin match List.find_map f gt.goal_hyps with

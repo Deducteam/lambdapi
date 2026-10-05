@@ -10,6 +10,6 @@ end;
 symbol test2 T (a b c: τ T): π (a = c) → π (b = c) → π (a = b) ≔
 begin
   assume T a b c h1 h2;
-  all_hyps (λ l (h:U l) (ph: η h), #rewrite "" "" ph);
+  all_hyps (λ _ _ ph, #rewrite "" "" ph);
   reflexivity
 end;
