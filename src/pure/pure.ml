@@ -76,6 +76,16 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
 
 (** Exception raised by [parse_text] on error. *)
 
+(** [unfinished_proof_handler cmds m s pos] adds the partially parsed
+    symbol [s] (at position [pos]) to the commands [cmds] read so far,
+    and returns them in order together with the location and error
+    message [m]. *)
+let unfinished_proof_handler cmds m s pos =
+  let cmd = Pos.{elt = Syntax.P_symbol s; pos} in
+  Stdlib.(cmds := cmd :: !cmds);
+  let loc = Stdlib.Option.get m.Pos.pos in
+  List.rev Stdlib.(!cmds), Some (loc, m.Pos.elt)
+
 let parse_text :
       fname:string -> string -> Command.t list * (Pos.pos * string) option =
   fun ~fname s ->
@@ -91,13 +101,7 @@ let parse_text :
     List.rev Stdlib.(!cmds), None
   with
   | LpLexer.UnfinishedProof (m, s,pos) ->
-    begin
-      let cmd = {Pos.elt=Syntax.P_symbol s;Pos.pos=pos} in
-      Stdlib.(cmds := cmd :: !cmds);
-      let loc = match m.pos with
-      | Some pos -> pos | None -> assert false in
-      List.rev Stdlib.(!cmds), Some(loc, m.elt)
-    end
+    unfinished_proof_handler cmds m s pos
   | Fatal(Some(Some(pos)), msg, err_desc) ->
       List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
   | Fatal(Some(None)     , _  , _) -> assert false
@@ -117,13 +121,7 @@ let parse_file :
     List.rev Stdlib.(!cmds), None
   with
   | LpLexer.UnfinishedProof (m, s, pos) ->
-    begin
-      let cmd = {Pos.elt=Syntax.P_symbol s;Pos.pos=pos} in
-      Stdlib.(cmds := cmd :: !cmds);
-      let loc = match m.pos with
-      | Some pos -> pos | None -> assert false in
-      List.rev Stdlib.(!cmds), Some(loc, m.elt)
-    end
+    unfinished_proof_handler cmds m s pos
   | Fatal(Some(Some(pos)), msg, desc) ->
       List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
   | Fatal(Some(None)     , _ , _ ) -> assert false

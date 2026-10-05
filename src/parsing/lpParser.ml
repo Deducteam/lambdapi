@@ -480,16 +480,14 @@ let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
 let missing_end_proof l pos1 msg_loc =
     let sym =
             { p_sym_mod = []
-            ; p_sym_kw = msg_loc.pos
-            ; p_sym_nam = msg_loc
+            ; p_sym_kw = None
+            ; p_sym_nam = Pos.make None ""
             ; p_sym_arg = []
             ; p_sym_typ = None
             ; p_sym_trm = None
             ; p_sym_prf = Some (l, Pos.make_pos pos1 Syntax.P_proof_end)
             ; p_sym_def = false
             } in
-    let p = make_pos pos1 Syntax.P_proof_end in
-    let _ = sym, p in
     raise (UnfinishedProof (msg_loc, sym, None))
 
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
@@ -508,20 +506,21 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
          | BEGIN ->
             consume_token lb;
             let p_sym_def = false in
-            let sym = { p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
-                        p_sym_trm=None; p_sym_def; p_sym_prf=None } in
-            let p_sym_prf = try
-                Some (proof lb)
-            with UnfinishedProof (m, s, _) ->
-                raise (UnfinishedProof
-                (m, {sym with p_sym_prf=s.p_sym_prf}, None))
+            let sym = {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
+                      p_sym_trm=None; p_sym_def; p_sym_prf = None }
             in
-            P_symbol({sym with p_sym_prf})
+            let p_sym_prf =
+                try Some (proof lb)
+                with UnfinishedProof (m, s, _) ->
+                    let sym = {sym with p_sym_prf = s.p_sym_prf} in
+                    raise (UnfinishedProof (m, sym, None))
+            in
+            P_symbol {sym with p_sym_prf}
          | ASSIGN ->
             consume_token lb;
             let p_sym_def = true in
             let sym =
-              { p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
+              {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
                p_sym_trm=None; p_sym_def; p_sym_prf=None } in
             let p_sym_trm, p_sym_prf = try
                 term_proof lb
@@ -538,8 +537,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
              let sym =
                {p_sym_mod; p_sym_kw; p_sym_nam; p_sym_arg; p_sym_typ;
                 p_sym_trm; p_sym_def; p_sym_prf}
-             in
-             P_symbol(sym)
+             in P_symbol(sym)
          | _ ->
              expected lb "" [BEGIN;ASSIGN;SEMICOLON]
        end
@@ -707,7 +705,7 @@ and command (lb:'token lexbuf) : p_command =
          [REQUIRE;OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE;RULE;UNIF_RULE;
           COERCE_RULE;BUILTIN;NOTATION] @ (query_tks()))
     end
-    with UnfinishedProof (m, sym, _) ->
+ with UnfinishedProof (m, sym, _) ->
     let {elt; pos} = extend_pos lb (*__FUNCTION__*) pos1 (sym) in
     raise (UnfinishedProof (m, sym, pos))
 
@@ -1025,12 +1023,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | L_CU_BRACKET ->
       let l = nelist subproof_tks subproof lb in
       if current_token lb = SEMICOLON then consume_token lb;
-      let pe =
-        try
-            proof_end lb
-        with SyntaxError (_, msg_loc) ->
-             missing_end_proof l (current_pos lb) msg_loc
-      in
+      let pe = proof_end l lb in
       l, pe
   (*queries*)
   | ASSERT _
@@ -1070,22 +1063,12 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | TRY
   | WHY3 ->
       let l = steps lb in
-      let pe =
-        try
-            proof_end lb
-        with SyntaxError (_, msg_loc) ->
-            missing_end_proof [l] (current_pos lb) msg_loc
-      in
+    let pe = proof_end [l] lb in
       [l], pe
   | END
   | ABORT
   | ADMITTED ->
-      let pe =
-        try
-            proof_end lb
-        with SyntaxError (_, msg_loc) ->
-            missing_end_proof [] (current_pos lb) msg_loc
-      in
+      let pe = proof_end [] lb in
       [], pe
   | _ ->
     expected lb
@@ -1110,23 +1093,26 @@ and step (lb:'token lexbuf): p_proofstep =
   let l = list subproof_tks subproof lb in
   Tactic(t, l)
 
-and proof_end (lb:'token lexbuf): p_proof_end =
+and proof_end (l:p_proof) (lb:'token lexbuf): p_proof_end =
   if log_enabled() then log "%s" __FUNCTION__;
-  match current_token lb with
-  | ABORT ->
+  try
+    match current_token lb with
+    | ABORT ->
       let pos1 = current_pos lb in
       consume_token lb;
       make_pos pos1 Syntax.P_proof_abort
-  | ADMITTED ->
+    | ADMITTED ->
       let pos1 = current_pos lb in
       consume_token lb;
       make_pos pos1 Syntax.P_proof_admitted
-  | END ->
+    | END ->
       let pos1 = current_pos lb in
       consume_token lb;
       make_pos pos1 Syntax.P_proof_end
-  | _ ->
+    | _ ->
       expected lb "" proof_end_tks
+  with SyntaxError (_, msg_loc) ->
+  missing_end_proof l (current_pos lb) msg_loc
 
 and tactic_tks() =
   [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;
