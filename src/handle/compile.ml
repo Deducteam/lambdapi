@@ -59,17 +59,17 @@ let rec compile : Command.compiler = fun ss mp ->
         fun cmd -> Stdlib.(new_ss := Command.handle compile !new_ss cmd)
       in
       try
-        Debug.stream_iter consume (Parser.parse_file src);
-        Sig_state.update_ext_sym_dtrees true ss;
-        Tactic.restore_admitted a;
-        Console.out 1 (Color.blu "End checking \"%s\"") src;
-        Sign.strip_private sign;
-        if Stdlib.(!gen_obj) then begin
-          Console.out 2 (Color.blu "Write \"%s\"") obj;
-          Sign.write sign obj
-        end;
-        loading := List.tl !loading;
-        sign
+      Debug.stream_iter consume (Parser.parse_file src);
+      Sig_state.update_ext_sym_dtrees true ss;
+      Tactic.restore_admitted a;
+      Console.out 1 (Color.blu "End checking \"%s\"") src;
+      Sign.strip_private sign;
+      if Stdlib.(!gen_obj) then begin
+        Console.out 2 (Color.blu "Write \"%s\"") obj;
+        Sign.write sign obj
+      end;
+      loading := List.tl !loading;
+      sign
       with LpLexer.UnfinishedProof(log_msg, _, _) ->
         let pos, msg = match log_msg with
         | { pos=Some p; elt } -> p, elt
