@@ -368,9 +368,9 @@ let new_name (prefix:string) (env:Env.t): string =
     !s
   else prefix
 
-(* [poly_tac_ty level univ typ tac] builds the term 
+(* [poly_tac_ty level univ typ tac] builds the term
    PI (l:level), PI (p: univ l), typ l p -> tac *)
-let poly_tac_ty level univ typ tac = 
+let poly_tac_ty level univ typ tac =
   let l = new_var "l" in
   let p = new_var "p" in
   let u l = mk_Appl (univ, l) in
@@ -379,7 +379,7 @@ let poly_tac_ty level univ typ tac =
   mk_Prod (
       level,
       bind_var l
-        (mk_Prod (u (mk_Vari l), 
+        (mk_Prod (u (mk_Vari l),
                   bind_var p (mk_Arro (eps (mk_Vari l) (mk_Vari p), tac)))))
 
 (** [handle ss sym_pos priv ps tac] applies tactic [tac] in the proof state
