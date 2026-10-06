@@ -138,10 +138,10 @@ let current_goals : proof_state -> Goal.info list =
   Print.sig_state := st;
   List.map Goal.to_info ps.proof_goals
 
-(** As  explained  in [src/common/error.ml], optional optional source position
-    is used with [Cmd_Error] to distinguish errors that  are  independent from
-    source code position from those where posiotion is expected but is missing
-    *)
+(** As explained in [src/common/error.ml], the optional optional position in
+    [Cmd_Error] is used to distinguish the errors that are independent from
+    the source code position from those where a position is expected but
+    missing. *)
 type command_result =
   | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt

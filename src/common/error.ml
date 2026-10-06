@@ -32,11 +32,11 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
   res
 
 (** Exception raised in case of failure. Note that we use an optional optional
-    source position. [None] is used on errors that are independant from source
+    source position. [None] is used on errors that are independent from source
     code position (e.g., errors related to command-line arguments parsing). In
-    cases where positions are expected [Some None] may be used to indicate the
-    abscence of a position. This may happen when terms are generated (e.g., by
-    a  form of desugaring). The last argument is  used to provide  an optional
+    cases where positions are expected [Some None] is used to indicate the
+    absence of a position. This may happen when terms are generated (e.g., by
+    a form of desugaring). The last argument is used to provide an optional
     description of the error, displayed differently from the error itself. *)
 exception Fatal of Pos.popt option * string * string
 
