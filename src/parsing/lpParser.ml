@@ -960,11 +960,7 @@ and term_proof (lb:'token lexbuf):
   match current_token lb with
   | BEGIN ->
       consume_token lb;
-      let p =
-        try proof lb
-        with UnfinishedProof(m, s, _) ->
-          raise (UnfinishedProof(m, {s with p_sym_trm=None}, None))
-      in
+      let p = proof lb in
       None, Some p
   (* bterm *)
   | BACKQUOTE
@@ -1067,7 +1063,7 @@ and subproof (lb:'token lexbuf): p_proofstep list =
 
 and steps (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
-  list_with_sep_or_termin (step_tks ()) step SEMICOLON lb
+  list_with_sep_or_termin (step_tks()) step SEMICOLON lb
 
 and step_tks() = tactic_tks()
 and step (lb:'token lexbuf): p_proofstep =
