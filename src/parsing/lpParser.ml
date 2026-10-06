@@ -495,7 +495,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
                 p_sym_trm=None; p_sym_def; p_sym_prf}
              in
              let p_sym_prf =
-               try Some (proof lb)
+               try Some(proof lb)
                with UnfinishedProof(m, s, _) ->
                  let sym = {sym with p_sym_prf = s.p_sym_prf} in
                  raise (UnfinishedProof(m, sym, None))
@@ -1102,7 +1102,7 @@ and proof_end (l:p_proof) (lb:'token lexbuf): p_proof_end =
       ; p_sym_arg = []
       ; p_sym_typ = None
       ; p_sym_trm = None
-      ; p_sym_prf = Some (l, Pos.make_pos (current_pos lb) Syntax.P_proof_end)
+      ; p_sym_prf = Some(l, Pos.make_pos (current_pos lb) Syntax.P_proof_end)
       ; p_sym_def = false
       }
     in raise (UnfinishedProof(msg_loc, sym, None))
