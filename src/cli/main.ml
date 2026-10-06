@@ -254,7 +254,7 @@ let opt_timeout =
   as the specified number of seconds is elapsed.|} }
 
 let opt_too_long =
-  { opt_name = "--too-long"
+  { opt_name = "--too-long="
   ; opt_short = None
   ; opt_handle = Suffix("FLOAT",
                     fun v -> Handle.Command.too_long := float_of_string v)
@@ -270,18 +270,18 @@ let opt_no_sr_check =
       "Disable the verification that rewrite rules preserve typing." }
 
 let opt_db =
-  { opt_name = "--db="
+  { opt_name = "--db"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> Tool.Indexing.the_dbpath := v)
+  ; opt_handle = Next("FILE", fun v -> Tool.Indexing.the_dbpath := v)
   ; opt_desc =
       "Index file to use for search queries (default is ~/.LPSearch.db)." }
 
 let rule_files = ref []
 
 let opt_rules =
-  { opt_name = "--rules="
+  { opt_name = "--rules"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> rule_files := v::!rule_files)
+  ; opt_handle = Next("FILE", fun v -> rule_files := v::!rule_files)
   ; opt_desc =
 {|File holding rewriting rules applied before indexing. Use this option
   multiple times to fetch rules from several files.|} }
@@ -452,7 +452,8 @@ let cmd_deindex =
 (** export command *)
 (*-------------------------------------------------------------------------*)
 
-type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
+type output =
+  Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq | RawLean | SttLean
 
 let string_of_output = function
   | Lp -> "lp"
@@ -462,6 +463,8 @@ let string_of_output = function
   | Xtc -> "xtc"
   | RawCoq -> "raw_coq"
   | SttCoq -> "stt_coq"
+  | RawLean -> "raw_lean"
+  | SttLean -> "stt_lean"
 
 let output_of_string = function
   | "lp" -> Lp
@@ -471,6 +474,8 @@ let output_of_string = function
   | "xtc" -> Xtc
   | "raw_coq" -> RawCoq
   | "stt_coq" -> SttCoq
+  | "raw_lean" -> RawLean
+  | "stt_lean" -> SttLean
   | s -> Common.Error.fatal_no_pos "invalid format: %s" s
 
 let output = ref None
@@ -490,23 +495,30 @@ let opt_output =
   ; opt_short = Some "-o"
   ; opt_handle = Next("FMT", fun s -> output := Some(output_of_string s))
   ; opt_desc =
-{|Specify the output language and how the input files must be interpreted.
+{|Specify the output language and how the input file must be interpreted.
   The possible formats are:
-    lp: dk to lp translator, or lp code pretty-printer
-    raw_dk: lp to dk syntactic translator (before elaboration)
-    dk: lp to dk translator
-    raw_coq: dk or lp to rocq syntactic translator (before elaboration)
-    stt_coq: dk or lp to rocq syntactic translator (before elaboration)
-    hrs: for checking the confluence of rewrite rules
-    xtc: for checking the termination of rewrite rules|} }
+    lp: to translate the input file to Lambdapi
+    raw_dk: to translate the input file to Dedukti (before elaboration)
+    dk: to translate the input file to Dedukti
+    raw_coq: to translate the input file to Rocq (before elaboration)
+    stt_coq: to translate the input file to Rocq (before elaboration)
+      assuming that the input file uses an encoding of simple type theory
+    raw_lean: to translate the input file to Lean (before elaboration)
+    stt_lean: to translate the input file to Lean (before elaboration)
+      assuming that the input file uses an encoding of simple type theory
+    hrs: to translate the input file to the HRS format
+      used in the confluence competition (CoCo)
+    xtc: to translate the input file to the XTC format
+      used in the termination competition (TermComp)|} }
 
 let encoding = ref None
 
 let opt_encoding =
-  { opt_name = "--encoding="
+  { opt_name = "--encoding"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
-                        fun s -> check_output [SttCoq]; encoding := Some s)
+  ; opt_handle = Next("FILE",
+                      fun s -> check_output [SttCoq;SttLean];
+                      encoding := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing the symbols used for
   encoding simple type theory.|} }
@@ -514,10 +526,11 @@ let opt_encoding =
 let mapping = ref None
 
 let opt_mapping =
-  { opt_name = "--mapping="
+  { opt_name = "--mapping"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
-                        fun s -> check_output [SttCoq]; mapping := Some s)
+  ; opt_handle = Next("FILE",
+                      fun s -> check_output [SttCoq;SttLean];
+                      mapping := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing which Lambdapi symbol
   declarations must not be translated and by which expression each occurrence
@@ -526,31 +539,47 @@ let opt_mapping =
 let requiring = ref None
 
 let opt_requiring =
-  { opt_name = "--requiring="
+  { opt_name = "--requiring"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
-             fun s -> check_output [SttCoq;RawCoq]; requiring := Some s)
+      Next("MODULES",
+             fun s ->
+                check_output [SttCoq;RawCoq;SttLean;RawLean];
+                requiring := Some s)
   ; opt_desc =
 {|Lambdapi modules to be required at the beginning of translated files.|} }
 
 let renaming = ref None
 
 let opt_renaming =
-  { opt_name = "--renaming="
+  { opt_name = "--renaming"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
-             fun s -> check_output [SttCoq;RawCoq]; renaming := Some s)
+      Next("FILE",
+             fun s ->
+                check_output [SttCoq;RawCoq;SttLean;RawLean];
+                renaming := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing renamings to apply
   on identifiers.|} }
+
+let tvs_file = ref None
+let opt_arities =
+  { opt_name = "--arities"
+  ; opt_short = None
+  ; opt_handle =
+      Next("FILE.tvs",
+             fun s -> check_output [SttLean];
+             tvs_file := Some s)
+  ; opt_desc =
+{|File generated by 'hol2dk tvs' giving the number of type variables of
+  polymorphic symbols.|} }
 
 let opt_no_implicits =
   { opt_name = "--no-implicits"
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
-                     check_output [SttCoq;RawCoq];
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
                      Export.Stt.use_implicits := false)
   ; opt_desc = "In case input symbols have no implicit arguments." }
 
@@ -558,7 +587,7 @@ let opt_use_notations =
   { opt_name = "--use-notations"
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
-                     check_output [SttCoq;RawCoq];
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
                      Export.Stt.use_notations := true)
   ; opt_desc = "Generate Rocq code using notations for connectors." }
 
@@ -568,6 +597,7 @@ let export_options =
   :: opt_mapping
   :: opt_renaming
   :: opt_requiring
+  :: opt_arities
   :: opt_no_implicits
   :: opt_use_notations
   :: compile_options
@@ -595,7 +625,7 @@ let cmd_export =
     in
     begin
       match output with
-      | RawDk | Lp | SttCoq | RawCoq -> ()
+      | RawDk | Lp | SttCoq | RawCoq | SttLean | RawLean -> ()
       | _ -> Parsing.Package.set_root_path (Filename.dirname file)
     end;
     let parse = Parsing.Parser.parse_file in
@@ -615,7 +645,17 @@ let cmd_export =
       Option.iter Export.Stt.set_mapping !mapping;
       Option.iter Export.Stt.set_requiring !requiring;
       Export.Coq.print (parse file)
-
+    | RawLean ->
+      Option.iter Export.Stt.set_renaming !renaming;
+      Export.Lean.print file (parse file)
+    | SttLean ->
+      Export.Stt.stt := true;
+      Option.iter Export.Stt.set_renaming !renaming;
+      Option.iter Export.Stt.set_encoding !encoding;
+      Option.iter Export.Stt.set_mapping !mapping;
+      Option.iter Export.Stt.set_requiring !requiring;
+      Option.iter Export.Stt.set_tvs_map !tvs_file;
+      Export.Lean.print file (parse file)
 (*-------------------------------------------------------------------------*)
 (** index command *)
 (*-------------------------------------------------------------------------*)
@@ -853,7 +893,7 @@ let cmd_parse =
 let require = ref []
 
 let opt_require =
-  { opt_name = "--require="
+  { opt_name = "--require"
   ; opt_short = None
   ; opt_handle = Suffix("FILE", fun s -> require := s::!require)
   ; opt_desc = "FILE to be required before starting the search." }
@@ -937,17 +977,17 @@ let cmd_uninstall =
 let header = ref None
 
 let opt_header =
-  { opt_name = "--header="
+  { opt_name = "--header"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> header := Some s)
+  ; opt_handle = Next("FILE", fun s -> header := Some s)
   ; opt_desc = "html file to use as header of the server web page." }
 
 let url = ref ""
 
 let opt_url =
-  { opt_name = "--url="
+  { opt_name = "--url"
   ; opt_short = None
-  ; opt_handle = Suffix("STRING", fun s -> url := s)
+  ; opt_handle = Next("STRING", fun s -> url := s)
   ; opt_desc = "Path prefixes accepted by the server." }
 
 let port = ref 8080
@@ -1042,30 +1082,21 @@ let main = function
 
 let _ =
   let args = List.tl (Array.to_list Sys.argv) in
-  let handler =
+  let handler msg desc =
     match args with
     | "lsp" :: _ ->
-      fun err_desc error_msg ->
-        Lsp.Lsp_io.notify_failure (error_msg ^ "\n" ^ err_desc);
-        exit 1
+      Lsp.Lsp_io.notify_failure (msg ^ "\n" ^ desc);
+      exit 1
     | _ ->
-      fun err_desc ->
-        Lplib.Color.update_with_color Format.err_formatter;
-        Format.kfprintf
-          (fun _ ->
-             Lplib.Color.update_with_color Format.err_formatter;
-             Format.kfprintf (fun _ -> exit 1)
-               Format.err_formatter "%s" err_desc
-          )
-          Format.err_formatter
-          (Lplib.Color.red ("%s" ^^ "@."))
+      Lplib.Color.update_with_color Format.err_formatter;
+      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc
   in
   try main args
   with
-  | Common.Error.Fatal(None, msg, desc) -> handler desc msg
+  | Common.Error.Fatal(None, msg, desc) -> handler msg desc
   | Common.Error.Fatal(Some p, msg, desc) ->
-    handler desc (Common.Pos.popt_to_string p ^ msg)
+    handler (Format.asprintf "[%a] %s" Common.Pos.pp p msg) desc
   | e ->
-    handler "" (Printf.sprintf "Uncaught [%s].\n%s"
-                  (Printexc.to_string e)
-                  (Printexc.get_backtrace()))
+    handler
+      ("Uncaught exception: " ^ Printexc.to_string e ^ ".")
+      (Printexc.get_backtrace())

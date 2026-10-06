@@ -147,7 +147,9 @@ let set_tvs_map (fname:string): unit =
 let out = Printf.printf
 
 let char = output_char
+let newline oc = char oc '\n'
 let string = output_string
+let int oc i = string oc (string_of_int i)
 
 let prefix pre elt oc x = string oc pre; elt oc x
 let suffix elt suf oc x = elt oc x; string oc suf
