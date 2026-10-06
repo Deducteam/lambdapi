@@ -987,14 +987,14 @@ and term_proof (lb:'token lexbuf):
   | STRINGLIT _ ->
       let t = term lb in
       if opt BEGIN lb then
-        let p =
-          try proof lb
-          with UnfinishedProof(m, s, _) ->
-            raise (UnfinishedProof(m, {s with p_sym_trm=Some t}, None))
-        in
-        Some t, Some p
+       let p =
+         try proof lb
+         with UnfinishedProof(m, s, _) ->
+           raise (UnfinishedProof(m, {s with p_sym_trm=Some t}, None))
+       in
+       Some t, Some p
       else
-        Some t, None
+       Some t, None
   | _ ->
       expected lb "term or proof" []
 
