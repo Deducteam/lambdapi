@@ -1078,7 +1078,6 @@ and step (lb:'token lexbuf): p_proofstep =
 
 and proof_end (l:p_proof) (lb:'token lexbuf): p_proof_end =
   if log_enabled() then log "%s" __FUNCTION__;
-  try
   match current_token lb with
   | ABORT ->
       let pos1 = current_pos lb in
@@ -1093,19 +1092,20 @@ and proof_end (l:p_proof) (lb:'token lexbuf): p_proof_end =
       consume_token lb;
       make_pos pos1 Syntax.P_proof_end
   | _ ->
-      expected lb "" proof_end_tks
-  with SyntaxError (_, msg_loc) ->
-    let sym =
-      { p_sym_mod = []
-      ; p_sym_kw = None
-      ; p_sym_nam = Pos.none ""
-      ; p_sym_arg = []
-      ; p_sym_typ = None
-      ; p_sym_trm = None
-      ; p_sym_prf = Some(l, Pos.make_pos (current_pos lb) Syntax.P_proof_end)
-      ; p_sym_def = false
-      }
-    in raise (UnfinishedProof(msg_loc, sym, None))
+    try expected lb "" proof_end_tks
+    with SyntaxError (_, msg_loc) ->
+      let pe = Pos.make_pos (current_pos lb) Syntax.P_proof_end in
+      let sym =
+        { p_sym_mod = []
+        ; p_sym_kw = None
+        ; p_sym_nam = Pos.none ""
+        ; p_sym_arg = []
+        ; p_sym_typ = None
+        ; p_sym_trm = None
+        ; p_sym_prf = Some(l,pe)
+        ; p_sym_def = false
+        }
+      in raise (UnfinishedProof(msg_loc, sym, None))
 
 and tactic_tks() =
   [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;
