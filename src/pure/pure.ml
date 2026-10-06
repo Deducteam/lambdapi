@@ -83,7 +83,7 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
 let unfinished_proof_handler cmds m s pos =
   let cmd = Pos.{elt = Syntax.P_symbol s; pos} in
   Stdlib.(cmds := cmd :: !cmds);
-  let loc = Stdlib.Option.get m.Pos.pos in
+  let loc = match m.Pos.pos with Some p -> p | _ -> assert false in
   List.rev Stdlib.(!cmds), Some (loc, m.Pos.elt)
 
 let parse_text :

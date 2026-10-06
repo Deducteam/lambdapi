@@ -14,9 +14,9 @@ let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
 (** Exception raised when the proof of [p_symbol] is syntactically broken.
-   [strloc] is the located error message.
-   [popt] is the position of the node corresponding to the symbol. Initialized
-   with None and updated by the [command] function. *)
+    [strloc] is the located error message. [popt] is the position of the
+    node corresponding to the symbol. Initialized with None and updated by
+    the [command] function. *)
 exception UnfinishedProof of strloc * Syntax.p_symbol * popt
 
 (* true when the error is an unrecoverable tokenization error;
