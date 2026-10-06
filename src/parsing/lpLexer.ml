@@ -13,19 +13,14 @@ let remove_last : lexbuf -> string = fun lb ->
 let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
-(** Exception raised when the proof of [p_symbol] is syntactically broken.
-    [strloc] is the located error message. [popt] is the position of the
-    symbol command until the error. *)
-exception UnfinishedProof of strloc * Syntax.p_symbol * popt
-
 (* true when the error is an unrecoverable tokenization error;
    false when it is a potentially recoverable parsing error *)
 exception SyntaxError of bool * strloc
 
 let syntax_error
  : ?recoverable:bool -> Lexing.position * Lexing.position -> string -> 'a
- = fun ?(recoverable=true) pos msg ->
-    raise (SyntaxError (recoverable,Pos.make_pos pos msg))
+ = fun ?(recoverable=true) lps msg ->
+    raise (SyntaxError (recoverable, Pos.make_pos lps msg))
 
 (* raises an unrecoverable lexing error; do not use in the parser *)
 let fail : lexbuf -> string -> 'a = fun lb msg ->

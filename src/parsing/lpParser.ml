@@ -152,16 +152,20 @@ let match_token tok patt =
 let match_guard patts lb =
  List.exists (match_token (current_token lb)) patts
 
+let err_msg lb (msg:string) (tokens:token list): string =
+  "Expected: "
+  ^(if msg <> "" then msg
+    else match tokens with
+      | [] -> assert false
+      | t::ts -> string_of_tokens (string_of_token t)
+                   (ts @ get_expected_tokens lb))
+  ^"."
+
+let loc_err_msg lb (msg:string) (tokens:token list) : strloc =
+  Pos.make_pos (current_pos lb) (err_msg lb msg tokens)
+
 let expected lb (msg:string) (tokens:token list) : 'a =
-  if msg <> "" then syntax_error (current_pos lb) ("Expected: "^msg^".")
-  else
-    match tokens with
-    | [] -> assert false
-    | t::ts ->
-      syntax_error (current_pos lb)
-        (string_of_tokens ("Expected: "^string_of_token t)
-           (ts @ get_expected_tokens lb)
-        ^".")
+  syntax_error (current_pos lb) (err_msg lb msg tokens)
 
 (* building positions and terms *)
 
@@ -472,6 +476,33 @@ let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
  consume OPEN lb;
  let ps = nelist path_tks path lb in
  if req then P_require(Some priv,ps) else P_open(kw_pos,priv,ps)
+
+(** [UnfinishedProof] is raised when a proof is syntactically broken. It takes
+    as arguments: a located error message [strloc], a [p_symbol] data
+    structure containing the data of the declared symbol the proof is about,
+    but with the field [p_sym_prf] containing only the prefix of the proof
+    that is syntactically correct, and the position [popt] of the symbol
+    command (until where the error occurred).
+
+    It is raised by the second function [command] (the one that is exported)
+    in case a command is not terminated by a semicolon, or by the function
+    [proof_end] when the current token is not a valid proof end token (this
+    includes any syntax error in the middle of a proof script, e.g. an error
+    in the name of a tactic keyword). In the second case, it is raised with
+    [popt=None] and a [p_symbol] whose only meaningful field is
+    [p_sym_prf]. The other fields are updated later as follows.
+
+    The function [proof_term] catches it and raises it again right away after
+    updating [p_symbol] with the correct [p_sym_trm] in case a term has been
+    given.
+
+    The function [symbol] catches it and raises it again right away after
+    updating all the other fields of [p_symbol].
+
+    The first function [command] catches it and raises it again right away
+    after updating [popt].
+*)
+exception UnfinishedProof of strloc * Syntax.p_symbol * popt
 
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
@@ -1826,11 +1857,9 @@ let command (lb:'token lexbuf): p_command =
    match current_token lb with
    | SEMICOLON -> c
    | _ ->
-       match c with
-       | {elt=P_symbol sym; pos} ->
-           begin
-             try expected lb "" [SEMICOLON]
-             with SyntaxError(_, str_loc) ->
-               raise (UnfinishedProof(str_loc, sym, pos))
-           end
-       | _ -> expected lb "" [SEMICOLON]
+     match c with
+     | {elt=P_symbol sym; pos} ->
+       (* In case of a symbol command, we raise [UnfinishedProof] so that
+          users can see the goals in LSP editors. *)
+       raise (UnfinishedProof(loc_err_msg lb "" [SEMICOLON], sym, pos))
+     | _ -> expected lb "" [SEMICOLON]

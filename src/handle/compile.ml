@@ -70,7 +70,7 @@ let rec compile : Command.compiler = fun ss mp ->
       end;
       loading := List.tl !loading;
       sign
-      with LpLexer.UnfinishedProof(log_msg, _, _) ->
+      with LpParser.UnfinishedProof(log_msg, _, _) ->
         let pos, msg = match log_msg with
         | { pos=Some p; elt } -> p, elt
         | _ -> assert false in
