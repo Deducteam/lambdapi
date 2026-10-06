@@ -692,7 +692,7 @@ and command (lb:'token lexbuf) : p_command =
           COERCE_RULE;BUILTIN;NOTATION] @ (query_tks()))
     end
  with UnfinishedProof(m, sym, _) ->
-    let {elt; pos} = extend_pos lb (*__FUNCTION__*) pos1 sym in
+    let {pos; _} = extend_pos lb (*__FUNCTION__*) pos1 sym in
     raise (UnfinishedProof(m, sym, pos))
 
 and inductive (lb:'token lexbuf): p_inductive =
@@ -1098,7 +1098,7 @@ and proof_end (l:p_proof) (lb:'token lexbuf): p_proof_end =
     let sym =
       { p_sym_mod = []
       ; p_sym_kw = None
-      ; p_sym_nam = Pos.make None ""
+      ; p_sym_nam = Pos.none ""
       ; p_sym_arg = []
       ; p_sym_typ = None
       ; p_sym_trm = None
@@ -1822,7 +1822,6 @@ and search (lb:'token lexbuf): search =
 and alone_search (lb:'token lexbuf) : search =
  let res = search lb in
  if current_token lb = EOF then res else expected lb "" [VBAR; IN; WITH]
-
 
 let command (lb:'token lexbuf): p_command =
   if current_token lb = EOF then raise End_of_file
