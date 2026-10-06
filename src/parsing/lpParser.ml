@@ -496,7 +496,7 @@ let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
              in
              let p_sym_prf =
                try Some (proof lb)
-               with UnfinishedProof (m, s, _) ->
+               with UnfinishedProof(m, s, _) ->
                  let sym = {sym with p_sym_prf = s.p_sym_prf} in
                  raise (UnfinishedProof(m, sym, None))
              in
@@ -691,7 +691,7 @@ and command (lb:'token lexbuf) : p_command =
          [REQUIRE;OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE;RULE;UNIF_RULE;
           COERCE_RULE;BUILTIN;NOTATION] @ (query_tks()))
     end
- with UnfinishedProof (m, sym, _) ->
+ with UnfinishedProof(m, sym, _) ->
     let {elt; pos} = extend_pos lb (*__FUNCTION__*) pos1 sym in
     raise (UnfinishedProof(m, sym, pos))
 
