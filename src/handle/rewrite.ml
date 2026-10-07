@@ -91,9 +91,8 @@ type to_subst = var array * term
    to [t] and returns [true] if all [TRef]'s of [p] could be instantiated, and
    [false] otherwise. With [allow_binder_holes], a [TRef] belonging to a
    selection pattern may match a term containing a variable bound inside
-   [p]. The caller must use the corresponding subterm of the goal rather than
-   let that instantiation escape its binder. Equality-lemma matching keeps the
-   default occurs check. *)
+   [p]. Callers must preserve the scope of those variables when using the 
+   assignments, or discard them. *)
 let matches ?(allow_binder_holes=false) : term -> term -> bool =
   let exception Not_equal in
   let add_eqs xs = List.fold_left2 (fun l pi ti -> (xs,pi,ti)::l) in
@@ -119,7 +118,7 @@ let matches ?(allow_binder_holes=false) : term -> term -> bool =
         let ts1, ts2 = List.cut ts (kt-kp) in
         let u = add_args ht ts1 in
         (* Ordinary substitutions must be closed under the binders traversed
-           by [eq]. Selection holes are allowed to depend on those binders. *)
+           by [eq]. Selector holes are allowed to depend on those binders. *)
         if not allow_binder_holes && List.exists (fun x -> occur x u) xs
         then raise Not_equal;
         if Logger.log_enabled() then log (Color.red "<TRef> ≔ %a") term u;
@@ -193,41 +192,7 @@ let matching_subs_check_TRef pos ((vars,p) as xsp) t =
   | Some ts -> check_subs pos vars ts; ts
   | None -> no_match pos p t
 
-(** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
-   matching [p]. If successful, the function returns the array of terms by
-   which [xs] must be substituted. *)
-let find_subst : to_subst -> term -> term array option = fun xsp t ->
-  let time = Timed.Time.save () in
-  let rec find : term -> term array option = fun t ->
-    if Logger.log_enabled() then
-      log "find_subst %a ≡ %a" term (snd xsp) term t;
-    match matching_subs xsp t with
-    | None ->
-        begin
-          Timed.Time.restore time;
-          match unfold t with
-            | Appl(a,b) -> find2 a b
-            | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
-            | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
-            | _ -> None
-        end
-    | sub -> sub
-  and find2 a b =
-    match find a with
-    | None -> Timed.Time.restore time; find b
-    | sub -> sub
-  and find3 a b c =
-    match find a with
-    | None -> Timed.Time.restore time; find2 b c
-    | sub -> sub
-  in find t
-
-let find_subst pos (vars,p) t =
-  match find_subst (vars,p) t with
-  | None -> no_match ~subterm:true pos p t
-  | Some ts -> check_subs pos vars ts; ts
-
-(** Binder frame enclosing a subterm found by [find_subst_under_binders]. *)
+(** Binder frame enclosing a subterm found by [find_subst]. *)
 type binder_frame =
   { binder_var : var
   ; binder_typ : term
@@ -239,12 +204,14 @@ type subst_under_binders =
   ; redex : term
   ; binders : binder_frame list }
 
-(** [find_subst_under_binders_from binders path (xs,p) t] is like
-    [find_subst (xs,p) t], but also records the binders enclosing the matched
-    occurrence. [binders] and [path] are the already-known enclosing binder
-    context of [t]. The binder list is ordered from innermost to outermost
-    binder. *)
-let find_subst_under_binders_from :
+(** [find_subst_from binders path (xs,p) t]  tries to find 
+   the first instance of a subterm of [t] matching [p] while recording 
+   the binders enclosing the matched occurrence. [binders] and [path] are 
+   the already-known enclosing binder context of [t], where [binders] is 
+   ordered from innermost to outermost binder. If successful, the function 
+   returns the array of terms by which [xs] must be substituted along with
+   the enclosing binder frame *)
+let find_subst_from :
     binder_frame list -> int list -> to_subst -> term ->
     subst_under_binders option = fun initial_binders initial_path xsp t ->
   let time = Timed.Time.save () in
@@ -252,7 +219,7 @@ let find_subst_under_binders_from :
       binder_frame list -> int list -> term -> subst_under_binders option =
     fun binders path t ->
     if Logger.log_enabled() then
-      log "find_subst_under_binders %a ≡ %a" term (snd xsp) term t;
+      log "find_subst %a ≡ %a" term (snd xsp) term t;
     match matching_subs xsp t with
     | None ->
         begin
@@ -297,19 +264,19 @@ let find_subst_under_binders_from :
     | r -> r
   in find initial_binders initial_path t
 
-(** [find_subst_under_binders (xs,p) t] is like [find_subst (xs,p) t], but
-    also records the binders enclosing the matched occurrence. The binder list
-    is ordered from innermost to outermost binder. *)
-let find_subst_under_binders :
+(** [find_subst (xs,p) t] calls 
+[find_subst_from binders path (xs,p) t] with an empty
+initial binder context and path. *)
+let find_subst :
     to_subst -> term -> subst_under_binders option =
-  find_subst_under_binders_from [] []
+  find_subst_from [] []
 
-(** [find_subst_under_binders pos (vars,p) t] returns the first occurrence
+(** [find_subst pos (vars,p) t] returns the first occurrence
     search result for [p] in [t], or fails if no subterm matches. It also
     checks that all variables in [vars] have been instantiated. *)
-let find_subst_under_binders :
+let find_subst :
     popt -> to_subst -> term -> subst_under_binders = fun pos (vars,p) t ->
-  match find_subst_under_binders (vars,p) t with
+  match find_subst (vars,p) t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> check_subs pos vars r.subst; r
 
@@ -319,7 +286,7 @@ let find_subst_under_binders :
 let find_subst_in_region_under_binders :
     popt -> binder_frame list -> to_subst -> term -> subst_under_binders =
   fun pos binders (vars,p) t ->
-  match find_subst_under_binders_from binders [] (vars,p) t with
+  match find_subst_from binders [] (vars,p) t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> check_subs pos vars r.subst; r
 
@@ -349,9 +316,7 @@ let find_subterm_matching : term -> term -> bool = fun p t ->
   in find t
 
 (** [replace_wild_by_tref t] substitutes every wildcard of [t] by a distinct
-   fresh [TRef]. Binder bodies must be opened before recursion and closed
-   again afterward, so wildcards beneath abstractions, products and lets are
-   included without changing the scope of their bound variables. *)
+   fresh [TRef]. *)
 let rec replace_wild_by_tref : term -> term = fun t ->
   match unfold t with
   | Wild -> mk_TRef(Timed.ref None)
@@ -781,14 +746,6 @@ let bind_pattern_under_binders_from ?(at=fun _ -> true) :
   in
   replace_under_binders_from initial_binders [] replace goal
 
-(** [bind_pattern_under_binders z xsp first_subst relevant goal] is the
-    binder-aware counterpart of [bind_pattern]. It replaces every occurrence
-    matching the first occurrence's shape by [z] applied to the corresponding
-    local binder variables. *)
-let bind_pattern_under_binders :
-    var -> to_subst -> term array -> binder_frame list -> term -> term =
-  bind_pattern_under_binders_from []
-
 (** [replace_selected_under_binders selected_binders selected replacement
     goal]
     replaces every occurrence of [selected] in [goal] by [replacement],
@@ -1047,7 +1004,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
         let lhs_pattern = l in
-        let found = find_subst_under_binders pos (vars, l) g_term in
+        let found = find_subst pos (vars, l) g_term in
         (* Build the required data from that substitution. *)
         let (t, l, r) = msubst3 bound found.subst in
         let prepared = prepare_rewrite_under_binders
@@ -1175,7 +1132,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            [context]. *)
         let selected = find_contextual_selection pos q g_term in
         let found =
-          match find_subst_under_binders_from
+          match find_subst_from
                   selected.selected_context_binders selected.selected_path
                   (vars,l) selected.selected_context with
           | Some r -> check_subs pos vars r.subst; r
