@@ -264,7 +264,6 @@ let list_with_sep (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
 *)
 exception UnfinishedProof of strloc * Syntax.p_symbol * popt
 
-(* FIX ME add comment *)
 let unfinished_proof l lb msg expected_tokens =
     let pe = Pos.make_pos (current_pos lb) Syntax.P_proof_end in
     let sym = (* fields other than [p_sym_prf] will be updated later *)
