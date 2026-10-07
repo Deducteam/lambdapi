@@ -608,7 +608,7 @@ and command (lb:'token lexbuf) : p_command =
  if log_enabled() then log "%s" __FUNCTION__;
  let pos1 = current_pos lb in
  let p_sym_mod = list modifier_tks modifier lb in
- try
+ try begin
  match p_sym_mod with
  | [{elt=P_opaq;_}] ->
     begin match current_token lb with
@@ -737,8 +737,9 @@ and command (lb:'token lexbuf) : p_command =
          [REQUIRE;OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE;RULE;UNIF_RULE;
           COERCE_RULE;BUILTIN;NOTATION] @ (query_tks()))
     end
+   end
  with UnfinishedProof(m, sym, _) ->
-    let {pos; _} = extend_pos lb (*__FUNCTION__*) pos1 sym in
+    let Pos.{pos; _} = extend_pos lb (*__FUNCTION__*) pos1 sym in
     raise (UnfinishedProof(m, sym, pos))
 
 and inductive (lb:'token lexbuf): p_inductive =
