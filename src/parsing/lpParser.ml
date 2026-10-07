@@ -504,6 +504,16 @@ let open_ (req:bool) (priv:bool) (lb:'token lexbuf) : p_command_aux =
 *)
 exception UnfinishedProof of strloc * Syntax.p_symbol * popt
 
+(* FIX ME add comment *)
+let unfinished_proof l lb msg expected_tokens =
+    let pe = Pos.make_pos (current_pos lb) Syntax.P_proof_end in
+    let sym = (* fields other than [p_sym_prf] will be updated later *)
+      { p_sym_mod = []; p_sym_kw = None; p_sym_nam = Pos.none ""
+      ; p_sym_arg = []; p_sym_typ = None; p_sym_trm = None; p_sym_def = false
+      ; p_sym_prf = Some(l,pe) }
+    in raise (UnfinishedProof(loc_err_msg lb msg expected_tokens, sym, None))
+
+
 let rec symbol (p_sym_mod:p_modifier list) (lb:'token lexbuf): p_command_aux =
  if log_enabled() then log "%s" __FUNCTION__;
  let p_sym_kw = Some(locate (current_pos lb)) in
@@ -1120,12 +1130,7 @@ and proof_end (l:p_proof) (lb:'token lexbuf): p_proof * p_proof_end =
       consume_token lb;
       make_pos pos1 Syntax.P_proof_end
   | _ ->
-    let pe = Pos.make_pos (current_pos lb) Syntax.P_proof_end in
-    let sym = (* fields other than [p_sym_prf] will be updated later *)
-      { p_sym_mod = []; p_sym_kw = None; p_sym_nam = Pos.none ""
-      ; p_sym_arg = []; p_sym_typ = None; p_sym_trm = None; p_sym_def = false
-      ; p_sym_prf = Some(l,pe) }
-    in raise (UnfinishedProof(loc_err_msg lb "" proof_end_tks, sym, None))
+      unfinished_proof l lb  "" proof_end_tks
 
 and tactic_tks() =
   [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;
