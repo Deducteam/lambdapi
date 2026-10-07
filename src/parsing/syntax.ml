@@ -305,6 +305,7 @@ type p_tactic_aux =
   | P_tac_sym
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
+  | P_tac_with_goal of p_term * p_term
 
 and p_tactic = p_tactic_aux loc
 
@@ -359,6 +360,7 @@ let tactic_keyword : p_tactic -> string option = fun {elt;_} ->
   | P_tac_sym -> Some "symmetry"
   | P_tac_try _ -> Some "try"
   | P_tac_why3 _ -> Some "why3"
+  | P_tac_with_goal _ -> Some "with_goal"
 
 (** [tactic_keyword_pos t] returns the position of the keyword introducing
     tactic [t], or the position of the whole of [t] when no single keyword
@@ -558,6 +560,8 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
   | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
       eq_p_ident i1 i2 && eq_p_term t1 t2
+  | P_tac_with_goal (l1,t1), P_tac_with_goal (l2,t2) ->
+      eq_p_term l1 l2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.eq (Option.eq eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
@@ -774,6 +778,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_refl
     | P_tac_sym
     | P_tac_why3 _
+    | P_tac_with_goal _
     | P_tac_solve
     | P_tac_fail
     | P_tac_focus _
