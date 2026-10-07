@@ -1093,9 +1093,9 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | ADMITTED ->
       proof_end [] lb
   | _ ->
-    unfinished_proof
-        [steps lb] lb
-        (string_of_tokens "subproof, tactic, query" proof_end_tks) []
+      unfinished_proof
+          [steps lb] lb
+          (string_of_tokens "subproof, tactic, query" proof_end_tks) []
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
