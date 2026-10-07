@@ -83,6 +83,29 @@ let symb_to_patt : Pos.popt -> (int * int option) SymMap.t -> string array
   in
   symb_to_patt
 
+(** [check_constraint p metas c] adds typing constraints associated to 
+    rule condition [c] to [p] after replacing variable indexes by metas 
+    variables in [c]. *)
+let check_constraint : 
+      problem -> meta array -> r_constraint -> 
+      (term * term) option
+  = fun p metas c ->
+  let rec asTerm : r_term -> term = fun t ->
+    match t with
+    | R_App(sy,al) ->
+        List.fold_left (fun f a -> mk_Appl(f,asTerm a)) (mk_Symb sy) al
+    | R_Patt i -> mk_Meta (metas.(i),[||])
+    | R_Sym sy -> mk_Symb sy in
+  match c with
+  | R_EQ ((sy1,al1),(sy2,al2)) -> 
+      let t1 = asTerm (R_App(sy1, List.map (fun i -> R_Patt i) al1)) in
+      let t2 = asTerm (R_App(sy2, List.map (fun i -> R_Patt i) al2)) in
+      let t = add_args (mk_Symb Unif_rule.equiv) [t1;t2] in
+      Infer.infer_noexn p [] t
+  | R_CHK (sy, al) ->
+      Infer.infer_noexn p [] (asTerm (R_App(sy,al)))
+  | R_None -> Infer.infer_noexn p [] mk_Type
+
 (** [check_rule r] checks whether the rule [r] preserves typing. *)
 let check_rule : Pos.popt -> sym_rule -> sym_rule =
   fun pos ((s,({lhs;names;rhs;arities;vars_nb;xvars_nb;_} as r)) as sr) ->
@@ -121,6 +144,13 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   | Some (lhs_with_metas, ty_lhs) ->
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
+  (* Infer the typing constraints of the condition. *)
+  match check_constraint p metas r.r_when with
+  | None -> fatal pos "The constraint is not typable."
+  | Some (_,_) -> 
+  if not (Unif.solve_noexn ~type_check:false p) then
+    fatal pos "The constraint is not typable.";
+  (* Try to simplify constraints. *)
   (* Normalize constraints. *)
   let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
   let lhs_constrs = List.map norm_constr !p.unsolved in
