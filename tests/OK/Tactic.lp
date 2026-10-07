@@ -13,8 +13,9 @@ builtin "admit" ≔ #admit;
 constant symbol #all_hyps: (Π [l] [a:U l], η a → Tactic) → Tactic;
 builtin "all_hyps" ≔ #all_hyps;
 
-constant symbol #apply: Π [l] [a:U l], η a → Tactic;
-builtin "apply" ≔ #apply;
+constant symbol #napply: String → Π [l] [a:U l], η a → Tactic;
+builtin "apply" ≔ #napply;
+symbol #apply [l] [a:U l]: η a → Tactic ≔ @#napply "" l a;
 
 constant symbol #assume : String → Π [l], Π [a:U l], (η a → Tactic) → Tactic;
 builtin "assume" ≔ #assume;
