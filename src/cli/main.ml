@@ -1089,7 +1089,8 @@ let _ =
       exit 1
     | _ ->
       Lplib.Color.update_with_color Format.err_formatter;
-      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc
+      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc;
+      exit 1
   in
   try main args
   with
