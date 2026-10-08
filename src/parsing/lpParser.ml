@@ -273,17 +273,15 @@ let unfinished_proof l lb msg expected_tokens =
     in raise (UnfinishedProof(loc_err_msg lb msg expected_tokens, sym, None))
 
 let list_with_sep_or_termin
- (guard: 'token list) (elt:'token lexbuf -> 'a) (sep:'token)
+ (guard: 'token list) (elt:'a list ref -> 'token lexbuf -> 'a) (sep:'token)
  (lb:'token lexbuf) : p_subproof =
   if log_enabled() then log "%s" __FUNCTION__;
-  let acc : p_subproof ref = ref [] in
+  let acc = ref [] in
   let match_sep = ref false in
   while match_guard (if !match_sep then [sep] else guard) lb do
     if !match_sep then (consume sep lb; match_sep := false)
     else
-        try acc := elt lb :: !acc; match_sep := true
-        with SyntaxError(_,m) ->
-            unfinished_proof [List.rev !acc] lb m.elt []
+        (acc := elt acc lb :: !acc; match_sep := true)
   done ;
   set_expected_tokens lb (if !match_sep then [sep] else guard) ;
   List.rev !acc
@@ -1108,7 +1106,11 @@ and subproof (lb:'token lexbuf): p_proofstep list =
 
 and steps (lb:'token lexbuf): p_proofstep list =
   if log_enabled() then log "%s" __FUNCTION__;
-  list_with_sep_or_termin (step_tks()) step SEMICOLON lb
+  let f acc lb =
+    try step lb
+    with SyntaxError(_,m) -> unfinished_proof [List.rev !acc] lb m.elt []
+  in
+  list_with_sep_or_termin (step_tks()) f SEMICOLON lb
 
 and step_tks() = tactic_tks()
 and step (lb:'token lexbuf): p_proofstep =
