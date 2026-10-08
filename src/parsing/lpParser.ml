@@ -153,14 +153,11 @@ let match_guard patts lb =
  List.exists (match_token (current_token lb)) patts
 
 let err_msg lb (msg:string) (tokens:token list): string =
-(* Avoid adding "Expected" if the message already starts with it *)
-  (if String.starts_with ~prefix:"Expected: " msg then "" else "Expected: ")
-  ^(if msg <> "" then msg
-    else match tokens with
-      | [] -> assert false
-      | t::ts -> string_of_tokens (string_of_token t)
-                   (ts @ get_expected_tokens lb))
-  ^"."
+  if msg <> "" then msg
+  else match tokens with
+       | [] -> assert false
+       | t::ts -> "Expected: " ^ string_of_tokens (string_of_token t)
+                                   (ts @ get_expected_tokens lb) ^ "."
 
 let loc_err_msg lb (msg:string) (tokens:token list) : strloc =
   Pos.make_pos (current_pos lb) (err_msg lb msg tokens)
@@ -199,7 +196,7 @@ let make_prod lb (pos1:position) (ps:p_params list) (t:p_term) (pos2:position)
 let ident_of_term pos1 {elt; _} =
   match elt with
   | P_Iden({elt=([], x); pos}, _) -> Pos.make pos x
-  | _ -> LpLexer.syntax_error pos1 "not an unqualified identifier."
+  | _ -> LpLexer.syntax_error pos1 "Not an unqualified identifier."
 
 (* generic parsing functions *)
 
@@ -280,8 +277,7 @@ let list_with_sep_or_termin
   let match_sep = ref false in
   while match_guard (if !match_sep then [sep] else guard) lb do
     if !match_sep then (consume sep lb; match_sep := false)
-    else
-        (acc := elt acc lb :: !acc; match_sep := true)
+    else (acc := elt acc lb :: !acc; match_sep := true)
   done ;
   set_expected_tokens lb (if !match_sep then [sep] else guard) ;
   List.rev !acc
@@ -1085,16 +1081,14 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | SYMMETRY
   | TRY
   | WHY3 ->
-      let l = steps lb in
-      proof_end [l] lb
+      proof_end [steps lb] lb
   | END
   | ABORT
   | ADMITTED ->
       proof_end [] lb
   | _ ->
-      unfinished_proof
-          [[]] lb
-          (string_of_tokens "subproof, tactic, query" proof_end_tks) []
+      unfinished_proof [[]] lb
+        (string_of_tokens "subproof, tactic, query" proof_end_tks) []
 
 and subproof_tks = [L_CU_BRACKET]
 and subproof (lb:'token lexbuf): p_proofstep list =
