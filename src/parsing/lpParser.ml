@@ -274,7 +274,7 @@ let unfinished_proof l lb msg expected_tokens =
 
 let list_with_sep_or_termin
  (guard: 'token list) (elt:'a list ref -> 'token lexbuf -> 'a) (sep:'token)
- (lb:'token lexbuf) : p_subproof =
+ (lb:'token lexbuf) : 'a list =
   if log_enabled() then log "%s" __FUNCTION__;
   let acc = ref [] in
   let match_sep = ref false in
@@ -1093,7 +1093,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
       proof_end [] lb
   | _ ->
       unfinished_proof
-          [steps lb] lb
+          [[]] lb
           (string_of_tokens "subproof, tactic, query" proof_end_tks) []
 
 and subproof_tks = [L_CU_BRACKET]
