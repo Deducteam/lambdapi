@@ -65,8 +65,9 @@
       (env (ident)
            (env ";" env))
       (rw-patt)
+      (implicit_args)
       (args (ident)
-            ("{" ident ":" term "}")
+            (implicit_args)
             ("(" ident ":" term ")"))
       (simplify-args (ident)
              (rule "off"))
@@ -113,7 +114,7 @@
               ("first_hyp" term)
               ("focus" term)
               ("generalize" ident)
-              ("have" ident ":" term)
+              ("have" ident ":" term "{" proof "}")
               ("induction")
               ("orelse" tactic)
               ("refine" term)
@@ -127,7 +128,7 @@
               ("symmetry")
               ("try" tactic)
               ("why3"))
-      (proof (tactic) (tactic ";" tactic))
+      (proof (tactic) (tactic ";" proof))
       (modifiers ("associative" modifiers)
                  ("commutative" modifiers)
                  ("constant" modifiers)
@@ -185,7 +186,6 @@
     '((assoc "with"))
     '((assoc ";"))
     '((assoc "coerce_rule") (assoc "↪"))
-    ;; FIX ME : Check priority rules
     '((assoc "≡") (assoc "↪"))
     '((assoc "unif_rule") (assoc "≡"))
     '((assoc ",") (assoc "in") (assoc "→"))
@@ -194,12 +194,17 @@
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
-  (smie-default-forward-token))
+  (forward-comment (point-max))
+  (if (memq (char-after) '(?{ ?}))
+      (progn (forward-char 1) (string (char-before)))
+    (smie-default-forward-token)))
 
 (defun lambdapi--smie-backward-token ()
-  "Backward lexer for Dedukti3.
-The default lexer is used because the syntax is primarily made of sexps."
-  (smie-default-backward-token))
+  "Backward lexer for Dedukti3."
+  (forward-comment (- (point)))
+  (if (memq (char-before) '(?{ ?}))
+      (progn (forward-char -1) (string (char-after)))
+    (smie-default-backward-token)))
 
 (defun lambdapi--smie-rules (kind token)
   "Indentation rule for case KIND and token TOKEN."
@@ -211,6 +216,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ":") lambdapi-indent-basic)
     (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
     (`(:before . "with") (smie-rule-parent))
+    (`(:before . "{") (smie-rule-parent lambdapi-indent-basic))
 ))
 
 (provide 'lambdapi-smie)
