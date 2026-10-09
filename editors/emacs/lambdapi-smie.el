@@ -60,21 +60,6 @@
    lambdapi--queries)
   "Commands at top level.")
 
-(defun lambdapi--query-indent ()
-  "Indent commands that may be in proofs.
-Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
-  (save-excursion
-    (forward-line -1)
-    (back-to-indentation)
-    (cond
-     ((looking-at-p (regexp-opt (cons "begin" lambdapi--tactics)))
-      `(column . ,lambdapi-indent-basic))
-     ((looking-at-p (regexp-opt lambdapi--queries))
-      ;; If the previous line is a query, indent similarly
-      (back-to-indentation)
-      `(column . ,(current-column)))
-     (t '(column . 0)))))
-
 (defconst lambdapi-smie-bnf
   '((ident)
       (env (ident)
@@ -85,12 +70,13 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
             ("(" ident ":" term ")"))
       (simplify-args (ident)
              (rule "off"))
+      (ident_args)
       (term ("TYPE")
              ("_")
              (ident)
              ("?" ident "[" env "]")
              ("$" ident "[" env "]")
-;;             ("`" ident args "," term)
+             ("`" ident_args "," term)
              (term "→" term)
              ("λ" args "," term)
              ("λ" ident ":" term "," term)
@@ -142,9 +128,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("try" tactic)
               ("why3"))
       (proof (tactic) (tactic ";" tactic))
-      ;; TODO : define more finely modifiers to allow only accepted modifiers
-      ;; without raising warning token ??? is both opener and neither
-      ;; or error : Adjacent non-terminals: modifier modifiers
       (modifiers ("associative" modifiers)
                  ("commutative" modifiers)
                  ("constant" modifiers)
@@ -155,8 +138,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                  ("sequential" modifiers))
       (constructor (args ":" term))
       (constructors (constructor) (constructors "|" constructors))
-      ;; FIX ME : should be term args but raises an error Adjacent non-terminals
-      (ident_args)
       (inductive (ident_args ":" term "≔" constructors))
       (winductives (inductive)
                    (inductive "with" winductives))
@@ -225,7 +206,6 @@ The default lexer is used because the syntax is primarily made of sexps."
   (pcase (cons kind token)
     (`(:elem . basic) 0)
 
-    (`(:before . "begin") 0)
     (`(:after . "begin") lambdapi-indent-basic)
     (`(:before . "end") (smie-rule-parent))
     (`(:after . ":") lambdapi-indent-basic)
