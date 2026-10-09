@@ -67,6 +67,9 @@
       (rw-patt)
       (implicit_args)
       (args (ident)
+            ;; structured definition of implicit_args conflicts with
+            ;; the rule ("have" ident ":" term "{" proof "}")
+            ;; while it does not bring any added-value
             (implicit_args)
             ("(" ident ":" term ")"))
       (simplify-args (ident)
