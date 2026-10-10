@@ -34,6 +34,7 @@ Here are some of the features of Lambdapi:
 - support for unicode (UTF-8) and user-defined infix operators
 - symbols can be declared commutative, or associative and commutative
 - some arguments can be declared as implicit: the system will try to find out their value automatically
+- a typeclass solver, written in Elpi, allows to add rules to help the system infer implicit arguments
 - symbol and rule declarations are separated so that one can easily define inductive-recursive types or turn a proved equation into a rewriting rule
 - support for interactive resolution of typing goals, and unification goals as well, using tactics
 - a rewrite tactic similar to the one of SSReflect in Coq

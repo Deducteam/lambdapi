@@ -15,12 +15,13 @@ let scope_term ss = Scope.scope_term true ss []
 
 let add_sym ss id =
   Sig_state.add_symbol ss Public Defin Eager false (Pos.none id) None
-    Term.mk_Kind [] None
+    Term.mk_Kind [] false false None
 
 (* Define a signature state and some symbols. *)
 
 let sig_state : Sig_state.t =
-  Sig_state.of_sign (Sign.create (Path.ghost "rewriting_tests"))
+  Handle.Elpi_handle.Sig_state.of_sign
+    (Sign.create (Path.ghost "rewriting_tests"))
 
 let sig_state, c = add_sym sig_state "C"
 let sig_state, ok = add_sym sig_state "Ok"

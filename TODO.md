@@ -1,6 +1,22 @@
 TODO
 ====
 
+Typeclasses
+----------------
+
+* Allow typeclasses to have multiple arguments
+* Multiple features could be implemented that are present in Davide Fissore's
+  [Rocq-elpi typeclass solver](https://github.com/LPCIC/coq-elpi/blob/master/apps/tc/README.md)
+  (instance priority, input/output argument mode,
+  non-backtracking instances, etc...)
+* The typeclass solver uses Elpi's unification, which means it does not work
+  modulo rewriting (for example, an instance of type `myclass (_ → _)` won't
+  work on a goal of type `myclass (El (arr _ _))` even with
+  `rule El (arr $x $y) ↪ $x → $y;`)
+  - Not necessarily an issue, we will see if cases arise
+* It would be useful to have some form of record syntax, goes well with typeclasses.
+  - See tests/OK/elpi_isa_test.lp, would look much better with record syntax.
+
 Minor fixes after [indexing_BO](https://github.com/Deducteam/lambdapi/pull/1290) merge 
 ----------------
 

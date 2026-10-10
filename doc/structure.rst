@@ -71,6 +71,7 @@ Overview of directories and files
       * ``libMeta.ml``: basic operations on metavariables
       * ``print.ml``: pretty printing of terms
       * ``env.ml``: maps identifier -> variable and type
+      * ``elpi_lambdapi.ml``: Lambdapi data structures in Elpi
     
     * signatures:
 
@@ -108,6 +109,7 @@ Overview of directories and files
 
     * ``command.ml``: command handling
     * ``compile.ml``: file parsing and compiling (.lpo files)
+    * ``elpi_handle.ml``: interactions with a typeclass solver written in Elpi
     * ``inductive.ml``: generation of induction principles
     * ``proof.ml``: proof state
     * ``query.ml``: handling of queries (commands that do not change the signature or the proof state)

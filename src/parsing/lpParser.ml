@@ -65,6 +65,7 @@ let string_of_token =
   | INDUCTIVE -> q"inductive"
   | INFIX -> q"infix"
   | INJECTIVE -> q"injective"
+  | INSTANCE -> q"instance"
   | INT _ -> q"integer"
   | LAMBDA -> q"λ"
   | LET -> q"let"
@@ -113,6 +114,7 @@ let string_of_token =
   | THICKARROW -> q"=>" (* only in Rocq *)
   | TRY -> q"try"
   | TURNSTILE -> q"⊢"
+  | TYPECLASS -> q"typeclass"
   | TYPE_QUERY -> q"type"
   | TYPE_TERM -> q"TYPE"
   | UID _ -> "non-qualified identifier"
@@ -604,12 +606,18 @@ and command (lb:'token lexbuf) : p_command =
  let p_sym_mod = list modifier_tks modifier lb in
  try begin
  match p_sym_mod with
- | [{elt=P_opaq;_}] ->
+ | [{elt=P_opaq|P_typeclass|P_typeclass_instance as elt;_}] ->
     begin match current_token lb with
     | UID _
     | QID _ ->
        let i = qid lb in
-       extend_pos lb (*__FUNCTION__*) pos1 (P_opaque i)
+       let cmd = match elt with
+         | P_opaq -> P_opaque i
+         | P_typeclass -> P_type_class i
+         | P_typeclass_instance -> P_type_class_instance i
+         | _ -> assert false
+       in
+       extend_pos lb (*__FUNCTION__*) pos1 cmd
     | SYMBOL ->
        extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
     | _ -> expected lb "" [UID"";QID[];SYMBOL]
@@ -770,8 +778,8 @@ and constructor (lb:'token lexbuf): p_ident * p_term =
   i, make_prod lb (fst pos1) ps t (snd (current_pos lb))
 
 and modifier_tks =
-  [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;OPAQUE;
-   PRIVATE;PROTECTED;SEQUENTIAL]
+  [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;INSTANCE;
+   OPAQUE;PRIVATE;PROTECTED;SEQUENTIAL;TYPECLASS]
 and modifier (lb:'token lexbuf): p_modifier =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -801,6 +809,14 @@ and modifier (lb:'token lexbuf): p_modifier =
       let pos1 = current_pos lb in
       consume_token lb;
       extend_pos lb (*__FUNCTION__*) pos1 P_opaq
+  | TYPECLASS ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 P_typeclass
+  | INSTANCE ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      extend_pos lb (*__FUNCTION__*) pos1 P_typeclass_instance
   | PRIVATE ->
       let pos1 = current_pos lb in
       consume_token lb;

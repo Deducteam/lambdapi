@@ -2,3 +2,10 @@
 (env
  (dev     (flags :standard))
  (release (flags :standard)))
+
+(install
+ (files
+  src/elpi/tcsolver.elpi
+  (doc/lambdapi-builtins.elpi as doc/lambdapi-builtins.elpi))
+ (section (site (lambdapi elpi_files)))
+ (package lambdapi))
