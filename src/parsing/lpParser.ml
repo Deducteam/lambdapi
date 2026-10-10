@@ -65,6 +65,7 @@ let string_of_token =
   | INDUCTIVE -> q"inductive"
   | INFIX -> q"infix"
   | INJECTIVE -> q"injective"
+  | INSTANCE -> q"instance"
   | INT _ -> q"integer"
   | LAMBDA -> q"λ"
   | LET -> q"let"
@@ -113,6 +114,7 @@ let string_of_token =
   | THICKARROW -> q"=>" (* only in Rocq *)
   | TRY -> q"try"
   | TURNSTILE -> q"⊢"
+  | TYPECLASS -> q"typeclass"
   | TYPE_QUERY -> q"type"
   | TYPE_TERM -> q"TYPE"
   | UID _ -> "non-qualified identifier"
@@ -125,8 +127,6 @@ let string_of_token =
   | VERBOSE -> q"verbose"
   | WHY3 -> q"why3"
   | WITH -> q"with"
-  | TYPECLASS -> q"typeclass"
-  | INSTANCE -> q"instance"
 
 let string_of_tokens = List.fold_left (fun s t -> s^", "^string_of_token t)
 
@@ -606,18 +606,7 @@ and command (lb:'token lexbuf) : p_command =
  let p_sym_mod = list modifier_tks modifier lb in
  try begin
  match p_sym_mod with
- | [{elt=P_expo Term.Privat;_}] ->
-    begin match current_token lb with
-    | OPEN -> extend_pos lb (*__FUNCTION__*) pos1 (open_ false true lb)
-    | SYMBOL ->
-        extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
-    | L_PAREN
-    | L_SQ_BRACKET
-    | INDUCTIVE ->
-        extend_pos lb (*__FUNCTION__*) pos1 (inductive_cmd p_sym_mod lb)
-    | _ -> expected lb "" [OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE]
-    end
- | [{elt;_}] when List.mem elt [P_opaq; P_typeclass; P_typeclass_instance] ->
+ | [{elt=P_opaq|P_typeclass|P_typeclass_instance as elt;_}] ->
     begin match current_token lb with
     | UID _
     | QID _ ->
@@ -632,6 +621,17 @@ and command (lb:'token lexbuf) : p_command =
     | SYMBOL ->
        extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
     | _ -> expected lb "" [UID"";QID[];SYMBOL]
+    end
+ | [{elt=P_expo Term.Privat;_}] ->
+    begin match current_token lb with
+    | OPEN -> extend_pos lb (*__FUNCTION__*) pos1 (open_ false true lb)
+    | SYMBOL ->
+        extend_pos lb (*__FUNCTION__*) pos1 (symbol p_sym_mod lb)
+    | L_PAREN
+    | L_SQ_BRACKET
+    | INDUCTIVE ->
+        extend_pos lb (*__FUNCTION__*) pos1 (inductive_cmd p_sym_mod lb)
+    | _ -> expected lb "" [OPEN;SYMBOL;L_PAREN;L_SQ_BRACKET;INDUCTIVE]
     end
  | _::_ ->
     begin match current_token lb with
@@ -778,8 +778,8 @@ and constructor (lb:'token lexbuf): p_ident * p_term =
   i, make_prod lb (fst pos1) ps t (snd (current_pos lb))
 
 and modifier_tks =
-  [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;OPAQUE;
-   PRIVATE;PROTECTED;SEQUENTIAL;TYPECLASS;INSTANCE]
+  [SIDE Pratter.Left;ASSOCIATIVE;COMMUTATIVE;CONSTANT;INJECTIVE;INSTANCE;
+   OPAQUE;PRIVATE;PROTECTED;SEQUENTIAL;TYPECLASS]
 and modifier (lb:'token lexbuf): p_modifier =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
