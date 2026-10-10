@@ -348,7 +348,7 @@ let read : string -> t = fun fname ->
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
   let f _ {dep_symbols=sm; _} =
     StrMap.iter (fun _ sd -> List.iter reset_rule sd.rules) sm in
-  SymSet.iter (fun s -> reset_sym s) !(sign.sign_tc);
+  SymSet.iter reset_sym !(sign.sign_tc);
   Path.Map.iter f !(sign.sign_deps);
   let reset_ind i =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
