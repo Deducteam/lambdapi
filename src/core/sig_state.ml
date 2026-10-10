@@ -15,20 +15,18 @@ open Timed
 open Term
 open Sign
 
-(** State of the signature, including aliasing and accessible symbols.
-    the tc_solver is an option so that sig_states can be created before
-    elpi is initialized. *)
+(** State of the signature, including aliasing, accessible symbols. *)
 type sig_state =
-  { signature      : Sign.t                     (** Current signature. *)
-  ; in_scope       : sym StrMap.t               (** Symbols in scope.  *)
-  ; alias_path     : Path.t StrMap.t            (** Alias to path map. *)
-  ; path_alias     : string Path.Map.t          (** Path to alias map. *)
-  ; builtins       : sym StrMap.t                        (** Builtins. *)
-  ; active_tc      : SymSet.t                            (** Active TC *)
-  ; tc_solver_prog : Elpi.API.Compile.program option     (** TC solver *)
+  { signature      : Sign.t                    (** Current signature. *)
+  ; in_scope       : sym StrMap.t              (** Symbols in scope.  *)
+  ; alias_path     : Path.t StrMap.t           (** Alias to path map. *)
+  ; path_alias     : string Path.Map.t         (** Path to alias map. *)
+  ; builtins       : sym StrMap.t              (** Builtins. *)
+  ; open_paths     : Path.Set.t                (** Open modules. *)
+  ; active_tc      : SymSet.t                            (** Active TC   *)
+  ; tc_solver_prog : Elpi.API.Compile.program option     (** TC solver   *)
   ; add_tc_instance: sig_state -> popt -> sym ->
-    Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update   *)
-  ; open_paths     : Path.Set.t                          (** Open modules. *)
+    Elpi.API.Compile.program -> Elpi.API.Compile.program (** Self-update *)
 }
 
 type t = sig_state
