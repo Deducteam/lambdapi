@@ -360,7 +360,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Console.out 2 (Color.gre "coercion %a") sym_rule r;
       (ss, None, None)
 
-  | P_inductive(_, ms, params, p_ind_list) ->
+  | P_inductive(_, ms, params_list, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat, opaq, tc, tci) = handle_modifiers ms in
       if tc then
@@ -377,21 +377,21 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add inductive types in the signature, all at position [pos]. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss expo Const Eager id pos params pt in
+          handle_inductive_symbol ss expo Const Eager id pos params_list pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
       (* Set parameters as implicit in the type of constructors. *)
-      let params =
-        List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
+      let params_list = List.map (fun (x,y,_) -> (x,y,true)) params_list in
       (* Add constructors in the signature. *)
       let cons_pos = shift 1 pos in (* after types *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id cons_pos params pt
+            handle_inductive_symbol
+              ss expo Const Eager id cons_pos params_list pt
           in (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -413,7 +413,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Compute data useful for generating the induction principles. *)
       let cfg = Inductive.get_config ss pos in
       let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-      let ind_nb_params = List.length params in
+      let ind_nb_params = nb_params params_list in
       let vs, env, ind_pred_map =
         Inductive.create_ind_pred_map pos cfg ind_nb_params ind_list
           a_str p_str x_str
@@ -424,6 +424,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Add the induction principles in the signature. *)
       let rec_pos = shift 2 pos in (* after types and constructors *)
+      let impl = List.init ind_nb_params (fun _ -> true) in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
@@ -435,7 +436,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let id = Pos.make pos rec_name in
           let r =
             Sig_state.add_symbol ss expo Defin Eager false id rec_pos
-              rec_typ [] false false None
+              rec_typ impl false false None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -621,7 +622,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         Tactic.tac_solve pos ss ps
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
-        "Some metavariables could not be solved: a proof must be given";
+        "Some metavariables could not be solved: a proof must be given.";
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }, qres
     in

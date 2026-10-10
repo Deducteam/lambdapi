@@ -71,8 +71,8 @@ and p_term_aux =
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
-(** Parser-level representation of a function argument. The boolean is true if
-    the argument is marked as implicit (i.e., between curly braces). *)
+(** Parser-level representation of a group of parameters. The boolean is true
+    if the group is marked as implicit (i.e. between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
 (** [nb_params ps] returns the number of parameters in a list of parameters

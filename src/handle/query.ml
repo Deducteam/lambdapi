@@ -207,7 +207,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let decl ppf s =
           let rules ppf s =
             if !(s.sym_rules) <> [] then out ppf "@.%a" (rules sym_rule) s in
-          out ppf "%a%a%asymbol %a : %a%a;%a%a"
+          out ppf "%a%a%asymbol %a: %a%a;%a%a"
             expo s.sym_expo prop s.sym_prop match_strat s.sym_mstrat
             sym s sym_type s def !(s.sym_def) notation s rules s
         in

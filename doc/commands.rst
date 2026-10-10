@@ -333,7 +333,7 @@ rewrite sequences) rewriting system when combined with β-reduction.
 
 The verification is left to the user, who can call external provers
 for trying to check those properties automatically using the
-:doc:`command line options <options>` ``--confluence`` and
+:doc:`command line options <cli>` ``--confluence`` and
 ``--termination``.
 
 Lambdapi will however try to check at each ``rule`` command that the

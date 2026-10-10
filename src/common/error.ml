@@ -19,7 +19,7 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
   | None   -> fprintf !err_fmt (Color.yel fmt ^^ "@.")
   | Some _ ->
-    fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt) ^^ "@.") Pos.pp pos
+    fprintf !err_fmt (Color.yel ("[%a] " ^^ fmt) ^^ "@.") Pos.pp pos
 
 (** [no_wrn f x] disables warnings before executing [f x] and then restores
     the initial state of warnings. The result of [f x] is returned. *)
@@ -32,11 +32,11 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
   res
 
 (** Exception raised in case of failure. Note that we use an optional optional
-    source position. [None] is used on errors that are independant from source
+    source position. [None] is used on errors that are independent from source
     code position (e.g., errors related to command-line arguments parsing). In
-    cases where positions are expected [Some None] may be used to indicate the
-    abscence of a position. This may happen when terms are generated (e.g., by
-    a  form of desugaring). The last argument is  used to provide  an optional
+    cases where positions are expected [Some None] is used to indicate the
+    absence of a position. This may happen when terms are generated (e.g., by
+    a form of desugaring). The last argument is used to provide an optional
     description of the error, displayed differently from the error itself. *)
 exception Fatal of Pos.popt option * string * string
 
@@ -53,9 +53,9 @@ let fatal_msg : 'a outfmt -> 'a =
     instead of red color. *)
 let fatal : Pos.popt -> ?err_desc:string -> ('a,'b) koutfmt -> 'a =
   fun pos ?(err_desc="") fmt ->
-  let err_desc _ =
+  let cont _ =
     raise (Fatal(Some(pos), Format.flush_str_formatter (), err_desc)) in
-  Format.kfprintf err_desc Format.str_formatter fmt
+  Format.kfprintf cont Format.str_formatter fmt
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)
@@ -65,27 +65,6 @@ let fatal_no_pos : ?err_desc:string -> ('a,'b) koutfmt -> 'a =
       raise (Fatal(None, Format.flush_str_formatter (), err_desc)) in
     Format.kfprintf cont Format.str_formatter fmt
 
-let fatal_optional_position pos = match pos with
+let fatal_optional_position = function
   | None -> fatal_no_pos
   | Some p -> fatal p
-
-(** [handle_exceptions f] runs [f ()] in an exception handler and handles both
-    expected and unexpected exceptions by displaying a graceful error message.
-    In case of an error, the program is (irrecoverably) stopped with exit code
-    [1] (indicating failure). Hence, [handle_exceptions] should only be called
-    by the main program logic, not by the internals. *)
-let handle_exceptions : (unit -> unit) -> unit = fun f ->
-  let exit_with : type a b. string -> (a,b) koutfmt -> a = fun err_desc fmt ->
-    Color.update_with_color Format.err_formatter;
-    Format.kfprintf (fun _ -> Color.update_with_color Format.err_formatter;
-    (Format.kfprintf (fun _ -> exit 1)
-      Format.err_formatter "%s" err_desc)) Format.err_formatter
-      (Color.red (fmt ^^ "@."))
-  in
-  try f () with
-  | Fatal(None,    msg, desc) -> exit_with desc "%s" msg
-  | Fatal(Some(p), msg, desc) -> exit_with desc "[%a] %s" Pos.pp p msg
-  | e ->
-      exit_with "" "Uncaught [%s].\n%s"
-        (Printexc.to_string e)
-        (Printexc.get_backtrace())

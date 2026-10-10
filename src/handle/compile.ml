@@ -58,6 +58,7 @@ let rec compile : Command.compiler = fun ss mp ->
         let new_ss = Stdlib.ref (Elpi_handle.Sig_state.of_sign sign) in
         fun cmd -> Stdlib.(new_ss := Command.handle compile !new_ss cmd)
       in
+      try
       Debug.stream_iter consume (Parser.parse_file src);
       Sig_state.update_ext_sym_dtrees true ss;
       Tactic.restore_admitted a;
@@ -69,6 +70,11 @@ let rec compile : Command.compiler = fun ss mp ->
       end;
       loading := List.tl !loading;
       sign
+      with LpParser.UnfinishedProof(log_msg, _, _) ->
+        let pos, msg = match log_msg with
+        | { pos=Some p; elt } -> p, elt
+        | _ -> assert false in
+        Parsing.Parser.parser_fatal pos "Syntax error. %s" msg
     end
     else
     begin

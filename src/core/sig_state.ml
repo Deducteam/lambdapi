@@ -54,10 +54,10 @@ let add_tci : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
   let tc_solver = get_solver ss pos in
   {ss with tc_solver_prog = Some (ss.add_tc_instance ss pos sym tc_solver) }
 
-(** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
-    signature state from [ss] by creating a new symbol with expo [e], property
-    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
-    optional definition [def]. [pos] is the position of the declaration
+(** [add_symbol ss expo prop mstrat opaq id pos typ impl tc tci def] generates
+    a new signature state from [ss] by creating a new symbol with expo [e],
+    property [p], strategy [st], name [x], type [a], implicit arguments [impl]
+    and optional definition [def]. [pos] is the position of the declaration
     without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
     -> bool -> strloc -> popt -> term -> bool list -> bool -> bool ->
