@@ -130,7 +130,7 @@
 
 <rwpatt> ::= <term>
             | "in" <term>
-            | "in" <uid> "in" Package.apply_config fname;<term>
+            | "in" <uid> "in" <term>
             | <term> "in" <term> ["in" <term>]
             | <term> "as" <uid> "in" <term>
 
