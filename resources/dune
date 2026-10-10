@@ -1,6 +1,6 @@
 (library
- (name ressources)
- (public_name lambdapi.ressources)
+ (name resources)
+ (public_name lambdapi.resources)
  (modules :standard)
  (libraries lambdapi.parsing lambdapi.core dream unix dune-site)
  (preprocess (pps lwt_ppx))
