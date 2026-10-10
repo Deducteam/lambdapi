@@ -33,9 +33,8 @@ type t = sig_state
 
 (** [get_solver ss pos] accesses the current tc solver of [ss],
     failing if it was not yet initialized *)
-let get_solver : sig_state -> popt -> Elpi.API.Compile.program = fun ss pos ->
-  match ss.tc_solver_prog with Some p -> p
-  | _ -> fatal pos "tc_solver was not initialized"
+let get_solver : sig_state -> Elpi.API.Compile.program = fun ss ->
+  match ss.tc_solver_prog with Some p -> p | _ -> assert false
 
 (** [add_tc ss sym pos] generates a new signature state from [ss]
     by adding [sym] as an active typeclass. *)
@@ -49,7 +48,7 @@ let add_tc : sig_state -> sym -> sig_state = fun ss sym ->
     [sym]'s type cannot be recognised as a typeclass *)
 let add_tci : sig_state -> sym -> popt -> sig_state = fun ss sym pos ->
   Sign.add_tci ss.signature sym;
-  let tc_solver = get_solver ss pos in
+  let tc_solver = get_solver ss in
   {ss with tc_solver_prog = Some (ss.add_tc_instance ss pos sym tc_solver) }
 
 (** [add_symbol ss expo prop mstrat opaq id pos typ impl tc tci def] generates

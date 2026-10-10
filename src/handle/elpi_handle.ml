@@ -390,7 +390,7 @@ let solve_with_tc : ?ctxtmap: Term.ctxt IntMap.t ->
           Elpi.API.Utils.map_acc (embed_goal ~depth:0 pos) st tc in
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
       let query = Elpi.API.RawQuery.compile_raw_term
-        (Sig_state.get_solver ss pos) query in
+        (Sig_state.get_solver ss) query in
       set_elpi_trace();
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; pp_ctx; _} ->
