@@ -296,9 +296,9 @@ let init () =
   elpi := Some e
 
 (** Sanity check + returns the Elpi setup *)
-let rec ensure_initialized () =
+let ensure_initialized () =
   match !elpi with
-  | None -> init (); assert (!elpi <> None) ; ensure_initialized ()
+  | None -> init (); Option.get !elpi
   | Some e -> e
 
 (** The compiled content of tcsolver.elpi *)
