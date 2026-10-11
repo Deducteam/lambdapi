@@ -1025,7 +1025,7 @@ let cmd_websearch =
       match !header with
       | None ->
         let file =
-          match Ressources.Mysites.Sites.server_resources with
+          match Resources.Mysites.Sites.server_resources with
           | [] -> assert false
           | x :: _ -> x
         in
