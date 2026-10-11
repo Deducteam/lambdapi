@@ -147,7 +147,7 @@ let handle_modifiers :
       if tc || tci
       then fatal pos {|Only one "typeclass" or "instance" modifier allowed.|}
       else get_modifiers (props, expos, strats, opaq, true, tci) ms
-    | {elt=P_typeclass_instance;pos}::ms ->
+    | {elt=P_instance;pos}::ms ->
       if tc || tci
       then fatal pos {|Only one "typeclass" or "instance" modifier allowed.|}
       else get_modifiers (props, expos, strats, opaq, tc, true) ms

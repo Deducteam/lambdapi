@@ -117,7 +117,7 @@ let add_modifier oc name (md : p_modifier) =
   let prefix = match md.elt with
   | P_opaq -> Some "Opaque "
   | P_typeclass -> Some "Existing Class "
-  | P_typeclass_instance -> Some "Existing Instance "
+  | P_instance -> Some "Existing Instance "
   | _ -> None
   in
   let with_prefix prefix =
@@ -126,7 +126,7 @@ let add_modifier oc name (md : p_modifier) =
   Option.iter with_prefix prefix
 
 let get_instance l prefix =
-  let res = List.filter (fun {elt;_} -> elt != P_typeclass_instance) l in
+  let res = List.filter (fun {elt;_} -> elt != P_instance) l in
   let is_instance = res != l in
   let prefix = if is_instance then "Instance " else prefix in
   let suffix = if is_instance then ".\nAdmitted.\n" else ".\n" in
@@ -187,7 +187,7 @@ let command oc {elt; pos} =
   | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
   | P_type_class qid -> add_modifier oc qid {elt=P_typeclass;pos}
   | P_type_class_instance qid ->
-    add_modifier oc qid {elt=P_typeclass_instance;pos}
+    add_modifier oc qid {elt=P_instance;pos}
   | _ -> wrn pos "Command not translated."
   end
 

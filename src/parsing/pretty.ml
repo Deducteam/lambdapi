@@ -108,7 +108,7 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
   | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
   | P_typeclass -> out ppf "typeclass "
-  | P_typeclass_instance -> out ppf "instance "
+  | P_instance -> out ppf "instance "
 
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
