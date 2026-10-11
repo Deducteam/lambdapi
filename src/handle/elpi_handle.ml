@@ -17,9 +17,9 @@ let pos_component : Common.Pos.popt State.component =
   State.declare_component ~name:"elpi:pos"
     ~pp:Common.Pos.pp ~init:(fun () -> None) ~start:(fun x -> x) ()
 
-(* The following allow to quote lambdapi terms in elpi*)
+(* The following allow to quote lambdapi terms in elpi *)
 
-(** similar to [embed_term] but returns an Elpi.API.Ast.Term.t,
+(** Similar to [embed_term] but returns an Elpi.API.Ast.Term.t,
     whatever the difference might be *)
 let embed_qterm
   : language:Elpi.API.Ast.Scope.language -> loc:Ast.Loc.t -> Data.state ->
