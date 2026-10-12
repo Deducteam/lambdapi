@@ -192,20 +192,6 @@ let matching_subs_check_TRef pos ((vars,p) as xsp) t =
   | Some ts -> check_subs pos vars ts; ts
   | None -> no_match pos p t
 
-(** [matching_subs_for_replacement xsp t f] tries to match [xsp] against [t]
-    and calls [f] with the produced substitution while the matching references
-    are still alive. It restores them before returning. *)
-let matching_subs_for_replacement :
-    to_subst -> term -> (term array -> 'a option) -> 'a option =
-  fun xsp t f ->
-  let time = Timed.Time.save () in
-  match matching_subs xsp t with
-  | None -> Timed.Time.restore time; None
-  | Some subst ->
-      let result = f subst in
-      Timed.Time.restore time;
-      result
-
 (** Binder frame enclosing a subterm found by [find_subst]. *)
 type binder_frame =
   { binder_var : var
@@ -492,33 +478,6 @@ let find_contextual_selection :
   | Some r -> r
   | None -> no_match ~subterm:true pos p goal
 
-(** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
-   [p] by a fresh variable, and returns the binder on this variable. *)
-let bind_pattern : term -> term -> binder =  fun p t ->
-  let z = new_var "z" in
-  let rec replace : term -> term = fun t ->
-    if matches p t then mk_Vari z else
-    match unfold t with
-    | Appl(t,u) -> mk_Appl (replace t, replace u)
-    | Prod(a,b) ->
-        let x,b = unbind b in
-        mk_Prod (replace a, bind_var x (replace b))
-    | Abst(a,b) ->
-        let x,b = unbind b in
-        mk_Abst (replace a, bind_var x (replace b))
-    | LLet(typ, def, body) ->
-        let x, body = unbind body in
-        mk_LLet (replace typ, replace def, bind_var x (replace body))
-    | Meta(m,ts) -> mk_Meta (m, Array.map replace ts)
-    | Bvar _ -> assert false
-    | Wild -> assert false
-    | TRef _ -> assert false
-    | Patt _ -> assert false
-    | Plac _ -> assert false
-    | _ -> t
-  in
-  bind_var z (replace t)
-
 (** [apply_to_frames t frames] applies [t] to the variables in [frames]. The
     frame list must be ordered from innermost to outermost binder. *)
 let apply_to_frames : term -> binder_frame list -> term =
@@ -545,19 +504,6 @@ let same_under_binders :
   && LibTerm.eq_alpha
        (abstract_over_frames first_frames first)
        (abstract_over_frames frames t)
-
-(** [same_substitution_under_binders first_subst first_frames frames subst]
-    tells whether [subst], found under [frames], belongs to the occurrence
-    class determined by [first_subst]. Occurrence arguments are compared
-    with [same_under_binders], so selected occurrences must refer to the
-    same original binders as the first occurrence. *)
-let same_substitution_under_binders :
-    term array -> binder_frame list -> binder_frame list -> term array ->
-    bool =
-  fun first_subst first_frames frames subst ->
-  Array.length first_subst = Array.length subst
-  && Array.for_all2 (same_under_binders first_frames frames)
-    first_subst subst
 
 (** [replace_under_binders_from binders path f goal] traverses [goal] while
     recording enclosing binder frames. [binders] and [path] are the
@@ -618,27 +564,27 @@ let replace_under_binders :
     (binder_frame list -> term -> term option) -> term -> term =
   fun f -> replace_under_binders_from [] [] (fun fs _ t -> f fs t)
 
-(** [bind_pattern_under_binders_from ~at binders z xsp first_subst relevant
-    goal] is the binder-aware counterpart of [bind_pattern]. [binders] is the
-    already-known enclosing binder context of [goal]. It replaces occurrences
-    matching the first occurrence's shape by [z] applied to the corresponding
-    local binder variables. [at] additionally restricts replacement to paths
-    selected by a contextual pattern; without it, every matching occurrence
-    is considered. *)
+(** [bind_pattern_under_binders_from ~at binders z lhs relevant goal]
+    replaces occurrences matching the instantiated [lhs] by [z] applied to
+    their relevant bound variables. [lhs] is already abstracted over the
+    frames in [relevant]. Candidates must use the same original binders and
+    match after abstraction over their local frames. If [relevant] is empty,
+    ordinary [matches lhs t] is used. [binders] is the already-known enclosing
+    context of [goal]; [at] optionally restricts replacement to selected
+    paths. *)
 let bind_pattern_under_binders_from ?(at=fun _ -> true) :
-    binder_frame list -> var -> to_subst -> term array -> binder_frame list ->
-    term -> term = fun initial_binders z xsp first_subst relevant goal ->
+    binder_frame list -> var -> term -> binder_frame list -> term -> term =
+  fun initial_binders z lhs relevant goal ->
   let replace binders path t =
+    (* Without lifting, retain ordinary matching even below binders. *)
     let current_relevant =
+      if relevant = [] then [] else
       List.filter (fun frame -> occur frame.binder_var t) binders in
-    (* A path alone is insufficient: the occurrence must also depend on the
-       same binders and instantiate the lemma like the first redex. *)
-    if at path && List.length current_relevant = List.length relevant then
-      matching_subs_for_replacement xsp t (fun subst ->
-        if same_substitution_under_binders
-             first_subst relevant current_relevant subst
-        then Some (apply_to_frames (mk_Vari z) current_relevant)
-        else None)
+    (* Matching retains the ordinary optimistic treatment of metavariables;
+       equality induction checks the resulting constraints afterwards. *)
+    if at path && same_binder_paths relevant current_relevant
+       && matches lhs (abstract_over_frames current_relevant t)
+    then Some (apply_to_frames (mk_Vari z) current_relevant)
     else None
   in
   replace_under_binders_from initial_binders [] replace goal
@@ -726,7 +672,7 @@ let prepare_eq_data_under_binders :
       in
       data, relevant
 
-(** [prepare_rewrite_under_binders_from binders ss cfg pos xsp goal eq_data
+(** [prepare_rewrite_under_binders_from binders ss cfg pos goal eq_data
     found] prepares the equality data and rewrite context for an ordinary
     rewrite occurrence. [binders] is the already-known enclosing binder
     context of [goal]. If the redex is independent from its enclosing binders,
@@ -734,34 +680,28 @@ let prepare_eq_data_under_binders :
     over the relevant binders and the context abstracts the resulting
     function-level occurrence. *)
 let prepare_rewrite_under_binders_from :
-    binder_frame list -> Sig_state.t -> eq_config -> popt -> to_subst ->
+    binder_frame list -> Sig_state.t -> eq_config -> popt ->
     term -> eq_data -> subst_under_binders -> prepared_rewrite =
-  fun initial_binders ss cfg pos xsp goal (eq_type, lhs, rhs, proof) found ->
+  fun initial_binders ss cfg pos goal (eq_type, lhs, rhs, proof) found ->
   let (eq_type, lhs, rhs, proof), relevant =
     prepare_eq_data_under_binders ss cfg pos found.binders found.redex
       (eq_type, lhs, rhs, proof)
   in
-  match relevant with
-  | [] ->
-      let pred_bind = bind_pattern lhs goal in
-      { eq_type; lhs; rhs; proof; pred_bind; new_term = subst pred_bind rhs }
-  | _ ->
-      let z = new_var "z" in
-      let pred =
-        bind_pattern_under_binders_from
-          initial_binders z xsp found.subst relevant goal
-      in
-      let pred_bind = bind_var z pred in
-      { eq_type; lhs; rhs; proof; pred_bind; new_term = subst pred_bind rhs }
+  let z = new_var "z" in
+  let pred =
+    bind_pattern_under_binders_from initial_binders z lhs relevant goal
+  in
+  let pred_bind = bind_var z pred in
+  { eq_type; lhs; rhs; proof; pred_bind; new_term = subst pred_bind rhs }
 
-(** [prepare_rewrite_under_binders ss cfg pos xsp goal eq_data found] is
+(** [prepare_rewrite_under_binders ss cfg pos goal eq_data found] is
     [prepare_rewrite_under_binders_from] with no initial enclosing binders. *)
 let prepare_rewrite_under_binders :
-    Sig_state.t -> eq_config -> popt -> to_subst -> term -> eq_data ->
+    Sig_state.t -> eq_config -> popt -> term -> eq_data ->
     subst_under_binders -> prepared_rewrite =
   prepare_rewrite_under_binders_from []
 
-(** [prepare_rewrite_in_context at binders ss cfg pos xsp goal data found]
+(** [prepare_rewrite_in_context at binders ss cfg pos goal data found]
     builds the equality proof, predicate and new term inside one matched
     contextual region. [at] decides which paths of that region may be
     replaced. It is applied even if the redex is independent of its enclosing
@@ -769,9 +709,9 @@ let prepare_rewrite_under_binders :
     rewritten despite not being selected by [id in context]. *)
 let prepare_rewrite_in_context :
     (int list -> bool) -> binder_frame list -> Sig_state.t -> eq_config ->
-    popt -> to_subst -> term -> eq_data -> subst_under_binders ->
+    popt -> term -> eq_data -> subst_under_binders ->
     prepared_rewrite =
-  fun at initial_binders ss cfg pos xsp goal data found ->
+  fun at initial_binders ss cfg pos goal data found ->
   let (eq_type, lhs, rhs, proof), relevant =
     prepare_eq_data_under_binders ss cfg pos found.binders found.redex data
   in
@@ -781,7 +721,7 @@ let prepare_rewrite_in_context :
   let z = new_var "z" in
   let pred =
     bind_pattern_under_binders_from ~at
-      initial_binders z xsp found.subst relevant goal
+      initial_binders z lhs relevant goal
   in
   let pred_bind = bind_var z pred in
   { eq_type; lhs; rhs; proof; pred_bind; new_term = subst pred_bind rhs }
@@ -862,15 +802,12 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   (* Finish a contextual rewrite after its first redex and lemma substitution
      have been found. First rewrite inside the matched context, retaining its
      enclosing binders. Then plug the rewritten context and the corresponding
-     equality-induction predicate back into the complete goal. Keeping
-     [lhs_pattern] separate from the instantiated [l] is necessary when
-     comparing later occurrences with the first lemma substitution. *)
+     equality-induction predicate back into the complete goal. *)
   let rewrite_in_context at selected found =
-    let lhs_pattern = l in
     let (t,l,r) = msubst3 bound found.subst in
     let prepared =
       prepare_rewrite_in_context at
-        selected.context_binders ss cfg pos (vars,lhs_pattern)
+        selected.context_binders ss cfg pos
         selected.context (a,l,r,t) found
     in
     (* [prepared.pred_bind] binds the equality-induction variable in the
@@ -894,12 +831,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Simple rewrite, no pattern. *)
     | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
-        let lhs_pattern = l in
         let found = find_subst pos (vars, l) g_term in
         (* Build the required data from that substitution. *)
         let (t, l, r) = msubst3 bound found.subst in
         let prepared = prepare_rewrite_under_binders
-            ss cfg pos (vars, lhs_pattern) g_term (a, l, r, t) found
+            ss cfg pos g_term (a, l, r, t) found
         in
         ( prepared.eq_type, prepared.pred_bind, prepared.new_term
         , prepared.proof, prepared.lhs, prepared.rhs )
@@ -908,7 +844,6 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     | Some(Rw_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
         let match_p = find_subterm_matching pos p g_term in
-        let lhs_pattern = l in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
         let sigma = matching_subs_check_TRef pos (vars,l) match_p.selected in
         (* Build the data from the substitution. *)
@@ -918,7 +853,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
           ; binders = match_p.selected_binders }
         in
         let prepared = prepare_rewrite_under_binders
-            ss cfg pos (vars, lhs_pattern) g_term (a, l, r, t) found
+            ss cfg pos g_term (a, l, r, t) found
         in
         ( prepared.eq_type, prepared.pred_bind, prepared.new_term
         , prepared.proof, prepared.lhs, prepared.rhs )
@@ -928,7 +863,6 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* Find the selected region, then search for the rewrite redex inside
            it without dropping the binders enclosing the region. *)
         let selected = find_subterm_matching pos p g_term in
-        let lhs_pattern = l in
         let found =
           find_subst_in_region
             pos selected.selected_binders (vars,l) selected.selected
@@ -936,7 +870,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let (t, l, r) = msubst3 bound found.subst in
         let prepared =
           prepare_rewrite_under_binders_from
-            selected.selected_binders ss cfg pos (vars, lhs_pattern)
+            selected.selected_binders ss cfg pos
             selected.selected (a, l, r, t) found
         in
         let region_var, region_pred = unbind prepared.pred_bind in
