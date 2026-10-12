@@ -679,11 +679,12 @@ let cmd_index =
   fun args ->
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
-  | (f::_) as files ->
+  | f::files ->
     set_lib_root();
     Parsing.Package.set_root_path f;
     Tool.Indexing.load_rewriting_rules !rule_files;
     let t0 = Timed.Time.save() in
+    Tool.Indexing.index_sign (Common.Error.no_wrn compile f);
     let handle file =
       Tool.Indexing.preserving_index Timed.Time.restore t0;
       Common.Console.reset_default();
