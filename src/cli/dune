@@ -4,5 +4,5 @@
  (modes byte native)
  (modules :standard)
  (libraries lambdapi.lsp lambdapi.tool lambdapi.handle lambdapi.export
-   lambdapi.lplib lambdapi.common unix ressources)
+   lambdapi.lplib lambdapi.common unix resources)
 )
