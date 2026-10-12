@@ -289,40 +289,15 @@ let find_subst :
   | None -> no_match ~subterm:true pos p t
   | Some r -> check_subs pos vars r.subst; r
 
-(** [find_subst_in_region_under_binders pos binders (vars,p) t] searches for
+(** [find_subst_in_region pos binders (vars,p) t] searches for
     [p] in an already-selected region [t], preserving the binder context
     enclosing the region. *)
-let find_subst_in_region_under_binders :
+let find_subst_in_region :
     popt -> binder_frame list -> to_subst -> term -> subst_under_binders =
   fun pos binders (vars,p) t ->
   match find_subst_from binders [] (vars,p) t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> check_subs pos vars r.subst; r
-
-(** [find_subterm_matching p t] tries to find a subterm of [t] that matches
-   [p] by instantiating the [TRef]'s of [p].  In case of success, the function
-   returns [true]. *)
-let find_subterm_matching : term -> term -> bool = fun p t ->
-  let time = Timed.Time.save () in
-  let rec find : term -> bool = fun t ->
-    matches p t ||
-      begin
-        Timed.Time.restore time;
-        match unfold t with
-        | Appl(a,b) -> find2 a b
-        | Abst(a,b) | Prod(a,b) -> let _,b = unbind b in find2 a b
-        | LLet(a,c,b) -> let _,b = unbind b in find3 a c b
-        | _ -> false
-      end
-  and find2 a b =
-    match find a with
-    | false -> Timed.Time.restore time; find b
-    | true  -> true
-  and find3 a c b =
-    match find a with
-    | false -> Timed.Time.restore time; find2 c b
-    | true -> true
-  in find t
 
 (** [replace_wild_by_tref t] substitutes every wildcard of [t] by a distinct
    fresh [TRef]. *)
@@ -345,24 +320,18 @@ let rec replace_wild_by_tref : term -> term = fun t ->
             bind_var x (replace_wild_by_tref b))
   | _ -> t
 
-let find_subterm_matching pos p t =
-  let p_refs = replace_wild_by_tref p in
-  if not (find_subterm_matching p_refs t) then
-    no_match ~subterm:true pos p t;
-  p_refs
-
 (** Term selected by a rewrite selector pattern, together with the binders
     enclosing the selected occurrence. *)
 type selected_term_under_binders =
   { selected : term
   ; selected_binders : binder_frame list }
 
-(** [find_subterm_matching_under_binders_from binders path p t] is like
-    [find_subterm_matching p t], but it also records the binders enclosing the
-    selected subterm. [binders] and [path] are the already-known enclosing
-    binder context of [t]. The binder list is ordered from innermost to
-    outermost binder. *)
-let find_subterm_matching_under_binders_from :
+(** [find_subterm_matching_from binders path p t] tries to find
+    a subterm of [t] that matches [p] by instantiating the [TRef]'s of [p]
+    and records the binders enclosing the selected subterm. [binders] and
+    [path] are the already-known enclosing binder context of [t]. The binder
+    list is ordered from innermost to outermost binder. *)
+let find_subterm_matching_from :
     binder_frame list -> int list -> term -> term ->
     selected_term_under_binders option =
   fun initial_binders initial_path p t ->
@@ -376,18 +345,18 @@ let find_subterm_matching_under_binders_from :
   in
   find_subterm_from initial_binders initial_path try_match t
 
-(** [find_subterm_matching_under_binders p t] is
-    [find_subterm_matching_under_binders_from] with no initial enclosing
+(** [find_subterm_matching p t] is
+    [find_subterm_matching_from] with no initial enclosing
     binders. *)
-let find_subterm_matching_under_binders :
+let find_subterm_matching :
     term -> term -> selected_term_under_binders option =
-  find_subterm_matching_under_binders_from [] []
+  find_subterm_matching_from [] []
 
-(** [find_subterm_matching_under_binders pos p t] returns the first selected
+(** [find_subterm_matching pos p t] returns the first selected
     subterm matching [p] in [t], or fails if no subterm matches. *)
-let find_subterm_matching_under_binders :
+let find_subterm_matching :
     popt -> term -> term -> selected_term_under_binders = fun pos p t ->
-  match find_subterm_matching_under_binders p t with
+  match find_subterm_matching p t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> r
 
@@ -950,7 +919,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     (* Basic patterns. *)
     | Some(Rw_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
-        let match_p = find_subterm_matching_under_binders pos p g_term in
+        let match_p = find_subterm_matching pos p g_term in
         let lhs_pattern = l in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
         let sigma = matching_subs_check_TRef pos (vars,l) match_p.selected in
@@ -970,10 +939,10 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
     | Some(Rw_InTerm(p)) ->
         (* Find the selected region, then search for the rewrite redex inside
            it without dropping the binders enclosing the region. *)
-        let selected = find_subterm_matching_under_binders pos p g_term in
+        let selected = find_subterm_matching pos p g_term in
         let lhs_pattern = l in
         let found =
-          find_subst_in_region_under_binders
+          find_subst_in_region
             pos selected.selected_binders (vars,l) selected.selected
         in
         let (t, l, r) = msubst3 bound found.subst in
@@ -1019,7 +988,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            redex path is relative to the matched context as a whole. *)
         let selected = find_contextual_selection pos p g_term in
         let found_s =
-          match find_subterm_matching_under_binders_from
+          match find_subterm_matching_from
                   selected.selected_context_binders selected.selected_path
                   s selected.selected_context with
           | Some r -> r
