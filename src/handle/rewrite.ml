@@ -91,7 +91,7 @@ type to_subst = var array * term
    to [t] and returns [true] if all [TRef]'s of [p] could be instantiated, and
    [false] otherwise. With [allow_binder_holes], a [TRef] belonging to a
    selection pattern may match a term containing a variable bound inside
-   [p]. Callers must preserve the scope of those variables when using the 
+   [p]. Callers must preserve the scope of those variables when using the
    assignments, or discard them. *)
 let matches ?(allow_binder_holes=false) : term -> term -> bool =
   let exception Not_equal in
@@ -198,39 +198,29 @@ type binder_frame =
   ; binder_typ : term
   ; binder_path : int list }
 
-(** Result of a successful binder-aware rewrite occurrence search. *)
-type subst_under_binders =
-  { subst : term array
-  ; redex : term
-  ; binders : binder_frame list }
-
-(** [find_subst_from binders path (xs,p) t]  tries to find 
-   the first instance of a subterm of [t] matching [p] while recording 
-   the binders enclosing the matched occurrence. [binders] and [path] are 
-   the already-known enclosing binder context of [t], where [binders] is 
-   ordered from innermost to outermost binder. If successful, the function 
-   returns the array of terms by which [xs] must be substituted along with
-   the enclosing binder frame *)
-let find_subst_from :
-    binder_frame list -> int list -> to_subst -> term ->
-    subst_under_binders option = fun initial_binders initial_path xsp t ->
+(** [find_subterm_from binders path try_match t] searches [t], trying each
+    candidate before its children. [try_match] receives its enclosing frames,
+    path and term, and returns [Some result] on success. Failed attempts are
+    rolled back before descending. Children are searched in application order,
+    with binder domains and let definitions before bodies. Initial frames are
+    ordered from innermost to outermost; paths store child indices in reverse.
+    A successful result retains the state established by [try_match]. *)
+let find_subterm_from :
+    binder_frame list -> int list ->
+    (binder_frame list -> int list -> term -> 'a option) ->
+    term -> 'a option =
+  fun initial_binders initial_path try_match t ->
   let time = Timed.Time.save () in
-  let rec find :
-      binder_frame list -> int list -> term -> subst_under_binders option =
-    fun binders path t ->
-    if Logger.log_enabled() then
-      log "find_subst %a ≡ %a" term (snd xsp) term t;
-    match matching_subs xsp t with
+  let rec find binders path t =
+    match try_match binders path t with
+    | Some _ as r -> r
     | None ->
-        begin
-          Timed.Time.restore time;
-          match unfold t with
-          | Appl(a,b) -> find2 binders path a b
-          | Abst(a,b) | Prod(a,b) -> find_binder binders path a b
-          | LLet(a,c,b) -> find3 binders path a c b
-          | _ -> None
-        end
-    | Some subst -> Some { subst; redex = t; binders }
+        Timed.Time.restore time;
+        match unfold t with
+        | Appl(a,b) -> find2 binders path a b
+        | Abst(a,b) | Prod(a,b) -> find_binder binders path a b
+        | LLet(a,c,b) -> find3 binders path a c b
+        | _ -> None
   and find2 binders path a b =
     match find binders (0::path) a with
     | None -> Timed.Time.restore time; find binders (1::path) b
@@ -249,10 +239,7 @@ let find_subst_from :
             in
             find (frame::binders) (2::path) b
         | r -> r
-  and find_binder :
-      binder_frame list -> int list -> term -> binder ->
-      subst_under_binders option =
-    fun binders path a b ->
+  and find_binder binders path a b =
     match find binders (0::path) a with
     | None ->
         Timed.Time.restore time;
@@ -264,7 +251,29 @@ let find_subst_from :
     | r -> r
   in find initial_binders initial_path t
 
-(** [find_subst (xs,p) t] calls 
+(** Result of a successful binder-aware rewrite occurrence search. *)
+type subst_under_binders =
+  { subst : term array
+  ; redex : term
+  ; binders : binder_frame list }
+
+(** [find_subst_from binders path (xs,p) t] searches for the first subterm of
+    [t] matching [p]. It returns the substitution for [xs], the matched term
+    and its enclosing binder frames. [binders] and [path] are the known
+    enclosing context of [t], ordered as in [find_subterm_from]. *)
+let find_subst_from :
+    binder_frame list -> int list -> to_subst -> term ->
+    subst_under_binders option = fun initial_binders initial_path xsp t ->
+  let try_match binders _ t =
+    if Logger.log_enabled() then
+      log "find_subst %a ≡ %a" term (snd xsp) term t;
+    match matching_subs xsp t with
+    | None -> None
+    | Some subst -> Some { subst; redex = t; binders }
+  in
+  find_subterm_from initial_binders initial_path try_match t
+
+(** [find_subst (xs,p) t] calls
 [find_subst_from binders path (xs,p) t] with an empty
 initial binder context and path. *)
 let find_subst :
@@ -358,56 +367,14 @@ let find_subterm_matching_under_binders_from :
     selected_term_under_binders option =
   fun initial_binders initial_path p t ->
   let p_refs = replace_wild_by_tref p in
-  let time = Timed.Time.save () in
-  let rec find :
-      binder_frame list -> int list -> term ->
-      selected_term_under_binders option =
-    fun binders path t ->
+  let try_match binders _ t =
     (* Keep the actual goal subterm: a wildcard instantiated with a bound
        variable in [p_refs] is meaningful only while that binder is open. *)
     if matches ~allow_binder_holes:true p_refs t then Some
         { selected = t; selected_binders = binders }
-    else
-      begin
-        Timed.Time.restore time;
-        match unfold t with
-        | Appl(a,b) -> find2 binders path a b
-        | Abst(a,b) | Prod(a,b) -> find_binder binders path a b
-        | LLet(a,c,b) -> find3 binders path a c b
-        | _ -> None
-      end
-  and find2 binders path a b =
-    match find binders (0::path) a with
-    | None -> Timed.Time.restore time; find binders (1::path) b
-    | r -> r
-  and find3 binders path a c b =
-    match find binders (0::path) a with
-    | Some _ as r -> r
-    | None ->
-        Timed.Time.restore time;
-        match find binders (1::path) c with
-        | None ->
-            Timed.Time.restore time;
-            let x,b = unbind b in
-            let frame =
-              { binder_var = x; binder_typ = a; binder_path = 2::path }
-            in
-            find (frame::binders) (2::path) b
-        | r -> r
-  and find_binder :
-      binder_frame list -> int list -> term -> binder ->
-      selected_term_under_binders option =
-    fun binders path a b ->
-    match find binders (0::path) a with
-    | None ->
-        Timed.Time.restore time;
-        let x,b = unbind b in
-        let frame =
-          { binder_var = x; binder_typ = a; binder_path = 1::path }
-        in
-        find (frame::binders) (1::path) b
-    | r -> r
-  in find initial_binders initial_path t
+    else None
+  in
+  find_subterm_from initial_binders initial_path try_match t
 
 (** [find_subterm_matching_under_binders p t] is
     [find_subterm_matching_under_binders_from] with no initial enclosing
@@ -439,17 +406,14 @@ type contextual_selection =
   ; selected_path : int list
   ; selected_paths : int list list }
 
-(** [find_contextual_selection ~accept pos p goal] finds the first subterm of
-    [goal] matching the contextual pattern [p]. It matches the context and
-    identifies the selector occurrence together, rather than substituting the
-    selected term into [p]: such a substitution could move a term out of the
-    binder on which it depends. [accept] optionally constrains the selected
-    term, as required by [term as id in context]. *)
-let find_contextual_selection :
-    ?accept:(term -> bool) -> popt -> binder -> term ->
-    contextual_selection = fun ?(accept=fun _ -> true) pos p goal ->
-  let selector,p = unbind p in
-  let time = Timed.Time.save () in
+(** [match_contextual_pattern ~accept selector p binders t] matches one
+    candidate [t] against [p], collecting all occurrences of [selector]. The
+    selected paths are relative to [t]; [binders] records its enclosing
+    context. [accept] optionally constrains the selected term. *)
+let match_contextual_pattern :
+    ?accept:(term -> bool) -> var -> term -> binder_frame list -> term ->
+    contextual_selection option =
+  fun ?(accept=fun _ -> true) selector p binders t ->
   (* Repeated occurrences of the selector must denote the same term under
      the same original binders. Abstracting both terms over their frames
      makes freshly unbound variable names irrelevant to this comparison. *)
@@ -462,100 +426,70 @@ let find_contextual_selection :
            t fs
        in Term.cmp (abstract fs u) (abstract fs' t) = 0
   in
-  let rec search binders path t =
-    let selected = ref None in
-    (* Match one candidate [t] against the whole context pattern. The first
-       selector occurrence records its term and path; later occurrences must
-       agree and add their own paths. Wildcards impose no such equality. *)
-    let rec match_pattern binders path p t =
-      match unfold p, unfold t with
-      | Vari x, _ when eq_vars x selector ->
-          begin match !selected with
-          | None -> selected := Some(t,binders,[path]); true
-          | Some(u,fs,paths) ->
-              if same fs binders u t then
-                (selected := Some(u,fs,path::paths); true)
-              else false
-          end
-      | Wild, _ -> true
-      | Vari x, Vari y -> eq_vars x y
-      | Symb f, Symb g -> f == g
-      | Type, Type | Kind, Kind -> true
-      | Appl(p,q), Appl(t,u) ->
-          match_pattern binders (0::path) p t
-          && match_pattern binders (1::path) q u
-      | Abst(a,b), Abst(a',b')
-      | Prod(a,b), Prod(a',b') ->
-          (* Use one fresh variable for both bodies, so named variables in
-             the pattern are rigid while binder names remain irrelevant. *)
-          let x,b,b' = unbind2 b b' in
-          match_pattern binders (0::path) a a'
-          && let frame =
-               { binder_var = x; binder_typ = a'; binder_path = 1::path }
-             in
-             match_pattern (frame::binders) (1::path) b b'
-      | LLet(a,c,b), LLet(a',c',b') ->
-          let x,b,b' = unbind2 b b' in
-          match_pattern binders (0::path) a a'
-          && match_pattern binders (1::path) c c'
-          && let frame =
-               { binder_var = x; binder_typ = a'; binder_path = 2::path }
-             in
-             match_pattern (frame::binders) (2::path) b b'
-      | _ -> false
-    in
-    (* Paths collected during matching start at this candidate context.
-       [accept] is tested before searching beneath a rejected candidate;
-       this matters when an explicit [as] pattern skips an earlier context. *)
-    let candidate =
-      if match_pattern binders [] p t then
-        match !selected with
-        | Some(u,fs,selected_paths) when accept u ->
-            let selected_path = List.hd (List.rev selected_paths) in
-            Some { context = t; context_binders = binders
-                 ; selected_context = u; selected_context_binders = fs
-                 ; selected_path; selected_paths }
-        | _ -> None
-      else None
-    in
-    match candidate with
-    | Some _ as r -> r
-    | None ->
-      (* As in the ordinary rewrite search, try the head before arguments,
-         and binder domains before bodies. Preserve each body's binder frame
-         for a selector that occurs beneath it. *)
-      Timed.Time.restore time;
-      match unfold t with
-      | Appl(a,b) ->
-          begin match search binders (0::path) a with
-          | Some _ as r -> r
-          | None -> search binders (1::path) b
-          end
-      | Abst(a,b) | Prod(a,b) ->
-          begin match search binders (0::path) a with
-          | Some _ as r -> r
-          | None ->
-              let x,b = unbind b in
-              let frame =
-                { binder_var = x; binder_typ = a; binder_path = 1::path }
-              in search (frame::binders) (1::path) b
-          end
-      | LLet(a,c,b) ->
-          begin match search binders (0::path) a with
-          | Some _ as r -> r
-          | None ->
-              begin match search binders (1::path) c with
-              | Some _ as r -> r
-              | None ->
-                  let x,b = unbind b in
-                  let frame =
-                    { binder_var = x; binder_typ = a; binder_path = 2::path }
-                  in search (frame::binders) (2::path) b
-              end
-          end
-      | _ -> None
+  let selected = ref None in
+  (* Match one candidate [t] against the whole context pattern. The first
+     selector occurrence records its term and path; later occurrences must
+     agree and add their own paths. Wildcards impose no such equality. *)
+  let rec match_pattern binders path p t =
+    match unfold p, unfold t with
+    | Vari x, _ when eq_vars x selector ->
+        begin match !selected with
+        | None -> selected := Some(t,binders,[path]); true
+        | Some(u,fs,paths) ->
+            if same fs binders u t then
+              (selected := Some(u,fs,path::paths); true)
+            else false
+        end
+    | Wild, _ -> true
+    | Vari x, Vari y -> eq_vars x y
+    | Symb f, Symb g -> f == g
+    | Type, Type | Kind, Kind -> true
+    | Appl(p,q), Appl(t,u) ->
+        match_pattern binders (0::path) p t
+        && match_pattern binders (1::path) q u
+    | Abst(a,b), Abst(a',b')
+    | Prod(a,b), Prod(a',b') ->
+        (* Use one fresh variable for both bodies. *)
+        let x,b,b' = unbind2 b b' in
+        match_pattern binders (0::path) a a'
+        && let frame =
+             { binder_var = x; binder_typ = a'; binder_path = 1::path }
+           in
+           match_pattern (frame::binders) (1::path) b b'
+    | LLet(a,c,b), LLet(a',c',b') ->
+        let x,b,b' = unbind2 b b' in
+        match_pattern binders (0::path) a a'
+        && match_pattern binders (1::path) c c'
+        && let frame =
+             { binder_var = x; binder_typ = a'; binder_path = 2::path }
+           in
+           match_pattern (frame::binders) (2::path) b b'
+    | _ -> false
   in
-  match search [] [] goal with
+  (* Paths collected during matching start at this candidate context.
+     [accept] is tested before searching beneath a rejected candidate;
+     this matters when an explicit [as] pattern skips an earlier context. *)
+  if match_pattern binders [] p t then
+    match !selected with
+    | Some(u,fs,selected_paths) when accept u ->
+        let selected_path = List.hd (List.rev selected_paths) in
+        Some { context = t; context_binders = binders
+             ; selected_context = u; selected_context_binders = fs
+             ; selected_path; selected_paths }
+    | _ -> None
+  else None
+
+(** [find_contextual_selection ~accept pos p goal] finds the first subterm of
+    [goal] matching the contextual pattern [p]. It matches the context and
+    identifies the selector occurrence together, [accept] optionally 
+    constrains the selected term, as required by [term as id in context]. *)
+let find_contextual_selection :
+    ?accept:(term -> bool) -> popt -> binder -> term ->
+    contextual_selection = fun ?(accept=fun _ -> true) pos p goal ->
+  let selector,p = unbind p in
+  let match_context = match_contextual_pattern ~accept selector p in
+  let try_match binders _ t = match_context binders t in
+  match find_subterm_from [] [] try_match goal with
   | Some r -> r
   | None -> no_match ~subterm:true pos p goal
 
