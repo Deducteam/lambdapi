@@ -192,27 +192,62 @@ let matching_subs_check_TRef pos ((vars,p) as xsp) t =
   | Some ts -> check_subs pos vars ts; ts
   | None -> no_match pos p t
 
+(** [matching_subs_for_replacement xsp t f] tries to match [xsp] against [t]
+    and calls [f] with the produced substitution while the matching references
+    are still alive. It restores them before returning. *)
+let matching_subs_for_replacement :
+    to_subst -> term -> (term array -> 'a option) -> 'a option =
+  fun xsp t f ->
+  let time = Timed.Time.save () in
+  match matching_subs xsp t with
+  | None -> Timed.Time.restore time; None
+  | Some subst ->
+      let result = f subst in
+      Timed.Time.restore time;
+      result
+
 (** Binder frame enclosing a subterm found by [find_subst]. *)
 type binder_frame =
   { binder_var : var
   ; binder_typ : term
   ; binder_path : int list }
 
+(** [abstract_over_frame frame t] abstracts [t] over the variable recorded in
+    [frame], using the frame's binder type. *)
+let abstract_over_frame : binder_frame -> term -> term =
+  fun frame t ->
+  mk_Abst(frame.binder_typ, bind_var frame.binder_var t)
+
+(** [abstract_over_frames frames t] abstracts [t] over all [frames]. The frame
+    list must be ordered from innermost to outermost binder, and the returned
+    abstractions are nested from outermost to innermost binder. *)
+let abstract_over_frames : binder_frame list -> term -> term =
+  fun frames t ->
+  List.fold_left
+    (fun t frame -> abstract_over_frame frame t)
+    t frames
+
+(** [same_binder_paths frames frames'] tells whether [frames] and [frames']
+    identify the same original enclosing binders across independent
+    traversals of the goal. *)
+let same_binder_paths : binder_frame list -> binder_frame list -> bool =
+  List.equal (fun f f' -> f.binder_path = f'.binder_path)
+
 (** [find_subterm_from binders path try_match t] searches [t], trying each
-    candidate before its children. [try_match] receives its enclosing frames,
-    path and term, and returns [Some result] on success. Failed attempts are
+    candidate before its children. [try_match] receives its enclosing frames
+    and term, and returns [Some result] on success. Failed attempts are
     rolled back before descending. Children are searched in application order,
     with binder domains and let definitions before bodies. Initial frames are
     ordered from innermost to outermost; paths store child indices in reverse.
     A successful result retains the state established by [try_match]. *)
 let find_subterm_from :
     binder_frame list -> int list ->
-    (binder_frame list -> int list -> term -> 'a option) ->
+    (binder_frame list -> term -> 'a option) ->
     term -> 'a option =
   fun initial_binders initial_path try_match t ->
   let time = Timed.Time.save () in
   let rec find binders path t =
-    match try_match binders path t with
+    match try_match binders t with
     | Some _ as r -> r
     | None ->
         Timed.Time.restore time;
@@ -264,7 +299,7 @@ type subst_under_binders =
 let find_subst_from :
     binder_frame list -> int list -> to_subst -> term ->
     subst_under_binders option = fun initial_binders initial_path xsp t ->
-  let try_match binders _ t =
+  let try_match binders t =
     if Logger.log_enabled() then
       log "find_subst %a ≡ %a" term (snd xsp) term t;
     match matching_subs xsp t with
@@ -336,7 +371,7 @@ let find_subterm_matching_from :
     selected_term_under_binders option =
   fun initial_binders initial_path p t ->
   let p_refs = replace_wild_by_tref p in
-  let try_match binders _ t =
+  let try_match binders t =
     (* Keep the actual goal subterm: a wildcard instantiated with a bound
        variable in [p_refs] is meaningful only while that binder is open. *)
     if matches ~allow_binder_holes:true p_refs t then Some
@@ -387,13 +422,9 @@ let match_contextual_pattern :
      the same original binders. Abstracting both terms over their frames
      makes freshly unbound variable names irrelevant to this comparison. *)
   let same fs fs' u t =
-    List.map (fun f -> f.binder_path) fs =
-      List.map (fun f -> f.binder_path) fs'
-    && let abstract fs t =
-         List.fold_left
-           (fun t f -> mk_Abst(f.binder_typ, bind_var f.binder_var t))
-           t fs
-       in Term.cmp (abstract fs u) (abstract fs' t) = 0
+    same_binder_paths fs fs'
+    && Term.cmp
+         (abstract_over_frames fs u) (abstract_over_frames fs' t) = 0
   in
   let selected = ref None in
   (* Match one candidate [t] against the whole context pattern. The first
@@ -457,8 +488,7 @@ let find_contextual_selection :
     contextual_selection = fun ?(accept=fun _ -> true) pos p goal ->
   let selector,p = unbind p in
   let match_context = match_contextual_pattern ~accept selector p in
-  let try_match binders _ t = match_context binders t in
-  match find_subterm_from [] [] try_match goal with
+  match find_subterm_from [] [] match_context goal with
   | Some r -> r
   | None -> no_match ~subterm:true pos p goal
 
@@ -489,21 +519,6 @@ let bind_pattern : term -> term -> binder =  fun p t ->
   in
   bind_var z (replace t)
 
-(** [abstract_over_frame frame t] abstracts [t] over the variable recorded in
-    [frame], using the frame's binder type. *)
-let abstract_over_frame : binder_frame -> term -> term =
-  fun frame t ->
-  mk_Abst(frame.binder_typ, bind_var frame.binder_var t)
-
-(** [abstract_over_frames frames t] abstracts [t] over all [frames]. The frame
-    list must be ordered from innermost to outermost binder, and the returned
-    abstractions are nested from outermost to innermost binder. *)
-let abstract_over_frames : binder_frame list -> term -> term =
-  fun frames t ->
-  List.fold_left
-    (fun t frame -> abstract_over_frame frame t)
-    t frames
-
 (** [apply_to_frames t frames] applies [t] to the variables in [frames]. The
     frame list must be ordered from innermost to outermost binder. *)
 let apply_to_frames : term -> binder_frame list -> term =
@@ -512,19 +527,13 @@ let apply_to_frames : term -> binder_frame list -> term =
     (fun frame t -> mk_Appl(t, mk_Vari frame.binder_var))
     frames t
 
-(** [adapt_to_frames frames frames' t] adapts [t], which may contain the
-    variables bound by [frames], so that it refers to the corresponding
+(** [adapt_to_frames frames frames' t] if [t] contains the variables bound
+    by [frames], [t] is adapted so that it refers to the corresponding
     variables bound by [frames']. *)
 let adapt_to_frames :
     binder_frame list -> binder_frame list -> term -> term =
   fun frames frames' t ->
   apply_to_frames (abstract_over_frames frames t) frames'
-
-(** [same_binder_paths frames frames'] tells whether [frames] and [frames']
-    identify the same original enclosing binders across independent
-    traversals of the goal. *)
-let same_binder_paths : binder_frame list -> binder_frame list -> bool =
-  List.equal (fun f f' -> f.binder_path = f'.binder_path)
 
 (** [same_under_binders first_frames frames first t] tells whether [t] is the
     same term as [first], modulo the fresh variables generated when unbinding
@@ -533,38 +542,22 @@ let same_under_binders :
     binder_frame list -> binder_frame list -> term -> term -> bool =
   fun first_frames frames first t ->
   same_binder_paths first_frames frames
-  (* Re-matching can produce the same term with a different binder closure.
-     Compare the opened terms, not their closure representations. *)
   && LibTerm.eq_alpha
        (abstract_over_frames first_frames first)
        (abstract_over_frames frames t)
 
-(** [same_occurrence_class first_subst first_frames frames subst] tells
-    whether [subst], found under [frames], belongs to the occurrence class
-    determined by [first_subst]. Occurrence arguments are compared with
-    [same_under_binders], so selected occurrences must refer to the same
-    original binders as the first occurrence. *)
-let same_occurrence_class :
+(** [same_substitution_under_binders first_subst first_frames frames subst]
+    tells whether [subst], found under [frames], belongs to the occurrence
+    class determined by [first_subst]. Occurrence arguments are compared
+    with [same_under_binders], so selected occurrences must refer to the
+    same original binders as the first occurrence. *)
+let same_substitution_under_binders :
     term array -> binder_frame list -> binder_frame list -> term array ->
     bool =
   fun first_subst first_frames frames subst ->
   Array.length first_subst = Array.length subst
   && Array.for_all2 (same_under_binders first_frames frames)
     first_subst subst
-
-(** [matching_subs_for_replacement xsp t f] tries to match [xsp] against [t]
-    and calls [f] with the produced substitution while the matching references
-    are still alive. It restores them before returning. *)
-let matching_subs_for_replacement :
-    to_subst -> term -> (term array -> 'a option) -> 'a option =
-  fun xsp t f ->
-  let time = Timed.Time.save () in
-  match matching_subs xsp t with
-  | None -> Timed.Time.restore time; None
-  | Some subst ->
-      let result = f subst in
-      Timed.Time.restore time;
-      result
 
 (** [replace_under_binders_from binders path f goal] traverses [goal] while
     recording enclosing binder frames. [binders] and [path] are the
@@ -642,7 +635,8 @@ let bind_pattern_under_binders_from ?(at=fun _ -> true) :
        same binders and instantiate the lemma like the first redex. *)
     if at path && List.length current_relevant = List.length relevant then
       matching_subs_for_replacement xsp t (fun subst ->
-        if same_occurrence_class first_subst relevant current_relevant subst
+        if same_substitution_under_binders
+             first_subst relevant current_relevant subst
         then Some (apply_to_frames (mk_Vari z) current_relevant)
         else None)
     else None
@@ -695,12 +689,6 @@ let hol_domain_of_binder : eq_config -> popt -> term -> term =
            "Expected a non-dependent HOL binder type of the form %a _."
            sym cfg.symb_T
 
-(** [hol_arrow_type cfg dom cod] builds the HOL function type
-    [dom ⤳ cod]. *)
-let hol_arrow_type : binder_rewrite_config -> term -> term -> term =
-  fun cfg dom cod ->
-  add_args (mk_Symb cfg.symb_arr) [dom; cod]
-
 (** [lift_over_frame cfg binder_cfg pos frame (a,l,r,p)] lifts the equality
     data [p : P (eq a l r)] over [frame] using [funExt]. *)
 let lift_over_frame : eq_config -> binder_rewrite_config -> popt ->
@@ -708,7 +696,7 @@ let lift_over_frame : eq_config -> binder_rewrite_config -> popt ->
   fun cfg binder_cfg pos frame (eq_type, lhs, rhs, proof) ->
   let dom = hol_domain_of_binder cfg pos frame.binder_typ in
   let cod = eq_type in
-  let eq_type = hol_arrow_type binder_cfg dom cod in
+  let eq_type = add_args (mk_Symb binder_cfg.symb_arr) [dom; cod] in
   let lhs = abstract_over_frame frame lhs in
   let rhs = abstract_over_frame frame rhs in
   let proof = abstract_over_frame frame proof in
