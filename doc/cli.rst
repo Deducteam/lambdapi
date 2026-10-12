@@ -46,18 +46,19 @@ Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
 file can depend on a Lambdapi file (but the Dedukti grammar does not
 accept qualified names for module paths).
 
-**Remark on index:**
+**Index file:**
 
-The ``index`` command generates the file ``~/.LPSearch.db`` if ``$HOME`` is defined, and ``.LPSearch.db`` otherwise. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the db file is erased first. To append new symbols and rules, use the option ``--add``. It is also possible to normalize terms wrt some rules before indexation by using ``--rules`` options.
-
-**Remark on search:**
-
-The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. It is also possible to normalize terms in the query wrt some rules by using ``--rules`` options. It is advised to use the same set of rules previously used during indexing. It is also possible to pass via ``--require`` files to be required and opened before performing the query, e.g. to specify implicit arguments for symbols. See :doc:`query_language` for the specification of the query language.
+The index file of symbols and rules is the one specified by the
+``--db`` option. If no ``--db`` option is used, the index file is
+``~/.LPSearch.db`` if ``$HOME`` is defined, and ``./.LPSearch.db``
+otherwise.
 
 **Common flags:**
 
 The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 ``lsp`` all support the following command line arguments and flags.
+
+* ``--db file.db`` tells lambdapi to use ``file.db`` as index file.
 
 * ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
@@ -66,6 +67,8 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 * ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
 * ``--no-sr-check`` disables subject reduction checking.
+
+  * ``--rules file.lp`` tells lambdapi to normalize terms using the rules given in the file ``file.lp`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
 
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
@@ -180,8 +183,6 @@ index
 
 * ``--add`` tells lambdapi to not erase the index before adding new symbols and rules.
 
-* ``--rules file.lp`` tells lambdapi to normalize terms using the rules given in the file ``file.lp`` before indexing. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
-
   For instance, to index the Matita library, you can use the following rules:
 
 ::
@@ -189,10 +190,7 @@ index
    rule cic.Term _ $x ↪ $x;
    rule cic.lift _ _ $x ↪ $x;
 
-* ``--db file.db`` tells lambdapi to index symbols and rules in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
-
-* ``--source`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones).
-  These sources will also be displayed by the websearch engine when showing the results.
+* ``--source`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
 
 .. _install:
 
