@@ -668,6 +668,14 @@ let opt_add =
   ; opt_handle = NoArg(fun () -> add := true)
   ; opt_desc = "Do not clear the index." }
 
+let src = ref None
+
+let opt_src =
+  { opt_name = "--src-map"
+  ; opt_short = None
+  ; opt_handle = Next("FILE", fun s -> src := Some s)
+  ; opt_desc = "Source map file." }
+
 let cmd_index =
   let summary = "Index the given files in a database." in
   let c = add_command
@@ -675,7 +683,7 @@ let cmd_index =
             ; args = "[OPTION …] FILE …"
             ; summary
             ; desc = summary
-            ; options = opt_add :: compile_options } in
+            ; options = opt_src :: opt_add :: compile_options } in
   fun args ->
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
@@ -690,7 +698,10 @@ let cmd_index =
       Common.Console.reset_default();
       Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
     in
-    List.iter handle files
+    List.iter handle files;
+    Option.iter Tool.Indexing.parse_source_map !src;
+    let dbpath = !Tool.Indexing.the_dbpath in
+    Tool.Indexing.dump ~dbpath ()
 
 (*-------------------------------------------------------------------------*)
 (** init command *)
