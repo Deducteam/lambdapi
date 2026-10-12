@@ -319,9 +319,9 @@ module DB = struct
       let buffer = Bytes.create (String.length index_version) in
       really_input ch buffer 0 (String.length index_version);
       if Bytes.unsafe_to_string buffer <> index_version then
-        Error.fatal_no_pos "Wrong search index version!
-                            Please (re)move or regenerate the index DB
-                            (default is ~/.LPSearch.db)";
+        Error.fatal_no_pos
+          "Wrong index file version. Please (re)move or regenerate \"%s\""
+          filename;
       let i = Marshal.from_channel ch in
       close_in ch ;
       i
