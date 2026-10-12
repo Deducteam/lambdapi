@@ -672,21 +672,21 @@ let cmd_index =
   let summary = "Index the given files in a database." in
   let c = add_command
             { name = "index"
-            ; args = "[OPTION …] FILE"
+            ; args = "[OPTION …] FILE …"
             ; summary
             ; desc = summary
             ; options = opt_add :: compile_options } in
   fun args ->
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
-  | files ->
+  | (f::_) as files ->
     set_lib_root();
-    let time = Timed.Time.save() in
+    Parsing.Package.set_root_path f;
+    Tool.Indexing.load_rewriting_rules !rule_files;
+    let t0 = Timed.Time.save() in
     let handle file =
-      Timed.Time.restore time;
+      Tool.Indexing.preserving_index Timed.Time.restore t0;
       Common.Console.reset_default();
-      Tool.Indexing.preserving_index Timed.Time.restore time;
-      Tool.Indexing.load_rewriting_rules !rule_files;
       Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
     in
     List.iter handle files
