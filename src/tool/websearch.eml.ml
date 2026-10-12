@@ -75,7 +75,7 @@ let show_form ~from ?(message="") ?output csrf_tag ~hide_description=
   </html>
 
 let themes_locations : string list = Resources.Mysites.Sites.server_resources
-let start ~header ss ~port ~dbpath ~path_in_url () =
+let start ~header ss ~port ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
   let favicon_path =
@@ -125,7 +125,7 @@ let start ~header ss ~port ~dbpath ~path_in_url () =
             Dream.log "Received request = %s" message;
           let output =
             Format.asprintf "%a"
-            (Indexing.search_cmd_html ss ~from ~how_many:100 ~dbpath) message
+            (Indexing.search_cmd_html ss ~from ~how_many:100) message
           in
           if Timed.(!Common.Console.verbose) >= 3 then
             Dream.log "sending response: %s" output;

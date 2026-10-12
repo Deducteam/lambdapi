@@ -445,8 +445,7 @@ let cmd_deindex =
     | [p] ->
       set_lib_root();
       Tool.Indexing.deindex_path p;
-      let dbpath = !Tool.Indexing.the_dbpath in
-      Tool.Indexing.dump ~dbpath ()
+      Tool.Indexing.dump()
 
 (*-------------------------------------------------------------------------*)
 (** export command *)
@@ -688,6 +687,7 @@ let cmd_index =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no file provided"
   | f::files ->
+    if not !add then Tool.Indexing.empty ();
     set_lib_root();
     Parsing.Package.set_root_path f;
     Tool.Indexing.load_rewriting_rules !rule_files;
@@ -700,8 +700,7 @@ let cmd_index =
     in
     List.iter handle files;
     Option.iter Tool.Indexing.parse_source_map !source;
-    let dbpath = !Tool.Indexing.the_dbpath in
-    Tool.Indexing.dump ~dbpath ()
+    Tool.Indexing.dump()
 
 (*-------------------------------------------------------------------------*)
 (** init command *)
@@ -938,8 +937,7 @@ let cmd_search =
     Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
-    let dbpath = !Tool.Indexing.the_dbpath in
-    Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss ~dbpath) s
+    Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss) s
 
 (*-------------------------------------------------------------------------*)
 (** uninstall command *)
@@ -1045,9 +1043,8 @@ let cmd_websearch =
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
-    let dbpath = !Tool.Indexing.the_dbpath in
     let path_in_url = !url in
-    Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url ()
+    Tool.Websearch.start ~header ss ~port ~path_in_url ()
 
 (*-------------------------------------------------------------------------*)
 (** main procedure *)

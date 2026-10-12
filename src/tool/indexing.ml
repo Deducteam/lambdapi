@@ -20,7 +20,7 @@ let re_matches_sym_name re sym_name =
   true
  with Not_found -> false
 
- let (@) = Lplib.List.(@)
+let (@) = Lplib.List.(@)
 
 let name_of_sym s = (s.sym_path, s.sym_name)
 
@@ -304,7 +304,11 @@ module DB = struct
 
  (* disk persistence *)
 
- let the_dbpath : string Stdlib.ref = Stdlib.ref Path.default_dbpath
+ let the_dbpath : string Stdlib.ref =
+   Stdlib.ref
+     (match Sys.getenv_opt "HOME" with
+      | Some s -> Filename.concat s ".LPSearch.db"
+      | None -> ".LPSearch.db")
 
  let rwpaths = Stdlib.ref []
 
@@ -373,8 +377,8 @@ module DB = struct
   set_of_list ~generalize k
    (Index.search ~generalize (snd (Lazy.force !db)) k)
 
- let dump ~dbpath () =
-  dump_to ~filename:dbpath (Lazy.force !db)
+ let dump () =
+  dump_to ~filename:Stdlib.(!the_dbpath) (Lazy.force !db)
 
  let locate_name name =
   let k = Term.mk_Wild (* dummy, unused *) in
@@ -404,7 +408,7 @@ module DB = struct
          raise
           (Common.Error.Fatal
             (None,"wrong file format for source map file", ""))
-   done ;
+   done
   with
    | Failure _ as exn ->
       close_in ch;
@@ -413,7 +417,6 @@ module DB = struct
          Printexc.to_string exn, ""))
    | End_of_file -> close_in ch) ;
   db := lazy (!sidx,idx)
-
 
  type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
 
@@ -918,8 +921,7 @@ module UserLevelQueries = struct
       Lplib.Base.out fmt "%s"
        (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
-  let search_cmd_txt_query ss ~dbpath fmt q =
-  Stdlib.(the_dbpath := dbpath);
+  let search_cmd_txt_query ss fmt q =
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun pos ?err_desc x ->
           Common.Error.fatal_optional_position pos ?err_desc "%s" x)
@@ -947,9 +949,8 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
- let search_cmd_html ss ~from ~how_many ~dbpath fmt s =
-  Stdlib.(the_dbpath := dbpath);
-    search_cmd_gen_string ss ~from ~how_many
+ let search_cmd_html ss ~from ~how_many fmt s =
+   search_cmd_gen_string ss ~from ~how_many
       ~fail:(fun pos ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
           ^ (match pos with None -> "" | Some p -> popt_to_string p)
           ^ Option.value err_desc ~default:"")
@@ -958,9 +959,8 @@ module UserLevelQueries = struct
       fmt
       s
 
- let search_cmd_txt ss ~dbpath (fmt:Format.formatter) s =
+ let search_cmd_txt ss (fmt:Format.formatter) s =
     let s = transform_ascii_to_unicode s in
-  Stdlib.(the_dbpath := dbpath);
     search_cmd_gen_string ss ~from:0 ~how_many:999999
       ~fail:(fun pos ?err_desc x ->
           Common.Error.fatal_optional_position pos ?err_desc "%s" x)
