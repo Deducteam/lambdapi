@@ -87,8 +87,8 @@ let get_eq_data :
    variables that were quantified over. *)
 type to_subst = var array * term
 
-(** [matches p t] instantiates the [TRef]'s of [p] so that [p] gets equal
-   to [t] and returns [true] if all [TRef]'s of [p] could be instantiated, and
+(** [matches p t] instantiates the [TRef]s of [p] so that [p] becomes equal
+   to [t] and returns [true] if all [TRef]s of [p] could be instantiated, and
    [false] otherwise. With [allow_binder_holes], a [TRef] belonging to a
    selection pattern may match a term containing a variable bound inside
    [p]. Callers must preserve the scope of those variables when using the
@@ -127,7 +127,7 @@ let matches ?(allow_binder_holes=false) : term -> term -> bool =
       | Meta _ -> eq l (* We assume that metas can always be instantiated by
                           the corresponding RHS although this might not be the
                           case, in which case tac_refine or solve will later
-                          fail. This way, we may chose the wrong subterm. *)
+                          fail. This way, we may choose the wrong subterm. *)
       | Prod _
       | Abst _
       | LLet _
@@ -159,23 +159,23 @@ let no_match ?(subterm=false) pos p t =
   else fatal pos "[%a] doesn't match [%a]." term t term p
 
 (** [matching_subs (xs,p) t] attempts to match the pattern [p] containing the
-   variables [xs]) with the term [t]. If successful, it returns [Some ts]
+   variables [xs] with the term [t]. If successful, it returns [Some ts]
    where [ts] is an array of terms such that substituting [xs] by the
    corresponding elements of [ts] in [p] yields [t].
 
-WARNING: Some elements of [ts] may be uninstantiated TRef's. It will happen if
-not all [vars] are in [LibTerm.free_vars p], for instance when some [vars] are
+WARNING: Some elements of [ts] may be uninstantiated TRefs. This happens if
+not all [xs] are in [LibTerm.free_vars p], for instance when some [xs] are
 type variables not occurring in [p], for instance when trying to apply an
 equation of the form [x = ...] with [x] of polymorphic type. This could be
 improved by generating p_terms instead of terms. Indeed, in this case, we
-could replace uninstantiated TRef's by underscores. *)
+could replace uninstantiated TRefs by underscores. *)
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
-  (* We replace [xs] by fresh [TRef]'s. *)
+  (* We replace [xs] by fresh [TRef]s. *)
   let ts = Array.map (fun _ -> mk_TRef(Timed.ref None)) xs in
   let p = msubst (bind_mvar xs p) ts in
   if matches p t then Some ts else None
 
-(** [check_subs vars ts] check that no element of [ts] is an uninstantiated
+(** [check_subs vars ts] checks that no element of [ts] is an uninstantiated
     TRef. *)
 let check_subs pos vars ts =
   let f i ti =
@@ -294,9 +294,8 @@ let find_subst_from :
   in
   find_subterm_from initial_binders initial_path try_match t
 
-(** [find_subst (xs,p) t] calls
-[find_subst_from binders path (xs,p) t] with an empty
-initial binder context and path. *)
+(** [find_subst (xs,p) t] calls [find_subst_from binders path (xs,p) t] with
+    an empty initial binder context and path. *)
 let find_subst :
     to_subst -> term -> subst_under_binders option =
   find_subst_from [] []
@@ -348,7 +347,7 @@ type selected_term_under_binders =
   ; selected_binders : binder_frame list }
 
 (** [find_subterm_matching_from binders path p t] tries to find
-    a subterm of [t] that matches [p] by instantiating the [TRef]'s of [p]
+    a subterm of [t] that matches [p] by instantiating the [TRef]s of [p]
     and records the binders enclosing the selected subterm. [binders] and
     [path] are the already-known enclosing binder context of [t]. The binder
     list is ordered from innermost to outermost binder. *)
@@ -467,7 +466,7 @@ let match_contextual_pattern :
 
 (** [find_contextual_selection ~accept pos p goal] finds the first subterm of
     [goal] matching the contextual pattern [p]. It matches the context and
-    identifies the selector occurrence together, [accept] optionally 
+    identifies the selector occurrence together. [accept] optionally
     constrains the selected term, as required by [term as id in context]. *)
 let find_contextual_selection :
     ?accept:(term -> bool) -> popt -> binder -> term ->
@@ -486,8 +485,8 @@ let apply_to_frames : term -> binder_frame list -> term =
     (fun frame t -> mk_Appl(t, mk_Vari frame.binder_var))
     frames t
 
-(** [adapt_to_frames frames frames' t] if [t] contains the variables bound
-    by [frames], [t] is adapted so that it refers to the corresponding
+(** [adapt_to_frames frames frames' t] adapts references in [t] to variables
+    bound by [frames] so that they refer to the corresponding
     variables bound by [frames']. *)
 let adapt_to_frames :
     binder_frame list -> binder_frame list -> term -> term =
@@ -565,9 +564,9 @@ let replace_under_binders :
   fun f -> replace_under_binders_from [] [] (fun fs _ t -> f fs t)
 
 (** [bind_pattern ~at binders z lhs relevant goal]
-    replaces occurrences matching the instantiated [lhs] in the [goal] by [z]
+    replaces occurrences matching the instantiated [lhs] in [goal] by [z]
     applied to the relevant bound variables. [relevant] is the list of binder
-    frames that the equality is lifted over, [lhs] is already abstracted over
+    frames that the equality is lifted over. [lhs] is already abstracted over
     these frames. Candidates must use the same original binders and
     match after abstraction over their local frames. [binders] is the
     already-known enclosing context of [goal]; [at] optionally restricts
@@ -579,7 +578,7 @@ let bind_pattern ?(at=fun _ -> true) :
     let current_relevant =
       if relevant = [] then [] else
       List.filter (fun frame -> occur frame.binder_var t) binders in
-    (* Matching performs an optimistic treatment of metavariables;
+    (* Matching treats metavariables optimistically;
        equality induction checks the resulting constraints afterwards. *)
     if at path && same_binder_paths relevant current_relevant
        && matches lhs (abstract_over_frames current_relevant t)
@@ -590,9 +589,9 @@ let bind_pattern ?(at=fun _ -> true) :
 
 (** [replace_selected_under_binders selected_binders selected replacement
     goal] replaces every occurrence of [selected] in [goal] by
-    [replacement], adapting references to enclosing binder variables
-    to the recorded [selected_binders] when the same original
-    binder is unbound again while traversing [goal]. *)
+    [replacement], adapting references from the variables recorded in
+    [selected_binders] to the corresponding fresh variables when the same
+    original binders are unbound again while traversing [goal]. *)
 let replace_selected_under_binders :
     binder_frame list -> term -> term -> term -> term =
   fun selected_binders selected replacement goal ->
@@ -600,9 +599,8 @@ let replace_selected_under_binders :
     List.filter (fun frame -> occur frame.binder_var selected)
       selected_binders
   in
-  (* if a candidate term [t] is the same under it's collected enclosing
-    [binders] as [selected] under the [selected_binders], adapt
-    [replacement] to [binders] and insert it. *)
+  (* If a candidate [t] under [binders] equals [selected] under
+     [selected_binders], adapt [replacement] to [binders] and insert it. *)
   let replace binders t =
     let current_binders =
       List.filter (fun frame -> occur frame.binder_var t) binders
@@ -677,9 +675,9 @@ let prepare_eq_data_under_binders :
 (** [prepare_rewrite_from ~at binders ss cfg pos goal eq_data
     found] prepares the equality data, predicate and rewritten term for a
     rewrite occurrence. [binders] is the already-known enclosing binder
-    context of [goal]. If the redex depends on its enclosing binders,
-    the equality is lifted over them and the context abstracts the 
-    resulting function-level occurrence. [at] optionally restricts 
+    context of [goal]. If the redex depends on enclosing binders,
+    the equality is lifted over the relevant ones and the context abstracts
+    the resulting function-level occurrence. [at] optionally restricts
     replacement to selected paths. *)
 let prepare_rewrite_from ?(at=fun _ -> true) :
     binder_frame list -> Sig_state.t -> eq_config -> popt ->
@@ -722,7 +720,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    [gt]. Every occurrence of the first instance of the left-hand side is
    replaced by the right-hand side of the obtained proof (or the reverse if
    l2r is false). [pat] is an optional SSReflect pattern. [t] is the
-   equational lemma that is appied. It handles the full set of SSReflect
+   equational lemma that is applied. It handles the full set of SSReflect
    patterns. *)
 let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               (term, binder) Parsing.Syntax.rwpatt option -> term -> term =
