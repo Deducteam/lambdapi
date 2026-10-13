@@ -715,6 +715,65 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
   add_args (mk_Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
+(** [at_selector selected path] tells whether [path] names an occurrence
+    of the contextual selector identifier. Paths are relative to
+    [selected.context]; repeated uses of the identifier are all included. *)
+let at_selector : contextual_selection -> int list -> bool =
+  fun selected path -> List.mem path selected.selected_paths
+
+(** [within_selector selected path] tells whether [path] is at or below a
+    region named by the contextual selector identifier. Paths are relative
+    to [selected.context] and store child indices in reverse order, so a
+    descendant path ends with its region's path. *)
+let within_selector : contextual_selection -> int list -> bool =
+  fun selected path ->
+  let rec drop n xs =
+    if n = 0 then xs else match xs with
+    | [] -> []
+    | _::xs -> drop (n-1) xs
+  in
+  List.exists (fun root ->
+    let delta = List.length path - List.length root in
+    delta >= 0 && drop delta path = root)
+    selected.selected_paths
+
+(** [rewrite_in_context ss cfg pos goal data at selected found] prepares a
+    rewrite inside the matched [selected.context], then reinserts the
+    rewritten context and predicate into [goal]. [data] is the instantiated
+    equality (type, LHS, RHS, proof); [found] records the first redex and its
+    enclosing binders. [at] restricts replacement to paths relative to the
+    matched context. The result contains the prepared equality type,
+    whole-goal predicate binder, rewritten goal, equality proof and sides. *)
+let rewrite_in_context :
+    Sig_state.t -> eq_config -> popt -> term -> eq_data ->
+    (int list -> bool) -> contextual_selection -> subst_under_binders ->
+    term * binder * term * term * term * term =
+  fun ss cfg pos goal data at selected found ->
+  (* Prepare the equality and replacement predicate inside the selected
+     context. [prepared.new_term] is the rewritten region at this stage. *)
+  let prepared =
+    prepare_rewrite_from ~at
+      selected.context_binders ss cfg pos selected.context data found
+  in
+  (* [region_pred] is the selected context with its rewrite positions replaced
+     by the free placeholder [z], applied to local variables when lifting is
+     needed. Keep this placeholder while reinserting the context in [goal]. *)
+  let z,region_pred = unbind prepared.pred_bind in
+  (* [new_term] is the complete rewritten goal proposition. *)
+  let new_term =
+    replace_selected_under_binders selected.context_binders
+      selected.context prepared.new_term goal
+  in
+  (* [pred] is the whole-goal predicate body: insert [region_pred] instead of
+     the rewritten region, retaining [z] at the rewrite positions. Equality
+     induction uses this predicate with the equality LHS and RHS. *)
+  let pred =
+    replace_selected_under_binders selected.context_binders
+      selected.context region_pred goal
+  in
+  ( prepared.eq_type, bind_var z pred, new_term
+  , prepared.proof, prepared.lhs, prepared.rhs )
+
 (** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
    [gt]. Every occurrence of the first instance of the left-hand side is
@@ -753,52 +812,6 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   (* Bind the variables in this new witness. *)
   let bound = let bind = bind_mvar vars in bind t, bind l, bind r in
   let msubst3 (b1, b2, b3) ts = msubst b1 ts, msubst b2 ts, msubst b3 ts in
-
-  (* An [id in context] or [term as id in context] pattern rewrites exactly
-     the occurrences named by [id]. [selected_paths] includes repeated uses
-     of that identifier in the matched context. *)
-  let at_selector selected path = List.mem path selected.selected_paths in
-
-  (* The forms [in id in context] and [term in id in context] search for a
-     redex inside the region named by [id]. Paths grow by prepending child
-     indices, so a descendant path ends with its region's path. *)
-  let within_selector selected path =
-    let rec drop n xs =
-      if n = 0 then xs else match xs with
-      | [] -> []
-      | _::xs -> drop (n-1) xs
-    in
-    List.exists (fun root ->
-      let delta = List.length path - List.length root in
-      delta >= 0 && drop delta path = root)
-      selected.selected_paths
-  in
-
-  (* Finish a contextual rewrite after its first redex and lemma substitution
-     have been found. First rewrite inside the matched context, retaining its
-     enclosing binders. Then plug the rewritten context and the corresponding
-     equality-induction predicate back into the complete goal. *)
-  let rewrite_in_context at selected found =
-    let (t,l,r) = msubst3 bound found.subst in
-    let prepared =
-      prepare_rewrite_from ~at
-        selected.context_binders ss cfg pos
-        selected.context (a,l,r,t) found
-    in
-    (* [prepared.pred_bind] binds the equality-induction variable in the
-       context. Reuse that variable when placing the predicate in [g_term]. *)
-    let z,region_pred = unbind prepared.pred_bind in
-    let new_term =
-      replace_selected_under_binders selected.context_binders
-        selected.context prepared.new_term g_term
-    in
-    let pred =
-      replace_selected_under_binders selected.context_binders
-        selected.context region_pred g_term
-    in
-    ( prepared.eq_type, bind_var z pred, new_term
-    , prepared.proof, prepared.lhs, prepared.rhs )
-  in
 
   (* Obtain the different components depending on the pattern. *)
   let (a, pred_bind, new_term, t, l, r) =
@@ -875,7 +888,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* Only the positions occupied by [id] are rewritten, even if an
            identical term appears elsewhere in the context. *)
-        rewrite_in_context (at_selector selected) selected found
+        let (t,l,r) = msubst3 bound found.subst in
+        rewrite_in_context ss cfg pos g_term (a,l,r,t)
+          (at_selector selected) selected found
 
     (* Combinational patterns. *)
     | Some(Rw_TermInIdInTerm(s,p)) ->
@@ -898,7 +913,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* The explicit pattern fixes the first lemma instance; matching
            occurrences in the selected region receive the same rewrite. *)
-        rewrite_in_context (within_selector selected) selected found
+        let (t,l,r) = msubst3 bound found.subst in
+        rewrite_in_context ss cfg pos g_term (a,l,r,t)
+          (within_selector selected) selected found
 
     | Some(Rw_TermAsIdInTerm(s,p)) ->
         (* [term as id in context] constrains [id] to match [s] while finding
@@ -923,7 +940,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
           ; binders = selected.selected_context_binders }
         in
         (* As with [id in context], [id] names the redex positions exactly. *)
-        rewrite_in_context (at_selector selected) selected found
+        let (t,l,r) = msubst3 bound found.subst in
+        rewrite_in_context ss cfg pos g_term (a,l,r,t)
+          (at_selector selected) selected found
 
     | Some(Rw_InIdInTerm(q)) ->
         (* [in id in context] infers the redex from the lemma and searches
@@ -940,7 +959,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* Rewriting is limited to descendants of [id], not other matching
            lemma occurrences in the surrounding context. *)
-        rewrite_in_context (within_selector selected) selected found
+        let (t,l,r) = msubst3 bound found.subst in
+        rewrite_in_context ss cfg pos g_term (a,l,r,t)
+          (within_selector selected) selected found
   in
 
   (* Construct the predicate (context). *)
