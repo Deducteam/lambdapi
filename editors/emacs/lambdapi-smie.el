@@ -63,7 +63,7 @@
 (defconst lambdapi-smie-bnf
   '((ident)
       (env (ident)
-           (env ";" env))
+           (env ";" ident))
       (rw-patt)
       (implicit_args)
       (args (ident)
@@ -141,14 +141,15 @@
                  ("protected" modifiers)
                  ("sequential" modifiers))
       (constructor (args ":" term))
-      (constructors (constructor) (constructors "|" constructors))
+      (constructors (constructor) (constructors "|" constructor))
       (inductive (ident_args ":" term "≔" constructors))
-      (winductives (inductive)
-                   (inductive "with" winductives))
-      (inductives (inductive) (inductive "with" winductives))
+      (inductives (inductive) (inductives "with" inductive))
+;;      (winductives (inductive)
+;;                   (inductive "with" winductives))
+;;      (inductives (inductive) (inductives "with" winductive))
       (rule (term "↪" term))
       (rules (rule) (rules "with" rules))
-      (unif-rule-rhs (equation) (unif-rule-rhs ";" unif-rule-rhs))
+      (unif-rule-rhs (equation) (unif-rule-rhs ";" equation))
       (open-command ("open" ident))
       (popen   ("private" open-command)
                (open-command))
@@ -179,7 +180,7 @@
                ("rule" rules)
                ("coerce_rule" rule)
                ("unif_rule" equation "↪" "[" unif-rule-rhs "]"))
-      (commands (command) (commands ";" commands))))
+      (commands (command) (commands ";" command))))
 
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
@@ -196,14 +197,14 @@
   )))
 
 (defun lambdapi--smie-forward-token ()
-  "Forward lexer for Dedukti3."
+  "Forward lexer for Dedukti."
   (forward-comment (point-max))
   (if (memq (char-after) '(?{ ?}))
       (progn (forward-char 1) (string (char-before)))
     (smie-default-forward-token)))
 
 (defun lambdapi--smie-backward-token ()
-  "Backward lexer for Dedukti3."
+  "Backward lexer for Dedukti."
   (forward-comment (- (point)))
   (if (memq (char-before) '(?{ ?}))
       (progn (forward-char -1) (string (char-after)))
