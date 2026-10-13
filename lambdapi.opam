@@ -22,7 +22,7 @@ depends: [
   "ocaml" {>= "4.14"}
   "dream-pure" {>= "1.0.0~alpha2"}
   "dream-httpaf" {>= "1.0.0~alpha3"}
-  "dream" {>= "1.0.0~alpha6" & < "1.0.0"}
+  "dream" {>= "1.0.0"}
   "menhir" {>= "20200624"}
   "sedlex" {>= "3.2"}
   "alcotest" {with-test}
