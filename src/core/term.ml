@@ -997,6 +997,7 @@ let new_problem : unit -> problem = fun () ->
 module Raw = struct
   let var = var let _ = var
   let sym = sym let _ = sym
+  let qsym = qsym let _ = qsym
   let term = term let _ = term
   let sym_rule = sym_rule let _ = sym_rule
   let ctxt = ctxt let _ = ctxt

@@ -469,6 +469,7 @@ val qsym : sym pp
 module Raw : sig
   val var : var pp
   val sym : sym pp
+  val qsym : sym pp
   val term : term pp
   val sym_rule : sym_rule pp
   val ctxt : ctxt pp
