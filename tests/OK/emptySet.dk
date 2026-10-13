@@ -1,10 +1,10 @@
 Set:Type.
 Prop:Type.
 
-def prf:Prop->Type.
+def prf:Prop -> Type.
 
-forall:(Set->Prop)->Prop.
-imp:Prop->Prop->Prop.
+forall:(Set -> Prop) -> Prop.
+imp:Prop -> Prop -> Prop.
 [f] prf (forall f) --> x:Set -> prf (f x)
 
 [A,B] prf (imp A B) --> prf A -> prf B.
