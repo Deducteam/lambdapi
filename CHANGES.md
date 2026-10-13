@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
 - Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
 - add a version number to the header of the index db file to prevent crash of LP when the structure of db changes.
+- Conditional rules `l when t1 ≡ t2 ↪ r`
 
 ### Changed
 

@@ -47,6 +47,7 @@
     "rule"
     "symbol"
     "unif_rule"
+    "when"
     "with")
   "Commands that enrich the signature.")
 
@@ -106,6 +107,7 @@
     (modify-syntax-entry ?→ "." table)
     (modify-syntax-entry ?↪ "." table)
     (modify-syntax-entry ?≔ "." table)
+    (modify-syntax-entry ?« "." table)
     (modify-syntax-entry ?$ "." table)
     (modify-syntax-entry ?? "." table)
     (modify-syntax-entry ?: "." table)

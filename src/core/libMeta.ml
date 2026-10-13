@@ -37,7 +37,14 @@ let set : problem -> meta -> mbinder -> unit = fun p m v ->
 let make : problem -> ctxt -> term -> term = fun p ctx a ->
   let a,k = Ctxt.to_prod ctx a in
   let m = fresh p a k in
-  mk_Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx))
+(*
+  mk_Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx)) 
+*)
+  mk_Meta(m, Array.of_list (List.filter_rev_map 
+                              (fun (x,_,v) -> if v=None then
+                                                Some (mk_Vari x) else None)
+                              ctx))  
+ (* jpb *) 
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and
