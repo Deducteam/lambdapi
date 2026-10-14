@@ -76,6 +76,16 @@ let parse_command p : (Command.t, Pos.popt * string) Result.t =
 
 (** Exception raised by [parse_text] on error. *)
 
+(** [unfinished_proof_handler cmds m s pos] adds the partially parsed
+    symbol [s] (at position [pos]) to the commands [cmds] read so far,
+    and returns them in order together with the location and error
+    message [m]. *)
+let unfinished_proof_handler cmds m s pos =
+  let cmd = Pos.{elt = Syntax.P_symbol s; pos} in
+  Stdlib.(cmds := cmd :: !cmds);
+  let loc = match m.Pos.pos with Some p -> p | _ -> assert false in
+  List.rev Stdlib.(!cmds), Some (loc, m.Pos.elt)
+
 let parse_text :
       fname:string -> string -> Command.t list * (Pos.pos * string) option =
   fun ~fname s ->
@@ -90,8 +100,10 @@ let parse_text :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_string fname s);
     List.rev Stdlib.(!cmds), None
   with
+  | LpParser.UnfinishedProof(m, s, pos) ->
+    unfinished_proof_handler cmds m s pos
   | Fatal(Some(Some(pos)), msg, err_desc) ->
-      List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
+    List.rev Stdlib.(!cmds), Some(pos, msg ^ "\n" ^ err_desc)
   | Fatal(Some(None)     , _  , _) -> assert false
   | Fatal(None           , _  , _) -> assert false
 
@@ -108,8 +120,10 @@ let parse_file :
     Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_file fname);
     List.rev Stdlib.(!cmds), None
   with
+  | LpParser.UnfinishedProof(m, s, pos) ->
+    unfinished_proof_handler cmds m s pos
   | Fatal(Some(Some(pos)), msg, desc) ->
-      List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
+    List.rev Stdlib.(!cmds), Some(pos, msg ^ ". " ^ desc)
   | Fatal(Some(None)     , _ , _ ) -> assert false
   | Fatal(None           , _ , _ ) -> assert false
 
@@ -124,10 +138,10 @@ let current_goals : proof_state -> Goal.info list =
   Print.sig_state := st;
   List.map Goal.to_info ps.proof_goals
 
-(** As  explained  in [src/common/error.ml], optional optional source position
-    is used with [Cmd_Error] to distinguish errors that  are  independent from
-    source code position from those where posiotion is expected but is missing
-    *)
+(** As explained in [src/common/error.ml], the optional optional position in
+    [Cmd_Error] is used to distinguish the errors that are independent from
+    the source code position from those where a position is expected but
+    missing. *)
 type command_result =
   | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
