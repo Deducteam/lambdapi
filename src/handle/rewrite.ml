@@ -219,6 +219,33 @@ let abstract_over_frames : binder_frame list -> term -> term =
 let same_binder_paths : binder_frame list -> binder_frame list -> bool =
   List.equal (fun f f' -> f.binder_path = f'.binder_path)
 
+(** [apply_to_frames t frames] applies [t] to the variables in [frames]. The
+    frame list must be ordered from innermost to outermost binder. *)
+let apply_to_frames : term -> binder_frame list -> term =
+  fun t frames ->
+  List.fold_right
+    (fun frame t -> mk_Appl(t, mk_Vari frame.binder_var))
+    frames t
+
+(** [adapt_to_frames frames frames' t] adapts references in [t] to variables
+    bound by [frames] so that they refer to the corresponding
+    variables bound by [frames']. *)
+let adapt_to_frames :
+    binder_frame list -> binder_frame list -> term -> term =
+  fun frames frames' t ->
+  apply_to_frames (abstract_over_frames frames t) frames'
+
+(** [same_under_binders first_frames frames first t] tells whether [t] is the
+    same term as [first], modulo the fresh variables generated when unbinding
+    the same original enclosing binders. *)
+let same_under_binders :
+    binder_frame list -> binder_frame list -> term -> term -> bool =
+  fun first_frames frames first t ->
+  same_binder_paths first_frames frames
+  && LibTerm.eq_alpha
+       (abstract_over_frames first_frames first)
+       (abstract_over_frames frames t)
+
 (** [find_subterm_from binders path try_match t] searches [t], trying each
     candidate before its children. [try_match] receives its enclosing frames
     and term, and returns [Some result] on success. Failed attempts are
@@ -300,8 +327,8 @@ let find_subst :
     to_subst -> term -> subst_under_binders option =
   find_subst_from [] []
 
-(** [find_subst pos (vars,p) t] returns the first occurrence
-    search result for [p] in [t], or fails if no subterm matches. It also
+(** [find_subst pos (vars,p) t] returns the search result for the first
+    occurrence of [p] in [t], or fails if no subterm matches. It also
     checks that all variables in [vars] have been instantiated. *)
 let find_subst :
     popt -> to_subst -> term -> subst_under_binders = fun pos (vars,p) t ->
@@ -365,9 +392,8 @@ let find_subterm_matching_from :
   in
   find_subterm_from initial_binders initial_path try_match t
 
-(** [find_subterm_matching p t] is
-    [find_subterm_matching_from] with no initial enclosing
-    binders. *)
+(** [find_subterm_matching p t] is [find_subterm_matching_from] with no
+    initial enclosing binders. *)
 let find_subterm_matching :
     term -> term -> selected_term_under_binders option =
   find_subterm_matching_from [] []
@@ -404,13 +430,13 @@ let match_contextual_pattern :
     var -> term -> binder_frame list -> term ->
     contextual_selection option =
   fun selector p binders t ->
-  (* Repeated occurrences of the selector must denote the same term under
-     the same original binders. Abstracting both terms over their frames
-     makes freshly unbound variable names irrelevant to this comparison. *)
+  (* Repeated occurrences must denote alpha-equivalent terms depending on
+     the same original binders. Ignore frames whose variables do not occur
+     in the selected terms; retain the full frames in the search result. *)
   let same fs fs' u t =
-    same_binder_paths fs fs'
-    && Term.cmp
-         (abstract_over_frames fs u) (abstract_over_frames fs' t) = 0
+    let fs = List.filter (fun f -> occur f.binder_var u) fs in
+    let fs' = List.filter (fun f -> occur f.binder_var t) fs' in
+    same_under_binders fs fs' u t
   in
   let selected = ref None in
   (* Match one candidate [t] against the whole context pattern. The first
@@ -473,33 +499,6 @@ let find_contextual_selection :
   match find_subterm_from [] [] match_context goal with
   | Some r -> r
   | None -> no_match ~subterm:true pos p goal
-
-(** [apply_to_frames t frames] applies [t] to the variables in [frames]. The
-    frame list must be ordered from innermost to outermost binder. *)
-let apply_to_frames : term -> binder_frame list -> term =
-  fun t frames ->
-  List.fold_right
-    (fun frame t -> mk_Appl(t, mk_Vari frame.binder_var))
-    frames t
-
-(** [adapt_to_frames frames frames' t] adapts references in [t] to variables
-    bound by [frames] so that they refer to the corresponding
-    variables bound by [frames']. *)
-let adapt_to_frames :
-    binder_frame list -> binder_frame list -> term -> term =
-  fun frames frames' t ->
-  apply_to_frames (abstract_over_frames frames t) frames'
-
-(** [same_under_binders first_frames frames first t] tells whether [t] is the
-    same term as [first], modulo the fresh variables generated when unbinding
-    the same original enclosing binders. *)
-let same_under_binders :
-    binder_frame list -> binder_frame list -> term -> term -> bool =
-  fun first_frames frames first t ->
-  same_binder_paths first_frames frames
-  && LibTerm.eq_alpha
-       (abstract_over_frames first_frames first)
-       (abstract_over_frames frames t)
 
 (** [replace_under_binders_from binders path f goal] traverses [goal] while
     recording enclosing binder frames. [binders] and [path] are the
@@ -572,12 +571,13 @@ let bind_pattern ?(at=fun _ -> true) :
     binder_frame list -> var -> term -> binder_frame list -> term -> term =
   fun initial_binders z lhs relevant goal ->
   let replace binders path t =
+    if not (at path) then None else
     let current_relevant =
       if relevant = [] then [] else
       List.filter (fun frame -> occur frame.binder_var t) binders in
     (* Matching treats metavariables optimistically;
        equality induction checks the resulting constraints afterwards. *)
-    if at path && same_binder_paths relevant current_relevant
+    if same_binder_paths relevant current_relevant
        && matches lhs (abstract_over_frames current_relevant t)
     then Some (apply_to_frames (mk_Vari z) current_relevant)
     else None
@@ -937,9 +937,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let id,pat = unbind p in
         let p_s = subst p s in
         let p_refs = replace_wild_by_tref p_s in
-        (* Define the matching policy for searching p[s/id] in the goal. It
-           first tries to match against p[s/id] and, if successful, returns
-            the contextual_selection of [p], inclding the value of [id]. *)
+        (* Define the matching policy for searching [p_s] in the goal.
+           First match [p_s], then return the contextual selection of [pat],
+           including the value of [id]. *)
         let try_match binders t =
           let time = Timed.Time.save () in
           let result = matches ~allow_binder_holes:true p_refs t in
@@ -949,7 +949,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
           if result then match_contextual_pattern id pat binders t
           else None
         in
-        (* Carry out search for p[s/id]. *)
+        (* Search for [p_s] in the goal. *)
         let selected =
           match find_subterm_from [] [] try_match g_term with
           | Some r -> r
@@ -968,8 +968,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
           (at_selector selected) selected found
 
     | Some(Rw_InIdInTerm(q)) ->
-        (* Infers the redex from the lemma and searches inside the
-           selectedregion, tracking the region's binder frames and
+        (* Infer the redex from the lemma and search inside the
+           selected region, tracking the region's binder frames and
            path, including binders introduced by [pat_l]. *)
         let selected = find_contextual_selection pos q g_term in
         let found =
