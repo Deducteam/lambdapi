@@ -1025,7 +1025,7 @@ let cmd_websearch =
       match !header with
       | None ->
         let file =
-          match Ressources.Mysites.Sites.server_resources with
+          match Resources.Mysites.Sites.server_resources with
           | [] -> assert false
           | x :: _ -> x
         in
@@ -1089,7 +1089,8 @@ let _ =
       exit 1
     | _ ->
       Lplib.Color.update_with_color Format.err_formatter;
-      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc
+      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc;
+      exit 1
   in
   try main args
   with
