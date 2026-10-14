@@ -937,7 +937,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let id,pat = unbind p in
         let p_s = subst p s in
         let p_refs = replace_wild_by_tref p_s in
-        (* Define the matching policy for searching p[s/id] in the goal. It 
+        (* Define the matching policy for searching p[s/id] in the goal. It
            first tries to match against p[s/id] and, if successful, returns
             the contextual_selection of [p], inclding the value of [id]. *)
         let try_match binders t =
@@ -968,7 +968,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
           (at_selector selected) selected found
 
     | Some(Rw_InIdInTerm(q)) ->
-        (* Infers the redex from the lemma and searches inside the 
+        (* Infers the redex from the lemma and searches inside the
            selectedregion, tracking the region's binder frames and
            path, including binders introduced by [pat_l]. *)
         let selected = find_contextual_selection pos q g_term in
