@@ -291,6 +291,7 @@ type p_tactic_aux =
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
   | P_tac_induction
+  | P_tac_lia_find
   | P_tac_orelse of p_tactic * p_tactic
   | P_tac_query of p_query
   | P_tac_refine of p_term
@@ -346,6 +347,7 @@ let tactic_keyword : p_tactic -> string option = fun {elt;_} ->
   | P_tac_generalize _ -> Some "generalize"
   | P_tac_have _ -> Some "have"
   | P_tac_induction -> Some "induction"
+  | P_tac_lia_find -> Some "lia_find"
   | P_tac_orelse _ -> Some "orelse"
   | P_tac_query q -> Some (query_keyword q)
   | P_tac_refine _ -> Some "refine"
@@ -572,6 +574,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_induction, P_tac_induction
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
+  | P_tac_lia_find, P_tac_lia_find
   | P_tac_refl, P_tac_refl
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
@@ -771,6 +774,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_simpl _
     | P_tac_assumption
     | P_tac_admit
+    | P_tac_lia_find
     | P_tac_refl
     | P_tac_sym
     | P_tac_why3 _

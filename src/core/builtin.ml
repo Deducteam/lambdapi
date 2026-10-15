@@ -124,6 +124,11 @@ let _ =
   register "int_zero" no_check;
   register "int_positive" no_check;
   register "int_negative" no_check;
+  register "zlt2le" no_check;
+  register "zge2le" no_check;
+  register "zgt2le" no_check;
+  register "zle_scale" no_check;
+  register "zle_add2" no_check;
   register "-" no_check
 
 let typ _c = mk_Type
@@ -153,6 +158,27 @@ let elt = app (builtin "El")
 let _ =
   register_typ "Set" typ;
   register_typ "El" (arr set typ)
+
+(* Additional builtins for lia tactic. *)
+let _ =
+  register_typ "⊤" prop;
+  let top = builtin "⊤" in
+  let zint = builtin "zint" in
+  let ufun = arr zint zint in
+  let bfun = arr zint ufun in
+  let bpred = arr zint (arr zint prop) in
+  (* Prf top *)
+  register_typ "⊤ᵢ" (app prf top);
+  register_typ "zint" typ;
+  register_typ "z0" zint;
+  register_typ "z1" zint;
+  register_typ "zle" bpred;
+  register_typ "zlt" bpred;
+  register_typ "zge" bpred;
+  register_typ "zgt" bpred;
+  register_typ "zSucc" ufun;
+  register_typ "zadd" bfun;
+  register_typ "zmul" bfun
 
 (* Additional builtins for why3 tactic. *)
 let _ =
@@ -227,6 +253,7 @@ let _ =
   register_typ "generalize" t1;
   register_typ "have" (arr str t1);
   register_typ "induction" tac;
+  register_typ "lia_find" tac;
   register_typ "orelse" (arr tac (arr tac tac));
   register_typ "print" (arr str tac);
   register_typ "refine" (arr str tac);

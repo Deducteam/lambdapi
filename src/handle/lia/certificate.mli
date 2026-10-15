@@ -1,14 +1,7 @@
-(** Abstract certificate syntax. A search procedure may produce this tree;
-    a reconstruction backend translates it into Lambdapi terms. *)
-type t =
-  | Input of int
-  | Linear_combination of Z.t list * t list
-  | Integer_cut of t
-  | Congruence_conflict of t list
-  | Split of { variable : string; cases : t list }
-  | Cooper_elimination of {
-      variable : string;
-      modulus : Z.t;
-      residues : t list;
-    }
-  | Contradiction of t list
+val find : Checker.constraint_ array -> Checker.certificate option
+(** Recherche complète et terminante de certificats de Farkas entiers.
+
+    Pour les inégalités [a_i · x + c_i <= 0], renvoie des entiers
+    [lambda_i >= 0] tels que [sum lambda_i*a_i = 0] et [sum lambda_i*c_i > 0].
+    [None] signifie qu'aucun certificat de cette forme n'existe; cela ne
+    signifie pas que le système est satisfiable sur Z. *)

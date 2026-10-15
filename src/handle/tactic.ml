@@ -212,6 +212,7 @@ type tactic =
   | T_generalize
   | T_have
   | T_induction
+  | T_lia_find
   | T_orelse
   | T_print
   | T_refine
@@ -249,6 +250,7 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : config =
   add "generalize" T_generalize;
   add "have" T_have;
   add "induction" T_induction;
+  add "lia_find" T_lia_find;
   add "orelse" T_orelse;
   add "print" T_print;
   add "refine" T_refine;
@@ -437,6 +439,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                 ps, mk(P_tac_have(Pos.make pos (string_of_term pos t1), t2))
             | T_have, _ -> assert false
             | T_induction, _ -> ps, mk P_tac_induction
+            | T_lia_find, [] -> ps, mk P_tac_lia_find
+            | T_lia_find, _ -> assert false
             | T_orelse, [t1;t2] ->
               ps, mk(P_tac_orelse(tac_eval t1, tac_eval t2))
             | T_orelse, _ -> assert false
@@ -686,6 +690,37 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
                             to be typable are not satisfiable." term t
       end
   | P_tac_induction -> tac_induction pos ps gt gs
+  | P_tac_lia_find ->
+    Abstract.lia_init ss pos;
+    let lh = List.filter_map Abstract.get_arith gt.goal_hyps in
+    let ctrs = Abstract.mk_ctrs lh in
+    let cert = Certificate.find
+        (Array.map (fun (_,_,_,c)->c) (Array.of_list ctrs)) in
+    let cert = match cert with
+      | None -> fatal pos "lia failed - no coeffs"
+      | Some c -> c.multipliers in
+    let as_int k = scope (Pos.make None (P_NLit([], string_of_int k))) in
+    let prf = mk_Symb (Builtin.get ss pos [] "Prf") in
+    let scaled = List.filteri_map
+        (fun i (h,l,r,_) ->
+           let k = cert.(i) in
+           if k = 0 then None
+           else Some (Abstract.scale (as_int k) l r h)) ctrs in
+    let left,right,lemma =
+      match scaled with
+        [] -> fatal pos "lia failed with no hyps"
+      | [h] -> h
+      | h::t -> List.fold_left Abstract.le_add2 h t in
+    let _ = log "LIA lemma: %a" term lemma in
+    (* λ h1 h2, h2 h1 : π (p ⇒ (p ⇒ g) ⇒ g) *)
+    let h = new_var "_h" in
+    let xp = Abstract.mk_le left right in
+    let pb = new_problem() in
+    let nt = mk_Arro(mk_Appl(prf, xp), gt.goal_type) in
+    let args = Env.to_prod env nt and n = List.length env in
+    let ng = mk_Meta(LibMeta.fresh pb args n, Env.to_terms env) in
+    let u = mk_Abst (nt, bind_var h (mk_Appl (mk_Vari h,lemma))) in
+    tac_refine pos ps gt gs pb (mk_Appl (u,ng))
   | P_tac_refine pt -> tac_refine pos ps gt gs (new_problem()) (scope pt)
   | P_tac_refl ->
       begin

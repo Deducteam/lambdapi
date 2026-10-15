@@ -71,6 +71,7 @@ let string_of_token =
   | L_CU_BRACKET -> q"{"
   | L_PAREN -> q"("
   | L_SQ_BRACKET -> q"["
+  | LIA_FIND -> q"lia_find"
   | NOTATION -> q"notation"
   | OPAQUE -> q"opaque"
   | OPEN -> q"open"
@@ -1002,6 +1003,7 @@ and proof (lb:'token lexbuf): p_proof * p_proof_end =
   | GENERALIZE
   | HAVE
   | INDUCTION
+  | LIA_FIND
   | ORELSE
   | REFINE
   | REFLEXIVITY
@@ -1065,8 +1067,8 @@ and proof_end (lb:'token lexbuf): p_proof_end =
 
 and tactic_tks() =
   [ADMIT;ALL_HYPS;APPLY;ASSUME;ASSUMPTION;CHANGE;EVAL;FAIL;FIRST_HYP;FOCUS;
-   GENERALIZE;HAVE;INDUCTION;ORELSE;REFINE;REFLEXIVITY;REMOVE;REPEAT;REWRITE;
-   SET;SIMPLIFY;SOLVE;SYMMETRY;TRY;WHY3] @ (query_tks())
+   GENERALIZE;HAVE;INDUCTION;LIA_FIND;ORELSE;REFINE;REFLEXIVITY;REMOVE;REPEAT;
+   REWRITE;SET;SIMPLIFY;SOLVE;SYMMETRY;TRY;WHY3] @ (query_tks())
 and tactic (lb:'token lexbuf): p_tactic =
   if log_enabled() then log "%s" __FUNCTION__;
   match current_token lb with
@@ -1147,6 +1149,10 @@ and tactic (lb:'token lexbuf): p_tactic =
       let pos1 = current_pos lb in
       consume_token lb;
       make_pos pos1 P_tac_induction
+  | LIA_FIND ->
+      let pos1 = current_pos lb in
+      consume_token lb;
+      make_pos pos1 P_tac_lia_find
   | ORELSE ->
       let pos1 = current_pos lb in
       consume_token lb;

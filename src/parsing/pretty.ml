@@ -336,6 +336,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
+  | P_tac_lia_find -> out ppf "lia_find"
   | P_tac_orelse(t1,t2) -> out ppf "orelse %a %a" tactic t1 tactic t2
   | P_tac_query q -> query ppf q
   | P_tac_refine t -> out ppf "refine %a" term t

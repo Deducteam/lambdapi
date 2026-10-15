@@ -47,6 +47,9 @@ builtin "have" ≔ #have;
 constant symbol #induction : Tactic;
 builtin "induction" ≔ #induction;
 
+constant symbol #lia_find : Tactic;
+builtin "lia_find" ≔ #lia_find;
+
 constant symbol #orelse : Tactic → Tactic → Tactic;
 builtin "orelse" ≔ #orelse;
 

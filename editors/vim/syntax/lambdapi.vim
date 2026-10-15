@@ -62,6 +62,7 @@ syntax keyword KeywordOK contained infix
 syntax keyword KeywordOK contained injective
 syntax keyword KeywordOK contained left
 syntax keyword KeywordOK contained let
+syntax keyword KeywordOK contained lia_find
 syntax keyword KeywordOK contained locate
 syntax keyword KeywordOK contained notation
 syntax keyword KeywordOK contained off
@@ -136,6 +137,7 @@ syntax keyword KeywordKO contained infix
 syntax keyword KeywordKO contained injective
 syntax keyword KeywordKO contained left
 syntax keyword KeywordKO contained let
+syntax keyword KeywordKO contained lia_find
 syntax keyword KeywordKO contained location
 syntax keyword KeywordKO contained notation
 syntax keyword KeywordKO contained off
