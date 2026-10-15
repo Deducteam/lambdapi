@@ -61,7 +61,7 @@ system <http://hal.inria.fr/inria-00258384>`_, by Georges Gonthier,
 Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
 section 8, p. 48, for more details.
 
-In contrast to SSReflect, ``rewrite`` allows can target terms
+In contrast to SSReflect, ``rewrite`` can target terms
 depending on bound variables (justified by functional extensionality),
 and supports rewrite patterns containing binders. For examples, see `rewrite_under_binders.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/rewrite_under_binders.lp>`_.
 

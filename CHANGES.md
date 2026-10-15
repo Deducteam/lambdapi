@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   side, proof, etc.).
 - In Lsp mode, when navigating a proof the server answers Goals and logs even
   when the proof is broken (missing end token or syntacticly broken tactic)
-- Prevent bound variables from escaping their scope during equality-lemma 
+- Prevent bound variables from escaping their scope during equality-lemma
   matching when applying the `rewrite` tactic.
 
 ## 3.0.0 (2025-07-16)
