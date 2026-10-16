@@ -39,8 +39,8 @@ input files with either the ``.lp`` extension or the ``.dk``
 extension.  The appropriate parser is selected automatically. The
 ``export`` command accept only one file as argument.
 
-Remark: the checking of Dedukti files containing depending on other
-Dedukti files requires to use the option ``--lib-root=.``.
+Remark: checking Dedukti files depending on other files requires to
+use the option ``--lib-root=.``.
 
 Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
 file can depend on a Lambdapi file (but the Dedukti grammar does not
@@ -66,8 +66,6 @@ otherwise.
 * ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
 * ``--no-sr-check`` disables subject reduction checking.
-
-* ``--rules <FILE.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<FILE.lp>`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
 
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 

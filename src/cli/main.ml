@@ -436,7 +436,7 @@ let cmd_deindex =
             ; args = "[OPTION …] PATH"
             ; summary
             ; desc = summary
-            ; options = opt_db :: compile_options } in
+            ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
     | [] -> Common.Error.fatal_no_pos "no prefix provided"

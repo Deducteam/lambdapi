@@ -304,13 +304,13 @@ module DB = struct
 
  (* disk persistence *)
 
- let default_dbpath = ".LPSearch.db"
+ let default_dbfile = ".LPSearch.db"
 
  let the_dbpath : string Stdlib.ref =
    Stdlib.ref
      (match Sys.getenv_opt "HOME" with
-      | Some s -> Filename.concat s default_dbpath
-      | None -> default_dbpath)
+      | Some s -> Filename.concat s default_dbfile
+      | None -> default_dbfile)
 
  let rwpaths = Stdlib.ref []
 
@@ -331,7 +331,7 @@ module DB = struct
   else
     begin
       Common.Error.wrn None "Index file \"%s\" not found (will be created)."
-        default_dbpath;
+        filename;
       Sym_nameMap.empty, Index.empty
     end
 
