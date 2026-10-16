@@ -85,7 +85,7 @@ let start ~header ss ~port ~path_in_url () =
       "/" ^ path_in_url ^ "/favicon.ico" in
   Dream.run ~port ~interface
   @@ Dream.logger
-  @@ Dream.memory_sessions
+  @@ Dream.memory_sessions ()
   @@ Dream.router [
     Dream.head ("/" ^ path_in_url)
       (fun _ ->

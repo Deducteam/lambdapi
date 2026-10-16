@@ -153,7 +153,9 @@ let match_guard patts lb =
  List.exists (match_token (current_token lb)) patts
 
 let err_msg lb (msg:string) (tokens:token list): string =
-  if msg <> "" then msg
+  if msg <> "" then
+    if String.starts_with ~prefix:"Expected: " msg then msg
+    else "Expected: " ^ msg
   else match tokens with
        | [] -> assert false
        | t::ts -> "Expected: " ^ string_of_tokens (string_of_token t)
