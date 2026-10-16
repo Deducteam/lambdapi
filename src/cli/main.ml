@@ -8,12 +8,12 @@ let r = "\x1b[0m" (* end bold *)
 let nat_of_string s =
   match int_of_string_opt s with
   | Some k when k >= 0 -> k
-  | _ -> Common.Error.fatal_no_pos "invalid integer"
+  | _ -> Common.Error.fatal_no_pos "Invalid integer: %s." s
 
 let float_of_string s =
   match float_of_string_opt s with
   | Some k when k >= 0. -> k
-  | _ -> Common.Error.fatal_no_pos "invalid float number"
+  | _ -> Common.Error.fatal_no_pos "Invalid float number: %s" s
 
 (*FIXME: move to lplib/string.ml *)
 (** [split_first c s] returns [Some(s1,s2)] such that [s=s1^c^s2] and [c] does
@@ -35,7 +35,7 @@ let parse_map_dir s =
   match split_first ':' s with
   | Some(s,dir) ->
     Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
-  | None -> Common.Error.fatal_no_pos "wrong argument: %s" s
+  | None -> Common.Error.fatal_no_pos "Wrong argument: %s." s
 
 (*-------------------------------------------------------------------------*)
 (* Type of a command line option *)
@@ -91,11 +91,11 @@ let parse_options options args =
     match args with
     | [] -> []
     | arg::other_args ->
-      if arg="" then Common.Error.fatal_no_pos "empty argument"
+      if arg="" then Common.Error.fatal_no_pos "Empty argument."
       else if arg.[0] <> '-' then args
       else
         match find_option arg options with
-        | None -> Common.Error.fatal_no_pos "unknown option: %s" arg
+        | None -> Common.Error.fatal_no_pos "Unknown option: %s." arg
         | Some o ->
           match o.opt_handle with
           | NoArg h -> h(); parse other_args
@@ -112,7 +112,7 @@ let parse_options options args =
           | Next(_,h) ->
             match other_args with
             | [] ->
-              Common.Error.fatal_no_pos "option %s has no argument" arg
+              Common.Error.fatal_no_pos "Option %s has no argument." arg
             | arg::other_args -> h arg; parse other_args
   in parse args
 
@@ -348,7 +348,7 @@ let sign_of_path p =
   | Some i ->
     try Lplib.Extra.timeout i (Handle.Compile.compile ss) p
     with Lplib.Extra.Timeout ->
-      Common.Error.fatal_no_pos "timeout for checking %a." Common.Path.pp p
+      Common.Error.fatal_no_pos "Timeout for checking %a." Common.Path.pp p
 
 let compile file =
   sign_of_path (Common.Library.path_of_file Parsing.LpLexer.escape file)
@@ -363,7 +363,7 @@ let cmd_check =
             ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | f::files ->
     set_lib_root();
     Parsing.Package.set_root_path f;
@@ -399,8 +399,8 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
             ; options = opt_ghost :: compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "qualified identifier missing"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "Qualified identifier missing."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
     set_lib_root();
@@ -439,8 +439,8 @@ let cmd_deindex =
             ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-    | [] -> Common.Error.fatal_no_pos "no prefix provided"
-    | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+    | [] -> Common.Error.fatal_no_pos "No prefix provided."
+    | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
     | [p] ->
       set_lib_root();
       Tool.Indexing.deindex_path p;
@@ -474,7 +474,7 @@ let output_of_string = function
   | "stt_coq" -> SttCoq
   | "raw_lean" -> RawLean
   | "stt_lean" -> SttLean
-  | s -> Common.Error.fatal_no_pos "invalid format: %s" s
+  | s -> Common.Error.fatal_no_pos "Unknown format: %s" s
 
 let output = ref None
 
@@ -482,10 +482,10 @@ let check_output l =
   match !output with
   | None ->
     Common.Error.fatal_no_pos
-      "the output format must be given before the other options"
+      "The output format must be given before the other options."
   | Some o ->
     if not (List.mem o l) then
-      Common.Error.fatal_no_pos "option invalid with format %s"
+      Common.Error.fatal_no_pos "Invalid option with format %s."
         (string_of_output o)
 
 let opt_output =
@@ -610,15 +610,15 @@ let cmd_export =
             ; options = export_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | _::_::_ ->
     Common.Error.fatal_no_pos
-      "the export command accepts only one file as argument"
+      "The export command accepts only one file as argument."
   | [file] ->
     set_lib_root();
     let output =
       match !output with
-      | None -> Common.Error.fatal_no_pos "no output format given"
+      | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
     begin
@@ -684,7 +684,7 @@ let cmd_index =
             ; options = opt_source :: opt_add :: compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | f::files ->
     if not !add then Tool.Indexing.empty ();
     set_lib_root();
@@ -714,8 +714,8 @@ let cmd_init =
             ; options = general_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no module path provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "No module path provided."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let root_path = Parsing.Parser.path_of_string s in
     (* Find out the package name, create the directory. *)
@@ -869,7 +869,7 @@ let cmd_lsp =
             ; options = opt_standard_lsp::opt_log_file::general_options } in
   fun args ->
   match parse_options c.options args with
-  | _::_ -> Common.Error.fatal_no_pos "invalid argument"
+  | _::_ -> Common.Error.fatal_no_pos "Invalid argument."
   | _ ->
     set_lib_root();
     Common.Console.lsp_mod := true;
@@ -890,7 +890,7 @@ let cmd_parse =
             ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | files ->
     let handle file = ignore (Parsing.Parser.parse_file file) in
     List.iter handle files
@@ -930,8 +930,8 @@ let cmd_search =
             ; options = search_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no query provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "No query provided."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     set_lib_root();
     Tool.Indexing.force_meta_rules_loading();
@@ -952,8 +952,8 @@ let cmd_uninstall =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   function
-  | [] -> Common.Error.fatal_no_pos "no package file provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "No package file provided."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     set_lib_root();
     let p = Parsing.Package.read s in
@@ -1023,7 +1023,7 @@ let cmd_websearch =
             ; options = websearch_options } in
   fun args ->
   match parse_options c.options args with
-  | _::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [] ->
     set_lib_root();
     Tool.Indexing.force_meta_rules_loading();
@@ -1084,7 +1084,7 @@ let main = function
   | "search"::args -> cmd_search args
   | "uninstall"::args -> cmd_uninstall args
   | "websearch"::args -> cmd_websearch args
-  | s::_ -> Common.Error.fatal_no_pos "unknown command: %s" s
+  | s::_ -> Common.Error.fatal_no_pos "Unknown command: %s." s
 
 let _ =
   let args = List.tl (Array.to_list Sys.argv) in
