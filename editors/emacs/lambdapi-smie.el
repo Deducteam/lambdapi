@@ -167,8 +167,6 @@
                (modifiers "symbol" args ":" term)
                (modifiers "symbol" args ":" term ("≔" term))
                (modifiers "symbol" args ":" term "≔" proofbody)
-               (modifiers "symbol" args ":" term "≔" proofbody)
-               (modifiers "symbol" args ":" term "≔" proofbody)
                (modifiers "inductive" inductive)
                ("builtin" ident "≔" term)
                ("notation" ident "infix" "left" term)
