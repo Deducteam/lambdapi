@@ -68,7 +68,7 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 
 * ``--no-sr-check`` disables subject reduction checking.
 
-  * ``--rules file.lp`` tells lambdapi to normalize terms using the rules given in the file ``file.lp`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
+* ``--rules file.lp`` tells lambdapi to normalize terms using the rules given in the file ``file.lp`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
 
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
