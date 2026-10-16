@@ -39,8 +39,8 @@ input files with either the ``.lp`` extension or the ``.dk``
 extension.  The appropriate parser is selected automatically. The
 ``export`` command accept only one file as argument.
 
-Remark: the checking of Dedukti files requires to use the option
-``--lib-root=.``.
+Remark: the checking of Dedukti files containing depending on other
+Dedukti files requires to use the option ``--lib-root=.``.
 
 Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
 file can depend on a Lambdapi file (but the Dedukti grammar does not
@@ -55,10 +55,9 @@ otherwise.
 
 **Common flags:**
 
-The commands ``check``, ``decision-tree``, ``export``, ``parse``,
-``lsp`` all support the following command line arguments and flags.
+* ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
-* ``--db file.db`` tells lambdapi to use ``file.db`` as index file.
+* ``--db <FILE.db>`` tells lambdapi to use ``<FILE.db>`` as index file.
 
 * ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
@@ -68,20 +67,15 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 
 * ``--no-sr-check`` disables subject reduction checking.
 
-* ``--rules file.lp`` tells lambdapi to normalize terms using the rules given in the file ``file.lp`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
+* ``--rules <FILE.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<FILE.lp>`` before indexing and searching. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
 
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
+* ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
+
 * ``-v <NUM>``, ``--verbose <NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
 
-.. _check:
-
-check
------
-
-* ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
-
-* ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
+* ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 .. _decision-tree:
 
@@ -95,7 +89,7 @@ decision-tree
 deindex
 -------
 
-* ``--path``: indicates the prefix of symbol paths to be removed from the index.
+* ``--path <PATH>``: indicates the prefix of symbol paths to be removed from the index.
   That prefix is not checked for well-formedness (i.e. A.B matches A.BC).
   For instance, `lambdapi deindex --path tests.OK.natural`` removes from the index all the symbols
   whose path starts with `tests.OK.natural` like `tests.OK.natural.N`.
@@ -125,7 +119,7 @@ The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept 
 
 For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
 
-* ``--encoding file.lp`` (mandatory option) where ``file.lp`` contains the following sequence of builtin declarations:
+* ``--encoding <FILE.lp>`` (mandatory option) where ``<FILE.lp>`` contains the following sequence of builtin declarations:
 
 ::
 
@@ -148,7 +142,7 @@ In symbol declarations or definitions, parameters with no type are assumed to be
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 
-* ``--renaming file.lp`` where ``file.lp`` contains a sequence of builtin declarations of the form
+* ``--renaming <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations of the form
 
 ::
    
@@ -156,7 +150,7 @@ In symbol declarations or definitions, parameters with no type are assumed to be
 
 It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``expr``, which can be any expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`__.
 
-* ``--requiring <MODNAME>`` to add ``Require Import <MODNAME>`` at the beginning of the output. ``<MODNAME>.v`` (and similarly ``<MODNAME>.lean``) usually needs to contain at least the following definitions:
+* ``--requiring <MOD>`` to add ``Require Import <MOD>`` at the beginning of the output. ``<MOD>.v`` (and similarly ``<MOD>.lean``) usually needs to contain at least the following definitions:
 
 ::
 
@@ -166,7 +160,7 @@ It instructs Lambdapi to replace any occurrence of the unqualified identifier ``
 
 if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`__.
 
-* ``--mapping file.lp`` where ``file.lp`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
+* ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
 
 * ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
@@ -174,7 +168,7 @@ Examples of libraries exported to Coq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.
   - See in `hol2dk <https://github.com/Deducteam/hol2dk>`__ how to export the Lambdapi library obtained from HOL-Light.
 
-* ``--arities file.tvs`` where ``file.tvs`` is a file generated by `hol2dk <https://github.com/Deducteam/hol2dk>`__ containing a map between symbol names and number of type arguments.
+* ``--arities <FILE.tvs>`` where ``<FILE.tvs>`` is a file generated by `hol2dk <https://github.com/Deducteam/hol2dk>`__ containing a map between symbol names and number of type arguments.
 
 .. _index:
 
@@ -190,7 +184,7 @@ index
    rule cic.Term _ $x ↪ $x;
    rule cic.lift _ _ $x ↪ $x;
 
-* ``--source`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
+* ``--source <FILE>`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
 
 .. _install:
 
@@ -210,14 +204,10 @@ lsp
 
 .. _search:
 
-search
-------
-
-* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the query using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
+search/websearch
+----------------
 
 * ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
-
-* ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 .. _websearch:
 
@@ -225,12 +215,6 @@ websearch
 ---------
 
 * ``--port=<N>`` specifies the port number to use (default is 8080).
-
-* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the queries using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
-
-* ``--require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
-
-* ``--db <FILE.db>`` tells the server to use ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 * ``--header <FILE.html>`` uses <FILE.html> as header of the search engine web page.
 

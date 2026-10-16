@@ -1,11 +1,11 @@
 open Core open Sig_state
 open Parsing open Syntax
 
+val rwpaths : string list ref
 val the_dbpath : string ref
 
 (* indexing *)
 val empty : unit -> unit
-val load_rewriting_rules: string list -> unit
 val force_meta_rules_loading: unit -> unit
 val index_sign : Sign.t -> unit
 val parse_source_map : string -> unit (* the name of the file *)

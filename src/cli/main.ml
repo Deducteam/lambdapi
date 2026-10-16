@@ -276,12 +276,11 @@ let opt_db =
   ; opt_desc =
       "Index file to use for search queries (default is ~/.LPSearch.db)." }
 
-let rule_files = ref []
-
 let opt_rules =
   { opt_name = "--rules"
   ; opt_short = None
-  ; opt_handle = Next("FILE", fun v -> rule_files := v::!rule_files)
+  ; opt_handle = Next("FILE", fun v -> let r = Tool.Indexing.rwpaths in
+                                       r := v::!r)
   ; opt_desc =
 {|File holding rewriting rules applied before indexing. Use this option
   multiple times to fetch rules from several files.|} }
@@ -437,7 +436,7 @@ let cmd_deindex =
             ; args = "[OPTION …] PATH"
             ; summary
             ; desc = summary
-            ; options = opt_db :: general_options } in
+            ; options = opt_db :: compile_options } in
   fun args ->
   match parse_options c.options args with
     | [] -> Common.Error.fatal_no_pos "no prefix provided"
@@ -690,7 +689,6 @@ let cmd_index =
     if not !add then Tool.Indexing.empty ();
     set_lib_root();
     Parsing.Package.set_root_path f;
-    Tool.Indexing.load_rewriting_rules !rule_files;
     let t0 = Timed.Time.save() in
     Tool.Indexing.index_sign (Common.Error.no_wrn compile f);
     let handle file =
@@ -920,6 +918,8 @@ let sig_state_of_require() =
                 [Common.Pos.none (Parsing.Parser.path_of_string r)]))))
     Core.Sig_state.dummy !require
 
+let search_options = opt_require :: compile_options
+
 let cmd_search =
   let summary = "Query a database file." in
   let c = add_command
@@ -927,14 +927,13 @@ let cmd_search =
             ; args = "[OPTION …] QUERY"
             ; summary
             ; desc = summary
-            ; options = opt_require :: compile_options } in
+            ; options = search_options } in
   fun args ->
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "no query provided"
   | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [s] ->
     set_lib_root();
-    Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
     Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss) s
@@ -1009,11 +1008,10 @@ let opt_port =
   ; opt_desc = "Port used by the server (default is 8080)." }
 
 let websearch_options =
-  opt_require
-  ::opt_header
+  opt_header
   ::opt_url
   ::opt_port
-  ::general_options
+  ::search_options
 
 let cmd_websearch =
   let summary = "Start a webserver to search the index." in
@@ -1028,7 +1026,6 @@ let cmd_websearch =
   | _::_ -> Common.Error.fatal_no_pos "too many arguments"
   | [] ->
     set_lib_root();
-    Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
     let header =

@@ -792,9 +792,6 @@ let index_sym ~path sym =
 
 let _ = Stdlib.(Core.Sign.add_symbol_callback := index_sym)
 
-let load_rewriting_rules rwrules =
- Stdlib.(DB.rwpaths := rwrules)
-
 let index_sign sign =
  (*Console.set_flag "print_domains" true ;
  Console.set_flag "print_implicits" true ;
