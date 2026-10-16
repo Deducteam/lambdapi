@@ -304,11 +304,13 @@ module DB = struct
 
  (* disk persistence *)
 
+ let default_dbpath = ".LPSearch.db"
+
  let the_dbpath : string Stdlib.ref =
    Stdlib.ref
      (match Sys.getenv_opt "HOME" with
-      | Some s -> Filename.concat s ".LPSearch.db"
-      | None -> ".LPSearch.db")
+      | Some s -> Filename.concat s default_dbpath
+      | None -> default_dbpath)
 
  let rwpaths = Stdlib.ref []
 
@@ -320,13 +322,18 @@ module DB = struct
       really_input ch buffer 0 (String.length index_version);
       if Bytes.unsafe_to_string buffer <> index_version then
         Error.fatal_no_pos
-          "Wrong index file version. Please (re)move or regenerate \"%s\""
+          "Wrong index file version. Please (re)move or regenerate \"%s\"."
           filename;
       let i = Marshal.from_channel ch in
       close_in ch ;
       i
     end
-  else Sym_nameMap.empty, Index.empty
+  else
+    begin
+      Common.Error.wrn None "Index file \"%s\" not found (will be created)."
+        default_dbpath;
+      Sym_nameMap.empty, Index.empty
+    end
 
  let restore_from_disk() = restore_from ~filename:Stdlib.(!the_dbpath)
 

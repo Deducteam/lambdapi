@@ -327,7 +327,7 @@ let add_opt_help c =
     { opt_name = "--help"
     ; opt_short = Some "-h"
     ; opt_desc = "Print this help."
-    ; opt_handle = NoArg (fun () -> print_usage c) }
+    ; opt_handle = NoArg (fun () -> print_usage c; exit 0) }
   in
   { c with options = o::c.options }
 
