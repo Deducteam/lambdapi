@@ -8,9 +8,13 @@ clean () { rm -f tests/OK/*.lpo; }
 trap clean ERR
 
 lambdapi='_build/install/default/bin/lambdapi'
+test_witness='_build/default/test_load'
 mk=/tmp/lpo.mk
 jobs=$(nproc)
 TIMEFORMAT="%Es"
+
+# tell lambdapi to search for elpi files (see src/handle/elpi_handle.ml)
+touch $test_witness
 
 # excluded test files
 for f in why3 perf_rw_engine tutorial escape_path req.file.with.dot
@@ -48,3 +52,5 @@ time make -j$jobs -f $mk lpo
 
 echo "############ load tests/OK files ############"
 time make -j$jobs -f $mk load
+
+rm -f $test_witness

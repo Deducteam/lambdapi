@@ -2,4 +2,4 @@
  (name handle)
  (public_name lambdapi.handle)
  (modules :standard)
- (libraries lambdapi.core lambdapi.parsing lambdapi.tool))
+ (libraries lambdapi.core lambdapi.parsing lambdapi.tool elpi))

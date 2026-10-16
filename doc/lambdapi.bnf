@@ -5,6 +5,8 @@
 <file> ::= (<command> ";")*
 
 <command> ::= "opaque" <qid>
+            | "typeclass" <qid>
+            | "instance" <qid>
             | "require" [["private"] "open"] <qid>+
             | "require" <qid> "as" <uid>
             | ["private"] "open" <qid>+
@@ -26,8 +28,10 @@
              | "commutative"
              | "constant"
              | "injective"
+             | "instance"
              | "opaque"
              | "sequential"
+             | "typeclass"
 
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
 

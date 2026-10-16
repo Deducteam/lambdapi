@@ -7,14 +7,19 @@ open Proof
 open Lplib open Base
 open Timed
 
-let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
-  fun pos p ctx t ->
+let infer : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
+  term * term =
+  fun ss pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None ->
       let term = term_in (Ctxt.names ctx) in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
-      if Unif.solve_noexn p then
+      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
         begin
           if !p.unsolved = [] then (t, a)
           else
@@ -28,15 +33,20 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
         let term = term_in (Ctxt.names ctx) in
         fatal pos "%a is not typable." term t
 
-let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
-  fun pos p ctx t a ->
+let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term ->
+  term =
+  fun ss pos p ctx t a ->
   let die () =
     let term = term_in (Ctxt.names ctx) in
     fatal pos "[%a] does not have type [%a]." term t term a
   in
   match Infer.check_noexn p ctx t a with
   | Some t ->
-    if Unif.solve_noexn p then
+    let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+    if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
       begin
         if !p.unsolved = [] then t else
           (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
@@ -45,14 +55,19 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
     else die ()
   | None -> die ()
 
-let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
-  fun pos p ctx t ->
+let check_sort : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
+  term * term =
+  fun ss pos p ctx t ->
   match Infer.check_sort_noexn p ctx t with
   | None ->
       let term = term_in (Ctxt.names ctx) in
       fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
-      if Unif.solve_noexn p then
+      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
+      let ctxtmap =
+        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
+      in
+      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
         begin
           if !p.unsolved = [] then (t, s) else
             begin
@@ -231,9 +246,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let p = new_problem() in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         typing (ctxt, t, a);
-      let (a, _) = check_sort pos p ctxt a in
+      let (a, _) = check_sort ss pos p ctxt a in
       let result =
-        try ignore (check pos p ctxt t a); true
+        try ignore (check ss pos p ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
@@ -244,8 +259,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let p = new_problem() in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         constr (ctxt, t, u);
-      let (t, a) = infer pt.pos p ctxt t in
-      let (u, b) = infer pu.pos p ctxt u in
+      let (t, a) = infer ss pt.pos p ctxt t in
+      let (u, b) = infer ss pu.pos p ctxt u in
       p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
         if !p.unsolved = [] then begin
@@ -265,11 +280,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let t = scope pt in
       let ctxt = Env.to_ctxt env in
       let p = new_problem() in
-      let t = Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)) in
+      let t = Eval.eval cfg ctxt (snd (infer ss pt.pos p ctxt t)) in
       return term t
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
       let ctxt = Env.to_ctxt env in
       let p = new_problem() in
-      let t = Eval.eval cfg ctxt (fst (infer pt.pos p ctxt t)) in
+      let t = Eval.eval cfg ctxt (fst (infer ss pt.pos p ctxt t)) in
       return term t
