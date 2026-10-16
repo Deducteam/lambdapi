@@ -53,7 +53,10 @@ The index file of symbols and rules is the one specified by the
 ``~/.LPSearch.db`` if ``$HOME`` is defined, and ``./.LPSearch.db``
 otherwise.
 
-**Common flags:**
+**Common options:**
+
+If an option other than ``--rules`` is duplicated, only the last one
+occurrence is taking into account.
 
 * ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
