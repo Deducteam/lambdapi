@@ -433,7 +433,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
     log "msubst %a#%a %a = %a" terms env term tm terms vs term r;*)
   r
 
-(** Total order on terms. *)
+(** Total order on terms (modulo alpha-equivalence). *)
 and cmp : term cmp = fun t t' ->
   match unfold t, unfold t' with
   | Vari x, Vari x' -> compare_vars x x'
@@ -464,10 +464,32 @@ and cmp_binder : binder cmp =
   fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
 
-and eq : term eq = fun t u -> cmp t u = 0
+and eq_alpha : term eq =
+  let rec eq t t' =
+    match unfold t, unfold t' with
+    | Vari x, Vari x' when compare_vars x x' = 0 -> ()
+    | Type, Type
+    | Kind, Kind
+    | Wild, Wild -> ()
+    | Symb s, Symb s' when s == s' -> ()
+    | Prod(t,u), Prod(t',u')
+    | Abst(t,u), Abst(t',u') -> eq t t'; eq_binder u u'
+    | Appl(t,u), Appl(t',u') -> eq t t'; eq u u'
+    | Meta(m,ts), Meta(m',ts') when Meta.compare m m' = 0 -> eqs ts ts'
+    | Patt(i,_,ts), Patt(i',_,ts') when i=i' -> eqs ts ts'
+    | Bvar i, Bvar i' when i=i' -> ()
+    | TRef _, TRef _ -> assert false
+    | LLet(a,t,u), LLet(a',t',u') -> eq a a'; eq t t'; eq_binder u u'
+    | _ -> raise Exit
+  and eqs ts ts' =
+    if ts == ts' then ()
+    else if Array.length ts = Array.length ts' then Array.iter2 eq ts ts'
+    else raise Exit
+  and eq_binder (_,u,e) (_,u',e') = eq u u'; eqs e e'
+  in fun t t' -> try eq t t'; true with Exit -> false
 
 and eq_lhs r1 r2 =
-  try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false
+  try List.for_all2 eq_alpha r1.lhs r2.lhs with Invalid_argument _ -> false
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to

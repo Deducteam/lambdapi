@@ -330,8 +330,8 @@ val get_args_len : term -> term * term list * int
 (** Total order on terms (modulo alpha-equivalence). *)
 val cmp : term cmp
 
-(** Equality on terms (modulo alpha-equivalence) and rules. *)
-val eq : term eq
+(** Alpha-equivalence on terms and rule LHS. *)
+val eq_alpha : term eq
 val eq_lhs : rule eq
 
 (** Construction functions of the private type term. They ensure some

@@ -127,7 +127,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | [] -> ()
     | (a,b)::l ->
     if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
-    if LibTerm.eq_alpha a b then eq cfg l else
+    if eq_alpha a b then eq cfg l else
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
