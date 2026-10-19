@@ -694,11 +694,13 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     Abstract.lia_init ss pos;
     let lh = List.filter_map Abstract.get_arith gt.goal_hyps in
     let ctrs = Abstract.mk_ctrs lh in
-    let cert = Certificate.find
-        (Array.map (fun (_,_,_,c)->c) (Array.of_list ctrs)) in
+    let cert = Solver.solve_system
+        (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs) in
     let cert = match cert with
       | None -> fatal pos "lia failed - no coeffs"
-      | Some c -> c.multipliers in
+      | Some c -> c in
+    if Logger.log_enabled () then
+        log "Lia find: %a" (Array.pp Base.int ",") cert;
     let as_int k = scope (Pos.make None (P_NLit([], string_of_int k))) in
     let prf = mk_Symb (Builtin.get ss pos [] "Prf") in
     let scaled = List.filteri_map
