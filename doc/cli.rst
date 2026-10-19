@@ -39,13 +39,8 @@ input files with either the ``.lp`` extension or the ``.dk``
 extension.  The appropriate parser is selected automatically. The
 ``export`` command accept only one file as argument.
 
-<<<<<<< HEAD
 Remark: checking Dedukti files depending on other files requires to
-use the option ``--lib-root=.``.
-=======
-Remark: the checking of Dedukti files requires to use the option
-``--lib-root .``.
->>>>>>> dk/master
+use the option ``--lib-root .``.
 
 Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
 file can depend on a Lambdapi file (but the Dedukti grammar does not
