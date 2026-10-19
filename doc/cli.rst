@@ -40,7 +40,7 @@ extension.  The appropriate parser is selected automatically. The
 ``export`` command accept only one file as argument.
 
 Remark: the checking of Dedukti files requires to use the option
-``--lib-root=.``.
+``--lib-root .``.
 
 Remark: a Lambdapi file can depend on a Dedukti file, and a Dedukti
 file can depend on a Lambdapi file (but the Dedukti grammar does not
@@ -61,7 +61,7 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 
 * ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
-* ``--lib-root=<DIR>`` sets the library root, that is, the folder corresponding to the entry point of the Lambdapi package system. This is the folder under which every package is installed, and a default value is only known if the program has been installed. In development mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at the root of the repository).
+* ``--lib-root <DIR>`` sets the library root, that is, the folder corresponding to the entry point of the Lambdapi package system. This is the folder under which every package is installed, and a default value is only known if the program has been installed.
 
 * ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
