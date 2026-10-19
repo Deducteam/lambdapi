@@ -476,9 +476,10 @@ and eq_alpha : term eq =
     | Abst(t,u), Abst(t',u') -> eq t t'; eq_binder u u'
     | Appl(t,u), Appl(t',u') -> eq t t'; eq u u'
     | Meta(m,ts), Meta(m',ts') when Meta.compare m m' = 0 -> eqs ts ts'
-    | Patt(i,_,ts), Patt(i',_,ts') when i=i' -> eqs ts ts'
+    | Patt(Some i,_,ts), Patt(Some i',_,ts') when i=i' -> eqs ts ts'
+    | Patt(None,_,_),_ | _,Patt(None,_,_) -> assert false
     | Bvar i, Bvar i' when i=i' -> ()
-    | TRef _, TRef _ -> assert false
+    | TRef _, _ | _, TRef _ -> assert false
     | LLet(a,t,u), LLet(a',t',u') -> eq a a'; eq t t'; eq_binder u u'
     | _ -> raise Exit
   and eqs ts ts' =
