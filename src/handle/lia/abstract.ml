@@ -15,6 +15,7 @@ let zlt = ref _void_
 let zge = ref _void_
 let zgt = ref _void_
 let zadd = ref _void_
+let zsub = ref _void_
 let zmul = ref _void_
 let zlt2le = ref _void_    (* ∀ x y, x < y -> x+1 <= y *)
 let zge2le = ref _void_    (* ∀ x y, x >= y -> y <= x *)
@@ -41,11 +42,13 @@ let lia_init: Sig_state.t -> Pos.popt -> unit =
   Hashtbl.clear rmap;
   vnum := 0;
   zint := Builtin.get ss pos [] "zint";
+  z1 := Builtin.get ss pos [] "z1";
   zle := Builtin.get ss pos [] "zle";
   zlt := Builtin.get ss pos [] "zlt";
   zge := Builtin.get ss pos [] "zge";
   zgt := Builtin.get ss pos [] "zgt";
   zadd := Builtin.get ss pos [] "zadd";
+  zsub := Builtin.get ss pos [] "zsub";
   zmul := Builtin.get ss pos [] "zmul";
   zlt2le := Builtin.get ss pos [] "zlt2le"; (* x < y -> x+1 <= y *)
   zge2le := Builtin.get ss pos [] "zge2le"; (* x >= y -> y <= x *)
@@ -54,7 +57,7 @@ let lia_init: Sig_state.t -> Pos.popt -> unit =
   zle_add2 := Builtin.get ss pos [] "zle_add2";  (* xi<=yi->x1+x2<=y1+y2 *)
   top_i := Builtin.get ss pos [] "⊤ᵢ"
 
-(** term buildin functions *)
+(** term building functions *)
 let binop op x y = add_args (mk_Symb op) [x;y]
 let mk_add x y = binop !zadd x y
 let mk_mul x y = binop !zmul x y
@@ -86,21 +89,23 @@ let is_int: string -> bool =
 
 (** [abst_addm e (n,v)] adds monom [n,v] to abstract expression [e] *)
 let rec abst_addm: exp -> (int*int) -> exp =
-  fun l ((n,v) as x) ->
-  match l with
+  fun e ((n,v) as x) ->
+  match e with
     [] -> [n,v]
-  | (m,v')::l when v=v' -> (m+n,v)::l
-  | y::l -> y::abst_addm l x
+  | (m,v')::e when v=v' -> (m+n,v)::e
+  | y::e -> y::abst_addm e x
 
-(** [abst_add l1 l2] adds the two abstract expressions [e1] and [e2] *)
+(** [abst_add e1 e2] adds the two abstract expressions [e1] and [e2] *)
 let abst_add: exp -> exp -> exp =
   fun e1 e2 -> List.fold_left abst_addm e2 e1
 
+(** [abst_opp e] computes the opposite of an abstract expression *)
+let abst_opp: exp -> exp =
+  fun e -> List.map (fun (n,v) -> (-n,v)) e
+
 (** [abst_sub e1 e2] computes the difference of two abstract expressions *)
 let abst_sub: exp -> exp -> exp =
-  fun l1 l2 ->
-  let l2 = List.map (fun (n,v) -> (-n,v)) l2 in
-  abst_add l1 l2
+  fun e1 e2 -> abst_add e1 (abst_opp e2)
 
 (** [abst_exp e] converts the term [e] into an abstract expression *)
 let rec abst_exp: term -> exp =
@@ -108,6 +113,8 @@ let rec abst_exp: term -> exp =
   match unfold e with
   | Appl (Appl(Symb s, l), r) when Sym.compare s !zadd = 0 ->
     abst_add (abst_exp l) (abst_exp r)
+  | Appl (Appl(Symb s, l), r) when Sym.compare s !zsub = 0 ->
+    abst_sub (abst_exp l) (abst_exp r)
   | Appl (Appl(Symb s, l), r) as e when Sym.compare s !zmul = 0 ->
     begin
       let r1 = abst_exp l and r2 = abst_exp r in
