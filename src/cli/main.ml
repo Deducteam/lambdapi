@@ -202,9 +202,9 @@ let general_options =
 (*--------------------------------------------------------------------------*)
 
 let opt_lib_root =
-  { opt_name = "--lib-root="
+  { opt_name = "--lib-root"
   ; opt_short = None
-  ; opt_handle = Suffix("DIR", fun v -> Common.Library.set_lib_root (Some v))
+  ; opt_handle = Next("DIR", fun v -> Common.Library.set_lib_root (Some v))
   ; opt_desc =
 {|Set the library root to be the directory DIR. The library root is a common
   path under which every module is placed. It has the same purpose as the root
@@ -904,7 +904,7 @@ let require = ref []
 let opt_require =
   { opt_name = "--require"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> require := s::!require)
+  ; opt_handle = Next("FILE", fun s -> require := s::!require)
   ; opt_desc = "FILE to be required before starting the search." }
 
 let sig_state_of_require() =
