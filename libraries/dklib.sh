@@ -63,4 +63,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  dune exec -- lambdapi check --lib-root . --no-warnings dklib.dk
+  dune exec -- lambdapi check --lib-root . -w dklib.dk
