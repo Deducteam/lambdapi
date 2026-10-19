@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SRC="https://deducteam.github.io/data/libraries/focalide.tar.gz"
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/focalide.tar.gz"
 DIR="focalide"
 
 # Cleaning command (clean and exit).
@@ -64,4 +64,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings -c focalide.dk
+  dune exec -- lambdapi check --lib-root . -w -c focalide.dk
