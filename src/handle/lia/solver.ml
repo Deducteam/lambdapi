@@ -27,9 +27,15 @@ let simplify_line: constraint_line -> constraint_line =
   fun line ->
   let g = gcd_array line.coeffs line.const in
   if g > 1 then
-    { coeffs = Array.map (fun c -> c / g) line.coeffs;
-      const = line.const / g;
-      history = List.map (fun (w, idx) -> (w / g, idx)) line.history }
+    (* Check if g perfectly divides all weights in the history to maintain 
+       integer precision *)
+    let can_divide_history = 
+      List.for_all (fun (w, _) -> w mod g = 0) line.history in
+    if can_divide_history then
+      { coeffs = Array.map (fun c -> c / g) line.coeffs;
+        const = line.const / g;
+        history = List.map (fun (w, idx) -> (w / g, idx)) line.history }
+    else line
   else line
 
 (** Detects a mathematical contradiction: 0 * x + b <= 0 where b > 0 *)
@@ -63,7 +69,7 @@ let combine: constraint_line -> constraint_line -> constraint_line =
 let eliminate_one_variable: constraint_line list -> constraint_line list =
   fun constraints ->
   let pos, neg, zero = List.fold_left (fun (p, n, z) line ->
-      if Array.length line.coeffs = 0 then (p, n, z)
+      if Array.length line.coeffs = 0 then (p, n, line::z)
       else
         let c = line.coeffs.(0) in
         let r = Array.sub line.coeffs 1 (Array.length line.coeffs - 1) in
@@ -71,14 +77,21 @@ let eliminate_one_variable: constraint_line list -> constraint_line list =
         else if c < 0 then (p, line::n, z)
         else ({ line with coeffs = r }::p, n, { line with coeffs = r }::z)
     ) ([], [], []) constraints in
-  let combined =
-    List.fold_left (fun acc l_inf ->
-        List.fold_left (fun acc_inner l_sup ->
-            combine l_inf l_sup :: acc_inner
-          ) acc neg
-      ) [] pos
-  in
-  zero @ combined
+  if pos = [] || neg = [] then
+    let strip_first l =
+      if Array.length l.coeffs = 0 then l
+      else { l with coeffs = Array.sub l.coeffs 1 (Array.length l.coeffs-1) }
+    in
+    List.map strip_first zero
+  else
+    let combined =
+      List.fold_left (fun acc l_inf ->
+          List.fold_left (fun acc_inner l_sup ->
+              combine l_inf l_sup :: acc_inner
+            ) acc neg
+        ) [] pos
+    in
+    zero @ combined
 
 (** Recursively applies Fourier-Motzkin elimination to find a
     contradiction certificate *)
@@ -104,7 +117,7 @@ let solve_system: (int array * int) list -> int array option =
   fun raw_constraints ->
   let num_constraints = List.length raw_constraints in
   let initial_constraints = List.mapi (fun idx (coeffs, const) ->
-      { coeffs; const; history = [(1, idx)] }
+      simplify_line { coeffs; const; history = [(1, idx)] }
     ) raw_constraints in
   match find_certificate initial_constraints with
   | None -> None
@@ -123,10 +136,18 @@ let solve_system: (int array * int) list -> int array option =
 
 (* pretty printers *)
 module PRT = struct
-  (* a constraint *)
+  (* a constraint line *)
   let cl = fun ppf v ->
     out ppf "[%a] + %d <= 0" (Array.pp Base.int ",") v.coeffs v.const
 
+  (* a list of constraint lines *)
+  let cls = fun ppf v -> out ppf "[%a]" (List.pp cl "; ") v
+
+  (* a constraint *)
+  let ct = fun ppf (k,c) ->
+    out ppf "[%a] + %d <= 0" (Array.pp Base.int ",") k c
+
   (* a list of constraints *)
-  let cls = fun ppf v -> out ppf "[%a]" (List.pp cl " ;") v
+  let ctl = fun ppf lc ->
+    out ppf "%a" (List.pp ct "; ") lc
 end

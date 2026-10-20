@@ -694,6 +694,8 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     Abstract.lia_init ss pos;
     let lh = List.filter_map Abstract.get_arith gt.goal_hyps in
     let ctrs = Abstract.mk_ctrs lh in
+    if Logger.log_enabled () then
+        log "Lia find: %a" Solver.PRT.ctl (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs);
     let cert = Solver.solve_system
         (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs) in
     let cert = match cert with

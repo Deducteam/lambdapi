@@ -17,6 +17,7 @@ let zgt = ref _void_
 let zadd = ref _void_
 let zsub = ref _void_
 let zmul = ref _void_
+let zopp = ref _void_
 let zlt2le = ref _void_    (* ∀ x y, x < y -> x+1 <= y *)
 let zge2le = ref _void_    (* ∀ x y, x >= y -> y <= x *)
 let zgt2le = ref _void_    (* ∀ x y, x > y -> y+1 <= x *)
@@ -50,6 +51,7 @@ let lia_init: Sig_state.t -> Pos.popt -> unit =
   zadd := Builtin.get ss pos [] "zadd";
   zsub := Builtin.get ss pos [] "zsub";
   zmul := Builtin.get ss pos [] "zmul";
+  zopp := Builtin.get ss pos [] "zopp";
   zlt2le := Builtin.get ss pos [] "zlt2le"; (* x < y -> x+1 <= y *)
   zge2le := Builtin.get ss pos [] "zge2le"; (* x >= y -> y <= x *)
   zgt2le := Builtin.get ss pos [] "zgt2le"; (* x > y -> y+1 <= x *)
@@ -124,6 +126,7 @@ let rec abst_exp: term -> exp =
       | _,[v2,0] -> List.map (fun (x,y) -> (v2*x,y)) r1
       | _,_ -> let v = get_var e in [1,v]
     end
+  | Appl(Symb s, a) when Sym.compare s !zopp = 0 -> abst_opp (abst_exp a)
   | Symb s when is_int s.sym_name ->
     let s = s.sym_name in
     [int_of_string (String.sub s 1 (String.length s - 1)),0]

@@ -178,7 +178,8 @@ let _ =
   register_typ "zgt" bpred;
   register_typ "zadd" bfun;
   register_typ "zsub" bfun;
-  register_typ "zmul" bfun
+  register_typ "zmul" bfun;
+  register_typ "zopp" ufun
 
 (* Additional builtins for why3 tactic. *)
 let _ =
