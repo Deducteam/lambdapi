@@ -27,9 +27,9 @@ let simplify_line: constraint_line -> constraint_line =
   fun line ->
   let g = gcd_array line.coeffs line.const in
   if g > 1 then
-    (* Check if g perfectly divides all weights in the history to maintain 
+    (* Check if g perfectly divides all weights in the history to maintain
        integer precision *)
-    let can_divide_history = 
+    let can_divide_history =
       List.for_all (fun (w, _) -> w mod g = 0) line.history in
     if can_divide_history then
       { coeffs = Array.map (fun c -> c / g) line.coeffs;

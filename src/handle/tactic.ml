@@ -695,14 +695,15 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
     let lh = List.filter_map Abstract.get_arith gt.goal_hyps in
     let ctrs = Abstract.mk_ctrs lh in
     if Logger.log_enabled () then
-        log "Lia find: %a" Solver.PRT.ctl (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs);
+      log "Lia find: %a" Solver.PRT.ctl
+        (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs);
     let cert = Solver.solve_system
         (List.map (fun (_,_,_,(k,c)) -> (k,c)) ctrs) in
     let cert = match cert with
       | None -> fatal pos "lia failed - no coeffs"
       | Some c -> c in
     if Logger.log_enabled () then
-        log "Lia find: %a" (Array.pp Base.int ",") cert;
+        log "lia find: %a" (Array.pp Base.int ",") cert;
     let as_int k = scope (Pos.make None (P_NLit([], string_of_int k))) in
     let prf = mk_Symb (Builtin.get ss pos [] "Prf") in
     let scaled = List.filteri_map
@@ -715,8 +716,6 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
         [] -> fatal pos "lia failed with no hyps"
       | [h] -> h
       | h::t -> List.fold_left Abstract.le_add2 h t in
-    let _ = log "LIA lemma: %a" term lemma in
-    (* λ h1 h2, h2 h1 : π (p ⇒ (p ⇒ g) ⇒ g) *)
     let h = new_var "_h" in
     let xp = Abstract.mk_le left right in
     let pb = new_problem() in
