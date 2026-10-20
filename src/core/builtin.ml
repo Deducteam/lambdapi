@@ -129,6 +129,7 @@ let _ =
   register "zgt2le" no_check;
   register "zle_scale" no_check;
   register "zle_add2" no_check;
+  register "zle_sub" no_check;
   register "-" no_check
 
 let typ _c = mk_Type

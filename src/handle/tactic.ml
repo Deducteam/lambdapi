@@ -711,11 +711,12 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
            let k = cert.(i) in
            if k = 0 then None
            else Some (Abstract.scale (as_int k) l r h)) ctrs in
-    let left,right,lemma =
+    let lrl =
       match scaled with
         [] -> fatal pos "lia failed with no hyps"
       | [h] -> h
       | h::t -> List.fold_left Abstract.le_add2 h t in
+    let left,right,lemma = Abstract.le_sub lrl in
     let h = new_var "_h" in
     let xp = Abstract.mk_le left right in
     let pb = new_problem() in

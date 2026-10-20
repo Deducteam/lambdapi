@@ -23,6 +23,7 @@ let zge2le = ref _void_    (* ∀ x y, x >= y -> y <= x *)
 let zgt2le = ref _void_    (* ∀ x y, x > y -> y+1 <= x *)
 let zle_scale = ref _void_ (* ∀ k x y, 0 <= k -> x <= y -> k*x <= k*y *)
 let zle_add2 = ref _void_  (* ∀ x1 x2 y1 y2, xi <= yi -> x1+x2 <= y1+y2 *)
+let zle_sub = ref _void_  (* ∀ x y, x <= y -> x - y *)
 let top_i = ref _void_     (* π ⊤ *)
 
 module EMAP = Hashtbl.Make(
@@ -43,6 +44,7 @@ let lia_init: Sig_state.t -> Pos.popt -> unit =
   Hashtbl.clear rmap;
   vnum := 0;
   zint := Builtin.get ss pos [] "zint";
+  z0 := Builtin.get ss pos [] "z0";
   z1 := Builtin.get ss pos [] "z1";
   zle := Builtin.get ss pos [] "zle";
   zlt := Builtin.get ss pos [] "zlt";
@@ -57,11 +59,13 @@ let lia_init: Sig_state.t -> Pos.popt -> unit =
   zgt2le := Builtin.get ss pos [] "zgt2le"; (* x > y -> y+1 <= x *)
   zle_scale := Builtin.get ss pos [] "zle_scale";  (* x <= y -> k*x <= k*y *)
   zle_add2 := Builtin.get ss pos [] "zle_add2";  (* xi<=yi->x1+x2<=y1+y2 *)
+  zle_sub := Builtin.get ss pos [] "zle_sub";  (* x<=y->x-y<=0 *)
   top_i := Builtin.get ss pos [] "⊤ᵢ"
 
 (** term building functions *)
 let binop op x y = add_args (mk_Symb op) [x;y]
 let mk_add x y = binop !zadd x y
+let mk_sub x y = binop !zsub x y
 let mk_mul x y = binop !zmul x y
 let mk_le x y = binop !zle x y
 let mk_incr x = binop !zadd x (mk_Symb !z1)
@@ -158,11 +162,17 @@ let scale: term -> term -> term -> term -> term * term * term =
   let l' = mk_mul k l and r' = mk_mul k r in
   (l',r',add_args (mk_Symb !zle_scale) [k;mk_Symb (!top_i);l;r;h])
 
-(** [le_add2 (x1,y1,h1) (x2,y2,h2)] with [h1:π(x1<=y1] and [h2:π(x2<=y2]
+(** [le_add2 (x1,y1,h1) (x2,y2,h2)] with [h1:π(x1<=y1)] and [h2:π(x2<=y2)]
     returns [x1+x2,y1+y2,h] where [h:π(x1+x2<=y1+y2)] *)
 let le_add2: (term*term*term) -> (term*term*term) -> (term*term*term) =
   fun (x1,y1,h1) (x2,y2,h2) ->
   mk_add x1 x2, mk_add y1 y2, add_args (mk_Symb !zle_add2) [x1;y1;x2;y2;h1;h2]
+
+(** [le_sub (x,y,h)] with [h:π(x<=y)]
+    returns [x-y,0,h'] where [h':π(x-y<=0)] *)
+let le_sub: (term*term*term) -> (term*term*term) =
+  fun (x,y,h) ->
+  mk_sub x y, mk_Symb !z0, add_args (mk_Symb !zle_sub) [x;y;h]
 
 (** [get_arith (_,(h,e,_))] where [h:e] returns [Some (l,r,h',abs)]
     where [e <=> l <= r] and [h':π(l<=r)] and [abs] is the abstraction of [e]
