@@ -442,12 +442,12 @@ inductive L : TYPE ≔
 assert ⊢ L : Set → TYPE;
 assert ⊢ @nilL : Π a, L a;
 assert ⊢ @consL : Π a, τ a → L a → L a;
-assert ⊢ ind_L : Π a (p:L a → Prop),
+assert ⊢ @ind_L : Π a (p:L a → Prop),
   π(p nilL) → (Π x l, π(p l) → π(p (consL x l))) → Π l, π(p l);
 
-assert a p pnil pcons ⊢ ind_L a p pnil pcons nilL ≡ pnil;
-assert a p pnil pcons x l ⊢ ind_L a p pnil pcons (consL x l)
-≡ pcons x l (ind_L a p pnil pcons l);
+assert a p pnil pcons ⊢ @ind_L a p pnil pcons nilL ≡ pnil;
+assert a p pnil pcons x l ⊢ @ind_L a p pnil pcons (consL x l)
+≡ pcons x l (@ind_L a p pnil pcons l);
 
 ////////////////// Polymorphic trees
 
@@ -464,26 +464,26 @@ assert ⊢ @node:Π a, τ a → F a → T a;
 assert ⊢ @nilF:Π a, F a;
 assert ⊢ @consF:Π a, T a → F a → F a;
 
-assert ⊢ ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
+assert ⊢ @ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
   (Π x, Π l, π(q l) → π(p (node x l))) →
   π(q nilF) →
   (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
   Π l, π(q l);
-assert ⊢ ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
+assert ⊢ @ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
   (Π x, Π l, π(q l) → π(p (node x l))) →
   π(q nilF) →
   (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
   Π t, π(p t);
 
 assert a p q pnode pnil pcons x l ⊢
-  ind_T a p q pnode pnil pcons (node x l)
-  ≡ pnode x l (ind_F a p q pnode pnil pcons l);
+  @ind_T a p q pnode pnil pcons (node x l)
+  ≡ pnode x l (@ind_F a p q pnode pnil pcons l);
 assert a p q pnode pnil pcons ⊢
-  ind_F a p q pnode pnil pcons nilF
+  @ind_F a p q pnode pnil pcons nilF
   ≡ pnil;
 assert a p q pnode pnil pcons t l ⊢
-  ind_F a p q pnode pnil pcons (consF t l)
-  ≡ pcons t (ind_T a p q pnode pnil pcons t) l (ind_F a p q pnode pnil pcons l);
+  @ind_F a p q pnode pnil pcons (consF t l)
+  ≡ pcons t (@ind_T a p q pnode pnil pcons t) l (@ind_F a p q pnode pnil pcons l);
 
 ////////////////// Type sum - test names between {|...|} too
 

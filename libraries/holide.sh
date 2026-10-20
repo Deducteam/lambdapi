@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SRC="https://deducteam.github.io/data/libraries/holide.tar.gz"
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/holide.tar.gz"
 DIR="holide"
 
 # Cleaning command (clean and exit).
@@ -61,4 +61,4 @@ fi
 # Check the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings *.dk
+  dune exec -- lambdapi check --lib-root . -w *.dk

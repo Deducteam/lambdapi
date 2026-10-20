@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SRC="https://deducteam.github.io/data/libraries/matita.tar.gz"
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/matita.tar.gz"
 DIR="matita"
 
 # Cleaning command (clean and exit).
@@ -75,4 +75,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings -c matita.dk
+  dune exec -- lambdapi check --lib-root . -w -c matita.dk

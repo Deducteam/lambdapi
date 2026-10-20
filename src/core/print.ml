@@ -36,6 +36,17 @@ let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
 
 let print_pattern_names : bool ref = ref true
 
+let print_domains_in f x =
+  let d = !print_domains in
+  print_domains := true;
+  try
+    let r = f x in
+    print_domains := d;
+    r
+  with e ->
+    print_domains := d;
+    raise e
+
 let print_implicits_and_domains_in f x =
   let i = !print_implicits
   and d = !print_domains
@@ -184,15 +195,15 @@ let are_quant_args : term list -> bool = fun args ->
   | [b] -> is_abst b
   | _ -> false
 
-let rec needs_wrap t =
-  match unfold t with
-  | Abst _ | LLet _ -> true
-  | Prod(_,b) -> binder_occur b || let _,b = unbind b in needs_wrap b
-  | _ -> false
-
 let rec wrap idmap ppf t =
   match unfold t with
   | Abst _ | LLet _ | Appl _ | Prod _ -> out ppf "(%a)" (term_in idmap) t
+  | _ -> term_in idmap ppf t
+
+and arrow_lhs idmap ppf t =
+  let h,_ = get_args t in
+  match h with
+  | Abst _ | LLet _ | Prod _ -> out ppf "(%a)" (term_in idmap) t
   | _ -> term_in idmap ppf t
 
 and appl idmap ppf h ts =
@@ -304,7 +315,7 @@ and head idmap ppf t =
       out ppf "Π %a%a, %a" var x (typ_in idmap) a (term_in idmap') t
     else
       let _,t = unbind b in
-      out ppf "%a → %a" (wrap idmap) a (term_in idmap) t
+      out ppf "%a → %a" (arrow_lhs idmap) a (term_in idmap) t
   | LLet(a,t,b) ->
     out ppf "let ";
     if binder_occur b then
@@ -325,7 +336,14 @@ and abstractions idmap ppf t =
     else let _,t = unbind b in out ppf " _%a" (abstractions idmap) t
   | t -> out ppf ", %a" (term_in idmap) t
 
-and domain idmap ppf t = (if needs_wrap t then wrap else term_in) idmap ppf t
+and domain =
+  let rec needs_wrap t =
+    match unfold t with
+    | Abst _ | LLet _ -> true
+    | Prod(_,b) -> binder_occur b || let _,b = unbind b in needs_wrap b
+    | _ -> false
+  in
+  fun idmap ppf t -> (if needs_wrap t then wrap else term_in) idmap ppf t
 
 and typ_in idmap ppf t = if !print_domains then out ppf ":%a" (domain idmap) t
 
@@ -346,7 +364,7 @@ let term = term_in StrMap.empty
 let env = env StrMap.empty
 
 let rec prod_in : int StrMap.t -> (term * bool list) pp =
-  let decl idmap ppf (x,t) = out ppf "%a:%a" var x (wrap idmap) t in
+  let decl idmap ppf (x,t) = out ppf "%a%a" var x (typ_in idmap) t in
   let decl i idmap ppf d =
     if i then out ppf "[%a]" (decl idmap) d else decl idmap ppf d in
   fun idmap ppf (t,impl) ->
@@ -362,7 +380,7 @@ let rec prod_in : int StrMap.t -> (term * bool list) pp =
 
 let prod = prod_in StrMap.empty
 
-let sym_type ppf s = prod ppf (!(s.sym_type), s.sym_impl)
+let sym_type ppf s = print_domains_in (prod ppf) (!(s.sym_type), s.sym_impl)
 
 let sym_rule : sym_rule pp = fun ppf r ->
   out ppf "%a ↪ %a" term (lhs r) term (rhs r)

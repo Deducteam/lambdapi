@@ -24,7 +24,7 @@ symbols and rewrite rules, and Lambdapi comes with a `repository of
 pre-defined logics
 <https://github.com/Deducteam/lambdapi-logics>`__. See for instance,
 the file `FOL.lp
-<https://github.com/fblanqui/lib/blob/master/FOL.lp>`__ which defines
+<https://github.com/Deducteam/lambdapi-stdlib/blob/master/FOL.lp>`__ which defines
 (polymorphic) first-order logic. There also exist definitions for the
 logics of HOL-Light, Coq or Agda.
 

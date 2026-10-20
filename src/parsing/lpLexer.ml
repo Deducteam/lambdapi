@@ -19,8 +19,8 @@ exception SyntaxError of bool * strloc
 
 let syntax_error
  : ?recoverable:bool -> Lexing.position * Lexing.position -> string -> 'a
- = fun ?(recoverable=true) pos msg ->
-    raise (SyntaxError (recoverable,Pos.make_pos pos msg))
+ = fun ?(recoverable=true) lps msg ->
+    raise (SyntaxError (recoverable, Pos.make_pos lps msg))
 
 (* raises an unrecoverable lexing error; do not use in the parser *)
 let fail : lexbuf -> string -> 'a = fun lb msg ->

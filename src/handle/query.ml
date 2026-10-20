@@ -192,7 +192,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let decl ppf s =
           let rules ppf s =
             if !(s.sym_rules) <> [] then out ppf "@.%a" (rules sym_rule) s in
-          out ppf "%a%a%asymbol %a : %a%a;%a%a"
+          out ppf "%a%a%asymbol %a: %a%a;%a%a"
             expo s.sym_expo prop s.sym_prop match_strat s.sym_mstrat
             sym s sym_type s def !(s.sym_def) notation s rules s
         in
@@ -223,8 +223,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | P_query_search q ->
-      let dbpath = Path.default_dbpath in
-      return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
+      return (Tool.Indexing.search_cmd_txt_query ss) q
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
       let t = scope pt and a = scope ~typ:true pa in
       let ctxt = Env.to_ctxt env in
