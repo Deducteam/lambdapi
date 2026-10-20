@@ -84,7 +84,7 @@ verine: lambdapi
 	@printf "## Compiling verine library ##\n"
 	@cd libraries && ./verine.sh
 
-.PHONY: iprover
+.PHONY: iprover # not terminating
 iprover: lambdapi
 	@printf "## Compiling iProverModulo library ##\n"
 	@cd libraries && ./iprover.sh
@@ -94,7 +94,7 @@ dklib: lambdapi
 	@printf "## Compiling the dklib library ##\n"
 	@cd libraries && ./dklib.sh
 
-.PHONY: zenon_modulo
+.PHONY: zenon_modulo # archive lost
 zenon_modulo: lambdapi
 	@printf "## Compiling the zenon library ##\n"
 	@cd libraries && ./zenon_modulo.sh
