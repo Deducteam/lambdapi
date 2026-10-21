@@ -147,25 +147,25 @@ let sym_to_var : var StrMap.t -> term -> term = fun map ->
   in fun t -> if StrMap.is_empty map then t else to_var t
 
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
-let rec eq_alpha a b =
-  match unfold a, unfold b with
-  | Vari x, Vari y -> Term.eq_vars x y
-  | Type, Type
-  | Kind, Kind -> true
-  | Symb s1, Symb s2 -> s1==s2
-  | Prod(a1,b1), Prod(a2,b2)
-  | Abst(a1,b1), Abst(a2,b2) ->
-      eq_alpha a1 a2 && let _,b1,b2 = Term.unbind2 b1 b2 in eq_alpha b1 b2
-  | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
-  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq_alpha a1 a2
-  | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
-      eq_alpha a1 a2 && eq_alpha t1 t2
-      && let _,u1,u2 = Term.unbind2 u1 u2 in eq_alpha u1 u2
-  | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-      i=j && Array.for_all2 eq_alpha ts us
-  | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
-  | TRef _, _| _, TRef _ -> assert false
-  | _ -> false
+let eq_alpha =
+  let rec eq a b =
+    match unfold a, unfold b with
+    | Vari x, Vari y when Term.eq_vars x y -> ()
+    | Type, Type
+    | Kind, Kind -> ()
+    | Symb s1, Symb s2 when s1==s2 -> ()
+    | Prod(a1,b1), Prod(a2,b2)
+    | Abst(a1,b1), Abst(a2,b2) ->
+        eq a1 a2; let _,b1,b2 = Term.unbind2 b1 b2 in eq b1 b2
+    | Appl(a1,b1), Appl(a2,b2) -> eq a1 a2; eq b1 b2
+    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 -> Array.iter2 eq a1 a2
+    | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
+        eq a1 a2; eq t1 t2; let _,u1,u2 = Term.unbind2 u1 u2 in eq u1 u2
+    | Patt(Some i,_,ts), Patt(Some j,_,us) when i=j -> Array.iter2 eq ts us
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+    | TRef _, _| _, TRef _ -> raise Exit
+    | _ -> raise Exit
+  in fun a b -> try eq a b; true with Exit -> false
 
 (** [fold id t a] returns term binder [b] with binder name [id] such that
     [subst b t ≡ a]. *)
