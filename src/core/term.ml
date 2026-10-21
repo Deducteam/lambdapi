@@ -455,19 +455,8 @@ and cmp : term cmp = fun t t' ->
     lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
   | t, t' -> cmp_tag t t'
 
-and cmp_binder : binder cmp =
-(*  fun ({binder_name;binder_bound},u,e) (bi',u',e') ->
-  let mbi = {mbinder_name=[|binder_name|];mbinder_bound=[|binder_bound|]} in
-  let var = Vari(new_var binder_name) in
-  cmp (msubst (mbi,u,e)[|var|])
-    (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
-  fun (_,u,e) (_,u',e') ->
+and cmp_binder : binder cmp = fun (_,u,e) (_,u',e') ->
   lex cmp (Array.cmp cmp) (u,e) (u',e')
-
-and eq : term eq = fun t u -> cmp t u = 0
-
-and eq_lhs r1 r2 =
-  try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
