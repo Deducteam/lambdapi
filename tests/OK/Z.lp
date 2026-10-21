@@ -525,7 +525,7 @@ end;
 
 // Directional comparison operators
 
-symbol ≤ x y ≔ ¬ (istrue(isGt(x ≐ y)));
+symbol ≤ x y ≔ isfalse(isGt(x ≐ y));
 notation ≤ infix 10;
 
 symbol < x y ≔ istrue(isLt(x ≐ y));
@@ -540,10 +540,10 @@ notation > infix 10;
 opaque symbol <_≤ x y : π (x < y ⇒ x ≤ y) ≔
 begin
   assume x y;
-  refine ind_Comp (λ u, istrue(isLt u) ⇒ istrue(isGt u) ⇒ ⊥) _ _ _ (x ≐ y)
-   { refine (λ x _, x) }
-   { refine (λ _ y, y) }
-   { refine (λ x _, x) }
+  refine ind_Comp (λ u, istrue(isLt u) ⇒ isfalse(isGt u)) _ _ _ (x ≐ y)
+   { refine (λ _, ⊤ᵢ) }
+   { refine (λ x,x) }
+   { refine (λ x,x) }
 end;
 
 // Compatibility of directional comparison operators
@@ -551,11 +551,11 @@ end;
 opaque symbol ≤_compat_add x y a : π (x ≤ y ⇒ x + a ≤ y + a) ≔
 begin
   assume x y a; simplify;
-  assume H; refine fold_⇒ _; rewrite ≐_sub;
-  simplify; refine fold_⇒ _; rewrite +_assoc;
+  assume H; rewrite ≐_sub;
+  rewrite +_assoc;
   rewrite .[y + a] +_com; rewrite distr_—_+;
   rewrite left +_assoc a (— a) (— y); rewrite -_same;
-  rewrite left +_assoc x Z0 (— y); simplify; refine fold_⇒ _;
+  rewrite left +_assoc x Z0 (— y);
   rewrite +Z0; rewrite left ≐_sub x y; refine H;
 end;
 
@@ -564,7 +564,7 @@ begin
   assume x y a; simplify; assume H; rewrite ≐_sub;
   rewrite +_assoc; rewrite .[y + a] +_com;
   rewrite distr_—_+; rewrite left +_assoc a (— a) (— y);
-  rewrite -_same; rewrite left +_assoc; rewrite +Z0; 
+  rewrite -_same; rewrite left +_assoc; rewrite +Z0;
   rewrite left ≐_sub; refine H;
 end;
 
@@ -575,9 +575,9 @@ begin
    { assume x;
      induction
       { assume h1 h2; refine h1 }
-      { assume y h h' i; refine i }
-      { assume y h f i; refine f ⊤ᵢ } }
-  { assume x y f h i; refine f ⊤ᵢ }
+      { assume y h h'; refine ⊤ᵢ }
+      { assume y h f; refine ⊥ₑ f } }
+   { assume x y f h; refine ⊥ₑ f }
 end;
 
 opaque symbol <_compat_≤ x y : π (Z0 < x ⇒ Z0 ≤ y ⇒ Z0 < x + y) ≔
@@ -588,7 +588,7 @@ begin
      induction
       { assume h1 h2; refine ⊤ᵢ }
       { assume y h h'; refine ⊤ᵢ }
-      { simplify; assume y h f; apply ⊥ₑ; refine f ⊤ᵢ } }
+      { simplify; assume y h f; refine ⊥ₑ f } }
   { assume x; assume y f h; apply ⊥ₑ; refine f }
 end;
 
@@ -596,21 +596,28 @@ end;
 
 opaque symbol ≤_refl x : π (x ≤ x) ≔
 begin
-  assume x; refine ≤_compat_add Z0 Z0 x _; refine (λ x, x);
+  assume x; refine ≤_compat_add Z0 Z0 x _; refine ⊤ᵢ;
 end;
 
 // Antisymmetry
 
 opaque symbol ≤_antisym x y : π (x ≤ y ⇒ y ≤ x ⇒ x = y) ≔
 begin
-  assume x y;
-  have e : π (¬ (istrue(isGt (x ≐ y))) ⇒ ¬ (istrue(isGt (y ≐ x))) ⇒ x = y)
-  { rewrite ≐_com } ;
-  refine ind_Comp (λ c, (y ≐ x) = c ⇒ ¬ (istrue(isGt (opp c))) ⇒ ¬ (istrue(isGt c)) ⇒ x = y) _ _ _ (y ≐ x) _
-   { assume H h1 h2; symmetry; refine ≐_decides y x H }
-   { assume h1 f h2; apply ⊥ₑ; refine f ⊤ᵢ }
-   { assume h1 h2 f; apply ⊥ₑ; refine f ⊤ᵢ }
-   { reflexivity; refine e }
+  assume x y h1 h2;
+  refine ≐_decides x y _;
+  have h3: π (isfalse (isLt (x ≐ y))) {
+    rewrite ≐_com x y;
+    rewrite isLt_opp;
+    refine h2;
+  };
+  have e : π (isfalse(isGt (x ≐ y)) ⇒ isfalse(isLt (x ≐ y)) ⇒ x ≐ y = Eq) {
+    refine ind_Comp (λ c, (x ≐ y) = c ⇒ isfalse(isGt c) ⇒ isfalse(isLt c) ⇒ x ≐ y = Eq) _ _ _ (x ≐ y) _ 
+      { refine (λ h _ _, h) }
+      { refine (λ _ _ h, ⊥ₑ h) }
+      { refine (λ _ h _, ⊥ₑ h) }
+      { reflexivity };
+  };
+  refine e h1 h3;
 end;
 
 // Transitivity theorems

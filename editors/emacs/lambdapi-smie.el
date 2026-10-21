@@ -19,6 +19,7 @@
     "generalize"
     "have"
     "induction"
+    "lia_find"
     "orelse"
     "refine"
     "reflexivity"
@@ -113,6 +114,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("generalize" ident)
               ("have" ident ":" sterm)
               ("induction")
+              ("lia_find")
               ("orelse" tactic)
               ("refine" sterm)
               ("reflexivity")
@@ -221,6 +223,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "generalize") `(column . ,lambdapi-indent-basic))
     (`(:before . "have") `(column . ,lambdapi-indent-basic))
     (`(:before . "induction") `(column . ,lambdapi-indent-basic))
+    (`(:before . "lia_find") `(column . ,lambdapi-indent-basic))
     (`(:before . "orelse") `(column . ,lambdapi-indent-basic))
     (`(:before . "refine") `(column . ,lambdapi-indent-basic))
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))

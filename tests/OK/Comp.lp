@@ -84,3 +84,20 @@ symbol case_Comp [A] : Comp → τ A → τ A → τ A → τ A;
 rule case_Comp Eq $x _ _ ↪ $x
 with case_Comp Lt _ $x _ ↪ $x
 with case_Comp Gt _ _ $x ↪ $x;
+
+// opp thms
+
+opaque symbol isLt_opp c: π (isLt (opp c) = isGt c) ≔
+begin
+  induction {reflexivity}{reflexivity}{reflexivity};
+end;
+
+opaque symbol isGt_opp c: π (isGt (opp c) = isLt c) ≔
+begin
+  induction {reflexivity}{reflexivity}{reflexivity};
+end;
+
+opaque symbol isEq_opp c: π (isEq (opp c) = isEq c) ≔
+begin
+  induction {reflexivity}{reflexivity}{reflexivity};
+end;

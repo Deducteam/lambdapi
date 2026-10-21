@@ -28,9 +28,13 @@ end;
 // istrue predicate
 
 injective symbol istrue : 𝔹 → Prop;
+injective symbol isfalse : 𝔹 → Prop;
 
 rule istrue true ↪ ⊤
 with istrue false ↪ ⊥;
+
+rule isfalse false ↪ ⊤
+with isfalse true ↪ ⊥;
 
 coerce_rule coerce 𝔹 Prop $x ↪ istrue $x;
 
