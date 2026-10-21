@@ -67,8 +67,9 @@
       (rw-patt)
       (implicit_args)
       (args (ident)
-            ;; structured definition of implicit_args conflicts with
-            ;; the rule ("have" ident ":" term "{" proof "}")
+            ;; structured definition of implicit_args Raises the Error: 
+            ;; Can’t resolve the precedence cycle: .] < .; < .] (because of
+            ;; conflicts with rule ("have" ident ":" term "{" proof "}"))
             ;; while it does not bring any added-value
             (implicit_args)
             ("(" ident ":" term ")"))
@@ -187,14 +188,14 @@
   )))
 
 (defun lambdapi--smie-forward-token ()
-  "Forward lexer for Dedukti."
+  "Forward lexer for Lambdapi."
   (forward-comment (point-max))
   (if (memq (char-after) '(?{ ?}))
       (progn (forward-char 1) (string (char-before)))
     (smie-default-forward-token)))
 
 (defun lambdapi--smie-backward-token ()
-  "Backward lexer for Dedukti."
+  "Backward lexer for Lambdapi."
   (forward-comment (- (point)))
   (if (memq (char-before) '(?{ ?}))
       (progn (forward-char -1) (string (char-after)))
