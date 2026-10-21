@@ -265,15 +265,15 @@ let find_subterm_from :
     | None ->
         Timed.Time.restore time;
         match unfold t with
-        | Appl(a,b) -> find2 binders path a b
+        | Appl(a,b) -> find_app binders path a b
         | Abst(a,b) | Prod(a,b) -> find_binder binders path a b
-        | LLet(a,c,b) -> find3 binders path a c b
+        | LLet(a,c,b) -> find_let binders path a c b
         | _ -> None
-  and find2 binders path a b =
+  and find_app binders path a b =
     match find binders (0::path) a with
     | None -> Timed.Time.restore time; find binders (1::path) b
     | r -> r
-  and find3 binders path a c b =
+  and find_let binders path a c b =
     match find binders (0::path) a with
     | Some _ as r -> r
     | None ->
@@ -321,21 +321,6 @@ let find_subst_from :
   in
   find_subterm_from initial_binders initial_path try_match t
 
-(** [find_subst (xs,p) t] calls [find_subst_from binders path (xs,p) t] with
-    an empty initial binder context and path. *)
-let find_subst :
-    to_subst -> term -> subst_under_binders option =
-  find_subst_from [] []
-
-(** [find_subst pos (vars,p) t] returns the search result for the first
-    occurrence of [p] in [t], or fails if no subterm matches. It also
-    checks that all variables in [vars] have been instantiated. *)
-let find_subst :
-    popt -> to_subst -> term -> subst_under_binders = fun pos (vars,p) t ->
-  match find_subst (vars,p) t with
-  | None -> no_match ~subterm:true pos p t
-  | Some r -> check_subs pos vars r.subst; r
-
 (** [find_subst_in_region pos binders (vars,p) t] searches for
     [p] in an already-selected region [t], preserving the binder context
     enclosing the region. *)
@@ -345,6 +330,12 @@ let find_subst_in_region :
   match find_subst_from binders [] (vars,p) t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> check_subs pos vars r.subst; r
+
+(** [find_subst pos (vars,p) t] returns the search result for the first
+    occurrence of [p] in [t], or fails if no subterm matches. It also
+    checks that all variables in [vars] have been instantiated. *)
+let find_subst : popt -> to_subst -> term -> subst_under_binders =
+  fun pos -> find_subst_in_region pos []
 
 (** [replace_wild_by_tref t] substitutes every wildcard of [t] by a distinct
    fresh [TRef]. *)
@@ -392,17 +383,11 @@ let find_subterm_matching_from :
   in
   find_subterm_from initial_binders initial_path try_match t
 
-(** [find_subterm_matching p t] is [find_subterm_matching_from] with no
-    initial enclosing binders. *)
-let find_subterm_matching :
-    term -> term -> selected_term_under_binders option =
-  find_subterm_matching_from [] []
-
 (** [find_subterm_matching pos p t] returns the first selected
     subterm matching [p] in [t], or fails if no subterm matches. *)
 let find_subterm_matching :
     popt -> term -> term -> selected_term_under_binders = fun pos p t ->
-  match find_subterm_matching p t with
+  match find_subterm_matching_from [] [] p t with
   | None -> no_match ~subterm:true pos p t
   | Some r -> r
 
@@ -724,14 +709,9 @@ let at_selector : contextual_selection -> int list -> bool =
     descendant path ends with its region's path. *)
 let within_selector : contextual_selection -> int list -> bool =
   fun selected path ->
-  let rec drop n xs =
-    if n = 0 then xs else match xs with
-    | [] -> []
-    | _::xs -> drop (n-1) xs
-  in
   List.exists (fun root ->
     let delta = List.length path - List.length root in
-    delta >= 0 && drop delta path = root)
+    delta >= 0 && snd (List.cut path delta) = root)
     selected.id_paths
 
 (** [rewrite_in_context ss cfg pos goal data at selected found] prepares a
