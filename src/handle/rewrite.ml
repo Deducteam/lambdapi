@@ -100,7 +100,7 @@ let matches ?(allow_binder_holes=false) : term -> term -> bool =
     match l with
     | [] -> ()
     | (xs,p,t)::l ->
-      if Term.cmp p t = 0 then eq l else begin
+      if LibTerm.eq_alpha p t then eq l else begin
       let hp, ps, kp = get_args_len p and ht, ts, kt = get_args_len t in
       if Logger.log_enabled() then
         log "%a %a \nmatches? %a %a"
