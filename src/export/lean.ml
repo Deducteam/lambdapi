@@ -245,9 +245,9 @@ let set_option oc s =
 let namespace : out_channel -> string -> unit = fun oc file ->
   string oc "\nnamespace ";
   Option.iter
-  (fun s -> string oc
-      (try (Filename.chop_extension s)^"."
-        with Invalid_argument _ -> "")) !require;
+    (fun s -> string oc
+                (try Filename.chop_extension s^"."
+                 with Invalid_argument _ -> "")) !require;
   string oc (Filename.chop_extension file);
   string oc "\n\n"
 
