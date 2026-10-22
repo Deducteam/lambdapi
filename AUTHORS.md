@@ -9,6 +9,7 @@ Active Contributors
 - Jean-Paul Bodeveix (2026-)
 - Ciarán Dunne (2026-)
 - Iván Martínez Comas (2026-)
+- Melanie Taprogge (2026-)
 
 Past Contributors
 =================
