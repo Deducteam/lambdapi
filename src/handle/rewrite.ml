@@ -718,7 +718,7 @@ let within_selector : contextual_selection -> int list -> bool =
   fun selected path ->
   List.exists (fun root ->
     let delta = List.length path - List.length root in
-    delta >= 0 && snd (List.cut path delta) = root)
+    delta >= 0 && List.drop delta path = root)
     selected.id_paths
 
 (** [rewrite_in_context ss cfg pos goal data at selected found] prepares a
