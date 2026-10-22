@@ -242,6 +242,15 @@ let handle_requires cmds =
 let set_option oc s =
   string oc "set_option "; string oc s; string oc " false\n"
 
+let namespace : out_channel -> string -> unit = fun oc file ->
+  string oc "\nnamespace ";
+  Option.iter
+  (fun s -> string oc
+      (try (Filename.chop_extension s)^"."
+        with Invalid_argument _ -> "")) !require;
+  string oc (Filename.chop_extension file);
+  string oc "\n\n"
+
 let print : string -> p_commands -> unit = fun file cmds ->
   let oc = stdout in
   Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
@@ -254,6 +263,6 @@ let print : string -> p_commands -> unit = fun file cmds ->
                               ;"linter.style.longLine"];
     newline oc;
     List.iter (open_mod oc) (List.rev !openings);
-    string oc ("\nnamespace "^Filename.chop_extension file^"\n\n");
+    namespace oc file;
     command oc cmd;
     commands oc cmds

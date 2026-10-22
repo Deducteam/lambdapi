@@ -139,7 +139,7 @@ let tvs_map : (int StrMap.t ref) = ref StrMap.empty
 
 let set_tvs_map (fname:string): unit =
   let ic = open_in_bin fname in
-  tvs_map := StrMap.add "el" 1 (input_value ic);
+  tvs_map := (input_value ic) |> StrMap.add "el" 1 |> StrMap.add "ε" 1;
   close_in ic
 
 (** Basic printing functions. We use Printf for efficiency reasons. *)
