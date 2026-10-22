@@ -192,7 +192,14 @@ let matching_subs_check_TRef pos ((vars,p) as xsp) t =
   | Some ts -> check_subs pos vars ts; ts
   | None -> no_match pos p t
 
-(** Binder frame enclosing a subterm found by [find_subst]. *)
+(** Binder frame enclosing a subterm. [binder_path] identifies the original
+    binder by the path to its body, storing child indices in reverse order.
+    Application children are 0 for the function and 1 for the argument;
+    abstraction/product children are 0 for the domain and 1 for the body;
+    let children are 0 for the type, 1 for the definition and 2 for the body.
+    The path recognises the same binder across traversals even when unbinding
+    creates fresh variables. [binder_var] is the variable opened in this
+    traversal, with type [binder_typ]. *)
 type binder_frame =
   { binder_var : var
   ; binder_typ : term
