@@ -111,7 +111,7 @@
               ("first_hyp" term)
               ("focus" term)
               ("generalize" ident)
-              ("have" ident ":" term "{" proof "}")
+              ("have" ident ":" term)
               ("induction")
               ("orelse" tactic)
               ("refine" term)
