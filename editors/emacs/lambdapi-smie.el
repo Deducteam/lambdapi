@@ -67,10 +67,8 @@
       (rw-patt)
       (implicit_args)
       (args (ident)
-            ;; structured definition of implicit_args Raises the Error: 
-            ;; Can’t resolve the precedence cycle: .] < .; < .] (because of
-            ;; conflicts with rule ("have" ident ":" term "{" proof "}"))
-            ;; while it does not bring any added-value
+            ;; structured definition of implicit_args 
+            ;; introduces a precedence cycle between .] < .;
             (implicit_args)
             ("(" ident ":" term ")"))
       (simplify-args (ident)
