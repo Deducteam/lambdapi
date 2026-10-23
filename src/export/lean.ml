@@ -255,11 +255,11 @@ let print : string -> p_commands -> unit =
   match handle_requires cmds with
   | None -> ()
   | Some cmd ->
-      List.iter (set_option oc)
-        ["linter.style.header"
-        ;"linter.style.missingEnd"
-        ;"linter.unusedVariables"
-        ;"linter.style.longLine"];
+    List.iter (set_option oc)
+      ["linter.style.header"
+      ;"linter.style.missingEnd"
+      ;"linter.unusedVariables"
+      ;"linter.style.longLine"];
     newline oc;
     List.iter (open_mod oc) (List.rev !openings);
     string oc "\nnamespace ";
