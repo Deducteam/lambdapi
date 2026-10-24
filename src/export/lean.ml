@@ -239,7 +239,7 @@ let handle_requires cmds =
   in
   try handle_next_elt() with Stream.Failure -> None
 
-let set_option oc s =
+let unset_option oc s =
   string oc "set_option "; string oc s; string oc " false\n"
 
 let print : string -> p_commands -> unit =
@@ -255,15 +255,16 @@ let print : string -> p_commands -> unit =
   match handle_requires cmds with
   | None -> ()
   | Some cmd ->
-    List.iter (set_option oc)
+    newline oc;
+    List.iter (unset_option oc)
       ["linter.style.header"
       ;"linter.style.missingEnd"
       ;"linter.unusedVariables"
       ;"linter.style.longLine"];
-    newline oc;
+    if !openings <> [] then newline oc;
     List.iter (open_mod oc) (List.rev !openings);
     string oc "\nnamespace ";
-    string oc (String.concat "." !Parsing.Package.root_path);
+    list string "." oc !Parsing.Package.root_path;
     char oc '.';
     string oc (Filename.chop_extension file);
     string oc "\n\n";
