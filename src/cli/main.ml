@@ -623,7 +623,7 @@ let cmd_export =
     in
     begin
       match output with
-      | RawDk | Lp | SttCoq | RawCoq | SttLean | RawLean -> ()
+      | RawDk | Lp | SttCoq | RawCoq -> ()
       | _ -> Parsing.Package.set_root_path (Filename.dirname file)
     end;
     let parse = Parsing.Parser.parse_file in
