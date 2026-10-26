@@ -447,6 +447,25 @@ let cmd_deindex =
       Tool.Indexing.dump()
 
 (*-------------------------------------------------------------------------*)
+(** depend command *)
+(*-------------------------------------------------------------------------*)
+
+let cmd_depend =
+  let summary = "Generate on stdout a Makefile for checking FILES." in
+  let c = add_command
+            { name = "depend"
+            ; args = "[OPTION …] FILES"
+            ; summary
+            ; desc = summary
+            ; options = general_options } in
+  fun args ->
+  match parse_options c.options args with
+  | [] -> Common.Error.fatal_no_pos "No file provided."
+  | (f::_) as files ->
+    Parsing.Package.set_root_path (Filename.dirname f);
+    List.iter Tool.Depend.print_deps files
+
+(*-------------------------------------------------------------------------*)
 (** export command *)
 (*-------------------------------------------------------------------------*)
 
@@ -1075,6 +1094,7 @@ let main = function
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
+  | "depend"::args -> cmd_depend args
   | "export"::args -> cmd_export args
   | "index"::args -> cmd_index args
   | "init"::args -> cmd_init args
