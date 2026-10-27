@@ -222,12 +222,16 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
 (** [update_ext_sym_dtrees b ss] updates the decision trees of external
     symbols by adding (resp. removing) extra rules if [b] is true
     (resp. false). *)
-let update_ext_sym_dtrees (b:bool) (ss:sig_state): unit =
+let update_ext_sym_dtrees =
+  let eq = Base.eq_of_cmp cmp in
+  let eq_lhs r1 r2 =
+    try List.for_all2 eq r1.lhs r2.lhs with Invalid_argument _ -> false in
+  fun (b:bool) (ss:sig_state): unit ->
   Path.Map.iter (fun p dd ->
       let sign = try Path.Map.find p !loaded with Not_found -> assert false in
       StrMap.iter (fun n sd ->
-          let s = try Sign.find sign n with Not_found -> assert false in
           if sd.rules <> [] then
+            let s = try Sign.find sign n with Not_found -> assert false in
             if b then Tree.update s
             else let neq r1 r2 = not (eq_lhs r1 r2) in
               let is_not_extra r = List.for_all (neq r) sd.rules in

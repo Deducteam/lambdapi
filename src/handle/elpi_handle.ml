@@ -255,13 +255,7 @@ external pred msolve i:list sealed-goal.
 (** Path to the directory containing Elpi files (from dune-site) *)
 let elpi_path =
   try List.hd Common.External.Sites.elpi_files
-  with Failure _ -> (* Special case: do not fail during test_load. *)
-    let rec iter f n x = if n > 0 then iter f (n-1) (f x) else x in
-    let exec = Sys.executable_name in
-    let from_lp = Filename.concat (iter Filename.dirname 3 exec) in
-    if Sys.file_exists (from_lp "test_load")
-    then from_lp "src/elpi"
-    else Common.Error.fatal_no_pos "path to elpi files not found"
+  with Failure _ -> Common.Error.fatal_no_pos "path to elpi files not found"
 
 (** The file containing our built-in Elpi functions (in addition to
     standard elpi ones) *)

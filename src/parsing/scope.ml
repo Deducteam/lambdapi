@@ -239,6 +239,7 @@ and scope_domain : ?find_sym:find_sym ->
   match a, md with
   | (Some {elt=P_Wild;_}|None), (M_LHS data | M_SearchPatt (_,data)) ->
       fresh_patt data None (Env.to_terms env)
+  | (Some {elt=P_Wild;_}|None), M_Patt -> mk_Wild
   | (Some {elt=P_Wild;_}|None), _ -> mk_Plac true
   | Some a, _ -> scope ?find_sym ~typ:true k md ss env a
 
@@ -256,7 +257,11 @@ and scope_binder :
         begin
           match t with
           | Some t -> scope ?find_sym ~typ (k+1) md ss env t
-          | None -> mk_Plac true
+          | None ->
+              begin match md with
+              | M_Patt -> mk_Wild
+              | _ -> mk_Plac true
+              end
         end
     | (idopts,typopt,_implicit)::params_list ->
       let dom = scope_domain ?find_sym (k+1) md ss env typopt in
@@ -426,23 +431,18 @@ and scope_head : ?find_sym:find_sym ->
 
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
 
-  | (P_Arro(_,_), M_Patt) ->
-      fatal pos "Arrows are not allowed in patterns."
   | (P_Arro(a,b), _) ->
     mk_Arro (scope ?find_sym ~typ:true (k+1) md ss env a,
              scope ?find_sym ~typ:true (k+1) md ss env b)
 
-  | (P_Abst(_,_), M_Patt) ->
-      fatal pos "Abstractions are not allowed in patterns."
   | (P_Abst(xs,t), _) ->
       scope_binder ?find_sym k md ss mk_Abst env xs (Some t)
 
-  | (P_Prod(_,_), M_Patt) ->
-      fatal pos "Dependent products are not allowed in patterns."
   | (P_Prod(xs,b), _) ->
     scope_binder ?find_sym ~typ:true k md ss mk_Prod env xs (Some b)
 
-  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _)) ->
+  | (P_LLet(x,xs,a,t,u),
+     (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _|M_Patt)) ->
       let a = scope_binder ?find_sym ~typ:true (k+1) md ss mk_Prod env xs a in
       let t = scope_binder ?find_sym (k+1) md ss mk_Abst env xs (Some(t)) in
       let v = new_var x.elt in
@@ -453,8 +453,6 @@ and scope_head : ?find_sym:find_sym ->
       mk_LLet (a, t, bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
       fatal pos "Let-bindings are not allowed in a LHS."
-  | (P_LLet(_), M_Patt) ->
-      fatal pos "Let-bindings are not allowed in patterns."
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->

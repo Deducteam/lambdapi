@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SRC="https://deducteam.github.io/data/libraries/verine.tar.gz"
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/verine.tar.gz"
 DIR="verine"
 
 # Cleaning command (clean and exit).
@@ -61,7 +61,7 @@ fi
 
 # Checking function.
 function check_verine() {
-  LP='lambdapi check --lib-root . --no-warnings'
+  LP='lambdapi check --lib-root . -v 0 -w'
   rm -f logic.lpo
   ${LP} -c logic.dk
   for FILE in `ls SEQ*.dk`; do ${LP} ${FILE}; done

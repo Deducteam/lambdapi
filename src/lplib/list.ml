@@ -62,6 +62,17 @@ let concat_map f l =
        aux f (rev_append xs acc) l
   in aux f [] l
 
+(** [drop n l] removes the first [n] elements of [l], or all elements if
+    [n] exceeds the list length. Raises [Invalid_argument] if [n] is negative.
+    Copied from OCaml 5.3's standard library. *)
+let drop n l =
+  let rec aux i = function
+    | _x::l when i < n -> aux (i + 1) l
+    | rest -> rest
+  in
+  if n < 0 then invalid_arg "List.drop";
+  aux 0 l
+
 (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but it
     only traverses the list once and is tail-recursive. *)
 let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->

@@ -63,4 +63,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings dklib.dk
+  lambdapi check --lib-root . -v 0 -w dklib.dk

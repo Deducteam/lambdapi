@@ -135,11 +135,11 @@ let is_encoded id =
 (** Map from symbol name to number of type variables (>0). A symbol with no
     entry is not polymorphic (arity =0). *)
 
-let tvs_map : (int StrMap.t ref) = ref StrMap.empty
+let tvs_map : int StrMap.t ref = ref StrMap.empty
 
 let set_tvs_map (fname:string): unit =
   let ic = open_in_bin fname in
-  tvs_map := StrMap.add "el" 1 (input_value ic);
+  tvs_map := input_value ic;
   close_in ic
 
 (** Basic printing functions. We use Printf for efficiency reasons. *)
@@ -211,7 +211,7 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
 (** Translation of terms. *)
 
 let stt = Stdlib.ref false
-let use_implicits = Stdlib.ref false
+let use_implicits = Stdlib.ref true
 let use_notations = Stdlib.ref false
 
 (* redefinition of p_get_args ignoring P_Wrap's. *)

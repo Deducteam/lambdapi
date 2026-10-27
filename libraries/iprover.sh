@@ -2,7 +2,7 @@
 
 NBWORKERS="${NBWORKERS:-1}"
 
-SRC="https://deducteam.github.io/data/libraries/iProverModulo_dk.tar.gz"
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/iProverModulo_dk.tar.gz"
 DIR="iprover"
 
 # Cleaning command (clean and exit).
@@ -198,4 +198,4 @@ fi
 # Check the files
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings *_prf.dk
+  lambdapi check --lib-root . -v 0 -w *_prf.dk

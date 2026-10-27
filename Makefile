@@ -35,69 +35,69 @@ test_all: test
 .PHONY: test
 test: lambdapi
 	@dune runtest
-	@tests/dtrees.sh
+	@dune exec -- tests/dtrees.sh
 
 .PHONY: test_load
 test_load: lambdapi
-	@tests/test_load.sh
+	@dune exec -- tests/test_load.sh
 
 .PHONY: test_export_dk
 test_export_dk: lambdapi
-	@tests/export_dk.sh
+	@dune exec -- tests/export_dk.sh
 
 .PHONY: test_export_lp
 test_export_lp: lambdapi
-	@tests/export_lp.sh
+	@dune exec -- tests/export_lp.sh
 
 .PHONY: test_export_raw_dk
 test_export_raw_dk: lambdapi
-	@tests/export_raw_dk.sh
+	@dune exec -- tests/export_raw_dk.sh
 
 .PHONY: test_why3
 test_why3: lambdapi
-	@dune exec lambdapi -- check tests/OK/why3*.lp
+	@dune exec -- lambdapi check tests/OK/why3*.lp
 
 .PHONY: test_libs
 test_libs: lambdapi
-	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
-	@tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
+	@dune exec -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
+	@dune exec -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
 
 #### Library tests ###########################################################
 
 .PHONY: matita
 matita: lambdapi
 	@printf "## Compiling the Matita's arithmetic library ##\n"
-	@cd libraries && ./matita.sh
+	@cd libraries && dune exec -- ./matita.sh
 
 .PHONY: focalide
 focalide: lambdapi
 	@printf "## Compiling focalide library ##\n"
-	@cd libraries && ./focalide.sh
+	@cd libraries && dune exec -- ./focalide.sh
 
 .PHONY: holide
 holide: lambdapi
 	@printf "## Compiling holide library ##\n"
-	@cd libraries && ./holide.sh
+	@cd libraries && dune exec -- ./holide.sh
 
 .PHONY: verine
 verine: lambdapi
 	@printf "## Compiling verine library ##\n"
-	@cd libraries && ./verine.sh
+	@cd libraries && dune exec -- ./verine.sh
 
-.PHONY: iprover
+.PHONY: iprover # not terminating
 iprover: lambdapi
 	@printf "## Compiling iProverModulo library ##\n"
-	@cd libraries && ./iprover.sh
+	@cd libraries && dune exec -- ./iprover.sh
 
 .PHONY: dklib
 dklib: lambdapi
 	@printf "## Compiling the dklib library ##\n"
-	@cd libraries && ./dklib.sh
+	@cd libraries && dune exec -- ./dklib.sh
 
-.PHONY: zenon_modulo
+.PHONY: zenon_modulo # archive lost
 zenon_modulo: lambdapi
 	@printf "## Compiling the zenon library ##\n"
-	@cd libraries && ./zenon_modulo.sh
+	@cd libraries && dune exec -- ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
 

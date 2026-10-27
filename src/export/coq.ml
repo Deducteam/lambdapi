@@ -193,8 +193,6 @@ let command oc {elt; pos} =
 
 let commands oc = Stream.iter (command oc)
 
-(** Set Coq required file. *)
-
 let print : p_commands -> unit = fun cs ->
   let oc = stdout in
   begin match !require with
