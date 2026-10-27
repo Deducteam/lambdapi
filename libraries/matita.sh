@@ -75,4 +75,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  dune exec -- lambdapi check --lib-root . -w -c matita.dk
+  lambdapi check --lib-root . -v 0 -w -c matita.dk

@@ -65,7 +65,7 @@ cd ${DIR}/workdir
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-LP='dune exec lambdapi -v 0 -w -c --lib-root .'
+LP='lambdapi -v 0 -w -c --lib-root .'
 $LP check *.dk
 
 # Checking function.
@@ -101,7 +101,6 @@ function check() {
   find ../files -type f | sort \
     | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_gz {}"
 }
-
 
 # Export stuff for the checking function.
 export readonly NBWORKERS=${NBWORKERS}
