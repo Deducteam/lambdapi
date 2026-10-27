@@ -763,7 +763,7 @@ let cmd_init =
 
 LPO_MK := lpo.mk
 
-LP := $(wildcard *.lp)
+LP := $(shell find . -name '*.lp')
 
 .PHONY: default
 default: $(LP:%=%o)
