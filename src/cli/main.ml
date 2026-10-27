@@ -451,7 +451,8 @@ let cmd_deindex =
 (*-------------------------------------------------------------------------*)
 
 let cmd_depend =
-  let summary = "Generate on stdout a Makefile for checking FILES." in
+  let summary =
+    "Generate on stdout the dependencies between FILES in Makefile format." in
   let c = add_command
             { name = "depend"
             ; args = "[OPTION …] FILES"
