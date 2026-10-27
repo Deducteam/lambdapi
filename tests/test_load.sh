@@ -2,12 +2,9 @@
 
 set -e
 
-dune build
-
 clean () { rm -f tests/OK/*.lpo; }
 trap clean ERR
 
-lambdapi='_build/install/default/bin/lambdapi'
 mk=/tmp/lpo.mk
 jobs=$(nproc)
 TIMEFORMAT="%Es"
@@ -21,7 +18,7 @@ FILES=`find tests/OK -maxdepth 1 -name '*.lp' $exclude | xargs`
 
 # generate Makefile $mk
 cat > $mk <<__END__
-LAMBDAPI := $lambdapi check -w -v 0
+LAMBDAPI := lambdapi check -w -v 0
 FILES := $FILES
 lpo: \$(FILES:%.lp=%.lpo)
 %.lpo: %.lp
