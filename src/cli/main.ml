@@ -447,6 +447,26 @@ let cmd_deindex =
       Tool.Indexing.dump()
 
 (*-------------------------------------------------------------------------*)
+(** depend command *)
+(*-------------------------------------------------------------------------*)
+
+let cmd_depend =
+  let summary =
+    "Generate on stdout the dependencies between FILES in Makefile format." in
+  let c = add_command
+            { name = "depend"
+            ; args = "[OPTION …] FILES"
+            ; summary
+            ; desc = summary
+            ; options = general_options } in
+  fun args ->
+  match parse_options c.options args with
+  | [] -> Common.Error.fatal_no_pos "No file provided."
+  | (f::_) as files ->
+    Parsing.Package.set_root_path (Filename.dirname f);
+    List.iter Tool.Depend.print_deps files
+
+(*-------------------------------------------------------------------------*)
 (** export command *)
 (*-------------------------------------------------------------------------*)
 
@@ -739,26 +759,30 @@ let cmd_init =
     in
     write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
     (* Write the Makefile and example file. *)
-    let makefile ppf = Format.fprintf ppf
-{|.POSIX:
-.SUFFIXES:
+    let makefile ppf = Format.fprintf ppf "%s"
+{|MAKEFLAGS += -r -k -j$(shell nproc)
 
-SRC = $(wildcard *.lp)
-OBJ = $(SRC:.lp=.lpo)
+LPO_MK := lpo.mk
 
-all: $(OBJ)
+LP := $(shell find . -name '*.lp')
 
-install: $(OBJ) lambdapi.pkg
-	lambdapi install lambdapi.pkg $(OBJ) $(SRC)
+.PHONY: default
+default: $(LP:%=%o)
 
-uninstall:
-	lambdapi uninstall lambdapi.pkg
+%.lpo: %.lp
+	@echo lambdapi check $< ...
+	@lambdapi check -c -v 0 $<
 
+include $(LPO_MK)
+
+$(LPO_MK): $(LP)
+	@echo create/update $@ ...
+	@lambdapi depend $(LP) > $@
+
+.PHONY: clean
 clean:
-	rm -f $(OBJ)
-
-.lp.lpo:
-	lambdapi check --gen-obj $<
+	-find . -name '*.lpo' -delete
+	-rm $(LPO_MK)
 |} in
     write_file (Filename.concat pkg_dir "Makefile") makefile
 
@@ -1075,6 +1099,7 @@ let main = function
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
+  | "depend"::args -> cmd_depend args
   | "export"::args -> cmd_export args
   | "index"::args -> cmd_index args
   | "init"::args -> cmd_init args
