@@ -79,6 +79,7 @@ checkout() {
 }
 
 checkout https://github.com/joaotavora/eglot.git $EGLOT_V
+touch $ROOT/.emacs.d/elpa/eglot/eglot-autoloads
 
 checkout https://github.com/vspinu/math-symbol-lists.git $MATH_SYMB_V
 touch $ROOT/.emacs.d/elpa/math-symbol-lists/math-symbol-lists-autoloads.el

@@ -211,7 +211,7 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
 (** Translation of terms. *)
 
 let stt = Stdlib.ref false
-let use_implicits = Stdlib.ref false
+let use_implicits = Stdlib.ref true
 let use_notations = Stdlib.ref false
 
 (* redefinition of p_get_args ignoring P_Wrap's. *)

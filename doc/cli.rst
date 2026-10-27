@@ -12,6 +12,7 @@ The available commands are:
 * ``check``: check the correctness of input files.
 * ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
 * ``deindex``: remove constants from the search index given a prefix path
+* ``depend``: generate dependencies between files in Makefile format
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
 * ``index``: create an index of symbols and rules of input files.

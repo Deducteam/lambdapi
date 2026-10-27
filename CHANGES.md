@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
 - Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`.
 - add a version number to the header of the index db file to prevent crash of LP when the structure of db changes.
+- Support for `rewrite` targeting terms depending on enclosing bound variables.
+- Binders in selector patterns passed to `rewrite`.
+- Builtins `arr` and `funExt` required to justify `rewrite` targeting enclosing bound variables.
+- CLI command `depend` to compute file dependencies.
 
 ### Changed
 
@@ -59,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   side, proof, etc.).
 - In Lsp mode, when navigating a proof the server answers Goals and logs even
   when the proof is broken (missing end token or syntacticly broken tactic)
+- Prevent bound variables from escaping their scope during equality-lemma
+  matching when applying the `rewrite` tactic.
 
 ## 3.0.0 (2025-07-16)
 

@@ -2,6 +2,8 @@ require open tests.OK.Set;
 
 constant symbol ⤳ : Set → Set → Set; // \leadsto
 
+builtin "arr" ≔ ⤳;
+
 notation ⤳ infix right 20;
 
 rule τ ($a ⤳ $b) ↪ τ $a → τ $b;

@@ -45,7 +45,7 @@ do
         # use builtin strings
         Tactic);;
         # requires Tactic
-        1374|assume|first_hyp|all_hyps|1493);;
+        1374|assume|first_hyp|all_hyps|1493|rewrite_under_binder_no_capture);;
         # default case
         *) translate $f.lp;;
     esac

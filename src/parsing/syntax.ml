@@ -185,7 +185,8 @@ module P  = struct
   let rule : p_term -> p_term -> p_rule = fun l r -> Pos.none (l,r)
 end
 
-(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+(** Rewrite selection forms based on Coq/SSReflect, with Lambdapi binder
+    terms allowed inside each term component. See "A Small Scale
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
