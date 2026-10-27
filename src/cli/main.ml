@@ -37,6 +37,8 @@ let parse_map_dir s =
     Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
   | None -> Common.Error.fatal_no_pos "Wrong argument: %s." s
 
+let lib_root = ref None
+
 (*-------------------------------------------------------------------------*)
 (* Type of a command line option *)
 (*-------------------------------------------------------------------------*)
@@ -114,7 +116,10 @@ let parse_options options args =
             | [] ->
               Common.Error.fatal_no_pos "Option %s has no argument." arg
             | arg::other_args -> h arg; parse other_args
-  in parse args
+  in
+  let other_args = parse args in
+  Common.Library.set_lib_root !lib_root;
+  other_args
 
 let print_option o =
   match o.opt_short with
@@ -204,7 +209,7 @@ let general_options =
 let opt_lib_root =
   { opt_name = "--lib-root"
   ; opt_short = None
-  ; opt_handle = Next("DIR", fun v -> Common.Library.set_lib_root (Some v))
+  ; opt_handle = Next("DIR", fun v -> lib_root := Some v)
   ; opt_desc =
 {|Set the library root to be the directory DIR. The library root is a common
   path under which every module is placed. It has the same purpose as the root
@@ -215,11 +220,6 @@ let opt_lib_root =
   LAMBDAPI_LIB_ROOT is set, then $OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root
   if OPAM_SWITCH_PREFIX is set or it uses /usr/local/lib/lambdapi/lib_root.|}
 }
-
-let set_lib_root() =
-  match !Common.Library.lib_root with
-  | None -> Common.Library.set_lib_root None
-  | _ -> ()
 
 let opt_map_dir =
   { opt_name = "--map-dir="
@@ -365,14 +365,14 @@ let cmd_check =
   match parse_options c.options args with
   | [] -> Common.Error.fatal_no_pos "No file provided."
   | f::files ->
-    set_lib_root();
-    Parsing.Package.set_root_path f;
     let t0 = Timed.Time.save() in
+    Parsing.Package.set_root_path (Filename.dirname f);
     ignore (compile f);
-    let handle file =
+    let handle f =
       Timed.Time.restore t0;
       Common.Console.reset_default();
-      ignore (compile file)
+      Parsing.Package.set_root_path (Filename.dirname f);
+      ignore (compile f)
     in
     List.iter handle files
 
@@ -403,7 +403,6 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
-    set_lib_root();
     Parsing.Package.set_root_path (Sys.getcwd());
     let sym =
       Timed.(Common.Console.verbose := 0);
@@ -442,7 +441,6 @@ let cmd_deindex =
     | [] -> Common.Error.fatal_no_pos "No prefix provided."
     | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
     | [p] ->
-      set_lib_root();
       Tool.Indexing.deindex_path p;
       Tool.Indexing.dump()
 
@@ -460,11 +458,10 @@ let cmd_depend =
             ; desc = summary
             ; options = general_options } in
   fun args ->
-  match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "No file provided."
-  | (f::_) as files ->
-    Parsing.Package.set_root_path (Filename.dirname f);
-    List.iter Tool.Depend.print_deps files
+    Parsing.Package.set_root_path (Sys.getcwd());
+    match parse_options c.options args with
+    | [] -> Array.iter Tool.Depend.print_deps (Sys.readdir ".")
+    | files -> List.iter Tool.Depend.print_deps files
 
 (*-------------------------------------------------------------------------*)
 (** export command *)
@@ -635,7 +632,6 @@ let cmd_export =
     Common.Error.fatal_no_pos
       "The export command accepts only one file as argument."
   | [file] ->
-    set_lib_root();
     let output =
       match !output with
       | None -> Common.Error.fatal_no_pos "No output format given."
@@ -707,14 +703,14 @@ let cmd_index =
   | [] -> Common.Error.fatal_no_pos "No file provided."
   | f::files ->
     if not !add then Tool.Indexing.empty ();
-    set_lib_root();
-    Parsing.Package.set_root_path f;
     let t0 = Timed.Time.save() in
+    Parsing.Package.set_root_path (Filename.dirname f);
     Tool.Indexing.index_sign (Common.Error.no_wrn compile f);
-    let handle file =
+    let handle f =
       Tool.Indexing.preserving_index Timed.Time.restore t0;
       Common.Console.reset_default();
-      Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
+      Parsing.Package.set_root_path (Filename.dirname f);
+      Tool.Indexing.index_sign (Common.Error.no_wrn compile f)
     in
     List.iter handle files;
     Option.iter Tool.Indexing.parse_source_map !source;
@@ -818,7 +814,6 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
-    set_lib_root();
     let time = Timed.Time.save () in
     let install file =
       Timed.Time.restore time;
@@ -895,7 +890,6 @@ let cmd_lsp =
   match parse_options c.options args with
   | _::_ -> Common.Error.fatal_no_pos "Invalid argument."
   | _ ->
-    set_lib_root();
     Common.Console.lsp_mod := true;
     Pure.set_initial_time();
     Lsp.Lp_lsp.main !standard_lsp !log_file
@@ -934,7 +928,7 @@ let opt_require =
 let sig_state_of_require() =
   List.fold_left
     (fun ss r ->
-       Parsing.Package.set_root_path (Filename.concat (Sys.getcwd()) r);
+       Parsing.Package.set_root_path (Filename.dirname r);
        Handle.Command.handle Handle.Compile.compile ss
          (Common.Pos.none
             (Parsing.Syntax.P_require
@@ -957,7 +951,6 @@ let cmd_search =
   | [] -> Common.Error.fatal_no_pos "No query provided."
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
-    set_lib_root();
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
     Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss) s
@@ -979,7 +972,6 @@ let cmd_uninstall =
   | [] -> Common.Error.fatal_no_pos "No package file provided."
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
-    set_lib_root();
     let p = Parsing.Package.read s in
     (* Compute the expected installation directory. *)
     let lib_root =
@@ -1049,7 +1041,6 @@ let cmd_websearch =
   match parse_options c.options args with
   | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [] ->
-    set_lib_root();
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
     let header =

@@ -129,8 +129,11 @@ let set_lib_root : string option -> unit = fun dir ->
   Option.iter set_prefix (Sys.getenv_opt "LAMBDAPI_LIB_ROOT");
   lib_root := Some(Filename.concat !prefix "lib/lambdapi/lib_root");
   let set_lr p =
-    try lib_root := Some(Lplib.Filename.realpath p) with
-    Invalid_argument(_) -> ()
+    try if not (Sys.is_directory p) then
+        fatal_no_pos {|"%s" is not a directory.|} p;
+      lib_root := Some(Lplib.Filename.realpath p)
+    with Invalid_argument _ | Sys_error _ ->
+      fatal_no_pos {|The file "%s" does not exist.|} p
   in
   Option.iter set_lr dir;
   (* Verify that [dir] exists and is a directory *)

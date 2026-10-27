@@ -35,7 +35,7 @@ test_all: test
 .PHONY: test
 test: lambdapi
 	@dune runtest
-	@dune exec -- tests/dtrees.sh
+	@cd tests; dune exec -- ./dtrees.sh
 
 .PHONY: test_load
 test_load: lambdapi

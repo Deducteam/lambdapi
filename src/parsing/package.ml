@@ -84,7 +84,7 @@ let root_path : string Stdlib.ref = ref ""
    directory or file [fname], and applies the corresponding configuration. *)
 let set_root_path : string -> unit = fun fname ->
   match find fname with
-  | None           -> wrn None "Found no file \"%s\"." pkg_file
+  | None -> fatal_no_pos "Found no file \"%s\"." pkg_file
   | Some(cfg_file) ->
   let {root_path=rp; _} = read cfg_file in
   root_path := String.concat "." rp;
