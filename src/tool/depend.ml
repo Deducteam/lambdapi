@@ -3,7 +3,8 @@
 
 let space = function ' '|'\t'|'\n' -> true | _ -> false
 let not_space = function ' '|'\t'|'\n' -> false | _ -> true
-let letter = function 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' -> true | _ -> false
+let letter =
+  function 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' -> true | _ -> false
 
 let print_deps filename =
   let is_lp =
