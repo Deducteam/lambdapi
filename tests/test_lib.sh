@@ -2,9 +2,6 @@
 
 set -e
 
-dune build
-
-lambdapi='dune exec -- lambdapi'
 out=/tmp/lambdapi.output
 TIMEFORMAT="%Es"
 
@@ -23,7 +20,7 @@ test_lib() {
     for f in $(find $1 -name '*.lp' -o -name '*.dk')
     do
         echo lambdapi check $f ...
-        $lambdapi check -w "$f" > $out 2>&1 || (cat $out; exit 1)
+        lambdapi check -w "$f" > $out 2>&1 || (cat $out; exit 1)
     done
 }
 

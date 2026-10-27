@@ -2,12 +2,8 @@
 
 set -e
 
-dune build
-
 echo '############ test export -o dk ############'
 
-lambdapi='dune exec -- lambdapi'
-jobs=32
 outdir=/tmp/export_dk
 TIMEFORMAT="%Es"
 
@@ -20,7 +16,7 @@ reset_outdir
 translate() {
     out=$outdir/${1%.lp}.dk
     echo "$1 --> $out ..."
-    $lambdapi export -w -v 0 -o dk $1 > $out
+    lambdapi export -w -v 0 -o dk $1 > $out
     if test $? -ne 0; then echo KO; exit 1; fi
 }
 
@@ -63,7 +59,7 @@ default: \$(FILES:%.dk=%.dko)
 	dk check -e \$<
 __END__
     dk dep -q *.dk >> Makefile
-    make -j$jobs
+    make -j$(nproc)
     res=$?
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
