@@ -61,7 +61,7 @@ fi
 
 # Checking function.
 function check_verine() {
-  LP='dune exec -- lambdapi check --lib-root . -w'
+  LP='lambdapi check --lib-root . -v 0 -w'
   rm -f logic.lpo
   ${LP} -c logic.dk
   for FILE in `ls SEQ*.dk`; do ${LP} ${FILE}; done
