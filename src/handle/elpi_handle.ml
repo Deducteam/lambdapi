@@ -159,14 +159,14 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
   MLData sym;
   MLData term;
   LPCode {|
-kind sealed-goal type.
-external symbol nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
-external symbol seal : goal -> sealed-goal = "0".
+data sealed-goal.
+builtin symb nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
+builtin symb seal  : goal -> sealed-goal = "0".
 
-kind goal type.
-external symbol goal : term -> term -> goal = "0".
+data goal.
+builtin symb goal  : term -> term -> goal = "0".
 
-external pred msolve i:list sealed-goal.
+builtin pred msolve i:list sealed-goal.
 
 |};
 
@@ -259,7 +259,7 @@ let elpi_path =
 
 (** The file containing our built-in Elpi functions (in addition to
     standard elpi ones) *)
-let builtins_file = Filename.concat elpi_path "doc/lambdapi_builtins.elpi"
+let builtins_file = Filename.concat elpi_path "doc/lambdapi-builtins.elpi"
 
 (** Expose them to Elpi. *)
 let lambdapi_builtins =
@@ -269,7 +269,7 @@ let lambdapi_builtins =
     use "let () = document [path_to_lambdapi]"
     to update documentation *)
 let document path =
-  let full_path = Filename.concat path "doc/lambdapi_builtins.elpi" in
+  let full_path = Filename.concat path "doc/lambdapi-builtins.elpi" in
   let file =
     BuiltIn.declare ~file_name:full_path lambdapi_builtin_declarations
   in BuiltIn.document_file ~header:"% automatically generated" file

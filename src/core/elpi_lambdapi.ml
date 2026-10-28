@@ -62,10 +62,13 @@ module Loc = struct
 end
 
 module ElpiError = struct
+  (** [ElpiError.raise err] raises Elpi error [err] in Lambdapi. *)
   let raise {Error.component; loc; message} =
     Common.Error.fatal (Option.map Loc.to_pos loc) "Elpi %s error: %s"
       component message
 
+  (** [ElpiError.raise_all errors] raises a Lambdapi error containing
+      every error message in the list [errirs] *)
   let rec raise_all errors = match errors with
   | [] -> ()
   | [final_error] -> raise final_error
@@ -73,6 +76,7 @@ module ElpiError = struct
     Common.Error.fatal_msg "Elpi %s error: %s" component message;
     raise_all rest
 
+  (** [ElpiError.raise_warning wrn] raises Elpi warning [wrn] in Lambdapi. *)
   let raise_warning {Error.warning_id ; warning = {component; loc; message}} =
     let warning_str = match warning_id with
     | LinearVariable -> "Linear Variable"
@@ -83,11 +87,18 @@ module ElpiError = struct
     in Common.Error.wrn (Option.map Loc.to_pos loc) "Elpi %s warning (%s): %s"
       component warning_str message
 
+  (** Elpi functions (since 4.0) return a result along with warnings
+      and errors encountered. [ElpiError.handle (res,errs,wrns)] raises all
+      warnings and errors (if any) before returning res if there
+      was no error. *)
   let handle (res, errors, warnings) =
     List.iter raise_warning warnings;
     raise_all errors;
     res
 
+  (** Calls {!term:Elpi.API.RawQuery.compile_raw_term} and raises
+      all warnings which arose before returning the result or
+      raising the error that occured. *)
   let compile_raw_term prog raw_query =
     let res,warnings =
       Elpi.API.RawQuery.compile_raw_term prog raw_query
@@ -306,7 +317,7 @@ let term : Term.term Conversion.t = {
   Conversion.ty = Conversion.TyName "term";
   pp = Print.term;
   pp_doc = (fun fmt () -> Format.fprintf fmt {|
-kind term type.
+data term.
 builtin symb typ :  term = "0".
 builtin symb kin :  term = "0".
 builtin symb sym :  symbol -> term = "0".

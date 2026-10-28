@@ -3,56 +3,56 @@
 % ---- Lambdapi datatypes ----
 
 % A symbol
-kind symbol type.
+data symbol.
 
 
 
-kind term type.
-external symbol typ : term = "0".
-external symbol kin : term = "0".
-external symbol symb:  symbol -> term = "0".
-external symbol appl:  term -> term -> term = "0".
-external symbol abst:  term -> (term -> term) -> term = "0".
-external symbol prod:  term -> (term -> term) -> term = "0".
+data term.
+builtin symb typ :  term = "0".
+builtin symb kin :  term = "0".
+builtin symb sym :  symbol -> term = "0".
+builtin symb appl:  term -> term -> term = "0".
+builtin symb abst:  term -> (term -> term) -> term = "0".
+builtin symb prod:  term -> (term -> term) -> term = "0".
   
 
-kind sealed-goal type.
-external symbol nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
-external symbol seal : goal -> sealed-goal = "0".
+data sealed-goal.
+builtin symb nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
+builtin symb seal  : goal -> sealed-goal = "0".
 
-kind goal type.
-external symbol goal : term -> term -> goal = "0".
+data goal.
+builtin symb goal  : term -> term -> goal = "0".
 
-external pred msolve i:list sealed-goal o:list (option term).
-  
+builtin pred msolve i:list sealed-goal.
+
 
 
 % ---- Builtin predicates ----
 
 % [lp.sig S T] Gives the type of a symbol
-external func lp.sig symbol -> term.
+builtin func lp.sig symbol -> term.
 
 % [lp.wrn ...] Prints a generic warning message
-external type lp.wrn variadic any (func).
+builtin func lp.wrn any.. .
 
 % [lp.error ...] Prints and *aborts* the program. It is a fatal error for
 % Elpi and Lambdapi
-external type lp.error variadic any (func).
+builtin func lp.error any.. .
 
 % [lp.tc? S] Tells if S is a type class
-external func lp.tc? symbol.
+builtin func lp.tc? symbol.
 
 % [lp.snf X SX] SX is the snf of X
-external func lp.snf term -> term.
+builtin func lp.snf term -> term.
 
 % [lp.eq_modulo X Y] X = Y upto rewrite
-external func lp.eq_modulo term, term.
+builtin func lp.eq_modulo term, term.
 
 % [lp.unif X Y] unify X with Y
-external func lp.unif term, term.
+builtin func lp.unif term, term.
 
 % [lp.term->string T S] Pretty prints a term T to the string S
-external func lp.term->string term -> string.
+builtin func lp.term->string term -> string.
 
 % ---- Elpi predicates ----
 
@@ -73,54 +73,54 @@ func false.
 
 % [X = T] unifies X with Y, possibly assigning unification
 % variables in X and Y.
-external func (=) -> A, A.
+builtin func (=) -> A, A.
 
 % [pattern_matching T P] matches T against pattern P, only
 % variables in P are assigned.
-external func pattern_match A -> A.
+builtin func pattern_match A -> A.
 
-external func (pi) (func A).
+builtin func (pi) (func A).
 
-external func (sigma) (func A).
+builtin func (sigma) (func A).
 
-kind int type.
-
-
-kind string type.
+data int.
 
 
-kind float type.
+data string.
 
 
-external symbol (;) (pred) -> (pred) -> (pred).
+data float.
+
+
+builtin pred (;) (pred), (pred).
 
 (A ; _) :- A.
 
 (_ ; B) :- B.
 
-external symbol (:-)  : (func) -> (func) -> (func) = "core".
+builtin symb (:-)  : (func) -> (func) -> (func) = "core".
 
-external symbol (:-)  : (func) -> list (pred) -> (func) = "core".
+builtin symb (:-)  : (func) -> list (pred) -> (func) = "core".
 
-external symbol (,)   : variadic (func) (func).
+builtin symb (,)   : (func (func) ..) .
 
-external symbol uvar  : A = "core".
+builtin symb uvar  : A = "core".
 
-external symbol (as)  : A -> A -> A = "core".
+builtin symb (as)  : A -> A -> A = "core".
 
-external symbol (=>)  : (pred) -> (func) -> (func) = "core".
+builtin symb (=>)  : (pred) -> (func) -> (func) = "core".
 
-external symbol (=>)  : list (pred) -> (func) -> (func) = "core".
+builtin symb (=>)  : list (pred) -> (func) -> (func) = "core".
 
-external symbol (==>) : (pred) -> (func) -> (func).
+builtin symb (==>) : (pred) -> (func) -> (func).
 
-external symbol (==>) : list (pred) -> (func) -> (func).
+builtin symb (==>) : list (pred) -> (func) -> (func).
 
 %  -- Control --
 
-external func !. % The cut operator
+builtin func !. % The cut operator
 
-func not prop.
+func not (pred).
 
 not X :- X, !, fail.
 
@@ -128,13 +128,13 @@ not _.
 
 % [declare_constraint C Key1 Key2...] declares C blocked
 % on Key1 Key2 ... (variables, or lists thereof).
-external func declare_constraint (func) -> any .. .
+builtin func declare_constraint (func) -> any .. .
 
 % [print_constraints] prints all constraints
-external func print_constraints.
+builtin func print_constraints.
 
 % [halt ...] halts the program and print the terms
-external type halt variadic any (func).
+builtin func halt any.. .
 
 func stop.
 
@@ -148,105 +148,119 @@ X is Y :- calc Y X.
 
 % [calc Expr Out] unifies Out with the value of Expr. It can be used in
 % tandem with spilling, eg [f {calc (N + 1)}]
-external func calc A -> A.
+builtin func calc A -> A.
 
 %  --- Operators ---
 
-external symbol (-) : A -> A -> A = "1". 
+builtin symb (-) : A -> A -> A = "1". 
 
-external symbol (i-) : int -> int -> int = "1". 
+builtin symb (i-) : int -> int -> int = "1". 
 
-external symbol (r-) : float -> float -> float = "1". 
+builtin symb (r-) : float -> float -> float = "1". 
 
-external symbol (+) : float -> float -> float = "2". 
+builtin symb (+) : float -> float -> float = "2". 
 
-external symbol (+) : int -> int -> int = "1". 
+builtin symb (+) : int -> int -> int = "1". 
 
-external symbol (i+) : int -> int -> int = "1". 
+builtin symb (i+) : int -> int -> int = "1". 
 
-external symbol (r+) : float -> float -> float = "1". 
+builtin symb (r+) : float -> float -> float = "1". 
 
-external symbol (*) : float -> float -> float = "2". 
+builtin symb (*) : float -> float -> float = "2". 
 
-external symbol (*) : int -> int -> int = "1". 
+builtin symb (*) : int -> int -> int = "1". 
 
-external symbol (/) : float -> float -> float = "1". 
+builtin symb (/) : float -> float -> float = "1". 
 
-external symbol (mod) : int -> int -> int = "1". 
+builtin symb (mod) : int -> int -> int = "1". 
 
-external symbol (div) : int -> int -> int = "1". 
+builtin symb (div) : int -> int -> int = "1". 
 
-external symbol (^) : string -> string -> string = "1". 
+builtin symb (^) : string -> string -> string = "1". 
 
-external symbol (~) : float -> float = "2". 
+builtin symb (~) : float -> float = "2". 
 
-external symbol (~) : int -> int = "1". 
+builtin symb (~) : int -> int = "1". 
 
-external symbol (i~) : int -> int = "1". 
+builtin symb (i~) : int -> int = "1". 
 
-external symbol (r~) : float -> float = "1". 
+builtin symb (r~) : float -> float = "1". 
 
-external symbol abs : float -> float = "2".
+builtin symb abs : float -> float = "2".
 
-external symbol abs : int -> int = "1".
+builtin symb abs : int -> int = "1".
 
-external symbol iabs : int -> int = "1".
+builtin symb iabs : int -> int = "1".
 
-external symbol rabs : float -> float = "1".
+builtin symb rabs : float -> float = "1".
 
-external symbol max : float -> float -> float = "2".
+builtin symb max : float -> float -> float = "2".
 
-external symbol max : int -> int -> int = "1".
+builtin symb max : int -> int -> int = "1".
 
-external symbol min : float -> float -> float = "2".
+builtin symb min : float -> float -> float = "2".
 
-external symbol min : int -> int -> int = "1".
+builtin symb min : int -> int -> int = "1".
 
-external symbol sqrt : float -> float = "1".
+builtin symb sqrt : float -> float = "1".
 
-external symbol sin : float -> float = "1".
+builtin symb sin : float -> float = "1".
 
-external symbol cos : float -> float = "1".
+builtin symb cos : float -> float = "1".
 
-external symbol arctan : float -> float = "1".
+builtin symb arctan : float -> float = "1".
 
-external symbol ln : float -> float = "1".
+builtin symb ln : float -> float = "1".
 
-external symbol int_to_real : int -> float = "1".
+builtin symb exp : float -> float = "1".
 
-external symbol floor : float -> int = "1".
+builtin symb tan : float -> float = "1".
 
-external symbol ceil : float -> int = "1".
+builtin symb arcsin : float -> float = "1".
 
-external symbol truncate : float -> int = "1".
+builtin symb arccos : float -> float = "1".
 
-external symbol size : string -> int = "1".
+builtin symb arctan2 : float -> float -> float = "1".
 
-external symbol chr : int -> string = "1".
+builtin symb pow : float -> float -> float = "1".
 
-external symbol rhc : string -> int = "1".
+builtin symb int_to_real : int -> float = "1".
 
-external symbol string_to_int : string -> int = "1".
+builtin symb floor : float -> int = "1".
 
-external symbol int_to_string : int -> string = "1".
+builtin symb ceil : float -> int = "1".
 
-external symbol substring : string -> int -> int -> string = "1".
+builtin symb truncate : float -> int = "1".
 
-external symbol real_to_string : float -> string = "1".
+builtin symb size : string -> int = "1".
+
+builtin symb chr : int -> string = "1".
+
+builtin symb rhc : string -> int = "1".
+
+builtin symb string_to_int : string -> int = "1".
+
+builtin symb int_to_string : int -> string = "1".
+
+builtin symb substring : string -> int -> int -> string = "1".
+
+builtin symb real_to_string : float -> string = "1".
+
+builtin symb string_to_real : string -> float = "1".
 
 %  -- Arithmetic tests --
 
 % [lt_ X Y] checks if X < Y. Works for string, int and float
-external func lt_ A, A.
+builtin func lt_ A, A.
 
 % [gt_ X Y] checks if X > Y. Works for string, int and float
-external func gt_ A, A.
+builtin func gt_ A, A.
 
 % [le_ X Y] checks if X =< Y. Works for string, int and float
-external func le_ A, A.
+builtin func le_ A, A.
 
 % [ge_ X Y] checks if X >= Y. Works for string, int and float
-external func ge_ A, A.
+builtin func ge_ A, A.
 
 func (>) A, A.
 X > Y :- gt_ X Y.
@@ -298,20 +312,20 @@ X s>= Y :- ge_ X Y.
 
 %  -- Standard data types (supported in the FFI) --
 
-kind list type -> type.
+data list A.
 
-external symbol (::) : X -> list X -> list X = "core".
+builtin symb (::) : X -> list X -> list X = "core".
 
-external symbol ([]) : list X = "core".
+builtin symb ([]) : list X = "core".
 
 % Boolean values: tt and ff since true and false are predicates
-kind bool type.
-external symbol tt : bool = "1". 
-external symbol ff : bool = "1". 
+builtin data bool.
+builtin symb tt : bool = "1". 
+builtin symb ff : bool = "1". 
 
 % Pair: the constructor is pr, since ',' is for conjunction
-kind pair type -> type -> type.
-external symbol pr : A -> B -> pair A B = "1". 
+builtin data pair A B.
+builtin symb pr : A -> B -> pair A B = "1". 
 
 func fst  pair A B -> A.
 
@@ -321,9 +335,10 @@ func snd  pair A B -> B.
 
 snd (pr _ B) B.
 
+% Triple: the constructor is triple, since ',' is for conjunction
+builtin data triple A B C.
+builtin symb triple : A -> B -> C -> triple A B C = "1". 
 
-kind triple type -> type -> type -> type.
-type triple A -> B -> C -> triple A B C.
 
 func triple_1 triple A B C -> A.
 triple_1 (triple A _ _) A.
@@ -333,85 +348,197 @@ triple_2 (triple _ B _) B.
 
 func triple_3 triple A B C -> C.
 triple_3 (triple _ _ C) C.
- 
+
+
+
+% Quadruple: the constructor is quadruple, since ',' is for conjunction
+builtin data quadruple A B C D.
+builtin symb quadruple : A -> B -> C -> D -> quadruple A B C D = "1". 
+
+
+func quadruple_1 quadruple A B C D -> A.
+quadruple_1 (quadruple A _ _ _) A.
+
+func quadruple_2 quadruple A B C D -> B.
+quadruple_2 (quadruple _ B _ _) B.
+
+func quadruple_3 quadruple A B C D -> C.
+quadruple_3 (quadruple _ _ C _) C.
+
+func quadruple_4 quadruple A B C D -> D.
+quadruple_4 (quadruple _ _ _ D) D.
+
 
 
 % The option type (aka Maybe)
-kind option type -> type.
-external symbol none : option A = "1". 
-external symbol some : A -> option A = "1". 
+builtin data option A.
+builtin symb none : option A = "1". 
+builtin symb some : A -> option A = "1". 
+
+
+func int.copy int -> int.
+int.copy X X.
+
+func float.copy float -> float.
+float.copy X X.
+
+func string.copy string -> string.
+string.copy X X.
+
+func loc.copy loc -> loc.
+loc.copy X X.
+
+func bool.copy bool -> bool.
+bool.copy X X.
+
+func cmp.copy cmp -> cmp.
+cmp.copy X X.
+
+func diagnostic.copy diagnostic -> diagnostic.
+diagnostic.copy ok ok.
+diagnostic.copy (error S) (error T) :- string.copy S T.
+
+func in_stream.copy in_stream -> in_stream.
+in_stream.copy X X.
+
+func out_stream.copy out_stream -> out_stream.
+out_stream.copy X X.
+
+func list.copy (func A -> B), list A -> list B.
+list.copy F L R :- std.map L F R.
+
+func option.copy (func A -> B), option A -> option B.
+option.copy _ none none.
+option.copy F (some X) (some Y) :- F X Y.
+
+func pair.copy (func A -> B), (func C -> D), pair A C -> pair B D.
+pair.copy F G (pr X Y) (pr X1 Y1) :- F X X1, G Y Y1.
+
+func triple.copy (func A -> B), (func C -> D), (func E -> F), triple A C E -> triple B D F.
+triple.copy F G H (triple X Y Z) (triple X1 Y1 Z1) :- F X X1, G Y Y1, H Z Z1.
+
+func quadruple.copy (func A -> B), (func C -> D), (func E -> F), (func G -> H), quadruple A C E G -> quadruple B D F H.
+quadruple.copy F G H I (quadruple X Y Z W) (quadruple X1 Y1 Z1 W1) :- F X X1, G Y Y1, H Z Z1, I W W1.
+
+
 
 % Result of a comparison
-kind cmp type.
-external symbol eq : cmp = "1". 
-external symbol lt : cmp = "1". 
-external symbol gt : cmp = "1". 
+builtin data cmp.
+builtin symb eq : cmp = "1". 
+builtin symb lt : cmp = "1". 
+builtin symb gt : cmp = "1". 
 
 % Used in builtin variants that return Coq's error rather than failing
-kind diagnostic type.
-external symbol ok : diagnostic = "1".  % Success
-external symbol error : string -> diagnostic = "1".  % Failure
+builtin data diagnostic.
+builtin symb ok    : diagnostic = "1".  % Success
+builtin symb error : string -> diagnostic = "1".  % Failure
 
 %  == I/O builtins =====================================
 
 %  -- I/O --
 
-kind in_stream type.
+data in_stream.
 
-external symbol std_in : in_stream = "1".
+builtin symb std_in : in_stream = "1".
 
-kind out_stream type.
+data out_stream.
 
-external symbol std_err : out_stream = "1".
-external symbol std_out : out_stream = "1".
+builtin symb std_err : out_stream = "1".
+builtin symb std_out : out_stream = "1".
 
 % [open_in FileName InStream] opens FileName for input
-external func open_in string -> in_stream.
+builtin func open_in string -> in_stream.
 
 % [open_out FileName OutStream] opens FileName for output
-external func open_out string -> out_stream.
+builtin func open_out string -> out_stream.
 
 % [open_append FileName OutStream] opens FileName for output in append mode
-external func open_append string -> out_stream.
+builtin func open_append string -> out_stream.
 
 % [close_in InStream] closes input stream InStream
-external func close_in in_stream.
+builtin func close_in in_stream.
 
 % [close_out OutStream] closes output stream OutStream
-external func close_out out_stream.
+builtin func close_out out_stream.
 
 % [output OutStream Data] writes Data to OutStream
-external func output out_stream, string.
+builtin func output out_stream, string.
 
 % [flush OutStream] flush all output not yet finalized to OutStream
-external func flush out_stream.
+builtin func flush out_stream.
 
 % [input InStream Bytes Data] reads Bytes from InStream
-external func input in_stream, int -> string.
+builtin func input in_stream, int -> string.
 
 % [input_line InStream Line] reads a full line from InStream
-external func input_line in_stream -> string.
+builtin func input_line in_stream -> string.
 
 % [eof InStream] checks if no more data can be read from InStream
-external func eof in_stream.
+builtin func eof in_stream.
 
 %  -- System --
 
 % [gettimeofday T] sets T to the number of seconds elapsed since 1/1/1970
-external func gettimeofday -> float.
+builtin func gettimeofday -> float.
 
-% [getenv VarName Value] Like Sys.getenv
-external func getenv string -> option string.
+% [sys.file_exists Path] is like [Sys.file_exists]. It succeeds if the file
+% at [Path] exists
+builtin func sys.file_exists string.
+
+% [sys.is_directory Path Diagnostic] is like [Sys.is_directory]. It succeeds
+% if [Diagnostic = ok] and [Path] is a directory or [Diagnostic = error Msg]
+% and [Msg] describes an encountered system error.
+builtin func sys.is_directory string -> diagnostic.
+
+% [sys.remove Path Diagnostic] is like [Sys.remove]. It succeeds if
+% [Diagnostic = ok] and the file at [Path] is removed or [Diagnostic = error
+% Msg] and [Msg] describes an encountered system error.
+builtin func sys.remove string -> diagnostic.
+
+% [sys.rename OldPath NewPath Diagnostic] is like [Sys.rename]. It succeeds
+% if [Diagnostic = ok] and the file at [OldPath] is renamed to [NewPath] or
+% [Diagnostic = error Msg] and [Msg] describes an encountered system error.
+builtin func sys.rename string, string -> diagnostic.
+
+% [getenv VarName Value] Like Sys.getenv_opt
+builtin func getenv string -> option string.
 
 % [system Command RetVal] executes Command and sets RetVal to the exit code
-external func system string -> int.
+builtin func system string -> int.
+
+% [sys.chdir DirPath Diagnostic] is like [Sys.chdir]. It succeeds if
+% [Diagnostic = ok] and the current working directory is updated to
+% [DirPath] or [Diagnostic = error Msg] and [Msg] describes an encountered
+% system error.
+builtin func sys.chdir string -> diagnostic.
+
+% [sys.mkdir DirPath Permissions Diagnostic] is like [Sys.mkdir]. It
+% succeeds if [Diagnostic = ok] and the directory [DirPath] is created or
+% [Diagnostic = error Msg] and [Msg] describes an encountered system error.
+builtin func sys.mkdir string, int -> diagnostic.
+
+% [sys.rmdir DirPath Diagnostic] is like [Sys.rmdir]. It succeeds if
+% [Diagnostic = ok] and the directory [DirPath] is removed or [Diagnostic =
+% error Msg] and [Msg] describes an encountered system error.
+builtin func sys.rmdir string -> diagnostic.
+
+% [sys.getcwd DirPath Diagnostic] is like [Sys.getcwd]. It succeeds if
+% [Diagnostic = ok] and [DirPath] is the current working directory or
+% [Diagnostic = error Msg] and [Msg] describes an encountered system error.
+builtin func sys.getcwd -> string, diagnostic.
+
+% [sys.readdir DirPath Contents Diagnostic] is like [Sys.readdir]. It
+% succeeds if [Diagnostic = ok] and [Contents] is the list of files in
+% [DirPath] or [Diagnostic = error Msg] and [Msg] describes an encountered
+% system error.
+builtin func sys.readdir string -> list string, diagnostic.
 
 %  -- Unix --
 
 % gathers the standard file descriptors or a process
-kind unix.process type.
-external symbol unix.process : out_stream -> in_stream -> in_stream ->
-                               unix.process = "1". 
+builtin data unix.process.
+builtin symb unix.process : out_stream -> in_stream -> in_stream ->
+                            unix.process = "1". 
 
 % [unix.process.open Executable Arguments Environment P Diagnostic] OCaml's
 % Unix.open_process_args_full.
@@ -421,26 +548,26 @@ external symbol unix.process : out_stream -> in_stream -> in_stream ->
 % Environment can be left unspecified, defaults to the current process
 % environment.
 % This API only works reliably since OCaml 4.12.
-external func unix.process.open string, list string, 
-                               list string -> unix.process, diagnostic.
+builtin func unix.process.open string, list string, 
+                              list string -> unix.process, diagnostic.
 
 % [unix.process.close P Diagnostic] OCaml's Unix.close_process_full
-external func unix.process.close unix.process -> diagnostic.
+builtin func unix.process.close unix.process -> diagnostic.
 
 %  -- Debugging --
 
 % [term_to_string T S] prints T to S
-external func term_to_string -> any, string.
+builtin func term_to_string -> any, string.
 
 % == Lambda Prolog builtins =====================================
 
 %  -- Extra I/O --
 
 % [open_string DataIn InStream] opens DataIn as an input stream
-external func open_string string -> in_stream.
+builtin func open_string string -> in_stream.
 
 % [lookahead InStream NextChar] peeks one byte from InStream
-external func lookahead in_stream -> string.
+builtin func lookahead in_stream -> string.
 
 pred printterm out_stream, A.
 
@@ -449,36 +576,36 @@ printterm S T :- term_to_string T T1, output S T1.
 % == Elpi builtins =====================================
 
 % [dprint ...] prints raw terms (debugging)
-external type dprint variadic any (func).
+builtin func dprint any.. .
 
 % [print ...] prints terms
-external type print variadic any (func).
+builtin func print any.. .
 
 % Deprecated, use trace.counter
 func counter string -> int.
 counter C N :- trace.counter C N.
 
-kind loc type.
+data loc.
 
 
 % [loc.fields Loc File StartChar StopChar Line LineStartsAtChar] Decomposes
 % a loc into its fields
-external func loc.fields loc -> string, int, int, int, int.
+builtin func loc.fields loc -> string, int, int, int, int.
 
 % == Regular Expressions =====================================
 
 % [rex.match Rex Subject] checks if Subject matches Rex. Matching is based
 % on OCaml's Str library
-external func rex.match string, string.
+builtin func rex.match string, string.
 
 % [rex.replace Rex Replacement Subject Out] Out is obtained by replacing all
 % occurrences of Rex with Replacement in Subject. See also OCaml's
 % Str.global_replace
-external func rex.replace string, string, string -> string.
+builtin func rex.replace string, string, string -> string.
 
 % [rex.split Rex Subject Out] Out is obtained by splitting Subject at all
 % occurrences of Rex. See also OCaml's Str.split
-external func rex.split string, string -> list string.
+builtin func rex.split string, string -> list string.
 
 % Deprecated, use rex.match
 func rex_match string, string.
@@ -496,27 +623,27 @@ rex_split Rx S L :- rex.split Rx S L.
 
 % [var V ...] checks if the term V is a variable. When used with tree
 % arguments it relates an applied variable with its head and argument list.
-external func var -> any, any.. .
+builtin func var -> any, any.. .
 
 
 % [prune V L] V is pruned to L (V is unified with a variable that only sees
 % the list of names L)
-:functional :external pred prune o:any, i:list any.
+:functional :builtin pred prune o:any, i:list any.
 
 % [distinct_names L] checks if L is a list of distinct names. If L is the
 % scope of a unification variable (its arguments, as per var predicate) then
 % distinct_names L checks that such variable is in the Miller pattern
 % fragment (L_\lambda)
-external func distinct_names list any.
+builtin func distinct_names list any.
 
 % [same_var V1 V2] checks if the two terms V1 and V2 are the same variable,
 % ignoring the arguments of the variables
-external func same_var A, A.
+builtin func same_var A, A.
 
 % [same_term T1 T2] checks if the two terms T1 and T2 are syntactically
 % equal (no unification). It behaves differently than same_var since it
 % recursively compares the arguments of the variables
-external func same_term A, A.
+builtin func same_term A, A.
 
 
 % Infix notation for same_term
@@ -530,60 +657,63 @@ unsound_unif X X.
 
 
 % [cmp_term A B Cmp] Compares A and B. Only works if A and B are ground.
-external func cmp_term any, any -> cmp.
+builtin func cmp_term any, any -> cmp.
 
 % [name T ...] checks if T is a eigenvariable. When used with tree arguments
 % it relates an applied name with its head and argument list.
-external func name -> any, any.. .
+builtin func name -> any, any.. .
 
 % [constant T ...] checks if T is a (global) constant.  When used with tree
 % arguments it relates an applied constant with its head and argument list.
-external func constant -> any, any.. .
+builtin func constant -> any, any.. .
 
-external func names % generates the list of eigenvariable
+builtin func names % generates the list of eigenvariable
   -> list any. % list of eigenvariables in order of age (young first)
   
-external func occurs % checks if the atom occurs in the term
+builtin func occurs % checks if the atom occurs in the term
   any,  % an atom, that is a global constant or a bound name (aka eigenvariable)
   any.  % a term
   
 % [closed_term T] unify T with a variable that has no eigenvariables in
 % scope
-external func closed_term -> any.
+builtin func closed_term -> any.
 
 % [ground_term T] Checks if T contains unification variables
-external func ground_term any.
+builtin func ground_term any.
 
 % [is_cdata T Ctype] checks if T is primitive of type Ctype, eg "int"
-external func is_cdata any -> string.
+builtin func is_cdata any -> string.
 
 func primitive? any, string.
 
 primitive? X S :- is_cdata X S.
 
 % [new_int N] unifies N with a different int every time it is called. Values
-% of N are guaranteed to be incresing.
-external func new_int -> int.
+% of N are guaranteed to be incresing (unless reset_new_int is called).
+builtin func new_int -> int.
+
+% [reset_new_int N] Resets the counter to N.
+builtin func reset_new_int int.
 
 % [findall_solution P L] finds all the solved instances of P and puts them
 % in L in the order in which they are found. Instances can contain
 % eigenvariables and unification variables. P may or may not be
 % instantiated. Instances should be found in L.
 
-external func findall_solutions prop -> list prop.
+builtin func findall_solutions (pred) -> list (pred).
 
 % Holds data across bracktracking; can only contain closed terms
-kind safe type.
+data safe.
 
 
 % [new_safe Safe] creates a safe: a store that persists across backtracking
-external func new_safe -> safe.
+builtin func new_safe -> safe.
 
 % [stash_in_safe Safe Data] stores Data in the Safe
-external func stash_in_safe safe, A.
+builtin func stash_in_safe safe, A.
 
 % [open_safe Safe Data] retrieves the Data stored in Safe
-external func open_safe safe -> list A.
+builtin func open_safe safe -> list A.
 
 
 % [if C T E] picks the first success of C then runs T (never E).
@@ -599,14 +729,14 @@ if2 _  _  G2 P2 _ :- G2, !, P2.
 if2 _  _  _  _  E :- !, E. 
 
 % [random.init Seed] Initialize OCaml's PRNG with the given Seed
-external func random.init int.
+builtin func random.init int.
 
 % [random.self_init] Initialize OCaml's PRNG with some seed
-external func random.self_init.
+builtin func random.self_init.
 
 % [random.int Bound N] unifies N with a random int between 0 and Bound
 % (excluded)
-external func random.int int -> int.
+builtin func random.int int -> int.
 
 #line 1 "builtin_stdlib.elpi"
 % == stdlib =======================================================
@@ -638,20 +768,20 @@ debug-print Msg Data :- print Msg Data.
 
 %  -- Errors, Debugging, Hacks --
 
-func ignore-failure! prop ->.
+func ignore-failure! (pred) ->.
 ignore-failure! P :- P, !.
 ignore-failure! _.
 
-func once prop ->.
+func once (pred) ->.
 once P :- P, !.
 
 % [assert! C M] takes the first success of C or fails with message M 
-func assert! prop, string.
+func assert! (pred), string.
 assert! Cond Msg :- (Cond ; fatal-error-w-data Msg Cond), !.
 
 % [assert-ok! C M] like assert! but the last argument of the predicate must
 % be a diagnostic that is printed after M in case it is not ok
-func assert-ok! (pred o:diagnostic), string.
+func assert-ok! (pred -> diagnostic), string.
 assert-ok! Cond Msg :- Cond Diagnostic, !, (Diagnostic = ok ; Diagnostic = error S, fatal-error-w-data Msg S), !.
 assert-ok! _ Msg :- fatal-error-w-data Msg "no diagnostic returned".
 
@@ -664,7 +794,7 @@ spy P :- trace.counter "run" NR, if (not(NR = 0)) (debug-print "run=" NR) true,
 spy P :- debug-print "---->>---- fail: " P, fail.
 
 % [spy! P] traces the first call to P without leaving a choice point
-func spy! prop.
+func spy! (pred).
 spy! P :- trace.counter "run" NR, if (not(NR = 0)) (debug-print "run=" NR) true,
          debug-print "----<<---- enter: " P,
          P,
@@ -682,11 +812,14 @@ length [_|L] N :- length L N1, N is N1 + 1.
 length []    0.
 
 func rev list A -> list A.
-rev L RL  :- rev.aux L []  RL.
+rev L RL  :- rev-append L []  RL.
+
+func rev-append list A, list A -> list A.
+rev-append [X|XS] ACC R :- rev-append XS [X|ACC] R.
+rev-append [] L L.
 
 func rev.aux list A, list A -> list A.
-rev.aux [X|XS] ACC R :- rev.aux XS [X|ACC] R.
-rev.aux [] L L.
+rev.aux L1 L2 L3 :- rev-append L1 L2 L3.
 
 func last list A -> A.
 last [] _ :- fatal-error "last on empty list".
@@ -897,7 +1030,7 @@ flip P X Y :- P Y X.
 func time (func) -> float.
 time P T :- gettimeofday Before, P, gettimeofday After, T is After - Before.
 
-func do! list prop.
+func do! list (pred).
 do! [].
 do! [P|PS] :- P, !, do! PS.
 
@@ -910,7 +1043,7 @@ do-ok! S [P|PS] :- P S0, !, if (S0 = ok) (do-ok! S PS) (S = S0).
 pred lift-ok (pred), string -> diagnostic.
 lift-ok P Msg R :- (P, R = ok; R = error Msg).
 
-func spy-do! list prop.
+func spy-do! list (pred).
 spy-do! L :- map L (x\y\y = spy x) L1, do! L1.
 
 func while-ok-do! diagnostic, list (pred -> diagnostic) -> diagnostic.
@@ -926,312 +1059,306 @@ max N M N :- N >= M, !.
 max _ M M.
 
 % [findall P L] L is the list [P1,P2,P3..] where each Pi is a solution to P.
-func findall prop -> list prop.
+func findall (pred) -> list (pred).
 findall P L :- findall_solutions P L.
 
 }
 
 % [std.string.concat Separator Items Result] concatenates Items
 % interspersing Separator
-external func std.string.concat string, list string -> string.
+builtin func std.string.concat string, list string -> string.
 
 % CAVEAT: the type parameter of std.string.map must be a closed term
 
-kind std.string.map type -> type.
+data std.string.map A.
 
 % [std.string.map.empty M] The empty map
-external func std.string.map.empty -> std.string.map A.
+builtin func std.string.map.empty -> std.string.map A.
 
 % [std.string.map.mem S M] Checks if S is bound in M
-external func std.string.map.mem string, std.string.map A.
+builtin func std.string.map.mem string, std.string.map A.
 
 % [std.string.map.add S V M M1] M1 is M where V is bound to S
-external func std.string.map.add string, A, 
-                                std.string.map A -> std.string.map A.
+builtin func std.string.map.add string, A, 
+                               std.string.map A -> std.string.map A.
 
 % [std.string.map.remove S M M1] M1 is M where S is unbound
-external func std.string.map.remove string, 
-                                   std.string.map A -> std.string.map A.
+builtin func std.string.map.remove string, 
+                                  std.string.map A -> std.string.map A.
 
 % [std.string.map.find S M V] V is the binding of S in M
-external func std.string.map.find string, std.string.map A -> A.
+builtin func std.string.map.find string, std.string.map A -> A.
 
 % [std.string.map.bindings M L] L is M transformed into an associative list
-external func std.string.map.bindings std.string.map A -> list (pair string A).
+builtin func std.string.map.bindings std.string.map A -> list (pair string A).
 
 % [std.string.map.filter M F M1] Filter M w.r.t. the predicate F
-external func std.string.map.filter std.string.map A, 
-                                   (string -> A -> prop) -> std.string.map A.
+builtin func std.string.map.filter std.string.map A, 
+                                  (func string, A) -> std.string.map A.
 
 % [std.string.map.map M F M1] Map M w.r.t. the predicate F
-external func std.string.map.map std.string.map A, 
-                                (string -> A -> B -> prop) -> std.string.map B.
+builtin func std.string.map.map std.string.map A, 
+                               (func string, A -> B) -> std.string.map B.
 
 % [std.string.map.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.string.map.fold std.string.map A, C, 
-                                 (string -> A -> C -> C -> prop) -> C.
+builtin func std.string.map.fold std.string.map A, C, 
+                                (func string, A, C -> C) -> C.
 
 % CAVEAT: the type parameter of std.int.map must be a closed term
 
-kind std.int.map type -> type.
+data std.int.map A.
 
 % [std.int.map.empty M] The empty map
-external func std.int.map.empty -> std.int.map A.
+builtin func std.int.map.empty -> std.int.map A.
 
 % [std.int.map.mem S M] Checks if S is bound in M
-external func std.int.map.mem int, std.int.map A.
+builtin func std.int.map.mem int, std.int.map A.
 
 % [std.int.map.add S V M M1] M1 is M where V is bound to S
-external func std.int.map.add int, A, std.int.map A -> std.int.map A.
+builtin func std.int.map.add int, A, std.int.map A -> std.int.map A.
 
 % [std.int.map.remove S M M1] M1 is M where S is unbound
-external func std.int.map.remove int, std.int.map A -> std.int.map A.
+builtin func std.int.map.remove int, std.int.map A -> std.int.map A.
 
 % [std.int.map.find S M V] V is the binding of S in M
-external func std.int.map.find int, std.int.map A -> A.
+builtin func std.int.map.find int, std.int.map A -> A.
 
 % [std.int.map.bindings M L] L is M transformed into an associative list
-external func std.int.map.bindings std.int.map A -> list (pair int A).
+builtin func std.int.map.bindings std.int.map A -> list (pair int A).
 
 % [std.int.map.filter M F M1] Filter M w.r.t. the predicate F
-external func std.int.map.filter std.int.map A, 
-                                (int -> A -> prop) -> std.int.map A.
+builtin func std.int.map.filter std.int.map A, 
+                               (func int, A) -> std.int.map A.
 
 % [std.int.map.map M F M1] Map M w.r.t. the predicate F
-external func std.int.map.map std.int.map A, 
-                             (int -> A -> B -> prop) -> std.int.map B.
+builtin func std.int.map.map std.int.map A, 
+                            (func int, A -> B) -> std.int.map B.
 
 % [std.int.map.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.int.map.fold std.int.map A, C, 
-                              (int -> A -> C -> C -> prop) -> C.
+builtin func std.int.map.fold std.int.map A, C, 
+                             (func int, A, C -> C) -> C.
 
 % CAVEAT: the type parameter of std.loc.map must be a closed term
 
-kind std.loc.map type -> type.
+data std.loc.map A.
 
 % [std.loc.map.empty M] The empty map
-external func std.loc.map.empty -> std.loc.map A.
+builtin func std.loc.map.empty -> std.loc.map A.
 
 % [std.loc.map.mem S M] Checks if S is bound in M
-external func std.loc.map.mem loc, std.loc.map A.
+builtin func std.loc.map.mem loc, std.loc.map A.
 
 % [std.loc.map.add S V M M1] M1 is M where V is bound to S
-external func std.loc.map.add loc, A, std.loc.map A -> std.loc.map A.
+builtin func std.loc.map.add loc, A, std.loc.map A -> std.loc.map A.
 
 % [std.loc.map.remove S M M1] M1 is M where S is unbound
-external func std.loc.map.remove loc, std.loc.map A -> std.loc.map A.
+builtin func std.loc.map.remove loc, std.loc.map A -> std.loc.map A.
 
 % [std.loc.map.find S M V] V is the binding of S in M
-external func std.loc.map.find loc, std.loc.map A -> A.
+builtin func std.loc.map.find loc, std.loc.map A -> A.
 
 % [std.loc.map.bindings M L] L is M transformed into an associative list
-external func std.loc.map.bindings std.loc.map A -> list (pair loc A).
+builtin func std.loc.map.bindings std.loc.map A -> list (pair loc A).
 
 % [std.loc.map.filter M F M1] Filter M w.r.t. the predicate F
-external func std.loc.map.filter std.loc.map A, 
-                                (loc -> A -> prop) -> std.loc.map A.
+builtin func std.loc.map.filter std.loc.map A, 
+                               (func loc, A) -> std.loc.map A.
 
 % [std.loc.map.map M F M1] Map M w.r.t. the predicate F
-external func std.loc.map.map std.loc.map A, 
-                             (loc -> A -> B -> prop) -> std.loc.map B.
+builtin func std.loc.map.map std.loc.map A, 
+                            (func loc, A -> B) -> std.loc.map B.
 
 % [std.loc.map.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.loc.map.fold std.loc.map A, C, 
-                              (loc -> A -> C -> C -> prop) -> C.
+builtin func std.loc.map.fold std.loc.map A, C, 
+                             (func loc, A, C -> C) -> C.
 
-kind std.string.set type.
+data std.string.set.
 
 % [std.string.set.empty A] The empty set
-external func std.string.set.empty -> std.string.set.
+builtin func std.string.set.empty -> std.string.set.
 
 % [std.string.set.mem Elem A] Checks if Elem is in a
-external func std.string.set.mem string, std.string.set.
+builtin func std.string.set.mem string, std.string.set.
 
 % [std.string.set.add Elem A B] B is A union {Elem}
-external func std.string.set.add string, std.string.set -> std.string.set.
+builtin func std.string.set.add string, std.string.set -> std.string.set.
 
 % [std.string.set.remove Elem A B] B is A \ {Elem}
-external func std.string.set.remove string, 
-                                   std.string.set -> std.string.set.
+builtin func std.string.set.remove string, 
+                                  std.string.set -> std.string.set.
 
 % [std.string.set.union A B X] X is A union B
-external func std.string.set.union std.string.set, 
-                                  std.string.set -> std.string.set.
-
-% [std.string.set.inter A B X] X is A intersection B
-external func std.string.set.inter std.string.set, 
-                                  std.string.set -> std.string.set.
-
-% [std.string.set.diff A B X] X is A \ B
-external func std.string.set.diff std.string.set, 
+builtin func std.string.set.union std.string.set, 
                                  std.string.set -> std.string.set.
 
+% [std.string.set.inter A B X] X is A intersection B
+builtin func std.string.set.inter std.string.set, 
+                                 std.string.set -> std.string.set.
+
+% [std.string.set.diff A B X] X is A \ B
+builtin func std.string.set.diff std.string.set, 
+                                std.string.set -> std.string.set.
+
 % [std.string.set.equal A B] tests A and B for equality
-external func std.string.set.equal std.string.set, std.string.set.
+builtin func std.string.set.equal std.string.set, std.string.set.
 
 % [std.string.set.subset A B] tests if A is a subset of B
-external func std.string.set.subset std.string.set, std.string.set.
+builtin func std.string.set.subset std.string.set, std.string.set.
 
 % [std.string.set.elements M L] L is M transformed into list
-external func std.string.set.elements std.string.set -> list string.
+builtin func std.string.set.elements std.string.set -> list string.
 
 % [std.string.set.choose M X] X is an element of M
-external func std.string.set.choose std.string.set -> string.
+builtin func std.string.set.choose std.string.set -> string.
 
 % [std.string.set.min M X] X is the smallest element of M
-external func std.string.set.min std.string.set -> string.
+builtin func std.string.set.min std.string.set -> string.
 
 % [std.string.set.max M X] X is the bigger of M
-external func std.string.set.max std.string.set -> string.
+builtin func std.string.set.max std.string.set -> string.
 
 % [std.string.set.cardinal M N] N is the number of elements of M
-external func std.string.set.cardinal std.string.set -> int.
+builtin func std.string.set.cardinal std.string.set -> int.
 
 % [std.string.set.filter M F M1] Filter M w.r.t. the predicate F
-external func std.string.set.filter std.string.set, 
-                                   (string -> (func)) -> std.string.set.
+builtin func std.string.set.filter std.string.set, 
+                                  (func string) -> std.string.set.
 
 % [std.string.set.map M F M1] Map M w.r.t. the predicate F
-external func std.string.set.map std.string.set, 
-                                (string -> string -> prop) -> std.string.set.
+builtin func std.string.set.map std.string.set, 
+                               (func string -> string) -> std.string.set.
 
 % [std.string.set.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.string.set.fold std.string.set, A, 
-                                 (string -> A -> A -> prop) -> A.
+builtin func std.string.set.fold std.string.set, A, 
+                                (func string, A -> A) -> A.
 
 % [std.string.set.partition M F M1 M2] Partitions M w.r.t. the predicate F,
 % M1 is where F holds
-external func std.string.set.partition std.string.set, 
-                                      (string -> (func)) -> std.string.set, 
-                                      std.string.set.
+builtin func std.string.set.partition std.string.set, 
+                                     (func string) -> std.string.set, 
+                                     std.string.set.
 
-kind std.int.set type.
+data std.int.set.
 
 % [std.int.set.empty A] The empty set
-external func std.int.set.empty -> std.int.set.
+builtin func std.int.set.empty -> std.int.set.
 
 % [std.int.set.mem Elem A] Checks if Elem is in a
-external func std.int.set.mem int, std.int.set.
+builtin func std.int.set.mem int, std.int.set.
 
 % [std.int.set.add Elem A B] B is A union {Elem}
-external func std.int.set.add int, std.int.set -> std.int.set.
+builtin func std.int.set.add int, std.int.set -> std.int.set.
 
 % [std.int.set.remove Elem A B] B is A \ {Elem}
-external func std.int.set.remove int, std.int.set -> std.int.set.
+builtin func std.int.set.remove int, std.int.set -> std.int.set.
 
 % [std.int.set.union A B X] X is A union B
-external func std.int.set.union std.int.set, std.int.set -> std.int.set.
+builtin func std.int.set.union std.int.set, std.int.set -> std.int.set.
 
 % [std.int.set.inter A B X] X is A intersection B
-external func std.int.set.inter std.int.set, std.int.set -> std.int.set.
+builtin func std.int.set.inter std.int.set, std.int.set -> std.int.set.
 
 % [std.int.set.diff A B X] X is A \ B
-external func std.int.set.diff std.int.set, std.int.set -> std.int.set.
+builtin func std.int.set.diff std.int.set, std.int.set -> std.int.set.
 
 % [std.int.set.equal A B] tests A and B for equality
-external func std.int.set.equal std.int.set, std.int.set.
+builtin func std.int.set.equal std.int.set, std.int.set.
 
 % [std.int.set.subset A B] tests if A is a subset of B
-external func std.int.set.subset std.int.set, std.int.set.
+builtin func std.int.set.subset std.int.set, std.int.set.
 
 % [std.int.set.elements M L] L is M transformed into list
-external func std.int.set.elements std.int.set -> list int.
+builtin func std.int.set.elements std.int.set -> list int.
 
 % [std.int.set.choose M X] X is an element of M
-external func std.int.set.choose std.int.set -> int.
+builtin func std.int.set.choose std.int.set -> int.
 
 % [std.int.set.min M X] X is the smallest element of M
-external func std.int.set.min std.int.set -> int.
+builtin func std.int.set.min std.int.set -> int.
 
 % [std.int.set.max M X] X is the bigger of M
-external func std.int.set.max std.int.set -> int.
+builtin func std.int.set.max std.int.set -> int.
 
 % [std.int.set.cardinal M N] N is the number of elements of M
-external func std.int.set.cardinal std.int.set -> int.
+builtin func std.int.set.cardinal std.int.set -> int.
 
 % [std.int.set.filter M F M1] Filter M w.r.t. the predicate F
-external func std.int.set.filter std.int.set, 
-                                (int -> (func)) -> std.int.set.
+builtin func std.int.set.filter std.int.set, (func int) -> std.int.set.
 
 % [std.int.set.map M F M1] Map M w.r.t. the predicate F
-external func std.int.set.map std.int.set, 
-                             (int -> int -> prop) -> std.int.set.
+builtin func std.int.set.map std.int.set, 
+                            (func int -> int) -> std.int.set.
 
 % [std.int.set.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.int.set.fold std.int.set, A, 
-                              (int -> A -> A -> prop) -> A.
+builtin func std.int.set.fold std.int.set, A, (func int, A -> A) -> A.
 
 % [std.int.set.partition M F M1 M2] Partitions M w.r.t. the predicate F, M1
 % is where F holds
-external func std.int.set.partition std.int.set, 
-                                   (int -> (func)) -> std.int.set, 
-                                   std.int.set.
+builtin func std.int.set.partition std.int.set, 
+                                  (func int) -> std.int.set, std.int.set.
 
-kind std.loc.set type.
+data std.loc.set.
 
 % [std.loc.set.empty A] The empty set
-external func std.loc.set.empty -> std.loc.set.
+builtin func std.loc.set.empty -> std.loc.set.
 
 % [std.loc.set.mem Elem A] Checks if Elem is in a
-external func std.loc.set.mem loc, std.loc.set.
+builtin func std.loc.set.mem loc, std.loc.set.
 
 % [std.loc.set.add Elem A B] B is A union {Elem}
-external func std.loc.set.add loc, std.loc.set -> std.loc.set.
+builtin func std.loc.set.add loc, std.loc.set -> std.loc.set.
 
 % [std.loc.set.remove Elem A B] B is A \ {Elem}
-external func std.loc.set.remove loc, std.loc.set -> std.loc.set.
+builtin func std.loc.set.remove loc, std.loc.set -> std.loc.set.
 
 % [std.loc.set.union A B X] X is A union B
-external func std.loc.set.union std.loc.set, std.loc.set -> std.loc.set.
+builtin func std.loc.set.union std.loc.set, std.loc.set -> std.loc.set.
 
 % [std.loc.set.inter A B X] X is A intersection B
-external func std.loc.set.inter std.loc.set, std.loc.set -> std.loc.set.
+builtin func std.loc.set.inter std.loc.set, std.loc.set -> std.loc.set.
 
 % [std.loc.set.diff A B X] X is A \ B
-external func std.loc.set.diff std.loc.set, std.loc.set -> std.loc.set.
+builtin func std.loc.set.diff std.loc.set, std.loc.set -> std.loc.set.
 
 % [std.loc.set.equal A B] tests A and B for equality
-external func std.loc.set.equal std.loc.set, std.loc.set.
+builtin func std.loc.set.equal std.loc.set, std.loc.set.
 
 % [std.loc.set.subset A B] tests if A is a subset of B
-external func std.loc.set.subset std.loc.set, std.loc.set.
+builtin func std.loc.set.subset std.loc.set, std.loc.set.
 
 % [std.loc.set.elements M L] L is M transformed into list
-external func std.loc.set.elements std.loc.set -> list loc.
+builtin func std.loc.set.elements std.loc.set -> list loc.
 
 % [std.loc.set.choose M X] X is an element of M
-external func std.loc.set.choose std.loc.set -> loc.
+builtin func std.loc.set.choose std.loc.set -> loc.
 
 % [std.loc.set.min M X] X is the smallest element of M
-external func std.loc.set.min std.loc.set -> loc.
+builtin func std.loc.set.min std.loc.set -> loc.
 
 % [std.loc.set.max M X] X is the bigger of M
-external func std.loc.set.max std.loc.set -> loc.
+builtin func std.loc.set.max std.loc.set -> loc.
 
 % [std.loc.set.cardinal M N] N is the number of elements of M
-external func std.loc.set.cardinal std.loc.set -> int.
+builtin func std.loc.set.cardinal std.loc.set -> int.
 
 % [std.loc.set.filter M F M1] Filter M w.r.t. the predicate F
-external func std.loc.set.filter std.loc.set, 
-                                (loc -> (func)) -> std.loc.set.
+builtin func std.loc.set.filter std.loc.set, (func loc) -> std.loc.set.
 
 % [std.loc.set.map M F M1] Map M w.r.t. the predicate F
-external func std.loc.set.map std.loc.set, 
-                             (loc -> loc -> prop) -> std.loc.set.
+builtin func std.loc.set.map std.loc.set, 
+                            (func loc -> loc) -> std.loc.set.
 
 % [std.loc.set.fold M Acc F Acc1] fold M w.r.t. the predicate F
-external func std.loc.set.fold std.loc.set, A, 
-                              (loc -> A -> A -> prop) -> A.
+builtin func std.loc.set.fold std.loc.set, A, (func loc, A -> A) -> A.
 
 % [std.loc.set.partition M F M1 M2] Partitions M w.r.t. the predicate F, M1
 % is where F holds
-external func std.loc.set.partition std.loc.set, 
-                                   (loc -> (func)) -> std.loc.set, 
-                                   std.loc.set.
+builtin func std.loc.set.partition std.loc.set, 
+                                  (func loc) -> std.loc.set, std.loc.set.
 
 #line 1 "builtin_map.elpi"
-kind std.map type -> type -> type.
-type std.map std.map.private.map K V -> (func K, K -> cmp) -> std.map K V.
+data std.map K V.
+symb std.map std.map.private.map K V -> (func K, K -> cmp) -> std.map K V.
 
 namespace std.map {
 
@@ -1258,9 +1385,9 @@ bindings (std.map M _) L :- private.bindings M [] L.
 namespace private {
 
 % Taken from OCaml's map.ml
-kind map type -> type -> type.
-type empty map K V.
-type node map K V -> K -> V -> map K V -> int -> map K V.
+data map K V.
+symb empty map K V.
+symb node map K V -> K -> V -> map K V -> int -> map K V.
 
 func height map K V -> int.
 height empty 0.
@@ -1346,8 +1473,8 @@ bindings (node L V D R _) X X1 :-
 
 % Fast maps only work ground terms but do not perform occur check
 
-kind std.fmap type -> type -> type.
-type std.fmap std.fmap.private.map K V -> (func K, K -> cmp) -> std.fmap K V.
+data std.fmap K V.
+symb std.fmap std.fmap.private.map K V -> (func K, K -> cmp) -> std.fmap K V.
 
 namespace std.fmap {
 
@@ -1386,9 +1513,9 @@ func assert-ground A.
 assert-ground A :- std.assert! (ground_term A) "std.fmap: not ground".
 
 % Taken from OCaml's map.ml
-kind map type -> type -> type.
-type empty map K V.
-type node map K V -> K -> V -> map K V -> int -> map K V.
+data map K V.
+symb empty map K V.
+symb node map K V -> K -> V -> map K V -> int -> map K V.
 
 func height map K V -> int.
 height empty 0.
@@ -1474,8 +1601,8 @@ bindings (node L V D R _) X X1 :-
 
 
 #line 1 "builtin_set.elpi"
-kind std.set type -> type.
-type std.set std.set.private.set E -> (func E, E -> cmp) -> std.set E.
+data std.set E.
+symb std.set std.set.private.set E -> (func E, E -> cmp) -> std.set E.
 
 namespace std.set {
 
@@ -1505,9 +1632,9 @@ elements (std.set M _) L :- private.elements M [] L.
 namespace private {
 
 % Taken from OCaml's set.ml
-kind set type -> type.
-type empty set E.
-type node set E -> E -> set E -> int -> set E.
+data set E.
+symb empty set E.
+symb node set E -> E -> set E -> int -> set E.
 
 func height set E -> int.
 height empty 0.
@@ -1596,8 +1723,8 @@ elements (node L E R _) Acc X :-
 
 % Fast sets only work ground terms but do not perform occur check
 
-kind std.fset type -> type.
-type std.fset std.fset.private.set E -> (func E, E -> cmp) -> std.fset E.
+data std.fset E.
+symb std.fset std.fset.private.set E -> (func E, E -> cmp) -> std.fset E.
 
 namespace std.fset {
 
@@ -1636,9 +1763,9 @@ func assert-ground A.
 assert-ground A :- std.assert! (ground_term A) "std.fset: not ground".
 
 % Taken from OCaml's set.ml
-kind set type -> type.
-type empty set E.
-type node set E -> E -> set E -> int -> set E.
+data set E.
+symb empty set E.
+symb node set E -> E -> set E -> int -> set E.
 
 func height set E -> int.
 height empty 0.
@@ -1729,9 +1856,9 @@ elements (node L E R _) Acc X :-
 % == Elpi runtime builtins =====================================
 
 % [trace.counter Name Value] reads the Value of a trace point Name
-external func trace.counter string -> int.
+builtin func trace.counter string -> int.
 
-external func gc.get % Reads the current settings of the garbage collector. See also OCaml's Gc.control type documentation.
+builtin func gc.get % Reads the current settings of the garbage collector. See also OCaml's Gc.control type documentation.
   -> int,  % MinorHeapSize
   int,     % MajorHeapIncrement
   int,     % SpaceOverhead
@@ -1745,32 +1872,32 @@ external func gc.get % Reads the current settings of the garbage collector. See 
 % StackLimit AllocationPolicy WindowSize] Writes the current settings of the
 % garbage collector. Any parameter left unspecificed (eg _) is not changed.
 % See also OCaml's Gc.control type documentation.
-external func gc.set int, int, int, int, int, int, int, int.
+builtin func gc.set int, int, int, int, int, int, int, int.
 
 % [gc.minor] See OCaml's Gc.minor documentation.
-external func gc.minor.
+builtin func gc.minor.
 
 % [gc.major] See OCaml's Gc.major documentation.
-external func gc.major.
+builtin func gc.major.
 
 % [gc.full] See OCaml's Gc.full_major documentation.
-external func gc.full.
+builtin func gc.full.
 
 % [gc.compact] See OCaml's Gc.compact documentation.
-external func gc.compact.
+builtin func gc.compact.
 
 % [gc.stat MinorWords PromotedWords MajorWords MinorCollections
 % MajorCollections HeapWords HeapChunks LiveWords LiveBlocks FreeWords
 % FreeBlocks LargestFree Fragments Compactions TopHeapWords StackSize] See
 % OCaml's Gc.stat documentation.
-external func gc.stat -> float, float, float, int, int, int, int, int, 
-                     int, int, int, int, int, int, int, int.
+builtin func gc.stat -> float, float, float, int, int, int, int, int, 
+                    int, int, int, int, int, int, int, int.
 
 % [gc.quick-stat MinorWords PromotedWords MajorWords MinorCollections
 % MajorCollections HeapWords HeapChunks Compactions TopHeapWords StackSize]
 % See OCaml's Gc.quick_stat documentation.
-external func gc.quick-stat -> float, float, float, int, int, int, int, 
-                           int, int, int.
+builtin func gc.quick-stat -> float, float, float, int, int, int, int, 
+                          int, int, int.
 
 
 
