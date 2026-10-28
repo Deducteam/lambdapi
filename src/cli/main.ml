@@ -450,17 +450,20 @@ let cmd_deindex =
 
 let cmd_depend =
   let summary =
-    "Generate on stdout the dependencies between FILES in Makefile format." in
+    "Generate on stdout in Makefile format the dependencies between the \
+     files given in argument or, if no argument is given, between all the \
+     lp and dk files that are in the current directory and in any sub-\
+     directory." in
   let c = add_command
             { name = "depend"
-            ; args = "[OPTION …] FILES"
+            ; args = "[OPTION …] [FILE …]"
             ; summary
             ; desc = summary
             ; options = general_options } in
   fun args ->
-    Parsing.Package.set_root_path (Sys.getcwd());
+    Parsing.Package.set_root_path ".";
     match parse_options c.options args with
-    | [] -> Array.iter Tool.Depend.print_deps (Sys.readdir ".")
+    | [] -> Lplib.Extra.iter_files Tool.Depend.print_deps "."
     | files -> List.iter Tool.Depend.print_deps files
 
 (*-------------------------------------------------------------------------*)
