@@ -761,7 +761,10 @@ let cmd_init =
 
 LPO_MK := lpo.mk
 
-LP := $(shell find . -name '*.lp')
+EXCLUDE := _opam
+EXCEPT := $(EXCLUDE:%=! -path './%/*')
+
+LP := $(shell find . -name '*.lp' $(EXCEPT) -print)
 
 .PHONY: default
 default: $(LP:%=%o)
@@ -778,7 +781,7 @@ $(LPO_MK): $(LP)
 
 .PHONY: clean
 clean:
-	-find . -name '*.lpo' -delete
+	-find . -name '*.lpo' $(EXCEPT) -delete
 	-rm $(LPO_MK)
 |} in
     write_file (Filename.concat pkg_dir "Makefile") makefile
