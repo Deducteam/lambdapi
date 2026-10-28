@@ -763,7 +763,7 @@ let cmd_init =
 
 LPO_MK := lpo.mk
 
-EXCLUDE := _opam
+EXCLUDE := _opam _build
 EXCEPT := $(EXCLUDE:%=! -path './%/*')
 
 LP := $(shell find . -name '*.lp' $(EXCEPT) -print)
@@ -779,7 +779,7 @@ include $(LPO_MK)
 
 $(LPO_MK): $(LP)
 	@echo create/update $@ ...
-	@lambdapi depend $(LP) > $@
+	@lambdapi depend > $@
 
 .PHONY: clean
 clean:
