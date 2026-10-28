@@ -95,10 +95,8 @@ let iter_files : (string -> unit) -> string -> unit =
   let rec handle_dir d = Array.iter (handle_file d) (Sys.readdir d)
   and handle_file d n =
     let fn = if d = "." then n else Filename.concat d n in
-    if Sys.is_regular_file fn then
-      (if String.ends_with ~suffix:".lp" fn
-       || String.ends_with ~suffix:".dk" fn
-       then f fn)
+    if String.ends_with ~suffix:".lp" fn || String.ends_with ~suffix:".dk" fn
+    then f fn
     else if Sys.is_directory fn
          && not (String.starts_with ~prefix:"." n
                  || List.mem n excluded_dirs)
