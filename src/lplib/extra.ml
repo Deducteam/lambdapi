@@ -86,4 +86,22 @@ let files : (string -> bool) -> string -> string list = fun chk ->
         files acc dirs
   in fun d -> files [] [d]
 
+(** [iter_files f d] calls [f] on every name relative to [d] of a regular file
+    ending by ".lp" or ".dk" in [d] or in one of its sub-directories
+    recursively, except hidden sub-directories and excluded directories (see
+    below). [d] must be a directory. *)
+let iter_files : (string -> unit) -> string -> unit =
+  let excluded_dirs = ["_build";"_opam"] in fun f ->
+  let rec handle_dir d = Array.iter (handle_file d) (Sys.readdir d)
+  and handle_file d n =
+    let fn = if d = "." then n else Filename.concat d n in
+    if String.ends_with ~suffix:".lp" fn || String.ends_with ~suffix:".dk" fn
+    then f fn
+    else if Sys.is_directory fn
+         && not (String.starts_with ~prefix:"." n
+                 || List.mem n excluded_dirs)
+    then handle_dir fn
+  in
+  fun d -> assert (Sys.is_directory d); handle_dir d
+
 let default (fmt:('a, 'b, 'c, 'd, 'e, 'f) format6) = fmt
