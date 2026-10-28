@@ -18,7 +18,7 @@ pred open i:(list (func prop)) i:(symbol -> term -> term -> prop), i:sealed-goal
 open Crules P (nabla Ty F) :- pi x\ open (comp ff Ty [] x :: Crules) P (F x).
 
 open Crules P (seal (goal Ty Wit)) :- 
-  safe-dest-app Ty (symb Class) [X],
+  safe-dest-app Ty (sym Class) [X],
   not (var Class),
   sigma Rules\ std.map-filter Crules getrule Rules,
   Rules ==> P Class X Wit.
@@ -42,13 +42,13 @@ safe-dest-app X X [].
 %tries to compile a symbol's type into a typeclass instance rule
 external pred compile i:symbol o:prop.
 
-compile S RES :- comp tt {lp.sig S} [] (symb S) RES.
+compile S RES :- comp tt {lp.sig S} [] (sym S) RES.
 
 %if first argument is true, errors are fatal.
 pred comp i:bool, i:term, i:list prop, i:term, o:prop.
 
 comp B (prod (appl T U) F) TODO H (pi x\ C x) :-
-  T = symb S, lp.tc? S,
+  T = sym S, lp.tc? S,
   !,
   pi x\
     comp B (F x) [tc S U x |TODO] (appl H x) (C x).
@@ -60,7 +60,7 @@ comp B (prod _ F) TODO H (pi x\ C x) :-
 
 comp B End TODO HD (tc S U HD :- TODO) :-
   safe-dest-app End Head Args,
-  (Head = symb S ; (B = tt, lp.error "Typeclass instance compilation error:"
+  (Head = sym S ; (B = tt, lp.error "Typeclass instance compilation error:"
     "The head of the conclusion is not a symbol:" Head)),
   (Args = [U] ; (B = tt, lp.error "Typeclass instance compilation error:"
     "The conclusion is not an application to exactly one argument.\nHead:"

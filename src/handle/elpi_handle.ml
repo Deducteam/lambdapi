@@ -35,7 +35,7 @@ let embed_qterm
     | Kind -> mkGlobal ~loc kindc
     | Symb s ->
         let s = csym.RawOpaqueData.cino s in
-        mkAppGlobal ~loc ~hdloc:loc symbc (mkOpaque ~loc s) []
+        mkAppGlobal ~loc ~hdloc:loc symc (mkOpaque ~loc s) []
     | Prod (src, tgt) ->
         let src = aux src in
         let v,tgt = unbind tgt in
@@ -279,10 +279,10 @@ let elpi = ref None
 
 (** Initialises Elpi *)
 let init () =
-  Setup.set_warn (fun ?loc ~id s ->
+  Elpi.Builtin.set_runtime_warn (fun ?loc ~id s ->
     let pos = Option.map Loc.to_pos loc in
     match id with
-    | Setup.UndeclaredGlobal -> Common.Error.fatal pos "%s" s
+    | Error.UndeclaredGlobal -> Common.Error.fatal pos "Elpi Error: %s" s
     | _ -> Common.Error.wrn pos "%s" s);
   let e = Setup.init
     ~builtins:[lambdapi_builtins]
@@ -300,19 +300,21 @@ let tc_solver_prog =
   try (
   let elpi = ensure_initialized() in
   let file = "tcsolver.elpi" in
-  let ast = Parse.program ~elpi ~file in
+  let ast = ElpiError.handle (Parse.program ~elpi file) in
   let flags = Elpi.API.Compile.default_flags in
-  match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
+  match ElpiError.handle (Elpi.API.Compile.scope_ast ~flags ~elpi ast) with
   | [ x ] ->
     let base = Elpi.API.Compile.(empty_base ~elpi) in
-    let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
-    Elpi.API.Compile.extend ~flags ~base unit
+    let unit =
+      ElpiError.handle (Elpi.API.Compile.unit ~flags ~elpi ~base x)
+    in ElpiError.handle (Elpi.API.Compile.extend ~flags ~base unit)
   | _ -> Common.Error.fatal_no_pos "elpi: accumulate not supported")
   with
   | Elpi.API.Parse.ParseError(loc,msg) ->
     Common.Error.fatal (Some (Loc.to_pos loc)) "%s" msg
-  | Elpi.API.Compile.CompileError(oloc,msg) ->
-    Common.Error.fatal (Option.map Loc.to_pos oloc) "%s" msg
+  | Elpi.API.Error.ElpiError{component; loc; message} ->
+    Common.Error.fatal (Option.map Loc.to_pos loc) "Elpi %s error: %s"
+      component message
 
 (** If the head symbol of the conclusion of the type of [sym] is a typeclass
     in [ss], [add_tc_instance ss pos sym prog] compiles and adds a rule to
@@ -329,7 +331,7 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym ->
     let v = mkUnifVar v ~args:[] st in
     let st, arg, gls = Elpi_lambdapi.sym.Conversion.embed ~depth:0 st sym in
     st, mkAppGlobal compilec arg [v] , gls in
-  let query = Elpi.API.RawQuery.compile_raw_term tc_solver_prog query in
+  let query = ElpiError.compile_raw_term tc_solver_prog query in
   match Execute.once (Elpi.API.Compile.optimize query) with
   | Execute.Success { pp_ctx; assignments; _} ->
       let arg1 = Elpi.API.Setup.StrMap.find "Result" assignments in
@@ -337,10 +339,12 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym ->
       let ast = Elpi.API.Utils.clause_of_term ~pp_ctx ~depth:0 loc arg1 in
       let flags = Elpi.API.Compile.default_flags in
       let elpi = ensure_initialized() in
-      begin match Elpi.API.Compile.scope_ast ~flags ~elpi ast with
+      begin match ElpiError.handle
+        (Elpi.API.Compile.scope_ast ~flags ~elpi ast) with
       | [ x ] ->
-        let unit = Elpi.API.Compile.unit ~flags ~elpi ~base x in
-        Elpi.API.Compile.extend ~flags ~base unit
+        let unit =
+          ElpiError.handle (Elpi.API.Compile.unit ~flags ~elpi ~base x)
+        in ElpiError.handle (Elpi.API.Compile.extend ~flags ~base unit)
       | _ -> Common.Error.fatal pos "elpi: accumulate not supported"
       end
   | Failure -> Common.Error.fatal pos "elpi: failure in add_instance"
@@ -383,9 +387,9 @@ let solve_with_tc : ?ctxtmap: Term.ctxt IntMap.t ->
         let st, arg, gls =
           Elpi.API.Utils.map_acc (embed_goal ~depth:0 pos) st tc in
         st, mkAppGlobalL msolvec [Elpi.API.Utils.list_to_lp_list arg], gls in
-      let query = Elpi.API.RawQuery.compile_raw_term
-        (Sig_state.get_solver ss) query in
-      set_elpi_trace();
+      let query =
+        ElpiError.compile_raw_term (Sig_state.get_solver ss) query
+      in set_elpi_trace();
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; pp_ctx; _} ->
           let _ = readback_assignments ~pp_ctx pos state in

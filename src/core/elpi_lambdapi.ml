@@ -61,6 +61,40 @@ module Loc = struct
   }
 end
 
+module ElpiError = struct
+  let raise {Error.component; loc; message} =
+    Common.Error.fatal (Option.map Loc.to_pos loc) "Elpi %s error: %s"
+      component message
+
+  let rec raise_all errors = match errors with
+  | [] -> ()
+  | [final_error] -> raise final_error
+  | {Error.component; message; _}::rest ->
+    Common.Error.fatal_msg "Elpi %s error: %s" component message;
+    raise_all rest
+
+  let raise_warning {Error.warning_id ; warning = {component; loc; message}} =
+    let warning_str = match warning_id with
+    | LinearVariable -> "Linear Variable"
+    | UndeclaredGlobal -> "Undeclared Global"
+    | FlexClause -> "Flex Clause"
+    | ImplicationPrecedence -> "Implication Precedence"
+    | NestedAccumulate -> "Nested Accumulate"
+    in Common.Error.wrn (Option.map Loc.to_pos loc) "Elpi %s warning (%s): %s"
+      component warning_str message
+
+  let handle (res, errors, warnings) =
+    List.iter raise_warning warnings;
+    raise_all errors;
+    res
+
+  let compile_raw_term prog raw_query =
+    let res,warnings =
+      Elpi.API.RawQuery.compile_raw_term prog raw_query
+    in List.iter raise_warning warnings;
+    match res with Ok query -> query | Error err -> raise err
+end
+
 (** Tools to store and read {!type:Term.sym}s in Elpi as an opaque data type
     (no syntax like int or string). APIs are provided to manipulate symbols,
     eg get their type *)
@@ -88,7 +122,7 @@ let typec = RawData.Constants.declare_global_symbol "typ"
 let kindc = RawData.Constants.declare_global_symbol "kin"
 
 (** Elpi constant for the constructor {!term:Term.Symb} *)
-let symbc = RawData.Constants.declare_global_symbol "symb"
+let symc = RawData.Constants.declare_global_symbol "sym"
 
 (** Elpi constant for the constructor {!term:Term.Prod} *)
 let prodc = RawData.Constants.declare_global_symbol "prod"
@@ -151,7 +185,7 @@ let embed_term : ?ctx:RawData.constant Term.actxt -> Common.Pos.popt ->
     | Kind -> st, mkGlobal kindc
     | Symb s ->
         let st, s = call sym.Conversion.embed ~depth st s in
-        st, mkApp symbc s []
+        st, mkApp symc s []
     | Prod (src, tgt) ->
         let st, src = aux ~depth ctx st src in
         let _,tgt,ctx = Ctxt.unbind ~keep:true ctx depth None tgt in
@@ -212,7 +246,7 @@ fun ?pp_ctx ?(ctx=IntMap.empty) pos ~depth st t ->
           Common.Error.wrn pos "readback_term: free_variable %i" c;
           let v = new_var elpivarname in
           st, mk_Vari v end
-    | App(c,s,[]) when c == symbc ->
+    | App(c,s,[]) when c == symc ->
         let st, s = call sym.Conversion.readback ~depth st s in
         st, mk_Symb s
     | App(c,ty,[bo]) when c == prodc ->
@@ -273,12 +307,12 @@ let term : Term.term Conversion.t = {
   pp = Print.term;
   pp_doc = (fun fmt () -> Format.fprintf fmt {|
 kind term type.
-external symbol typ : term = "0".
-external symbol kin : term = "0".
-external symbol symb:  symbol -> term = "0".
-external symbol appl:  term -> term -> term = "0".
-external symbol abst:  term -> (term -> term) -> term = "0".
-external symbol prod:  term -> (term -> term) -> term = "0".
+builtin symb typ :  term = "0".
+builtin symb kin :  term = "0".
+builtin symb sym :  symbol -> term = "0".
+builtin symb appl:  term -> term -> term = "0".
+builtin symb abst:  term -> (term -> term) -> term = "0".
+builtin symb prod:  term -> (term -> term) -> term = "0".
   |});
   readback = readback_term None;
   embed = embed_term ?ctx:None None;
