@@ -41,6 +41,12 @@ let parse_map_dir s =
    --lib-root because Common.Library.lib_root cannot be set directly. *)
 let lib_root = ref None
 
+(* Resources directory. *)
+let resources_dir =
+  match Resources.Mysites.Sites.server_resources with
+  | [] -> assert false
+  | x :: _ -> Filename.concat x "default"
+
 (*-------------------------------------------------------------------------*)
 (* Type of a command line option *)
 (*-------------------------------------------------------------------------*)
@@ -759,36 +765,8 @@ let cmd_init =
         pkg_dir Common.Path.pp root_path
     in
     write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-    (* Write the Makefile and example file. *)
-    let makefile ppf = Format.fprintf ppf "%s"
-{|MAKEFLAGS += -r -k -j$(shell nproc)
-
-LPO_MK := lpo.mk
-
-EXCLUDE := _opam _build
-EXCEPT := $(EXCLUDE:%=! -path './%/*')
-
-LP := $(shell find . -name '*.lp' $(EXCEPT) -print)
-
-.PHONY: default
-default: $(LP:%=%o)
-
-%.lpo: %.lp
-	@echo lambdapi check $< ...
-	@lambdapi check -c -v 0 $<
-
-include $(LPO_MK)
-
-$(LPO_MK): $(LP)
-	@echo create/update $@ ...
-	@lambdapi depend > $@
-
-.PHONY: clean
-clean:
-	-find . -name '*.lpo' $(EXCEPT) -delete
-	-rm $(LPO_MK)
-|} in
-    write_file (Filename.concat pkg_dir "Makefile") makefile
+    ignore (Sys.command
+              ("cp "^Filename.concat resources_dir "Makefile"^" "^pkg_dir))
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
@@ -1035,13 +1013,8 @@ let cmd_websearch =
     let ss = sig_state_of_require() in
     let header =
       match !header with
-      | None ->
-        let file =
-          match Resources.Mysites.Sites.server_resources with
-          | [] -> assert false
-          | x :: _ -> x
-        in
-        Lplib.String.string_of_file (file ^ "/default/description.html")
+      | None -> Lplib.String.string_of_file
+                  (Filename.concat resources_dir "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
