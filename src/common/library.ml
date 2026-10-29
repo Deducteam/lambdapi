@@ -141,12 +141,7 @@ let set_lib_root : string option -> unit = fun dir ->
       fatal_no_pos {|The file "%s" does not exist.|} p
   in
   Option.iter set_lr dir;
-  (* Verify that [dir] exists and is a directory *)
-  match !lib_root with
-  | None -> assert false (* pth is set above. *)
-  | Some(pth) ->
-    (* Register the library root as part of the module mapping. *)
-    Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
+  Timed.(lib_mappings := LibMap.set_root (get_lib_root()) !lib_mappings)
 
 (** [add_mapping (mn, fn)] adds a new mapping from the module name [mn] to
    the file name [fn] if [mn] is not already mapped and [fn] is a valid
@@ -242,14 +237,10 @@ let path_of_file : (string -> string) -> string -> Path.t =
   log "path_of_file @[<hv>\"%s\"@ = %a@]" fname Path.pp full_mp;
   full_mp
 
-(** [install_path fname] prefixes the filename [fname] by the path to the
-   library root. *)
-let install_path : string -> string = fun fname ->
-  let mp = path_of_file (fun s -> s) fname in
-  let ext = Filename.extension fname in
-  match Stdlib.(!lib_root) with
-  | None -> assert false
-  | Some(p) -> List.fold_left Filename.concat p mp ^ ext
+(** [install_path n] prefixes the filename [n] by the library root. *)
+let install_path : string -> string = fun n ->
+  let mp = path_of_file (fun s -> s) n in
+  List.fold_left Filename.concat (get_lib_root()) mp ^ Filename.extension n
 
 (** Restore library mappings and console state after running [f x]. *)
 let restore_after f x =

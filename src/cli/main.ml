@@ -822,28 +822,33 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
-    let time = Timed.Time.save () in
-    let install file =
-      Timed.Time.restore time;
-      let dest =
-        (* In case of a lambdapi.pkg file, we read the root_path from the file
-           itself. Is it really useful? *)
-        if Filename.basename file = Parsing.Package.pkg_file then
-          let root_path = Parsing.Package.((read file).root_path) in
-          let lib_root = Common.Library.get_lib_root() in
-          let dir = List.fold_left Filename.concat lib_root root_path in
-          Filename.concat dir Parsing.Package.pkg_file
-        else
-          begin
-            Parsing.Package.set_root_path file;
-            Common.Library.install_path file
-          end
+    match parse_options c.options args with
+    | [] ->
+      let install f =
+        let dest = Common.Library.install_path f in
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
+      let install_src_and_obj f =
+        install f; install (Filename.chop_extension f^".lpo")
+      in
+      Parsing.Package.set_root_path ".";
+      let f = Parsing.Package.pkg_file in
+      let dest_dir = Filename.dirname (Common.Library.install_path f) in
       (* Use short options for POSIX compliance. *)
-      run_command !dry_run ("mkdir -p "^Filename.dirname dest);
-      run_command !dry_run ("cp -p -f "^Filename.quote file^" "^dest)
-    in
-    List.iter install (parse_options c.options args)
+      run_command !dry_run ("mkdir -p "^dest_dir);
+      install f;
+      Lplib.Extra.iter_files install_src_and_obj "."
+    | files ->
+      let install f =
+        let dest =
+          Parsing.Package.set_root_path (Filename.dirname f);
+          Common.Library.install_path f
+        in
+        (* Use short options for POSIX compliance. *)
+        run_command !dry_run ("mkdir -p "^Filename.dirname dest);
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
+      in
+      List.iter install files
 
 (*-------------------------------------------------------------------------*)
 (** lsp command *)
@@ -970,17 +975,15 @@ let cmd_uninstall =
     let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
     (* Check that a package is indeed installed there. *)
     if not (Sys.file_exists pkg_file) then
-      Common.Error.fatal_no_pos "Specified package is not installed.";
+      Common.Error.fatal_no_pos "The specified package is not installed.";
     (* Check that the installed package has the expected name. *)
     let installed_name = Parsing.Package.((read pkg_file).package_name) in
     if p.package_name <> installed_name then
       Common.Error.fatal_no_pos
-        "Unexpected package [%s] installed under the same \
-         root path intended for specified package [%s]."
+        {|The installed package has name "%s" and not "%s".|}
         installed_name p.package_name;
     (* Do the actual uninstallation. *)
-    let cmd = "rm -r " ^ Filename.quote pkg_dir in
-    run_command !dry_run cmd
+    run_command !dry_run ("rm -r "^Filename.quote pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** websearch command *)
