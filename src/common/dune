@@ -1,10 +1,6 @@
 (library
  (name common)
  (public_name lambdapi.common)
- (modules external :standard)
- (libraries camlp-streams str timed dune-site lambdapi.lplib)
+ (modules :standard)
+ (libraries camlp-streams str timed lambdapi.lplib lambdapi.resources)
  (flags -w +3))
-
-(generate_sites_module
- (module external)
- (sites lambdapi))

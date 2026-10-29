@@ -61,13 +61,13 @@ let read : string -> config_data = fun fname ->
   let root_path = Parser.path_of_string (get "root_path") in
   {package_name; root_path}
 
-(** [find fname] looks for a configuration file above [fname], which is
+(** [find d] looks for a configuration file above [d], which is
     typically a source file or an object file (it can also be a directory). If
-    there is no configuration file in the same directory as [fname], then we
+    there is no configuration file in the same directory as [d], then we
     look in the parent directory and so on, up to the root or as long as no
-    [Sys_error] is raised. Note that [fname] is first normalized with a call
+    [Sys_error] is raised. Note that [d] is first normalized with a call
     to [Filename.realpath]. *)
-let find : string -> string option = fun fname ->
+let find : string -> string option = fun d ->
   let rec find dir =
     let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
@@ -76,16 +76,17 @@ let find : string -> string option = fun fname ->
                                 find (Filename.dirname dir)
     | exception Sys_error(_) -> None
   in
-  find (Filename.normalize fname)
+  find (Filename.normalize d)
 
 let root_path : string Stdlib.ref = ref ""
 
-(** [set_root_path fname] attempts to find a configuration file from the
-   directory or file [fname], and applies the corresponding configuration. *)
-let set_root_path : string -> unit = fun fname ->
-  match find fname with
-  | None -> fatal_no_pos "Found no file \"%s\"." pkg_file
-  | Some(cfg_file) ->
+(** [set_root_path d] attempts to find a configuration file from the
+   directory [d], and applies the corresponding configuration. *)
+let set_root_path : string -> unit = fun d ->
+  assert (Sys.is_directory d);
+  match find d with
+  | None -> fatal_no_pos {|Found no file "%s".|} pkg_file
+  | Some cfg_file ->
   let {root_path=rp; _} = read cfg_file in
   root_path := String.concat "." rp;
   let dir = Filename.dirname cfg_file in
