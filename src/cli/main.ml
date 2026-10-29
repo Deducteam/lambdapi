@@ -799,17 +799,20 @@ let cmd_install =
     | [] ->
       let install f =
         let dest = Common.Library.install_path f in
+        (* Use short options for POSIX compliance. *)
         run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
       let install_src_and_obj f =
         install f; install (Filename.chop_extension f^".lpo")
       in
       Parsing.Package.set_root_path ".";
-      let f = Parsing.Package.pkg_file in
-      let dest_dir = Filename.dirname (Common.Library.install_path f) in
-      (* Use short options for POSIX compliance. *)
+      let dest_dir =
+        Filename.concat (Common.Library.get_lib_root())
+          !Parsing.Package.root_path
+      in
       run_command !dry_run ("mkdir -p "^dest_dir);
-      install f;
+      run_command !dry_run
+        ("cp -p -f "^Parsing.Package.pkg_file^" "^dest_dir);
       Lplib.Extra.iter_files install_src_and_obj "."
     | files ->
       let install f =
@@ -817,7 +820,6 @@ let cmd_install =
           Parsing.Package.set_root_path (Filename.dirname f);
           Common.Library.install_path f
         in
-        (* Use short options for POSIX compliance. *)
         run_command !dry_run ("mkdir -p "^Filename.dirname dest);
         run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
@@ -1010,8 +1012,7 @@ let cmd_websearch =
       match !header with
       | None ->
         Lplib.String.string_of_file
-          (Filename.concat Common.Library.resources_dir
-             "description.html")
+          (Filename.concat Common.Library.resources_dir "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in

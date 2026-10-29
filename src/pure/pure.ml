@@ -159,7 +159,7 @@ let set_initial_time : unit -> unit = fun _ ->
 let initial_state : string -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
-  Package.set_root_path fname;
+  Package.set_root_path (Filename.dirname fname);
   let mp = Library.path_of_file LpLexer.escape fname in
   Sign.loading := [mp];
   let sign = Sign.create mp in
