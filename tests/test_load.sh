@@ -23,7 +23,7 @@ load: $(LPO:%.lpo=%.load)
 
 %.load: %.lpo
 	@echo lambdapi load $< ...
-	@lambdapi check -v 0 $<
+	@lambdapi check -v 0 -w $<
 __END__
 
 echo "############ compile tests/OK files ############"

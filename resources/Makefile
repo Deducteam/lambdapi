@@ -36,4 +36,4 @@ install: lambdapi.pkg $(LP) $(LPO)
 .PHONY: uninstall
 uninstall: lambdapi.pkg
 	@echo lambdapi uninstall ...
-	@lambdapi uninstall $+
+	@lambdapi uninstall
