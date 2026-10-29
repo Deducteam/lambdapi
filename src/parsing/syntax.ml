@@ -232,17 +232,18 @@ type search =
  | QFilter of search * filter
 
 type print =
-  | Verbose
+  | Builtin
+  | Coerce_rule
   | Debug
   | Flag
+  | Goal
+  | Notation
   | Prover
   | Prover_timeout
-  | Goal
+  | String of string
   | Symbol of p_qident
   | Unif_rule
-  | Coerce_rule
-  | String of string
-  | Builtin
+  | Verbose
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =

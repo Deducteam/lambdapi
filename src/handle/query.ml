@@ -139,6 +139,19 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     return (fun ppf -> out ppf "prover \"%s\";") !Why3_tactic.default_prover
   | P_query_print Prover_timeout ->
     return (fun ppf -> out ppf "prover_timeout %d;") !Why3_tactic.timeout
+  | P_query_print Notation ->
+    let print_sym ppf s =
+      match !(s.sym_nota) with
+      | NoNotation | Succ _ | Zero -> ()
+      | _ ->
+        out ppf "notation %a %a;@." Print.sym s
+          (Print.notation float) !(s.sym_nota)
+    in
+    let print_sign ppf _ sign =
+      if sign != Sign.Ghost.sign then
+      Extra.StrMap.iter (fun _ s -> print_sym ppf s) !(sign.Sign.sign_symbols)
+    in
+    return (fun ppf -> Path.Map.iter (print_sign ppf)) !Sign.loaded
   | P_query_print (String s) -> return string s
   | P_query_print Coerce_rule -> return (rules sym_rule) Coercion.coerce
   | P_query_print Unif_rule ->

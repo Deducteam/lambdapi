@@ -477,10 +477,14 @@ let print (lb:'token lexbuf): print =
   | BUILTIN ->
     consume_token lb;
     Builtin
+  | NOTATION ->
+    consume_token lb;
+    Notation
   | _ ->
     expected lb ""
       ([UID"";QID[];STRINGLIT"";UNIF_RULE;COERCE_RULE;VERBOSE;
-        DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;SEMICOLON] @ proof_end_tks)
+        DEBUG;FLAG;PROVER;PROVER_TIMEOUT;BUILTIN;NOTATION;SEMICOLON]
+       @ proof_end_tks)
 
 let term_id (lb:'token lexbuf): p_term =
   if log_enabled() then log "%s" __FUNCTION__;

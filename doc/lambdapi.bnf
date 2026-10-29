@@ -4,18 +4,19 @@
 
 <file> ::= (<command> ";")*
 
-<command> ::= "opaque" <qid>
+<command> ::= "builtin" <string> "≔" <id>
+            | "coerce_rule" <rule>
+            | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)*
+            | "notation" <id> <notation>
+            | "opaque" <qid>
+            | ["private"] "open" <qid>+
             | "require" [["private"] "open"] <qid>+
             | "require" <qid> "as" <uid>
-            | ["private"] "open" <qid>+
+            | "rule" <rule> ("with" <rule>)*
             | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof> | "≔" <term_proof>]
             | [<exposition>] <modifier>* "symbol" <uid> <param_list>* "≔" <term> [<proof>]
-            | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)*
-            | "rule" <rule> ("with" <rule>)*
-            | "builtin" <string> "≔" <id>
-            | "coerce_rule" <rule>
             | "unif_rule" <unif_rule>
-            | "notation" <id> <notation>
+            
             | <query>
 
 <exposition> ::= "private" | "protected"
@@ -133,37 +134,38 @@
 
 <test> ::= ":" | "≡"
 
-<switch> ::= "on" | "off"
+<switch> ::= "off" | "on"
 
 <print> ::= <id>
-           | "unif_rule"
+           | "builtin"
            | "coerce_rule"
-           | "verbose"
            | "debug"
            | "flag"
-           | "builtin"
+           | "notation"
            | "prover"
            | "prover_timeout"
            | <string>
+           | "unif_rule"
+           | "verbose"
 
 <query> ::= <assert> <param_list>* "⊢" <term> <test> <term>
           | "compute" <term>
-          | "print" [<print>]
-          | "proofterm"
           | "debug" [("+"|"-") <char>+]
           | "flag" [<string> <switch>]
+          | "print" [<print>]
+          | "proofterm"
           | "prover" [<string>]
           | "prover_timeout" [<integer>]
-          | "verbose" [<integer>]
-          | "type" <term>
           | "search" <search>
+          | "type" <term>
+          | "verbose" [<integer>]
 
 <relation> ::= "=" | ">" | ">=" | "≥"
 
-<where> ::= "concl" | "hyp" | "spine" | "rule" | "lhs" | "rhs"
+<where> ::= "concl" | "hyp" | "lhs" | "rhs" | "rule" | "spine"
 
 <base> ::= "name" "=" <uid>
-         | ("type"|"anywhere") ("≥"|">=") ["generalize"] <term>
+         | ("anywhere"|"type") ("≥"|">=") ["generalize"] <term>
          | <where> <relation> ["generalize"] <term>
          | "(" <search_query> ")"
 

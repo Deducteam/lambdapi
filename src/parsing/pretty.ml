@@ -299,6 +299,7 @@ let print : print pp = fun ppf p ->
   | Coerce_rule -> out ppf " coerce_rule"
   | String s -> out ppf " %s" (String.add_quotes s)
   | Builtin -> out ppf " builtin"
+  | Notation -> out ppf " notation"
 
 let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
