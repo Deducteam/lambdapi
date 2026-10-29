@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tactic `#print` to print a symbol or the current goal.
 - Export to Lean.
 - Tactic `all_hyps t` calls parameterized tactic term t on all hypotheses ignoring failing calls.
-- Extend `print` query to the following arguments: `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`, `notation`.
-- add a version number to the header of the index db file to prevent crash of LP when the structure of db changes.
+- The queries `verbose`, `debug`, `flag`, `builtin`, `prover`, `prover_timeout`, `notation`, possibly preceded by `print`.
+- Version number to the header of the index db file to prevent crash of LP when the structure of db changes.
 - Support for `rewrite` targeting terms depending on enclosing bound variables.
 - Binders in selector patterns passed to `rewrite`.
 - Builtins `arr` and `funExt` required to justify `rewrite` targeting enclosing bound variables.
