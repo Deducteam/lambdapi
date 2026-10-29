@@ -15,14 +15,14 @@ open Timed
 open Term
 open Sign
 
-(** State of the signature, including aliasing, accessible symbols. *)
+(** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
-  { signature      : Sign.t                    (** Current signature. *)
-  ; in_scope       : sym StrMap.t              (** Symbols in scope.  *)
-  ; alias_path     : Path.t StrMap.t           (** Alias to path map. *)
-  ; path_alias     : string Path.Map.t         (** Path to alias map. *)
-  ; builtins       : sym StrMap.t              (** Builtins. *)
-  ; open_paths     : Path.Set.t                (** Open modules. *)
+  { signature : Sign.t                    (** Current signature. *)
+  ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
+  ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
+  ; path_alias: string Path.Map.t         (** Path to alias map. *)
+  ; builtins  : sym StrMap.t              (** Builtins. *)
+  ; open_paths : Path.Set.t               (** Open modules. *)
   ; active_tc      : SymSet.t                            (** Active TC   *)
   ; tc_solver_prog : Elpi.API.Compile.program option     (** TC solver   *)
   ; add_tc_instance: sig_state -> popt -> sym ->
@@ -156,7 +156,7 @@ let of_sign : Sign.t -> sig_state = fun signature ->
   in
   open_sign None (open_sign None ss Ghost.sign) signature
 
-(** [of_sign_and_solver sign solver add_instance] creates a new sig_state
+(** [of_solver sign solver add_instance] creates a new sig_state
     with tc-solver [solver] and self-update function [add_instance].
 *)
 let of_solver : Elpi.API.Compile.program -> (t -> popt -> sym ->

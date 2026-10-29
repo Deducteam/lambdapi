@@ -299,10 +299,9 @@ let read : string -> t = fun fname ->
     try
       let sign = Marshal.from_channel ic in
       close_in ic; sign
-    with Failure msg ->
+    with Failure _ ->
       close_in ic;
-      fatal_no_pos "%s\nFile \"%s\" is incompatible with current binary." msg
-      fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary." fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   unsafe_reset sign.sign_symbols;
