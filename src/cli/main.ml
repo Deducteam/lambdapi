@@ -37,6 +37,8 @@ let parse_map_dir s =
     Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
   | None -> Common.Error.fatal_no_pos "Wrong argument: %s." s
 
+(* We use a ref different from Common.Library.lib_root to record the option
+   --lib-root because Common.Library.lib_root cannot be set directly. *)
 let lib_root = ref None
 
 (*-------------------------------------------------------------------------*)
@@ -403,7 +405,7 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
-    Parsing.Package.set_root_path (Sys.getcwd());
+    Parsing.Package.set_root_path ".";
     let sym =
       Timed.(Common.Console.verbose := 0);
       let sign = sign_of_path p in
@@ -824,39 +826,22 @@ let cmd_install =
     let install file =
       Timed.Time.restore time;
       let dest =
+        (* In case of a lambdapi.pkg file, we read the root_path from the file
+           itself. Is it really useful? *)
         if Filename.basename file = Parsing.Package.pkg_file then
-          begin
-            let path = Parsing.Package.((read file).root_path) in
-            let lib_root =
-              match !Common.Library.lib_root with
-              | None -> assert false
-              | Some p -> p
-            in
-            let dir = List.fold_left Filename.concat lib_root path in
-            Filename.concat dir Parsing.Package.pkg_file
-          end
+          let root_path = Parsing.Package.((read file).root_path) in
+          let lib_root = Common.Library.get_lib_root() in
+          let dir = List.fold_left Filename.concat lib_root root_path in
+          Filename.concat dir Parsing.Package.pkg_file
         else
           begin
             Parsing.Package.set_root_path file;
             Common.Library.install_path file
           end
       in
-      (* Create directories as needed for [dest]. *)
-      let cmd =
-        let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "-p"; dest_dir]
-        (* Use short options for POSIX compliance. *)
-      in
-      run_command !dry_run cmd;
-      (* Copy files. *)
-      let cmd =
-        let file = Filename.quote file in
-        String.concat " "
-          ["cp"; "-p"; "-f"; file; dest]
-          (* Use short options for POSIX compliance. See
-        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
-      in
-      run_command !dry_run cmd
+      (* Use short options for POSIX compliance. *)
+      run_command !dry_run ("mkdir -p "^Filename.dirname dest);
+      run_command !dry_run ("cp -p -f "^Filename.quote file^" "^dest)
     in
     List.iter install (parse_options c.options args)
 
@@ -980,11 +965,7 @@ let cmd_uninstall =
   | [s] ->
     let p = Parsing.Package.read s in
     (* Compute the expected installation directory. *)
-    let lib_root =
-      match !Common.Library.lib_root with
-      | None -> assert false
-      | Some p -> p
-    in
+    let lib_root = Common.Library.get_lib_root() in
     let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
     let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
     (* Check that a package is indeed installed there. *)

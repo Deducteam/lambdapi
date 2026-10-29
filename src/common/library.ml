@@ -106,6 +106,11 @@ module LibMap :
 (** [lib_root] stores the result of the ["--lib-root"] flag when given. *)
 let lib_root : string option Stdlib.ref = Stdlib.ref None
 
+let get_lib_root() =
+  match Stdlib.(!lib_root) with
+  | None -> assert false
+  | Some n -> n
+
 (** [lib_mappings] stores the specified mappings of library paths. *)
 let lib_mappings : LibMap.t ref = ref LibMap.empty
 
