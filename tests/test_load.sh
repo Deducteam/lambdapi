@@ -2,46 +2,32 @@
 
 set -e
 
-clean () { rm -f tests/OK/*.lpo; }
-trap clean ERR
+dir=/tmp/test_load
+rm -rf $dir
+mkdir -p $dir/tests
 
-mk=/tmp/lpo.mk
-jobs=$(nproc)
-TIMEFORMAT="%Es"
+cp -r tests/OK $dir/tests
+cp resources/Makefile tests/lambdapi.pkg $dir/tests
 
-# excluded test files
-for f in why3 perf_rw_engine tutorial escape_path req.file.with.dot
-do
-    exclude="-a ! -name $f.lp $exclude"
-done
-FILES=`find tests/OK -maxdepth 1 -name '*.lp' $exclude | xargs`
+# excluded files
+cd $dir/tests/OK
+rm -f *.dk
+rm -f why3.lp # because it requires why3
+rm -f perf_rw_engine.lp # because it takes too long
+rm -rf 'a b' escape_path.lp req.file.with.dot.lp require_symbol.lp # because of irregular names
 
-# generate Makefile $mk
-cat > $mk <<__END__
-LAMBDAPI := lambdapi check -w -v 0
-FILES := $FILES
-lpo: \$(FILES:%.lp=%.lpo)
-%.lpo: %.lp
-	@echo generate \$*.lpo ...
-	@\$(LAMBDAPI) -c \$*.lp
-load: \$(FILES:%.lp=%.load)
-%.load: %.lp
-	@echo load \$*.lpo ...
-	@\$(LAMBDAPI) \$*.lp
+cd $dir/tests
+cat >> Makefile <<'__END__'
+.PHONY: load
+load: $(LPO:%.lpo=%.load)
+
+%.load: %.lpo
+	@echo lambdapi load $< ...
+	@lambdapi check -v 0 -w $<
 __END__
 
-# add file dependencies
-for f in $FILES
-do
-    s=`awk -f tests/deps.awk $f`;
-    if test -n "$s"; then echo ${f}o: $s >> $mk; fi
-done
-
-# remove lpo files
-clean
-
 echo "############ compile tests/OK files ############"
-time make -j$jobs -f $mk lpo
+time make
 
 echo "############ load tests/OK files ############"
-time make -j$jobs -f $mk load
+time make load

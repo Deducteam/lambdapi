@@ -2,16 +2,12 @@
  (name resources)
  (public_name lambdapi.resources)
  (modules :standard)
- (libraries lambdapi.parsing lambdapi.core dream unix dune-site)
- (preprocess (pps lwt_ppx))
+ (libraries dune-site)
 )
 
 (install
- (section (site (lambdapi server_resources)))
- (files
-  (description.html as default/description.html)
-  (lambdapi.ico as default/lambdapi.ico)
- )
+ (section (site (lambdapi resources)))
+ (files description.html lambdapi.ico Makefile)
 )
 
 (generate_sites_module

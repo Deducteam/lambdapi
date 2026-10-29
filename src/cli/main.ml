@@ -37,6 +37,8 @@ let parse_map_dir s =
     Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
   | None -> Common.Error.fatal_no_pos "Wrong argument: %s." s
 
+(* We use a ref different from Common.Library.lib_root to record the option
+   --lib-root because Common.Library.lib_root cannot be set directly. *)
 let lib_root = ref None
 
 (*-------------------------------------------------------------------------*)
@@ -403,7 +405,7 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
-    Parsing.Package.set_root_path (Sys.getcwd());
+    Parsing.Package.set_root_path ".";
     let sym =
       Timed.(Common.Console.verbose := 0);
       let sign = sign_of_path p in
@@ -723,6 +725,17 @@ let cmd_index =
 (** init command *)
 (*-------------------------------------------------------------------------*)
 
+let dry_run = ref false
+
+let run_command : bool -> string -> unit = fun dry_run cmd ->
+  if dry_run then Common.Console.out 1 "%s" cmd
+  else match Sys.command cmd with
+    | 0 -> ()
+    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
+    | exception Failure(msg) ->
+      Common.Error.fatal_msg "Command [%s] failed." cmd;
+      Common.Error.fatal_no_pos "Reported error: %s." msg
+
 let cmd_init =
   let summary = "Setup a new project directory." in
   let c = add_command
@@ -757,42 +770,13 @@ let cmd_init =
         pkg_dir Common.Path.pp root_path
     in
     write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-    (* Write the Makefile and example file. *)
-    let makefile ppf = Format.fprintf ppf "%s"
-{|MAKEFLAGS += -r -k -j$(shell nproc)
-
-LPO_MK := lpo.mk
-
-EXCLUDE := _opam _build
-EXCEPT := $(EXCLUDE:%=! -path './%/*')
-
-LP := $(shell find . -name '*.lp' $(EXCEPT) -print)
-
-.PHONY: default
-default: $(LP:%=%o)
-
-%.lpo: %.lp
-	@echo lambdapi check $< ...
-	@lambdapi check -c -v 0 $<
-
-include $(LPO_MK)
-
-$(LPO_MK): $(LP)
-	@echo create/update $@ ...
-	@lambdapi depend > $@
-
-.PHONY: clean
-clean:
-	-find . -name '*.lpo' $(EXCEPT) -delete
-	-rm $(LPO_MK)
-|} in
-    write_file (Filename.concat pkg_dir "Makefile") makefile
+    run_command false
+      ("cp "^Filename.concat Common.Library.resources_dir "Makefile"
+       ^" "^pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
 (*-------------------------------------------------------------------------*)
-
-let dry_run = ref false
 
 let opt_dry_run =
   { opt_name = "--dry-run"
@@ -801,15 +785,6 @@ let opt_dry_run =
   ; opt_desc =
 {|Do not install anything, only print the command that would be
   executed if the option was not given.|} }
-
-let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then Common.Console.out 1 "%s" cmd
-  else match Sys.command cmd with
-    | 0 -> ()
-    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
-    | exception Failure(msg) ->
-      Common.Error.fatal_msg "Command [%s] failed." cmd;
-      Common.Error.fatal_no_pos "Reported error: %s." msg
 
 let cmd_install =
   let summary = "Install the given files." in
@@ -820,45 +795,33 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
-    let time = Timed.Time.save () in
-    let install file =
-      Timed.Time.restore time;
-      let dest =
-        if Filename.basename file = Parsing.Package.pkg_file then
-          begin
-            let path = Parsing.Package.((read file).root_path) in
-            let lib_root =
-              match !Common.Library.lib_root with
-              | None -> assert false
-              | Some p -> p
-            in
-            let dir = List.fold_left Filename.concat lib_root path in
-            Filename.concat dir Parsing.Package.pkg_file
-          end
-        else
-          begin
-            Parsing.Package.set_root_path file;
-            Common.Library.install_path file
-          end
+    match parse_options c.options args with
+    | [] ->
+      let install f =
+        let dest = Common.Library.install_path f in
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
-      (* Create directories as needed for [dest]. *)
-      let cmd =
-        let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "-p"; dest_dir]
+      let install_src_and_obj f =
+        install f; install (Filename.chop_extension f^".lpo")
+      in
+      Parsing.Package.set_root_path ".";
+      let f = Parsing.Package.pkg_file in
+      let dest_dir = Filename.dirname (Common.Library.install_path f) in
+      (* Use short options for POSIX compliance. *)
+      run_command !dry_run ("mkdir -p "^dest_dir);
+      install f;
+      Lplib.Extra.iter_files install_src_and_obj "."
+    | files ->
+      let install f =
+        let dest =
+          Parsing.Package.set_root_path (Filename.dirname f);
+          Common.Library.install_path f
+        in
         (* Use short options for POSIX compliance. *)
+        run_command !dry_run ("mkdir -p "^Filename.dirname dest);
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
-      run_command !dry_run cmd;
-      (* Copy files. *)
-      let cmd =
-        let file = Filename.quote file in
-        String.concat " "
-          ["cp"; "-p"; "-f"; file; dest]
-          (* Use short options for POSIX compliance. See
-        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
-      in
-      run_command !dry_run cmd
-    in
-    List.iter install (parse_options c.options args)
+      List.iter install files
 
 (*-------------------------------------------------------------------------*)
 (** lsp command *)
@@ -968,38 +931,32 @@ let cmd_search =
 let cmd_uninstall =
   let summary =
     "Uninstall the files corresponding to the given package file." in
-  let _ = add_command
+  let c = add_command
             { name = "uninstall"
-            ; args = "[OPTION …] FILE.pkg"
+            ; args = "[OPTION …] [FILE.pkg]"
             ; summary
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
-  function
-  | [] -> Common.Error.fatal_no_pos "No package file provided."
-  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
-  | [s] ->
-    let p = Parsing.Package.read s in
-    (* Compute the expected installation directory. *)
-    let lib_root =
-      match !Common.Library.lib_root with
-      | None -> assert false
-      | Some p -> p
-    in
-    let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
-    let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
-    (* Check that a package is indeed installed there. *)
-    if not (Sys.file_exists pkg_file) then
-      Common.Error.fatal_no_pos "Specified package is not installed.";
-    (* Check that the installed package has the expected name. *)
-    let installed_name = Parsing.Package.((read pkg_file).package_name) in
-    if p.package_name <> installed_name then
-      Common.Error.fatal_no_pos
-        "Unexpected package [%s] installed under the same \
-         root path intended for specified package [%s]."
-        installed_name p.package_name;
-    (* Do the actual uninstallation. *)
-    let cmd = "rm -r " ^ Filename.quote pkg_dir in
-    run_command !dry_run cmd
+  fun args ->
+    match parse_options c.options args with
+    | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
+    | [] ->
+      let p = Parsing.Package.read (Parsing.Package.pkg_file) in
+      (* Compute the installation directory. *)
+      let lib_root = Common.Library.get_lib_root() in
+      let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
+      let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
+      (* Check that a package is indeed installed there. *)
+      if not (Sys.file_exists pkg_file) then
+        Common.Error.fatal_no_pos "The specified package is not installed.";
+      (* Check that the installed package has the expected name. *)
+      let installed_name = Parsing.Package.((read pkg_file).package_name) in
+      if p.package_name <> installed_name then
+        Common.Error.fatal_no_pos
+          {|The installed package has name "%s" and not "%s".|}
+          installed_name p.package_name;
+      (* Do the actual uninstallation. *)
+      run_command !dry_run ("rm -r "^Filename.quote pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** websearch command *)
@@ -1052,12 +1009,9 @@ let cmd_websearch =
     let header =
       match !header with
       | None ->
-        let file =
-          match Resources.Mysites.Sites.server_resources with
-          | [] -> assert false
-          | x :: _ -> x
-        in
-        Lplib.String.string_of_file (file ^ "/default/description.html")
+        Lplib.String.string_of_file
+          (Filename.concat Common.Library.resources_dir
+             "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
