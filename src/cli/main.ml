@@ -806,7 +806,10 @@ let cmd_install =
         install f; install (Filename.chop_extension f^".lpo")
       in
       Parsing.Package.set_root_path ".";
-      let dest_dir = Filename.dirname !Parsing.Package.root_path in
+      let dest_dir =
+        Filename.concat (Common.Library.get_lib_root())
+          !Parsing.Package.root_path
+      in
       run_command !dry_run ("mkdir -p "^dest_dir);
       run_command !dry_run
         ("cp -p -f "^Parsing.Package.pkg_file^" "^dest_dir);
