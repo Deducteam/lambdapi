@@ -932,32 +932,32 @@ let cmd_search =
 let cmd_uninstall =
   let summary =
     "Uninstall the files corresponding to the given package file." in
-  let _ = add_command
+  let c = add_command
             { name = "uninstall"
-            ; args = "[OPTION …] FILE.pkg"
+            ; args = "[OPTION …] [FILE.pkg]"
             ; summary
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
-  function
-  | [] -> Common.Error.fatal_no_pos "No package file provided."
-  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
-  | [s] ->
-    let p = Parsing.Package.read s in
-    (* Compute the expected installation directory. *)
-    let lib_root = Common.Library.get_lib_root() in
-    let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
-    let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
-    (* Check that a package is indeed installed there. *)
-    if not (Sys.file_exists pkg_file) then
-      Common.Error.fatal_no_pos "The specified package is not installed.";
-    (* Check that the installed package has the expected name. *)
-    let installed_name = Parsing.Package.((read pkg_file).package_name) in
-    if p.package_name <> installed_name then
-      Common.Error.fatal_no_pos
-        {|The installed package has name "%s" and not "%s".|}
-        installed_name p.package_name;
-    (* Do the actual uninstallation. *)
-    run_command !dry_run ("rm -r "^Filename.quote pkg_dir)
+  fun args ->
+    match parse_options c.options args with
+    | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
+    | [] ->
+      let p = Parsing.Package.read (Parsing.Package.pkg_file) in
+      (* Compute the installation directory. *)
+      let lib_root = Common.Library.get_lib_root() in
+      let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
+      let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
+      (* Check that a package is indeed installed there. *)
+      if not (Sys.file_exists pkg_file) then
+        Common.Error.fatal_no_pos "The specified package is not installed.";
+      (* Check that the installed package has the expected name. *)
+      let installed_name = Parsing.Package.((read pkg_file).package_name) in
+      if p.package_name <> installed_name then
+        Common.Error.fatal_no_pos
+          {|The installed package has name "%s" and not "%s".|}
+          installed_name p.package_name;
+      (* Do the actual uninstallation. *)
+      run_command !dry_run ("rm -r "^Filename.quote pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** websearch command *)
