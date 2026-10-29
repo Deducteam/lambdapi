@@ -150,12 +150,12 @@
 
 <query> ::= <assert> <param_list>* "⊢" <term> <test> <term>
           | "compute" <term>
-          | "debug" [("+"|"-") <char>+]
-          | "flag" [<string> <switch>]
-          | "print" [<print>]
+          | "debug" ("+"|"-") <char>+
+          | "flag" <string> <switch>
+          | ["print"] [<print>]
           | "proofterm"
-          | "prover" [<string>]
-          | "prover_timeout" [<integer>]
+          | "prover" <string>
+          | "prover_timeout" <integer>
           | "search" <search>
           | "type" <term>
           | "verbose" [<integer>]

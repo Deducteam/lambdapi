@@ -143,9 +143,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     let print_sym ppf s =
       match !(s.sym_nota) with
       | NoNotation | Succ _ | Zero -> ()
-      | _ ->
-        out ppf "notation %a %a;@." Print.sym s
-          (Print.notation float) !(s.sym_nota)
+      | _ -> out ppf "notation %a %a;@." Print.sym s
+               (Print.notation float) !(s.sym_nota)
     in
     let print_sign ppf _ sign =
       if sign != Sign.Ghost.sign then
