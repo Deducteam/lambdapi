@@ -8,10 +8,7 @@
 
 (install
  (section (site (lambdapi server_resources)))
- (files
-  (description.html as default/description.html)
-  (lambdapi.ico as default/lambdapi.ico)
- )
+ (files description.html lambdapi.ico Makefile)
 )
 
 (generate_sites_module
