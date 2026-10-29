@@ -74,7 +74,6 @@ let show_form ~from ?(message="") ?output csrf_tag ~hide_description=
   </body>
   </html>
 
-let themes_locations : string list = Resources.Mysites.Sites.server_resources
 let start ~header ss ~port ~path_in_url () =
   (*Common.Logger.set_debug true "e" ;*)
   let interface = "0.0.0.0" in
@@ -96,12 +95,10 @@ let start ~header ss ~port ~path_in_url () =
         Connection: close
         Content-Type: text/html; charset=iso-8859-1");
 
-    Dream.get  (favicon_path)
+    Dream.get (favicon_path)
       (fun request ->
-      let file = match themes_locations with
-        | [] -> "liste vide"
-        | x :: _ -> x in
-        Dream.from_filesystem (file ^ "/default") "lambdapi.ico" request);
+         Dream.from_filesystem Common.Library.resources_dir "lambdapi.ico"
+           request);
 
     Dream.get  ("/" ^ path_in_url)
       (fun request ->

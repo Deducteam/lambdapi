@@ -41,12 +41,6 @@ let parse_map_dir s =
    --lib-root because Common.Library.lib_root cannot be set directly. *)
 let lib_root = ref None
 
-(* Resources directory. *)
-let resources_dir =
-  match Resources.Mysites.Sites.server_resources with
-  | [] -> assert false
-  | x :: _ -> Filename.concat x "default"
-
 (*-------------------------------------------------------------------------*)
 (* Type of a command line option *)
 (*-------------------------------------------------------------------------*)
@@ -765,8 +759,10 @@ let cmd_init =
         pkg_dir Common.Path.pp root_path
     in
     write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-    ignore (Sys.command
-              ("cp "^Filename.concat resources_dir "Makefile"^" "^pkg_dir))
+    ignore
+      (Sys.command
+         ("cp "^Filename.concat Common.Library.resources_dir "Makefile"
+          ^" "^pkg_dir))
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
@@ -1013,8 +1009,10 @@ let cmd_websearch =
     let ss = sig_state_of_require() in
     let header =
       match !header with
-      | None -> Lplib.String.string_of_file
-                  (Filename.concat resources_dir "description.html")
+      | None ->
+        Lplib.String.string_of_file
+          (Filename.concat Common.Library.resources_dir
+             "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
