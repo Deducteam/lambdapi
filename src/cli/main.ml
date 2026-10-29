@@ -809,7 +809,7 @@ let cmd_install =
       let dest_dir = Filename.dirname (Common.Library.install_path f) in
       (* Use short options for POSIX compliance. *)
       run_command !dry_run ("mkdir -p "^dest_dir);
-      install f;
+      run_command !dry_run ("cp -p -f "^f^" "^Filename.concat dest_dir f);
       Lplib.Extra.iter_files install_src_and_obj "."
     | files ->
       let install f =
@@ -1010,8 +1010,7 @@ let cmd_websearch =
       match !header with
       | None ->
         Lplib.String.string_of_file
-          (Filename.concat Common.Library.resources_dir
-             "description.html")
+          (Filename.concat Common.Library.resources_dir "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
