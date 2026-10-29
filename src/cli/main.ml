@@ -799,6 +799,7 @@ let cmd_install =
     | [] ->
       let install f =
         let dest = Common.Library.install_path f in
+        (* Use short options for POSIX compliance. *)
         run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
       let install_src_and_obj f =
@@ -807,9 +808,8 @@ let cmd_install =
       Parsing.Package.set_root_path ".";
       let f = Parsing.Package.pkg_file in
       let dest_dir = Filename.dirname (Common.Library.install_path f) in
-      (* Use short options for POSIX compliance. *)
       run_command !dry_run ("mkdir -p "^dest_dir);
-      run_command !dry_run ("cp -p -f "^f^" "^Filename.concat dest_dir f);
+      run_command !dry_run ("cp -p -f "^f^" "^dest_dir);
       Lplib.Extra.iter_files install_src_and_obj "."
     | files ->
       let install f =
@@ -817,7 +817,6 @@ let cmd_install =
           Parsing.Package.set_root_path (Filename.dirname f);
           Common.Library.install_path f
         in
-        (* Use short options for POSIX compliance. *)
         run_command !dry_run ("mkdir -p "^Filename.dirname dest);
         run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
