@@ -725,6 +725,17 @@ let cmd_index =
 (** init command *)
 (*-------------------------------------------------------------------------*)
 
+let dry_run = ref false
+
+let run_command : bool -> string -> unit = fun dry_run cmd ->
+  if dry_run then Common.Console.out 1 "%s" cmd
+  else match Sys.command cmd with
+    | 0 -> ()
+    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
+    | exception Failure(msg) ->
+      Common.Error.fatal_msg "Command [%s] failed." cmd;
+      Common.Error.fatal_no_pos "Reported error: %s." msg
+
 let cmd_init =
   let summary = "Setup a new project directory." in
   let c = add_command
@@ -759,16 +770,13 @@ let cmd_init =
         pkg_dir Common.Path.pp root_path
     in
     write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-    ignore
-      (Sys.command
-         ("cp "^Filename.concat Common.Library.resources_dir "Makefile"
-          ^" "^pkg_dir))
+    run_command false
+      ("cp "^Filename.concat Common.Library.resources_dir "Makefile"
+       ^" "^pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
 (*-------------------------------------------------------------------------*)
-
-let dry_run = ref false
 
 let opt_dry_run =
   { opt_name = "--dry-run"
@@ -777,15 +785,6 @@ let opt_dry_run =
   ; opt_desc =
 {|Do not install anything, only print the command that would be
   executed if the option was not given.|} }
-
-let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then Common.Console.out 1 "%s" cmd
-  else match Sys.command cmd with
-    | 0 -> ()
-    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
-    | exception Failure(msg) ->
-      Common.Error.fatal_msg "Command [%s] failed." cmd;
-      Common.Error.fatal_no_pos "Reported error: %s." msg
 
 let cmd_install =
   let summary = "Install the given files." in
