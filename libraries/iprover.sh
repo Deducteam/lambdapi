@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 NBWORKERS="${NBWORKERS:-1}"
 
 SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/iProverModulo_dk.tar.gz"
@@ -42,16 +44,6 @@ if [[ ! -d ${DIR} ]]; then
 
   # Applying the changes (add "#REQUIRE hol" and fix obsolete syntax).
   echo -n "  - applying changes... "
-  sed -i "s/^#NAME FOL.//g" "${DIR}/FOL.dk"
-  for SIG in `find ${DIR} -type f -name "*_sig.dk"`; do
-    MSIG=`basename "${SIG}" ".dk"`
-    PRF="${SIG%%_sig.dk}_prf.dk"
-    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL./g" ${SIG}
-    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL.\n#REQUIRE ${MSIG}./g" ${PRF}
-  done
-  echo "OK"
-
-  # Blacklist.
   rm ${DIR}/ALG375d1_prf.dk # Stack overflow
   rm ${DIR}/ALG376d1_prf.dk # Stack overflow
   rm ${DIR}/ALG396d1_prf.dk # Type error (has worked before)
@@ -180,10 +172,14 @@ if [[ ! -d ${DIR} ]]; then
   rm ${DIR}/SYN899d1_prf.dk # More the 30 seconds (loops?)
   rm ${DIR}/SYN900d1_prf.dk # More the 30 seconds (loops?)
   rm ${DIR}/SYN901d1_prf.dk # More the 30 seconds (loops?)
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile
+  sed -i "s/^#NAME FOL.//g" "${DIR}/FOL.dk"
+  for SIG in `find ${DIR} -type f -name "*_sig.dk"`; do
+    MSIG=`basename "${SIG}" ".dk"`
+    PRF="${SIG%%_sig.dk}_prf.dk"
+    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL./g" ${SIG}
+    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL.\n#REQUIRE ${MSIG}./g" ${PRF}
+  done
+  cp ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
   echo "OK"
 
   # All done.
@@ -197,5 +193,4 @@ fi
 
 # Check the files
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . -v 0 -w *_prf.dk
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-c -v 0 -w'
