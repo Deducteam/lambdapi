@@ -16,4 +16,4 @@ fi
 git clone $1 $repo_path
 
 cd $repo_path
-time make
+time make install
