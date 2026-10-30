@@ -264,7 +264,7 @@ let print : string -> p_commands -> unit =
     if !openings <> [] then newline oc;
     List.iter (open_mod oc) (List.rev !openings);
     string oc "\nnamespace ";
-    string oc !Parsing.Package.root_path;
+    string oc (String.concat "." !Common.Library.root_path);
     char oc '.';
     string oc (Filename.chop_extension file);
     string oc "\n\n";

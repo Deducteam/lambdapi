@@ -807,8 +807,8 @@ let cmd_install =
       in
       Parsing.Package.set_root_path ".";
       let dest_dir =
-        Filename.concat (Common.Library.get_lib_root())
-          !Parsing.Package.root_path
+        List.fold_left Filename.concat (Common.Library.get_lib_root())
+          !Common.Library.root_path
       in
       run_command !dry_run ("mkdir -p "^dest_dir);
       run_command !dry_run

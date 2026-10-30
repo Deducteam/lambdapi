@@ -7,11 +7,14 @@ open Error open Debug
 let log = Logger.make 'l' "libr" "library files"
 let log = log.pp
 
-(* Resources directory. *)
+(** Resources directory. *)
 let resources_dir =
   match Resources.Mysites.Sites.resources with
   | [] -> assert false
   | x :: _ -> x
+
+(** Root path. *)
+let root_path : Path.t Stdlib.ref = Stdlib.ref []
 
 (** Representation of the mapping from module paths to files. *)
 module LibMap :

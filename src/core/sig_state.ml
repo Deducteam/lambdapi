@@ -134,7 +134,7 @@ let find_sym : find_sym = fun ~prt ~prv ss {elt=(mp,s); pos} ->
           (* Check that the signature was required (or is the current one). *)
           if mp <> ss.signature.sign_path
              && not (Path.Map.mem mp !(ss.signature.sign_deps))
-          then fatal pos "No module %a required." Path.pp mp;
+          then fatal pos {|No module "%a" required.|} Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded
