@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SRC="https://github.com/rafoo/dklib/archive/v2.6.zip"
 DIR="dklib"
 
@@ -39,17 +41,8 @@ if [[ ! -d ${DIR} ]]; then
 
   # Applying the changes (create "dklib.dk").
   echo -n "  - applying changes... "
-  for FILE in `find ${DIR} -type f -name "*.dk"`; do
-    MODNAME=`basename "${FILE}" ".dk"`
-
-    if [[ "${MODNAME}" = "dk_monads_coc" ]]; then
-      echo "(;#REQUIRE ${MODNAME}.;)" >> ${DIR}/dklib.dk
-    else
-      echo "#REQUIRE ${MODNAME}." >> ${DIR}/dklib.dk
-    fi
-  done
+  rm -f ${DIR}/dk_monads_coc.dk
   cp -f ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
-  rm ${DIR}/.gitignore ${DIR}/README.org
   echo "OK"
 
   # All done.
@@ -59,4 +52,4 @@ fi
 
 # Checking the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-v 0 -w'
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-c -v 0 -w'

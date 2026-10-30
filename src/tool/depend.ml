@@ -12,8 +12,8 @@ let print_deps filename =
     | _ -> Common.Error.fatal_no_pos
              {|"%s" does not end with ".lp" or ".dk"|} filename
   in
-  print_string filename;
-  print_string "o:";
+  print_string (Filename.chop_extension filename);
+  print_string ".lpo:";
   let s = Lplib.String.string_of_file filename in
   let n = String.length s in
   let k = ref 0 in
@@ -73,32 +73,21 @@ let print_deps filename =
           if !k+7 >= n then raise Exit;
           if not (starts_with "require") then (incr k; search_require());
           k := !k+7;
-          (*print_cur_char "1";*)
           if not_space s.[!k] then (incr k; search_require());
           skip_until not_space;
-          (*print_cur_char "2";*)
           skip_keyword "private";
-          (*print_cur_char "3";*)
           skip_keyword "open";
           search_module()
         and search_module() =
-          (*print_cur_char "4";
-            print_endline "A";*)
           if !k >= n then raise Exit;
           if s.[!k] = ';' then (incr k; search_require());
-          (*print_endline "B";*)
           if not (starts_with root_path) then
             (skip_until mod_end; skip_until not_space; search_module());
-          (*print_endline "C";*)
           let i = !k + p in
           skip_until mod_end;
-          (*print_endline "D";
-          print_cur_char "5";
-            print_endline "E";*)
           print_char ' ';
           print i (!k-1);
           print_string ".lpo";
-          (*print_endline "F";*)
           skip_until not_space;
           search_module()
         in
@@ -134,7 +123,7 @@ let print_deps filename =
           skip_until mod_end;
           print_char ' ';
           print i (!k-1);
-          print_string ".lpo\n";
+          print_string ".lpo";
           search_module()
         in
         search_require()

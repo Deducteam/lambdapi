@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/holide.tar.gz"
 DIR="holide"
 
