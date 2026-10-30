@@ -58,7 +58,7 @@ test_why3: lambdapi
 	@dune exec -- lambdapi check tests/OK/why3*.lp
 
 .PHONY: test_libs
-test_libs: lambdapi
+test_libs: lambdapi # the order is important
 	@dune exec -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
 	@dune exec -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-zenon.git
 	@dune exec -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
