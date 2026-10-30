@@ -463,15 +463,10 @@ let cmd_depend =
             ; desc = summary
             ; options = general_options } in
   fun args ->
+    Parsing.Package.set_root_path ".";
     match parse_options c.options args with
-    | [] ->
-      Parsing.Package.set_root_path ".";
-      Lplib.Extra.iter_files Tool.Depend.print_deps "."
-    | files ->
-      let handle_file f =
-        Parsing.Package.set_root_path (Filename.dirname f);
-        Tool.Depend.print_deps f
-      in List.iter handle_file files
+    | [] -> Lplib.Extra.iter_files Tool.Depend.print_deps "."
+    | files -> List.iter Tool.Depend.print_deps files
 
 (*-------------------------------------------------------------------------*)
 (** export command *)

@@ -26,12 +26,10 @@ let print_deps filename =
   in
   let starts_with w =
     let l = String.length w in
-    (*print_string {|starts "|}; print !k (!k+l-1); print_string {|" with "|};
-    print_string w; print_endline {|" ?|};*)
     try for i = 0 to l-1 do if w.[i] <> s.[!k+i] then raise Exit done; true
     with Exit -> false
   in
-  let _print_cur_char m = (* for debug *)
+  (*let print_cur_char m = (* for debug *)
     let w = 10 in
     print_string m;
     print_string {|[before:"|}; print (max 0 (!k-w)) (!k-1);
@@ -40,7 +38,7 @@ let print_deps filename =
     print_string {|",after:"|}; print (min (!k+1) (n-1)) (min (!k+w) (n-1));
     print_string {|"]|}; print_string "\n";
     flush stdout
-  in
+  in*)
   begin
     try
       if is_lp then
