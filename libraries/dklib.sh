@@ -48,11 +48,8 @@ if [[ ! -d ${DIR} ]]; then
       echo "#REQUIRE ${MODNAME}." >> ${DIR}/dklib.dk
     fi
   done
-  echo "OK"
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile ${DIR}/.gitignore ${DIR}/README.org
+  cp -f ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
+  rm ${DIR}/.gitignore ${DIR}/README.org
   echo "OK"
 
   # All done.
@@ -62,5 +59,4 @@ fi
 
 # Checking the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . -v 0 -w dklib.dk
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-v 0 -w'

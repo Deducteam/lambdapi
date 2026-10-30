@@ -463,10 +463,15 @@ let cmd_depend =
             ; desc = summary
             ; options = general_options } in
   fun args ->
-    Parsing.Package.set_root_path ".";
     match parse_options c.options args with
-    | [] -> Lplib.Extra.iter_files Tool.Depend.print_deps "."
-    | files -> List.iter Tool.Depend.print_deps files
+    | [] ->
+      Parsing.Package.set_root_path ".";
+      Lplib.Extra.iter_files Tool.Depend.print_deps "."
+    | files ->
+      let handle_file f =
+        Parsing.Package.set_root_path (Filename.dirname f);
+        Tool.Depend.print_deps f
+      in List.iter handle_file files
 
 (*-------------------------------------------------------------------------*)
 (** export command *)
@@ -807,8 +812,8 @@ let cmd_install =
       in
       Parsing.Package.set_root_path ".";
       let dest_dir =
-        Filename.concat (Common.Library.get_lib_root())
-          !Parsing.Package.root_path
+        List.fold_left Filename.concat (Common.Library.get_lib_root())
+          !Common.Library.root_path
       in
       run_command !dry_run ("mkdir -p "^dest_dir);
       run_command !dry_run

@@ -46,11 +46,7 @@ if [[ ! -d ${DIR} ]]; then
           -e 's/^def thm_/thm thm_/g' ${FILE}
     fi
   done
-  echo "OK"
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile
+  cp -f ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
   echo "OK"
 
   # All done.
@@ -60,5 +56,5 @@ fi
 
 # Check the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . -v 0 -w *.dk
+lambdapi check -c -v 0 -w hol.dk
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-v 0 -w'
