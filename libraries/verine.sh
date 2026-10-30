@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/verine.tar.gz"
 DIR="verine"
 
@@ -47,11 +49,7 @@ if [[ ! -d ${DIR} ]]; then
   for FILE in `ls ${DIR}/SEQ*.dk`; do
     sed -i -e 's/^#NAME [a-zA-Z0-9_]\+./#REQUIRE logic./' -e 's/0/z/g' ${FILE}
   done
-  echo "OK"
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile
+  cp ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
   echo "OK"
 
   # All done.
@@ -59,17 +57,6 @@ if [[ ! -d ${DIR} ]]; then
   echo ""
 fi
 
-# Checking function.
-function check_verine() {
-  LP='lambdapi check --lib-root . -v 0 -w'
-  rm -f logic.lpo
-  ${LP} -c logic.dk
-  for FILE in `ls SEQ*.dk`; do ${LP} ${FILE}; done
-}
-
-# Export the checking function.
-export -f check_verine
-
 # Run the actual checks.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" bash -c "check_verine"
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-c -v 0 -w'

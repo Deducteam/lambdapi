@@ -5,24 +5,15 @@ set -e
 out=/tmp/lambdapi.output
 TIMEFORMAT="%Es"
 
-checkout_lib() {
-    IFS='/' read -ra ADDR <<< "$1"
-    repo_path="${ADDR[-1]}"
-    IFS='.' read -ra ADDR <<< "$repo_path"
-    repo_path="/tmp/${ADDR[0]}"
-    if [ -d "$repo_path" ] ; then
-        rm -fr "$repo_path"
-    fi
-    git clone $1 $repo_path
-}
+IFS='/' read -ra ADDR <<< "$1"
+repo_path="${ADDR[-1]}"
+IFS='.' read -ra ADDR <<< "$repo_path"
+repo_path="/tmp/${ADDR[0]}"
 
-test_lib() {
-    for f in $(find $1 -name '*.lp' -o -name '*.dk')
-    do
-        echo lambdapi check $f ...
-        lambdapi check -w "$f" > $out 2>&1 || (cat $out; exit 1)
-    done
-}
+if [ -d "$repo_path" ] ; then
+    rm -fr "$repo_path"
+fi
+git clone $1 $repo_path
 
-checkout_lib $1
-time test_lib $repo_path
+cd $repo_path
+time make install

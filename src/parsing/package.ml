@@ -78,8 +78,6 @@ let find : string -> string option = fun d ->
   in
   find (Filename.normalize d)
 
-let root_path : string Stdlib.ref = ref ""
-
 (** [set_root_path d] attempts to find a configuration file from the
    directory [d], and applies the corresponding configuration. *)
 let set_root_path : string -> unit = fun d ->
@@ -88,6 +86,6 @@ let set_root_path : string -> unit = fun d ->
   | None -> fatal_no_pos {|Found no file "%s".|} pkg_file
   | Some cfg_file ->
   let {root_path=rp; _} = read cfg_file in
-  root_path := String.concat "." rp;
+  Common.Library.root_path := rp;
   let dir = Filename.dirname cfg_file in
   Library.add_mapping (rp, dir)

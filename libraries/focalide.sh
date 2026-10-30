@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/focalide.tar.gz"
 DIR="focalide"
 
@@ -46,14 +48,8 @@ if [[ ! -d ${DIR} ]]; then
     ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
     mv ${FILE}.aux ${FILE}
-
-    echo "#REQUIRE ${MODNAME}." >> ${DIR}/focalide.dk
   done
-  echo "OK"
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile
+  cp ../resources/Makefile ../tests/lambdapi.pkg ${DIR}
   echo "OK"
 
   # All done.
@@ -63,5 +59,4 @@ fi
 
 # Checking the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . -v 0 -w -c focalide.dk
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-c -v 0 -w'

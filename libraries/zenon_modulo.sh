@@ -1,6 +1,8 @@
 #!/bin/bash
 
-NBWORKERS="${NBWORKERS:-1}"
+set -e
+
+NBWORKERS=$(nproc)
 
 SRC="http://deducteam.gforge.inria.fr/lib/zenon_modulo.tar"
 DIR="zenon_modulo"
@@ -65,7 +67,7 @@ cd ${DIR}/workdir
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-LP='lambdapi -v 0 -w -c --lib-root .'
+LP='lambdapi -c -v 0 -w'
 $LP check *.dk
 
 # Checking function.
