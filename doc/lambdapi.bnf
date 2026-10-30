@@ -7,6 +7,7 @@
 <command> ::= "builtin" <string> "≔" <id>
             | "coerce_rule" <rule>
             | [<exposition>] <param_list>* "inductive" <inductive> ("with" <inductive>)*
+            | "instance" <qid>
             | "notation" <id> <notation>
             | "opaque" <qid>
             | ["private"] "open" <qid>+
@@ -15,6 +16,7 @@
             | "rule" <rule> ("with" <rule>)*
             | [<exposition>] <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof> | "≔" <term_proof>]
             | [<exposition>] <modifier>* "symbol" <uid> <param_list>* "≔" <term> [<proof>]
+            | "typeclass" <qid>
             | "unif_rule" <unif_rule>
             
             | <query>
@@ -27,8 +29,10 @@
              | "commutative"
              | "constant"
              | "injective"
+             | "instance"
              | "opaque"
              | "sequential"
+             | "typeclass"
 
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor> ("|" <constructor>)*]
 

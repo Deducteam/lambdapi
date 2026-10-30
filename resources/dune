@@ -7,7 +7,7 @@
 
 (install
  (section (site (lambdapi resources)))
- (files description.html lambdapi.ico Makefile)
+ (files description.html lambdapi.ico Makefile tcsolver.elpi)
 )
 
 (generate_sites_module
