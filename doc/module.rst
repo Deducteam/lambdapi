@@ -40,12 +40,12 @@ However, the best way is to use a package configuration file.
 Package configuration file
 --------------------------
 
-A package configuration file ``lambdapi.pkg`` can be placed at the root of the
+A package configuration file ``lambdapi.pkg`` must be placed at the root of the
 source tree of a library under development.
 It must contain the following fields (an example is given below for the syntax):
 
 * ``package_name`` giving a globally unique name for the package being defined.
-  This is not used yet, but will be necessary when packages will eventually
+  This is actually not used yet but will be necessary when packages will eventually
   be published online so that they can be automatically downloaded when users
   (the idea is to come up with a system similar to Cargo in Rust).
 

@@ -16,7 +16,7 @@ The available commands are:
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
 * ``index``: create an index of symbols and rules of input files.
-* ``init``: create a new Lambdapi package (see :doc:`getting_started`).
+* ``init``: create a Lambdapi package and Makefile in the current directory (see :doc:`getting_started`).
 * ``install``: install the specified files according to package configuration.
 * ``lsp``: run the Lambdapi LSP server.
 * ``parse``: parse the input files.
