@@ -183,6 +183,8 @@ module P  = struct
     List.fold_right abst idopts t
 
   let rule : p_term -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+
+  let wrap t = Pos.none (P_Wrap t)
 end
 
 (** Rewrite selection forms based on Coq/SSReflect, with Lambdapi binder
