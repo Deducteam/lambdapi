@@ -750,29 +750,14 @@ let cmd_init =
   | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let root_path = Parsing.Parser.path_of_string s in
-    (* Find out the package name, create the directory. *)
-    let pkg_dir =
-      match List.rev root_path with
-      | []   -> assert false (* Unreachable. *)
-      | s::_ -> s
-    in
-    if Sys.file_exists pkg_dir then
-      Common.Error.fatal_no_pos "%s already exists." pkg_dir;
-    Unix.mkdir pkg_dir 0o700;
-    let write_file n pp =
-      let oc = open_out n in
-      let ppf = Format.formatter_of_out_channel oc in
-      pp ppf; Format.pp_print_flush ppf (); close_out oc
-    in
-    (* Write the package configuration file. *)
-    let pkg_file ppf =
-      Format.fprintf ppf "package_name = %s@.root_path    = %a@."
-        pkg_dir Common.Path.pp root_path
-    in
-    write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
+    let pkg_name = Filename.basename (Sys.getcwd()) in
+    let oc = open_out Parsing.Package.pkg_file in
+    let ppf = Format.formatter_of_out_channel oc in
+    Format.fprintf ppf "package_name = %s@.root_path    = %a@."
+      pkg_name Common.Path.pp root_path;
+    close_out oc;
     run_command false
-      ("cp "^Filename.concat Common.Library.resources_dir "Makefile"
-       ^" "^pkg_dir)
+      ("cp "^Filename.concat Common.Library.resources_dir "Makefile"^" .")
 
 (*-------------------------------------------------------------------------*)
 (** install command *)

@@ -5,8 +5,8 @@ You can run tests using the following commands.
 
 .. code:: bash
 
-   make tests        # Unit tests (not stopping on failure).
-   make real_tests   # Unit tests (stopping on first failure).
+   make test         # Unit tests
+   make test_all     # More tests
 
    make dklib        # Checks files at https://github.com/rafoo/dklib/
    make focalide     # Checks files generated from the Focalize library

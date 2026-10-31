@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Lambdapi does not use Cmdliner anymore.
 - When no argument is given to the CLI commands `install` and `uninstall`
 use the local lambdapi.pkg and lp files.
+- The init command does not create a directory anymore: lambdapi.pkg and Makefile are created in the current directory (and the directory name is used as package name).
 
 ### Fixed
 

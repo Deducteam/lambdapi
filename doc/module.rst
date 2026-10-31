@@ -40,7 +40,7 @@ However, the best way is to use a package configuration file.
 Package configuration file
 --------------------------
 
-A package configuration file ``lambdapi.pkg`` can be placed at the root of the
+A package configuration file ``lambdapi.pkg`` must be placed at the root of the
 source tree of a library under development.
 It must contain the following fields (an example is given below for the syntax):
 
