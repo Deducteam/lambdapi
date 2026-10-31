@@ -693,6 +693,7 @@ and command (lb:'token lexbuf) : p_command =
         (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
         let equiv = P.qiden Sign.Ghost.path Unif_rule.equiv.sym_name in
         let cons = P.qiden Sign.Ghost.path Unif_rule.cons.sym_name in
+        (* Note that, by definition of P.qiden, equiv is @≡. *)
         let mk_equiv (t, u) = P.appl (P.appl equiv (P.wrap t)) (P.wrap u) in
         let lhs = mk_equiv e in
         let es = List.rev_map mk_equiv es in
