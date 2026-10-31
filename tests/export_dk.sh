@@ -24,7 +24,7 @@ exclude ac
 # protected symbol in rule LHS arguments
 exclude 262_private_in_lhs
 # dedukti SR algorithm fails
-exclude 273 813
+exclude 273 813 Conj Disj
 # require escaped module name
 exclude escape_path require_nondkmident 262_pair_ex_2 require_symbol
 # use builtin strings
@@ -43,15 +43,19 @@ LP := $(shell cat FILES)
 dko: $(LP:%.lp=%.dko)
 
 %.dko: %.dk
-	dk check -e $<
+	@echo dk check $< ...
+	@dk check -e -q $<
 
 %.dk: $(SRC)/tests/OK/%.lp
-	lambdapi export -o dk -v 0 -w $< > $@
+	@echo "`basename $<` --> $@ ..."
+	@lambdapi export -o dk -v 0 -w $< > $@
 
 include dko.mk
 
 dko.mk: $(LP:%.lp=%.dk)
-	dk dep -q $^ > $@
+	@echo generate $@ ...
+	@dk dep -q $^ > $@
 __END__
 
-TIMEFORMAT="%Es" time make
+TIMEFORMAT="%Es"
+time make
