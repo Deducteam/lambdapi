@@ -105,8 +105,8 @@ export
   - ``raw_dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-  - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-  - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``raw_coq``: `Rocq <https://rocq-prover.org/>`__ format
+  - ``stt_coq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
   - ``raw_lean``: `Lean <https://lean-lang.org/>`__ format
   - ``stt_lean``: `Lean <https://lean-lang.org/>`__ format assuming that the input file is in an encoding of simple type theory
 
@@ -114,7 +114,7 @@ export
 
 The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
 For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
 
@@ -159,11 +159,11 @@ It instructs Lambdapi to replace any occurrence of the unqualified identifier ``
 
 if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`__.
 
-* ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
+* ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``expr`` therefore needs to be defined in the Rocq standard library or in the Rocq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
 
-* ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
+* ``--use-notations`` instructs Lambdapi to use the usual Rocq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
-Examples of libraries exported to Coq:
+Examples of libraries exported to Rocq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.
   - See in `hol2dk <https://github.com/Deducteam/hol2dk>`__ how to export the Lambdapi library obtained from HOL-Light.
 
