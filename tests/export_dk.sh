@@ -13,10 +13,23 @@ pwd > $dir/SRC
 cd tests/OK
 ls -1 *.lp > $dir/FILES
 
-exclude () { for f in $*; do sed -i -e "/$f/d" $dir/FILES; done; }
+exclude () {
+    for f in $*
+    do
+        if test -f $f.lp
+        then
+            sed -i -e "/$f/d" $dir/FILES
+        else
+            echo unknown file: $f.lp
+            exit 1
+        fi
+    done
+}
 
 # FIXME
-exclude file.with.dot req.file.with.dot indind why3
+exclude file.with.dot req.file.with.dot indind
+# requires some prover
+exclude why3
 # takes too much time to check
 exclude perf_rw_engine
 # commutative and non associative symbol
