@@ -2,44 +2,62 @@
 
 set -e
 
-echo '############ test export -o lp ############'
+echo '############ test export -o dk ############'
+
+dir=/tmp/export_lp
+rm -rf $dir
+mkdir -p $dir/OK
+cp tests/lambdapi.pkg $dir
+
+pwd > $dir/SRC
+
+cd tests/OK
+ls -1 *.lp > $dir/FILES
+
+exclude () {
+    for f in $*
+    do
+        if test -f $f.lp
+        then
+            sed -i -e "/$f/d" $dir/FILES
+        else
+            echo unknown file: $f.lp
+            exit 1
+        fi
+    done
+}
+
+# requires some prover
+exclude why3
+# takes too much time to check
+exclude perf_rw_engine
+# irregular name
+exclude file.with.dot req.file.with.dot require_symbol escape_path
+
+cd $dir
+cat > Makefile <<'__END__'
+MAKEFLAGS += -r -k -j$(shell nproc)
+
+SRC := $(shell cat SRC)
+LP := $(shell cat FILES)
+
+.PHONY: lpo
+lpo: $(LP:%.lp=OK/%.lpo)
+
+%.lpo: %.lp
+	@echo lambdapi check $< ...
+	@lambdapi check -c -v 0 -w $<
+
+OK/%.lp: $(SRC)/tests/OK/%.lp
+	@echo "`basename $<` --> $@ ..."
+	@lambdapi export -o lp -v 0 -w $< > $@
+
+include lpo.mk
+
+lpo.mk: $(LP:%=OK/%)
+	@echo generate $@ ...
+	@lambdapi depend -v 0 -w > $@
+__END__
 
 TIMEFORMAT="%Es"
-
-rm -rf /tmp/tests
-mkdir -p "/tmp/tests/OK/a b"
-cp tests/lambdapi.pkg /tmp/tests/
-
-# translate lp files
-translate() {
-    echo translate lp files ...
-    for f in tests/OK/*.lp 'tests/OK/a b/escape file.lp'
-    do
-        case $f in
-            tests/OK/why3*.lp|tests/OK/search.lp);; #FIXME
-            *) out=/tmp/$f
-               echo "$f --> $out ..."
-               lambdapi export -o lp -w -v 0 "$f" > "$out"
-               if test $? -ne 0; then echo KO; exit 1; fi
-        esac
-    done
-}
-time translate
-
-# check lp files
-check() {
-    echo check lp files ...
-    for f in /tmp/tests/OK/*.lp '/tmp/tests/OK/a b/escape file.lp'
-    do
-        case $f in
-            /tmp/tests/OK/why3*.lp);; # FIXME
-            /tmp/tests/OK/perf_rw_engine.lp);; # takes too much time
-            *) echo "lambdapi check $f ..."
-               lambdapi check -w -v 0 "$f"
-               if test $? -ne 0; then echo KO; exit 1; fi
-        esac
-    done
-}
-time check
-
-echo OK
+time make
