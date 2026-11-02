@@ -65,20 +65,9 @@ Performance improvements
 Documentation
 -------------
 
-* document the Coq syntax:  ~ /\ \/ -> = forall exists fun
-
-* fix the doc: --require can now be repeated
-
 * fix the doc: not only "anywhere" but also "type" can be paired
   only with ">="; maybe make it explicit that to match exactly the
   type of a constant one should use "spine ="
-
-* document new features, e.g. -sources (and find better
-  terminology), deindex
-
-* document require ... as Foo: using Foo.X in the query already
-  works (pure magic!); of course it does not work when using
-  regular expressions [ check before! ]
 
 * Misleading output for:
 

@@ -184,6 +184,8 @@ index
    rule cic.lift _ _ $x ↪ $x;
 
 * ``--source <FILE>`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
+  Note every line in the file containing the mapping has to respect a specific format described as follows :
+  `path_to_source_file start_line end_line qualified_name_in_source_file qualified_name_in_LP_file` 
 
 .. _install:
 
@@ -207,6 +209,7 @@ search/websearch
 ----------------
 
 * ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+   If needed, ``--require <FILE.lp>`` can be repeated to require multiple files.
 
 .. _websearch:
 
