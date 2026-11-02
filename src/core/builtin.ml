@@ -44,11 +44,6 @@ let get : sig_state -> popt -> Path.t -> string -> sym =
           fatal pos "Unknown builtin \"%a.%s\"." Path.pp p s
       end
 
-(** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to
-   the builtin [name], and [None] otherwise. *)
-let get_opt : sig_state -> string -> sym option = fun ss name ->
-  try Some (StrMap.find name ss.builtins) with Not_found -> None
-
 (** Type of functions checking the validity of a builtin symbol in a given
     signature state. The [pos] argument is used for error reporting. *)
 type check = sig_state -> popt -> sym -> unit
