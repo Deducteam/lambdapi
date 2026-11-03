@@ -28,7 +28,7 @@ unif_rule @η $l $a ≡ τ $b ↪ [$l ≡ set_; $a ≡ $b];
 
 require open tests.OK.FOL;
 
-unif_rule @η $l $a ≡ Π x:τ $b, π $c.[x] ↪ [$l ≡ prop; $a ≡ @∀ $b (λ x:τ $b, $c.[x])];
+unif_rule @η $l $a ≡ Π x:$b, π $c.[x] ↪ [$l ≡ prop; $a ≡ `∀ x:$b, $c.[x]];
 
 require open tests.OK.HOL;
 

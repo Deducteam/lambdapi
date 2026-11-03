@@ -6,6 +6,8 @@ constant symbol ⤳ : Set → Set → Set; // \leadsto
 
 notation ⤳ infix right 20;
 
+builtin "arr" ≔ ⤳;
+
 rule τ ($a ⤳ $b) ↪ τ $a → τ $b;
 
 injective symbol ⤳d : Π a:Set, (τ a → Set) → Set;
