@@ -58,7 +58,7 @@ occurrence is taken into account.
 
 * ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
-* ``--db <FILE.db>`` tells lambdapi to use ``<FILE.db>`` as index file.
+* ``--db <FILE.db>`` tells lambdapi to use ``<FILE.db>`` as index file instead of ``~/.LPSearch.db``.
 
 * ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
@@ -73,8 +73,6 @@ occurrence is taken into account.
 * ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
 
 * ``-v <NUM>``, ``--verbose <NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
-
-* ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 .. _decision-tree:
 
@@ -184,6 +182,8 @@ index
    rule cic.lift _ _ $x ↪ $x;
 
 * ``--source <FILE>`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
+  Every line in the file containing the mapping has to respect a specific format described as follows :
+  `path_to_source_file start_line end_line qualified_name_in_source_file qualified_name_in_LP_file` 
 
 .. _install:
 
@@ -207,6 +207,7 @@ search/websearch
 ----------------
 
 * ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+   If needed, ``--require <FILE.lp>`` can be repeated to require multiple files.
 
 .. _websearch:
 
