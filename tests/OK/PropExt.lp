@@ -1,8 +1,10 @@
+// propositional extensionality
+
 /***************************************************************************
-This file provides an axiom and various theorems for propositional equality.        
-The theorems are grouped into sections by theme:  
-- Symmetry and polarity  
-- Various Simplifications                              
+This file provides an axiom and various theorems for propositional equality.
+The theorems are grouped into sections by theme:
+- Symmetry and polarity
+- Various Simplifications
 ****************************************************************************/
 
 require open tests.OK.Eq tests.OK.Impred tests.OK.Classic;
@@ -16,7 +18,7 @@ begin
 end;
 
 /******************************************************************************
- *  Commutativity, associativity and distributivity                                                     
+ *  Commutativity, associativity and distributivity
  ******************************************************************************/
 
 opaque symbol ∨_com x y: π ((x ∨ y) = (y ∨ x)) ≔
@@ -92,11 +94,11 @@ begin
      refine ∨ₑ (em z) _ _
      {assume hz; refine ∨ᵢ₂ hz}
      {assume hnz;
-         have hx : π x 
+         have hx : π x
              {refine ∨ₑ (∧ₑ₁ h) _ _
                  {assume hx; refine hx}
                  {assume hz; refine ⊥ₑ (hnz hz)}};
-         have hy : π y 
+         have hy : π y
              {refine ∨ₑ (∧ₑ₂ h) _ _
                  {assume hy; refine hy}
                  {assume hz; refine ⊥ₑ (hnz hz)}};
@@ -110,7 +112,7 @@ begin
 end;
 
 /******************************************************************************
- *  Symmetry and polarity                                                     
+ *  Symmetry and polarity
  ******************************************************************************/
 
 opaque symbol =_sym [T] (x y : τ T) : π((x = y) = (y = x)) ≔
@@ -148,7 +150,7 @@ begin
 end;
 
 /******************************************************************************
- *  Simplifications          
+ *  Simplifications
  ******************************************************************************/
 
 // Idempotence and Contradiction for ∧ and ∨
@@ -187,7 +189,7 @@ begin
 end;
 
 
-// Disjunction/Conjunction with ⊤ / ⊥      
+// Disjunction/Conjunction with ⊤ / ⊥
 
 opaque symbol ∨⊤ x : π ((x ∨ ⊤) = ⊤) ≔
 begin
@@ -244,7 +246,7 @@ begin
   assume x; rewrite ∧_com; refine ∧⊥ x
 end;
 
-// Negation of ⊤ and ⊥  
+// Negation of ⊤ and ⊥
 
 opaque symbol ¬⊥ : π (¬ ⊥ = ⊤) ≔
 begin
@@ -260,9 +262,9 @@ begin
     {assume h1; refine ⊥ₑ h1}
 end;
 
-// Simplifications on Equalities 
+// Simplifications on Equalities
 
-opaque symbol =_idem t (x : τ t) : π ((x = x) = ⊤) ≔
+opaque symbol =_refl t (x : τ t) : π ((x = x) = ⊤) ≔
 begin
   assume t x;
   refine propExt (x = x) ⊤ _ _
@@ -270,7 +272,7 @@ begin
     {assume h1; refine eq_refl x}
 end;
 
-opaque symbol ¬=_idem t (x : τ t) : π (¬ (x = x) = ⊥) ≔
+opaque symbol ¬=_irrefl t (x : τ t) : π (¬ (x = x) = ⊥) ≔
 begin
   assume t x;
   refine propExt (¬ (x = x)) ⊥ _ _
@@ -436,7 +438,7 @@ end;
 
 // Simplifications on Implication
 
-opaque symbol ⇒_idem x : π ((x ⇒ x) = ⊤) ≔
+opaque symbol ⇒_refl x : π ((x ⇒ x) = ⊤) ≔
 begin
   assume x;
   refine propExt (x ⇒ x) ⊤ _ _
@@ -478,7 +480,7 @@ end;
 
 // Simplifications on Bi-Implication
 
-opaque symbol ⇔_idem x : π ((x ⇔ x) = ⊤) ≔
+opaque symbol ⇔_refl x : π ((x ⇔ x) = ⊤) ≔
 begin
   assume x;
   refine propExt (x ⇔ x) ⊤ _ _
@@ -497,7 +499,7 @@ begin
    refine ∧ₑ₂ h1 ⊤ᵢ}
   {assume h2;
    refine ∧ᵢ _ _
-   {assume h3; refine ⊤ᵢ} 
+   {assume h3; refine ⊤ᵢ}
    {assume h3; refine h2}}
 end;
 
@@ -538,11 +540,11 @@ opaque symbol ∃_const (t : Set) (p : τ o) : π ((`∃ (_ : τ t), p) = p) ≔
 begin
     assume t p;
     refine propExt (`∃ x, p) p _ _
-        {assume h; 
+        {assume h;
          have p_holds : Π (x : τ t), π p → π p
           {assume x h2; refine h2};
          refine ∃ₑ [t] [λ y, p] h p_holds}
-        {assume h; 
+        {assume h;
          have p_holds : π ((λ x , p) (el t))
           {refine h};
          refine ∃ᵢ [t] [λ y, p] (el t) p_holds}
@@ -577,7 +579,7 @@ begin
 end;
 
 /******************************************************************************
- *  Clausification Rules  
+ *  Clausification Rules
  ******************************************************************************/
 
 opaque symbol deMorgan_∧ x y : π (¬(x ∧ y) = (¬ x ∨ ¬ y)) ≔
@@ -588,7 +590,7 @@ begin
      refine ∨ₑ (em x) _ _
      {assume hx; refine ∨ᵢ₂ (λ hy, h (∧ᵢ hx hy))}
      {assume hx; refine ∨ᵢ₁ hx}}
- {assume h hxy; 
+ {assume h hxy;
      refine ∨ₑ h _ _
      {assume hnx; refine hnx (∧ₑ₁ hxy)}
      {assume hny; refine hny (∧ₑ₂ hxy)}}
@@ -598,8 +600,8 @@ opaque symbol deMorgan_∨ x y : π (¬(x ∨ y) = (¬ x ∧ ¬ y)) ≔
 begin
  assume x y;
  refine propExt (¬(x ∨ y)) (¬ x ∧ ¬ y) _ _
- {assume h; refine ∧ᵢ _ _ 
-     {assume hx; refine h (∨ᵢ₁ hx)} 
+ {assume h; refine ∧ᵢ _ _
+     {assume hx; refine h (∨ᵢ₁ hx)}
      {assume hy; refine h (∨ᵢ₂ hy)}}
  {assume h hxy;
      refine ∨ₑ hxy _ _

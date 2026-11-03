@@ -1,3 +1,5 @@
+// universes
+
 require open tests.OK.Set tests.OK.Prop;
 
 constant symbol L:TYPE;
@@ -31,4 +33,4 @@ unif_rule @η $l $a ≡ Π x:$b, π $c.[x] ↪ [$l ≡ prop; $a ≡ `∀ x:$b, $
 require open tests.OK.HOL;
 
 unif_rule @η $l $a ≡ Π _:τ $b, τ $c.[] ↪ [$l ≡ set_; $a ≡ $b ⤳ $c.[]];
-unif_rule @η $l $a ≡ Π x:τ $b, τ $c.[x] ↪ [$l ≡ set_; $a ≡ $b ⤳d λ x, $c.[x]];
+unif_rule @η $l $a ≡ Π x:τ $b, τ $c.[x] ↪ [$l ≡ set_; $a ≡ $b ⤳d λ x:τ $b, $c.[x]];

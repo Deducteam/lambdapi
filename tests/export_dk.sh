@@ -67,7 +67,7 @@ include dko.mk
 
 dko.mk: $(LP:%.lp=%.dk)
 	@echo generate $@ ...
-	@dk dep -q $^ > $@
+	@dk dep -q $^ > $@ || (rm -f $@; exit 1)
 __END__
 
 TIMEFORMAT="%Es"

@@ -1,4 +1,4 @@
-// Type of set codes for quantifying over sets (polymorphism)
+// type of type codes
 
 constant symbol Set : TYPE;
 

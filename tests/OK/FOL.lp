@@ -1,4 +1,4 @@
-// (multi-sorted) First-order logic
+// polymorphic first-order logic
 
 require open tests.OK.Set tests.OK.Prop;
 
