@@ -137,7 +137,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       let i = fresh_index () in
       mk_Patt (Some i, string_of_int i, ts)
 
-(* used in desugaring decimal notations *)
+(* used in parsing decimal notations *)
 let strint = Array.init 11 string_of_int
 
 (** [scope ~find_sym ~typ k md ss env t] turns a parser-level term [t] into an
@@ -322,42 +322,29 @@ and scope_head : ?find_sym:find_sym ->
             if !i < n then String.sub s !i (n - !i) else "0"
           end
       in
+      (* get builtin symbols *)
+      let sym = Array.make 11 mk_Kind in
+      let has_zero = ref true in
       let sym_of s = mk_Symb (Builtin.get ss pos p s) in
+      begin try sym.(0) <- sym_of strint.(0) with _ -> has_zero := false end;
+      for i = 1 to 10 do sym.(i) <- sym_of strint.(i) done;
       let sym_add = sym_of "+" in
       let add x y = mk_Appl(mk_Appl(sym_add,x),y) in
       let sym_mul = sym_of "*" in
       let mul x y = mk_Appl(mk_Appl(sym_mul,x),y) in
-      let has_zero =
-        try ignore (Builtin.get ss pos p "0"); true with _ -> false in
-      if has_zero then
-        let sym = Array.map sym_of strint in
-        let digit = function
-          | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
-          | '4' -> sym.(4) | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7)
-          | '8' -> sym.(8) | '9' -> sym.(9) | _ -> assert false
-        in
-        let rec term_of_index i =
-          if i <= 0 then digit s.[0]
-          else if s.[i] = '0' then mul sym.(10) (term_of_index (i-1))
-          else add (digit s.[i]) (mul sym.(10) (term_of_index (i-1)))
-        in
-        let n = term_of_index (String.length s - 1) in
-        if neg then mk_Appl(sym_of "-",n) else n
-      else
-        let rec ten_power k =
-          if k <= 0 then sym.(1) else mul sym.(10) (ten_power (k-1)) in
-        let sym =
-          Array.mapi (fun s -> sym_of (if s = "0" then "10" else s)) strint in
-        let digit = function
-          | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
-          | '4' -> sym.(4) | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7)
-          | '8' -> sym.(8) | '9' -> sym.(9) | _ -> assert false
-        in
-
-        (* the string s.[0] .. s.[n-1] gives the term s.[n-1]*10^0 + .. +
-           s.[0]*10^(n-1) *)
-        let term_of_index i =
-          if s.[i]
+      let digit = function
+        | '0' when !has_zero -> sym.(0)
+        | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3) | '4' -> sym.(4)
+        | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7) | '8' -> sym.(8)
+        | '9' -> sym.(9) | _ -> assert false
+      in
+      let rec term_of_index i =
+        if i <= 0 then digit s.[0]
+        else if s.[i] = '0' then mul sym.(10) (term_of_index (i-1))
+        else add (digit s.[i]) (mul sym.(10) (term_of_index (i-1)))
+      in
+      let n = term_of_index (String.length s - 1) in
+      if neg then mk_Appl(sym_of "-",n) else n
 
   | (P_Wild, M_URHS(data)) ->
     let i = data.m_urhs_vars_nb in
