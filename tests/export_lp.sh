@@ -56,7 +56,7 @@ include lpo.mk
 
 lpo.mk: $(LP:%=OK/%)
 	@echo generate $@ ...
-	@lambdapi depend -v 0 -w > $@
+	@lambdapi depend -v 0 -w > $@ || (rm -f $@; exit 1)
 __END__
 
 TIMEFORMAT="%Es"
