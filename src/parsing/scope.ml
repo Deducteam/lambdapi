@@ -309,9 +309,10 @@ and scope_head : ?find_sym:find_sym ->
       (* skip minus character if any *)
       let neg = (s.[0] = '-') in
       if neg then incr start;
-      (* skip leading zeros *)
+      (* skip redundant leading zeros *)
       let n = String.length s in
       while !start < n && s.[!start] = '0' do incr start done;
+      if !start >= n then decr start;
       (* get builtin symbols *)
       let sym = Array.make 11 mk_Kind in
       let has_zero = ref true in
@@ -329,7 +330,7 @@ and scope_head : ?find_sym:find_sym ->
         | '9' -> sym.(9) | _ -> assert false
       in
       let rec term_of_index i =
-        if i <= !start then digit s.[0]
+        if i <= !start then digit s.[i]
         else if s.[i] = '0' then mul sym.(10) (term_of_index (i-1))
         else add (digit s.[i]) (mul sym.(10) (term_of_index (i-1)))
       in
