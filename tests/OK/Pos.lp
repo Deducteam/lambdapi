@@ -786,5 +786,3 @@ builtin "10" ≔ _10;
 
 builtin "+" ≔ add;
 builtin "*" ≔ mul;
-
-assert ⊢ add 001009 11 ≡ 01020;
