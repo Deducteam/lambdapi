@@ -28,8 +28,7 @@ val mk_showMessage : ?t:int -> string -> J.t
     numbers or strings, and replies must echo them back unchanged. *)
 val mk_reply : id:J.t -> result:J.t -> J.t
 
-(** JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec; [-32601]
-    is [MethodNotFound]. *)
+(** JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec. *)
 val mk_error_reply : id:J.t -> code:int -> msg:string -> J.t
 
 val mk_diagnostics

@@ -31,8 +31,8 @@ let _parse_uri str =
 let mk_reply ~id ~result =
   `Assoc [ "jsonrpc", `String "2.0"; "id",     (id:J.t); "result", result ]
 
-(* JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec (see also
-   LSP §error-codes): -32601 MethodNotFound is the one we reach for. *)
+(* JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec. See also
+   LSP §error-codes *)
 let mk_error_reply ~id ~code ~msg =
   `Assoc [ "jsonrpc", `String "2.0";
            "id",      (id:J.t);
