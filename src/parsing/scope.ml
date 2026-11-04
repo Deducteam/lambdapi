@@ -305,23 +305,14 @@ and scope_head : ?find_sym:find_sym ->
       end
 
   | (P_NLit(p,s), _) ->
-      (* remove minus symbol if any *)
-      let neg, s =
-        let neg = s.[0] = '-' in
-        let s = if neg then String.sub s 1 (String.length s - 1) else s in
-        neg, s
-      in
-      (* remove leading zeros *)
-      let s =
-        if s.[0] <> '0' then s
-        else
-          begin
-            let n = String.length s in
-            let i = ref 1 in
-            while !i < n && s.[!i] = '0' do incr i done;
-            if !i < n then String.sub s !i (n - !i) else "0"
-          end
-      in
+      let start = ref 0 in
+      (* skip minus character if any *)
+      let neg = (s.[0] = '-') in
+      if neg then incr start;
+      (* skip redundant leading zeros *)
+      let n = String.length s in
+      while !start < n && s.[!start] = '0' do incr start done;
+      if !start >= n then decr start;
       (* get builtin symbols *)
       let sym = Array.make 11 mk_Kind in
       let has_zero = ref true in
@@ -339,12 +330,12 @@ and scope_head : ?find_sym:find_sym ->
         | '9' -> sym.(9) | _ -> assert false
       in
       let rec term_of_index i =
-        if i <= 0 then digit s.[0]
+        if i <= !start then digit s.[i]
         else if s.[i] = '0' then mul sym.(10) (term_of_index (i-1))
         else add (digit s.[i]) (mul sym.(10) (term_of_index (i-1)))
       in
-      let n = term_of_index (String.length s - 1) in
-      if neg then mk_Appl(sym_of "-",n) else n
+      let t = term_of_index (n-1) in
+      if neg then mk_Appl(sym_of "-",t) else t
 
   | (P_Wild, M_URHS(data)) ->
     let i = data.m_urhs_vars_nb in
