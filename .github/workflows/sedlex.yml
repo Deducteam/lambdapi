@@ -40,7 +40,7 @@ jobs:
       - name: install dependencies
         run: |
           opam pin add -n -k path lambdapi .
-          opam pin add sedlex ${{ matrix.ocaml-version }}
+          opam pin add sedlex ${{ matrix.sedlex-version }}
           opam install --deps-only -d -t lambdapi
       - name: build
         run: |
