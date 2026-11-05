@@ -143,11 +143,9 @@ let set_lib_root : string option -> unit = fun dir ->
   Option.iter set_prefix (Sys.getenv_opt "LAMBDAPI_LIB_ROOT");
   lib_root := Some(Filename.concat !prefix "lib/lambdapi/lib_root");
   let set_lr p =
-    try if not (Sys.is_directory p) then
-        fatal_no_pos {|"%s" is not a directory.|} p;
-      lib_root := Some(Unix.realpath p)
-    with Invalid_argument _ | Sys_error _ ->
-      fatal_no_pos {|The file "%s" does not exist.|} p
+    if not (Sys.is_directory p) then
+      fatal_no_pos {|"%s" is not a directory.|} p;
+    lib_root := Some(Unix.realpath p)
   in
   Option.iter set_lr dir;
   Timed.(lib_mappings := LibMap.set_root (get_lib_root()) !lib_mappings)
@@ -206,7 +204,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
   let ext = Filename.extension fname in
   if not (List.mem ext valid_extensions) then
     fatal_no_pos
-      {|Invalid file extension for "%s".@. Expecting ".lp" or ".dk"|} fname;
+      {|Invalid file extension for "%s". Expecting ".lp" or ".dk"|} fname;
   (* Normalizing the file path. *)
   let fname = Unix.realpath fname in
   let base = Filename.chop_extension fname in
