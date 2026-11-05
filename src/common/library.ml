@@ -157,16 +157,12 @@ let set_lib_root : string option -> unit = fun dir ->
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
 let add_mapping : Path.t * string -> unit = fun (mp, fn) ->
-  let fn =
-    try Unix.realpath fn
-    with Sys_error f -> fatal_no_pos "%s: No such file or directory" f
-  in
-  let new_mapping =
-    try LibMap.add mp fn !lib_mappings
+  if not (Sys.is_directory fn) then
+    fatal_no_pos {|"%s" is not a directory.|} fn;
+  lib_mappings :=
+    try LibMap.add mp (Unix.realpath fn) !lib_mappings
     with LibMap.Already_mapped ->
-      fatal_no_pos "Module path [%a] is already mapped." Path.pp mp
-  in
-  lib_mappings := new_mapping
+      fatal_no_pos {|Module path "%a" is already mapped.|} Path.pp mp
 
 (** [file_of_path mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [lib_root] has been
