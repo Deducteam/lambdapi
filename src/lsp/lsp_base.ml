@@ -29,13 +29,13 @@ let _parse_uri str =
 (* [id] is the request's "id" member verbatim: JSON-RPC allows numbers
    AND strings, and a reply must echo back exactly what came in. *)
 let mk_reply ~id ~result =
-  `Assoc [ "jsonrpc", `String "2.0"; "id",     (id:J.t); "result", result ]
+  `Assoc [ "jsonrpc", `String "2.0"; "id", id; "result", result ]
 
 (* JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec. See also
    LSP §error-codes *)
 let mk_error_reply ~id ~code ~msg =
   `Assoc [ "jsonrpc", `String "2.0";
-           "id",      (id:J.t);
+           "id",      id;
            "error",   `Assoc ["code", `Int code; "message", `String msg] ]
 
 let mk_event m p   =
