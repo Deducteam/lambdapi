@@ -75,7 +75,7 @@ jobs:
       - name: make test_export_dk
         run: |
           eval $(opam env)
-          opam pin dedukti.${{ matrix.dedukti-version }}
+          opam pin dedukti ${{ matrix.dedukti-version }}
           make test_export_dk
       - name: make test_export_lp
         run: |
@@ -84,7 +84,7 @@ jobs:
       - name: make test_export_raw_dk
         run: |
           eval $(opam env)
-          opam pin dedukti.${{ matrix.dedukti-version }}
+          opam pin dedukti ${{ matrix.dedukti-version }}
           make test_export_raw_dk
       - name: make test_libs
         run: |
@@ -93,7 +93,7 @@ jobs:
       - name: make test_why3
         run: |
           eval $(opam env)
-          opam pin why3.${{ matrix.why3-version }}
-          opam pin alt-ergo.${{ matrix.alt-ergo-version }}
+          opam pin why3 ${{ matrix.why3-version }}
+          opam pin alt-ergo ${{ matrix.alt-ergo-version }}
           why3 config detect
           make test_libs
