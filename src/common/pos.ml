@@ -2,7 +2,7 @@
 
 open Lplib open Base
 
-let cur_dir = Filename.current_dir()
+let cur_dir = Unix.getcwd()
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)

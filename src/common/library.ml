@@ -145,7 +145,7 @@ let set_lib_root : string option -> unit = fun dir ->
   let set_lr p =
     try if not (Sys.is_directory p) then
         fatal_no_pos {|"%s" is not a directory.|} p;
-      lib_root := Some(Lplib.Filename.realpath p)
+      lib_root := Some(Unix.realpath p)
     with Invalid_argument _ | Sys_error _ ->
       fatal_no_pos {|The file "%s" does not exist.|} p
   in
@@ -158,8 +158,8 @@ let set_lib_root : string option -> unit = fun dir ->
    message is displayed. *)
 let add_mapping : Path.t * string -> unit = fun (mp, fn) ->
   let fn =
-    try Filename.realpath fn
-    with Invalid_argument f -> fatal_no_pos "%s: No such file or directory" f
+    try Unix.realpath fn
+    with Sys_error f -> fatal_no_pos "%s: No such file or directory" f
   in
   let new_mapping =
     try LibMap.add mp fn !lib_mappings
@@ -209,13 +209,10 @@ let path_of_file : (string -> string) -> string -> Path.t =
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
   if not (List.mem ext valid_extensions) then
-    begin
-      fatal_msg "Invalid extension for [%s].@." fname;
-      let exp = List.pp (fun ppf -> out ppf "[%s]") ", " in
-      fatal_no_pos "Expected any of: %a." exp valid_extensions
-    end;
+    fatal_no_pos
+      {|Invalid file extension for "%s".@. Expecting ".lp" or ".dk"|} fname;
   (* Normalizing the file path. *)
-  let fname = Filename.normalize fname in
+  let fname = Unix.realpath fname in
   let base = Filename.chop_extension fname in
   (* Finding the best mapping under the root. *)
   let mapping = ref None in

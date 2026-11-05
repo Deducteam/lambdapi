@@ -16,9 +16,9 @@ let source base =
   and dk_src = base ^ dk_src_extension in
   match Sys.file_exists lp_src, Sys.file_exists dk_src with
   | false, false ->
-      fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
+      fatal_no_pos {|File "%s.lp" (or .dk) not found.|} base
   | true , true ->
-      wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+      wrn None {|Both "%s" and "%s" exist. We take "%s".|}
         lp_src dk_src lp_src; lp_src
   | true , false -> lp_src
   | false, true -> dk_src
@@ -33,7 +33,7 @@ let rec compile : Command.compiler = fun ss mp ->
   else if List.mem mp !loading then
     begin
       let base = file_of_path mp in
-      fatal_msg "Circular dependency detected in \"%s\".@." (source base);
+      fatal_msg {|Circular dependency detected in "%s".@.|} (source base);
       fatal_msg "Dependency stack for module:@.";
       List.iter (fatal_msg "- %a@." Path.pp) !loading;
       fatal_no_pos "Build aborted."
@@ -46,7 +46,7 @@ let rec compile : Command.compiler = fun ss mp ->
     let src = source base in
     if Extra.more_recent src obj then
     begin
-      Console.out 1 (Color.blu "Start checking \"%s\"") src;
+      Console.out 1 (Color.blu {|Start checking "%s"|}) src;
       loading := mp :: !loading;
       let sign = Sign.create mp in
       (* [sign] is added to [loaded] before processing the commands so that it
@@ -62,10 +62,10 @@ let rec compile : Command.compiler = fun ss mp ->
       Debug.stream_iter consume (Parser.parse_file src);
       Sig_state.update_ext_sym_dtrees true ss;
       Tactic.restore_admitted a;
-      Console.out 1 (Color.blu "End checking \"%s\"") src;
+      Console.out 1 (Color.blu {|End checking "%s"|}) src;
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
-        Console.out 2 (Color.blu "Write \"%s\"") obj;
+        Console.out 2 (Color.blu {|Write "%s"|}) obj;
         Sign.write sign obj
       end;
       loading := List.tl !loading;
@@ -78,11 +78,11 @@ let rec compile : Command.compiler = fun ss mp ->
     end
     else
     begin
-      Console.out 2 (Color.blu "Load \"%s\"") obj;
+      Console.out 2 (Color.blu {|Load "%s"|}) obj;
       let sign = Sign.read obj in
       if sign.sign_path <> mp then
-        fatal_no_pos "The file \"%s\" has path \"%a\" instead of \"%a\". \
-                      Remove it and compile it again."
+        fatal_no_pos {|The file "%s" has path "%a" instead of "%a". \
+                      Remove it and compile it again.|}
           obj Path.pp sign.sign_path Path.pp mp
       else begin
       (* We recursively load every module [mp'] on which [mp] depends. *)
@@ -103,7 +103,7 @@ let rec compile : Command.compiler = fun ss mp ->
                | Some s -> raise (Found s)
                | None -> ()
             ) !loaded;
-          Console.out 0 "Didn't find the builtin \"String\"."; assert false
+          Console.out 0 {|Builtin "String" undefined.|}; assert false
         with Found s -> Term.mk_Symb s
       in
       let string_type =
@@ -124,8 +124,9 @@ let rec compile : Command.compiler = fun ss mp ->
       end
     end
 
-(** [compile_file fname] looks for a package configuration file for [fname]
-    and compiles [fname]. *)
-let compile_file (fname:string): Sign.t =
-  Package.set_root_path (Filename.dirname fname);
-  compile Sig_state.dummy (path_of_file LpLexer.escape fname)
+(** [compile_file f] looks for a package configuration file for [f] and
+    compiles it. *)
+let compile_file (f:string): Sign.t =
+  if not (Sys.file_exists f) then fatal_no_pos {|"%s" does not exist.|} f;
+  Package.set_root_path (Filename.dirname f);
+  compile Sig_state.dummy (path_of_file LpLexer.escape f)
