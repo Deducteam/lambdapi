@@ -31,6 +31,7 @@ test_all: test
 	$(MAKE) test_export_lp
 	$(MAKE) test_export_raw_dk
 	$(MAKE) test_libs
+	$(MAKE) test_why3
 
 .PHONY: test
 test: lambdapi
