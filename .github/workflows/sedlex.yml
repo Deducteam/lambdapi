@@ -1,0 +1,48 @@
+# check compilation with previous versions of ocaml
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/ocaml.yml'
+      - 'dune-project'
+      - '**/dune'
+      - '**.ml'
+      - '**.mli'
+      - '**.mll'
+      - '**.mly'
+  push:
+    paths:
+      - '.github/workflows/ocaml.yml'
+      - 'dune-project'
+      - '**/dune'
+      - '**.ml'
+      - '**.mli'
+      - '**.mll'
+      - '**.mly'
+  workflow_dispatch:
+
+jobs:
+  test_compile:
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-version: [5.5.2]
+        sedlex-version: [3.2, 3.3, 3.4, 3.6, 3.7, 3.8.1]
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+      - name: setup-ocaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+      - name: install dependencies
+        run: |
+          opam pin add -n -k path lambdapi .
+          opam pin add sedlex ${{ matrix.ocaml-version }}
+          opam install --deps-only -d -t lambdapi
+      - name: build
+        run: |
+          eval $(opam env)
+          dune build
