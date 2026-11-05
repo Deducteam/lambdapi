@@ -24,7 +24,7 @@ depends: [
   "dream-httpaf" {>= "1.0.0"}
   "dream" {>= "1.0.0"}
   "menhir" {>= "20200624"}
-  "sedlex" {>= "3.2"}
+  "sedlex" {>= "3.4"}
   "alcotest" {with-test}
   "timed" {>= "1"}
   "pratter" {>= "5" & < "6"}
