@@ -61,22 +61,16 @@ let read : string -> config_data = fun fname ->
   let root_path = Parser.path_of_string (get "root_path") in
   {package_name; root_path}
 
-(** [find d] looks for a configuration file above [d], which is
-    typically a source file or an object file (it can also be a directory). If
-    there is no configuration file in the same directory as [d], then we
-    look in the parent directory and so on, up to the root or as long as no
-    [Sys_error] is raised. Note that [d] is first normalized with a call
-    to [Filename.realpath]. *)
-let find : string -> string option = fun d ->
+(** [find d] looks for a configuration file in the directory [d] or one of its
+    parent directory. [d] must be an existing directory. *)
+let find : string -> string option =
   let rec find dir =
     let file = Filename.concat dir pkg_file in
-    match Sys.file_exists file with
-    | true                   -> Some(file)
-    | false                  -> if dir = "/" then None else
-                                find (Filename.dirname dir)
-    | exception Sys_error(_) -> None
+    if Sys.file_exists file then Some file
+    else if dir = "/" then None
+    else find (Filename.dirname dir)
   in
-  find (Filename.normalize d)
+  fun d -> find (Unix.realpath d)
 
 (** [set_root_path d] attempts to find a configuration file from the
    directory [d], and applies the corresponding configuration. *)

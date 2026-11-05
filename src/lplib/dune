@@ -2,7 +2,4 @@
  (name lplib)
  (public_name lambdapi.lplib)
  (modules :standard)
- (foreign_stubs
-  (language c)
-  (names realpath))
- (libraries stdlib-shims str unix))
+ (libraries str unix))
