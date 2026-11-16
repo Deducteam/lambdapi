@@ -34,8 +34,7 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "Prf" }
 
-(** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
-   [ts1;...;tsn]. *)
+(** [prf_of p c [t1;..;tn] t] returns the term [c.symb_prf (p t1 .. tn t)]. *)
 let prf_of : config -> var -> term list -> term -> term = fun c p ts t ->
   mk_Appl (mk_Symb c.symb_prf, mk_Appl (add_args (mk_Vari p) ts, t))
 

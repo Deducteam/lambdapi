@@ -1,6 +1,8 @@
 #!/bin/bash
 
-NBWORKERS="${NBWORKERS:-1}"
+set -e
+
+NBWORKERS=$(nproc)
 
 SRC="http://deducteam.gforge.inria.fr/lib/zenon_modulo.tar"
 DIR="zenon_modulo"
@@ -65,7 +67,8 @@ cd ${DIR}/workdir
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-lambdapi check --verbose 0 --gen-obj --lib-root . --no-warnings *.dk
+LP='lambdapi -c -v 0 -w'
+$LP check *.dk
 
 # Checking function.
 function check() {
@@ -82,7 +85,7 @@ function check() {
     cat ${FILE_DK} | grep -v "^#NAME" >> ${MODNAME}.aux
     mv ${MODNAME}.aux ${FILE_DK}
 
-    lambdapi check --verbose 0 --lib-root . --no-warnings ${FILE_DK}
+    $LP check ${FILE_DK}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
       echo "FAILED ${FILE_GZ}" >> error.log
@@ -100,7 +103,6 @@ function check() {
   find ../files -type f | sort \
     | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_gz {}"
 }
-
 
 # Export stuff for the checking function.
 export readonly NBWORKERS=${NBWORKERS}

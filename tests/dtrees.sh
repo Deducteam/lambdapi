@@ -2,8 +2,6 @@
 
 set -uf
 
-dune build
-
 echo '############ test decision-tree ############'
 
 ko() {
@@ -15,10 +13,9 @@ ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
 }
 
-lambdapi='_build/install/default/bin/lambdapi'
-cmd='decision-tree -v 0 -w --map-dir=tests:tests'
+cmd='lambdapi decision-tree -v 0 -w'
 
-out="$($lambdapi $cmd tests.OK.natural.+)"
+out="$($cmd tests.OK.natural.+)"
 if [ -z "$out" ]; then
     ko 'tests.OK.nat.+'
 else
@@ -26,7 +23,7 @@ else
 fi
 
 # Escaped identifier with no rule
-out="$($lambdapi $cmd 'tests.OK.Escaped.{|KIND|}' 2>/dev/null)"
+out="$($cmd 'tests.OK.Escaped.{|KIND|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
     ko 'tests.OK.Escaped.{|KIND|}'
 fi
@@ -35,7 +32,7 @@ if [ -z "$out" ]; then
 fi
 
 # Escaped identifier with dots and no rule
-out="$($lambdapi $cmd 'tests.OK.Escaped.{|KIND.OF.BLUE|}' 2>/dev/null)"
+out="$($cmd 'tests.OK.Escaped.{|KIND.OF.BLUE|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
     ko 'tests.OK.Escaped.{|KIND.OF.BLUE|}'
 fi
@@ -44,7 +41,7 @@ if [ -z "$out" ]; then
 fi
 
 # Escaped identifier with rules
-out="$($lambdapi $cmd 'tests.OK.Escaped.{|_set|}' 2>/dev/null)"
+out="$($cmd 'tests.OK.Escaped.{|_set|}' 2>/dev/null)"
 if [ "$?" = 1 ] || [ -z "$out" ]; then
     ko 'tests.OK.Escaped.{|_set|}'
 else
@@ -52,7 +49,7 @@ else
 fi
 
 # Ghost symbol
-out="$($lambdapi $cmd --ghost 'tests.OK.unif_hint.≡' 2>/dev/null)"
+out="$($cmd --ghost 'tests.OK.unif_hint.≡' 2>/dev/null)"
 if [ "$?" = 1 ] || [ -z "$out" ]; then
     ko 'tests.OK.unif_hint.≡'
 else

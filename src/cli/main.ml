@@ -8,12 +8,12 @@ let r = "\x1b[0m" (* end bold *)
 let nat_of_string s =
   match int_of_string_opt s with
   | Some k when k >= 0 -> k
-  | _ -> Common.Error.fatal_no_pos "invalid integer"
+  | _ -> Common.Error.fatal_no_pos "Invalid integer: %s." s
 
 let float_of_string s =
   match float_of_string_opt s with
   | Some k when k >= 0. -> k
-  | _ -> Common.Error.fatal_no_pos "invalid float number"
+  | _ -> Common.Error.fatal_no_pos "Invalid float number: %s" s
 
 (*FIXME: move to lplib/string.ml *)
 (** [split_first c s] returns [Some(s1,s2)] such that [s=s1^c^s2] and [c] does
@@ -35,7 +35,11 @@ let parse_map_dir s =
   match split_first ':' s with
   | Some(s,dir) ->
     Common.Library.add_mapping (Parsing.Parser.path_of_string s, dir)
-  | None -> Common.Error.fatal_no_pos "wrong argument: %s" s
+  | None -> Common.Error.fatal_no_pos "Wrong argument: %s." s
+
+(* We use a ref different from Common.Library.lib_root to record the option
+   --lib-root because Common.Library.lib_root cannot be set directly. *)
+let lib_root = ref None
 
 (*-------------------------------------------------------------------------*)
 (* Type of a command line option *)
@@ -91,11 +95,11 @@ let parse_options options args =
     match args with
     | [] -> []
     | arg::other_args ->
-      if arg="" then Common.Error.fatal_no_pos "empty argument"
+      if arg="" then Common.Error.fatal_no_pos "Empty argument."
       else if arg.[0] <> '-' then args
       else
         match find_option arg options with
-        | None -> Common.Error.fatal_no_pos "unknown option: %s" arg
+        | None -> Common.Error.fatal_no_pos "Unknown option: %s." arg
         | Some o ->
           match o.opt_handle with
           | NoArg h -> h(); parse other_args
@@ -112,9 +116,12 @@ let parse_options options args =
           | Next(_,h) ->
             match other_args with
             | [] ->
-              Common.Error.fatal_no_pos "option %s has no argument" arg
+              Common.Error.fatal_no_pos "Option %s has no argument." arg
             | arg::other_args -> h arg; parse other_args
-  in parse args
+  in
+  let other_args = parse args in
+  Common.Library.set_lib_root !lib_root;
+  other_args
 
 let print_option o =
   match o.opt_short with
@@ -202,9 +209,9 @@ let general_options =
 (*--------------------------------------------------------------------------*)
 
 let opt_lib_root =
-  { opt_name = "--lib-root="
+  { opt_name = "--lib-root"
   ; opt_short = None
-  ; opt_handle = Suffix("DIR", fun v -> Common.Library.set_lib_root (Some v))
+  ; opt_handle = Next("DIR", fun v -> lib_root := Some v)
   ; opt_desc =
 {|Set the library root to be the directory DIR. The library root is a common
   path under which every module is placed. It has the same purpose as the root
@@ -215,11 +222,6 @@ let opt_lib_root =
   LAMBDAPI_LIB_ROOT is set, then $OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root
   if OPAM_SWITCH_PREFIX is set or it uses /usr/local/lib/lambdapi/lib_root.|}
 }
-
-let set_lib_root() =
-  match !Common.Library.lib_root with
-  | None -> Common.Library.set_lib_root None
-  | _ -> ()
 
 let opt_map_dir =
   { opt_name = "--map-dir="
@@ -254,7 +256,7 @@ let opt_timeout =
   as the specified number of seconds is elapsed.|} }
 
 let opt_too_long =
-  { opt_name = "--too-long"
+  { opt_name = "--too-long="
   ; opt_short = None
   ; opt_handle = Suffix("FLOAT",
                     fun v -> Handle.Command.too_long := float_of_string v)
@@ -270,18 +272,17 @@ let opt_no_sr_check =
       "Disable the verification that rewrite rules preserve typing." }
 
 let opt_db =
-  { opt_name = "--db="
+  { opt_name = "--db"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> Tool.Indexing.the_dbpath := v)
+  ; opt_handle = Next("FILE", fun v -> Tool.Indexing.the_dbpath := v)
   ; opt_desc =
       "Index file to use for search queries (default is ~/.LPSearch.db)." }
 
-let rule_files = ref []
-
 let opt_rules =
-  { opt_name = "--rules="
+  { opt_name = "--rules"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun v -> rule_files := v::!rule_files)
+  ; opt_handle = Next("FILE", fun v -> let r = Tool.Indexing.rwpaths in
+                                       r := v::!r)
   ; opt_desc =
 {|File holding rewriting rules applied before indexing. Use this option
   multiple times to fetch rules from several files.|} }
@@ -327,7 +328,7 @@ let add_opt_help c =
     { opt_name = "--help"
     ; opt_short = Some "-h"
     ; opt_desc = "Print this help."
-    ; opt_handle = NoArg (fun () -> print_usage c) }
+    ; opt_handle = NoArg (fun () -> print_usage c; exit 0) }
   in
   { c with options = o::c.options }
 
@@ -349,7 +350,7 @@ let sign_of_path p =
   | Some i ->
     try Lplib.Extra.timeout i (Handle.Compile.compile ss) p
     with Lplib.Extra.Timeout ->
-      Common.Error.fatal_no_pos "timeout for checking %a." Common.Path.pp p
+      Common.Error.fatal_no_pos "Timeout for checking %a." Common.Path.pp p
 
 let compile file =
   sign_of_path (Common.Library.path_of_file Parsing.LpLexer.escape file)
@@ -364,16 +365,16 @@ let cmd_check =
             ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | f::files ->
-    set_lib_root();
-    Parsing.Package.set_root_path f;
     let t0 = Timed.Time.save() in
+    Parsing.Package.set_root_path (Filename.dirname f);
     ignore (compile f);
-    let handle file =
+    let handle f =
       Timed.Time.restore t0;
       Common.Console.reset_default();
-      ignore (compile file)
+      Parsing.Package.set_root_path (Filename.dirname f);
+      ignore (compile f)
     in
     List.iter handle files
 
@@ -400,12 +401,11 @@ language. Pipe the output to 'dot -Tpng | display' to display it.|}
             ; options = opt_ghost :: compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "qualified identifier missing"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "Qualified identifier missing."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let (p,id) as qid = Parsing.Parser.qident_of_string s in
-    set_lib_root();
-    Parsing.Package.set_root_path (Sys.getcwd());
+    Parsing.Package.set_root_path ".";
     let sym =
       Timed.(Common.Console.verbose := 0);
       let sign = sign_of_path p in
@@ -437,22 +437,43 @@ let cmd_deindex =
             ; args = "[OPTION …] PATH"
             ; summary
             ; desc = summary
-            ; options = opt_db :: general_options } in
+            ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-    | [] -> Common.Error.fatal_no_pos "no prefix provided"
-    | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+    | [] -> Common.Error.fatal_no_pos "No prefix provided."
+    | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
     | [p] ->
-      set_lib_root();
       Tool.Indexing.deindex_path p;
-      let dbpath = !Tool.Indexing.the_dbpath in
-      Tool.Indexing.dump ~dbpath ()
+      Tool.Indexing.dump()
+
+(*-------------------------------------------------------------------------*)
+(** depend command *)
+(*-------------------------------------------------------------------------*)
+
+let cmd_depend =
+  let summary =
+    "Generate on stdout in Makefile format the dependencies between the \
+     files given in argument or, if no argument is given, between all the \
+     lp and dk files that are in the current directory and in any sub-\
+     directory." in
+  let c = add_command
+            { name = "depend"
+            ; args = "[OPTION …] [FILE …]"
+            ; summary
+            ; desc = summary
+            ; options = general_options } in
+  fun args ->
+    Parsing.Package.set_root_path ".";
+    match parse_options c.options args with
+    | [] -> Lplib.Extra.iter_files Tool.Depend.print_deps "."
+    | files -> List.iter Tool.Depend.print_deps files
 
 (*-------------------------------------------------------------------------*)
 (** export command *)
 (*-------------------------------------------------------------------------*)
 
-type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
+type output =
+  Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq | RawLean | SttLean
 
 let string_of_output = function
   | Lp -> "lp"
@@ -462,6 +483,8 @@ let string_of_output = function
   | Xtc -> "xtc"
   | RawCoq -> "raw_coq"
   | SttCoq -> "stt_coq"
+  | RawLean -> "raw_lean"
+  | SttLean -> "stt_lean"
 
 let output_of_string = function
   | "lp" -> Lp
@@ -471,7 +494,9 @@ let output_of_string = function
   | "xtc" -> Xtc
   | "raw_coq" -> RawCoq
   | "stt_coq" -> SttCoq
-  | s -> Common.Error.fatal_no_pos "invalid format: %s" s
+  | "raw_lean" -> RawLean
+  | "stt_lean" -> SttLean
+  | s -> Common.Error.fatal_no_pos "Unknown format: %s" s
 
 let output = ref None
 
@@ -479,10 +504,10 @@ let check_output l =
   match !output with
   | None ->
     Common.Error.fatal_no_pos
-      "the output format must be given before the other options"
+      "The output format must be given before the other options."
   | Some o ->
     if not (List.mem o l) then
-      Common.Error.fatal_no_pos "option invalid with format %s"
+      Common.Error.fatal_no_pos "Invalid option with format %s."
         (string_of_output o)
 
 let opt_output =
@@ -490,23 +515,30 @@ let opt_output =
   ; opt_short = Some "-o"
   ; opt_handle = Next("FMT", fun s -> output := Some(output_of_string s))
   ; opt_desc =
-{|Specify the output language and how the input files must be interpreted.
+{|Specify the output language and how the input file must be interpreted.
   The possible formats are:
-    lp: dk to lp translator, or lp code pretty-printer
-    raw_dk: lp to dk syntactic translator (before elaboration)
-    dk: lp to dk translator
-    raw_coq: dk or lp to rocq syntactic translator (before elaboration)
-    stt_coq: dk or lp to rocq syntactic translator (before elaboration)
-    hrs: for checking the confluence of rewrite rules
-    xtc: for checking the termination of rewrite rules|} }
+    lp: to translate the input file to Lambdapi
+    raw_dk: to translate the input file to Dedukti (before elaboration)
+    dk: to translate the input file to Dedukti
+    raw_coq: to translate the input file to Rocq (before elaboration)
+    stt_coq: to translate the input file to Rocq (before elaboration)
+      assuming that the input file uses an encoding of simple type theory
+    raw_lean: to translate the input file to Lean (before elaboration)
+    stt_lean: to translate the input file to Lean (before elaboration)
+      assuming that the input file uses an encoding of simple type theory
+    hrs: to translate the input file to the HRS format
+      used in the confluence competition (CoCo)
+    xtc: to translate the input file to the XTC format
+      used in the termination competition (TermComp)|} }
 
 let encoding = ref None
 
 let opt_encoding =
-  { opt_name = "--encoding="
+  { opt_name = "--encoding"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
-                        fun s -> check_output [SttCoq]; encoding := Some s)
+  ; opt_handle = Next("FILE",
+                      fun s -> check_output [SttCoq;SttLean];
+                      encoding := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing the symbols used for
   encoding simple type theory.|} }
@@ -514,10 +546,11 @@ let opt_encoding =
 let mapping = ref None
 
 let opt_mapping =
-  { opt_name = "--mapping="
+  { opt_name = "--mapping"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE",
-                        fun s -> check_output [SttCoq]; mapping := Some s)
+  ; opt_handle = Next("FILE",
+                      fun s -> check_output [SttCoq;SttLean];
+                      mapping := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing which Lambdapi symbol
   declarations must not be translated and by which expression each occurrence
@@ -526,31 +559,47 @@ let opt_mapping =
 let requiring = ref None
 
 let opt_requiring =
-  { opt_name = "--requiring="
+  { opt_name = "--requiring"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
-             fun s -> check_output [SttCoq;RawCoq]; requiring := Some s)
+      Next("MODULES",
+             fun s ->
+                check_output [SttCoq;RawCoq;SttLean;RawLean];
+                requiring := Some s)
   ; opt_desc =
 {|Lambdapi modules to be required at the beginning of translated files.|} }
 
 let renaming = ref None
 
 let opt_renaming =
-  { opt_name = "--renaming="
+  { opt_name = "--renaming"
   ; opt_short = None
   ; opt_handle =
-      Suffix("FILE",
-             fun s -> check_output [SttCoq;RawCoq]; renaming := Some s)
+      Next("FILE",
+             fun s ->
+                check_output [SttCoq;RawCoq;SttLean;RawLean];
+                renaming := Some s)
   ; opt_desc =
 {|Lambdapi file providing a list of builtins describing renamings to apply
   on identifiers.|} }
+
+let tvs_file = ref None
+let opt_arities =
+  { opt_name = "--arities"
+  ; opt_short = None
+  ; opt_handle =
+      Next("FILE.tvs",
+             fun s -> check_output [SttLean];
+             tvs_file := Some s)
+  ; opt_desc =
+{|File generated by 'hol2dk tvs' giving the number of type variables of
+  polymorphic symbols.|} }
 
 let opt_no_implicits =
   { opt_name = "--no-implicits"
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
-                     check_output [SttCoq;RawCoq];
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
                      Export.Stt.use_implicits := false)
   ; opt_desc = "In case input symbols have no implicit arguments." }
 
@@ -558,7 +607,7 @@ let opt_use_notations =
   { opt_name = "--use-notations"
   ; opt_short = None
   ; opt_handle = NoArg(fun () ->
-                     check_output [SttCoq;RawCoq];
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
                      Export.Stt.use_notations := true)
   ; opt_desc = "Generate Rocq code using notations for connectors." }
 
@@ -568,6 +617,7 @@ let export_options =
   :: opt_mapping
   :: opt_renaming
   :: opt_requiring
+  :: opt_arities
   :: opt_no_implicits
   :: opt_use_notations
   :: compile_options
@@ -582,15 +632,14 @@ let cmd_export =
             ; options = export_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | _::_::_ ->
     Common.Error.fatal_no_pos
-      "the export command accepts only one file as argument"
+      "The export command accepts only one file as argument."
   | [file] ->
-    set_lib_root();
     let output =
       match !output with
-      | None -> Common.Error.fatal_no_pos "no output format given"
+      | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
     begin
@@ -615,7 +664,17 @@ let cmd_export =
       Option.iter Export.Stt.set_mapping !mapping;
       Option.iter Export.Stt.set_requiring !requiring;
       Export.Coq.print (parse file)
-
+    | RawLean ->
+      Option.iter Export.Stt.set_renaming !renaming;
+      Export.Lean.print file (parse file)
+    | SttLean ->
+      Export.Stt.stt := true;
+      Option.iter Export.Stt.set_renaming !renaming;
+      Option.iter Export.Stt.set_encoding !encoding;
+      Option.iter Export.Stt.set_mapping !mapping;
+      Option.iter Export.Stt.set_requiring !requiring;
+      Option.iter Export.Stt.set_tvs_map !tvs_file;
+      Export.Lean.print file (parse file)
 (*-------------------------------------------------------------------------*)
 (** index command *)
 (*-------------------------------------------------------------------------*)
@@ -628,32 +687,54 @@ let opt_add =
   ; opt_handle = NoArg(fun () -> add := true)
   ; opt_desc = "Do not clear the index." }
 
+let source = ref None
+
+let opt_source =
+  { opt_name = "--source"
+  ; opt_short = None
+  ; opt_handle = Next("FILE", fun s -> source := Some s)
+  ; opt_desc = "Source map file." }
+
 let cmd_index =
   let summary = "Index the given files in a database." in
   let c = add_command
             { name = "index"
-            ; args = "[OPTION …] FILE"
+            ; args = "[OPTION …] FILE …"
             ; summary
             ; desc = summary
-            ; options = opt_add :: compile_options } in
+            ; options = opt_source :: opt_add :: compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
-  | files ->
-    set_lib_root();
-    let time = Timed.Time.save() in
-    let handle file =
-      Timed.Time.restore time;
+  | [] -> Common.Error.fatal_no_pos "No file provided."
+  | f::files ->
+    if not !add then Tool.Indexing.empty ();
+    let t0 = Timed.Time.save() in
+    Parsing.Package.set_root_path (Filename.dirname f);
+    Tool.Indexing.index_sign (Common.Error.no_wrn compile f);
+    let handle f =
+      Tool.Indexing.preserving_index Timed.Time.restore t0;
       Common.Console.reset_default();
-      Tool.Indexing.preserving_index Timed.Time.restore time;
-      Tool.Indexing.load_rewriting_rules !rule_files;
-      Tool.Indexing.index_sign (Common.Error.no_wrn compile file)
+      Parsing.Package.set_root_path (Filename.dirname f);
+      Tool.Indexing.index_sign (Common.Error.no_wrn compile f)
     in
-    List.iter handle files
+    List.iter handle files;
+    Option.iter Tool.Indexing.parse_source_map !source;
+    Tool.Indexing.dump()
 
 (*-------------------------------------------------------------------------*)
 (** init command *)
 (*-------------------------------------------------------------------------*)
+
+let dry_run = ref false
+
+let run_command : bool -> string -> unit = fun dry_run cmd ->
+  if dry_run then Common.Console.out 1 "%s" cmd
+  else match Sys.command cmd with
+    | 0 -> ()
+    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
+    | exception Failure(msg) ->
+      Common.Error.fatal_msg "Command [%s] failed." cmd;
+      Common.Error.fatal_no_pos "Reported error: %s." msg
 
 let cmd_init =
   let summary = "Setup a new project directory." in
@@ -665,59 +746,22 @@ let cmd_init =
             ; options = general_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no module path provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "No module path provided."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
     let root_path = Parsing.Parser.path_of_string s in
-    (* Find out the package name, create the directory. *)
-    let pkg_dir =
-      match List.rev root_path with
-      | []   -> assert false (* Unreachable. *)
-      | s::_ -> s
-    in
-    if Sys.file_exists pkg_dir then
-      Common.Error.fatal_no_pos "%s already exists." pkg_dir;
-    Unix.mkdir pkg_dir 0o700;
-    let write_file n pp =
-      let oc = open_out n in
-      let ppf = Format.formatter_of_out_channel oc in
-      pp ppf; Format.pp_print_flush ppf (); close_out oc
-    in
-    (* Write the package configuration file. *)
-    let pkg_file ppf =
-      Format.fprintf ppf "package_name = %s@.root_path    = %a@."
-        pkg_dir Common.Path.pp root_path
-    in
-    write_file (Filename.concat pkg_dir Parsing.Package.pkg_file) pkg_file;
-    (* Write the Makefile and example file. *)
-    let makefile ppf = Format.fprintf ppf
-{|.POSIX:
-.SUFFIXES:
-
-SRC = $(wildcard *.lp)
-OBJ = $(SRC:.lp=.lpo)
-
-all: $(OBJ)
-
-install: $(OBJ) lambdapi.pkg
-	lambdapi install lambdapi.pkg $(OBJ) $(SRC)
-
-uninstall:
-	lambdapi uninstall lambdapi.pkg
-
-clean:
-	rm -f $(OBJ)
-
-.lp.lpo:
-	lambdapi check --gen-obj $<
-|} in
-    write_file (Filename.concat pkg_dir "Makefile") makefile
+    let pkg_name = Filename.basename (Sys.getcwd()) in
+    let oc = open_out Parsing.Package.pkg_file in
+    let ppf = Format.formatter_of_out_channel oc in
+    Format.fprintf ppf "package_name = %s@.root_path    = %a@."
+      pkg_name Common.Path.pp root_path;
+    close_out oc;
+    run_command false
+      ("cp "^Filename.concat Common.Library.resources_dir "Makefile"^" .")
 
 (*-------------------------------------------------------------------------*)
 (** install command *)
 (*-------------------------------------------------------------------------*)
-
-let dry_run = ref false
 
 let opt_dry_run =
   { opt_name = "--dry-run"
@@ -726,15 +770,6 @@ let opt_dry_run =
   ; opt_desc =
 {|Do not install anything, only print the command that would be
   executed if the option was not given.|} }
-
-let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then Common.Console.out 1 "%s" cmd
-  else match Sys.command cmd with
-    | 0 -> ()
-    | _ -> Common.Error.fatal_no_pos "Command [%s] failed." cmd
-    | exception Failure(msg) ->
-      Common.Error.fatal_msg "Command [%s] failed." cmd;
-      Common.Error.fatal_no_pos "Reported error: %s." msg
 
 let cmd_install =
   let summary = "Install the given files." in
@@ -745,46 +780,35 @@ let cmd_install =
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
   fun args ->
-    set_lib_root();
-    let time = Timed.Time.save () in
-    let install file =
-      Timed.Time.restore time;
-      let dest =
-        if Filename.basename file = Parsing.Package.pkg_file then
-          begin
-            let path = Parsing.Package.((read file).root_path) in
-            let lib_root =
-              match !Common.Library.lib_root with
-              | None -> assert false
-              | Some p -> p
-            in
-            let dir = List.fold_left Filename.concat lib_root path in
-            Filename.concat dir Parsing.Package.pkg_file
-          end
-        else
-          begin
-            Parsing.Package.set_root_path file;
-            Common.Library.install_path file
-          end
-      in
-      (* Create directories as needed for [dest]. *)
-      let cmd =
-        let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "-p"; dest_dir]
+    match parse_options c.options args with
+    | [] ->
+      let install f =
+        let dest = Common.Library.install_path f in
         (* Use short options for POSIX compliance. *)
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
       in
-      run_command !dry_run cmd;
-      (* Copy files. *)
-      let cmd =
-        let file = Filename.quote file in
-        String.concat " "
-          ["cp"; "-p"; "-f"; file; dest]
-          (* Use short options for POSIX compliance. See
-        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
+      let install_src_and_obj f =
+        install f; install (Filename.chop_extension f^".lpo")
       in
-      run_command !dry_run cmd
-    in
-    List.iter install (parse_options c.options args)
+      Parsing.Package.set_root_path ".";
+      let dest_dir =
+        List.fold_left Filename.concat (Common.Library.get_lib_root())
+          !Common.Library.root_path
+      in
+      run_command !dry_run ("mkdir -p "^dest_dir);
+      run_command !dry_run
+        ("cp -p -f "^Parsing.Package.pkg_file^" "^dest_dir);
+      Lplib.Extra.iter_files install_src_and_obj "."
+    | files ->
+      let install f =
+        let dest =
+          Parsing.Package.set_root_path (Filename.dirname f);
+          Common.Library.install_path f
+        in
+        run_command !dry_run ("mkdir -p "^Filename.dirname dest);
+        run_command !dry_run ("cp -p -f "^Filename.quote f^" "^dest)
+      in
+      List.iter install files
 
 (*-------------------------------------------------------------------------*)
 (** lsp command *)
@@ -820,9 +844,8 @@ let cmd_lsp =
             ; options = opt_standard_lsp::opt_log_file::general_options } in
   fun args ->
   match parse_options c.options args with
-  | _::_ -> Common.Error.fatal_no_pos "invalid argument"
+  | _::_ -> Common.Error.fatal_no_pos "Invalid argument."
   | _ ->
-    set_lib_root();
     Common.Console.lsp_mod := true;
     Pure.set_initial_time();
     Lsp.Lp_lsp.main !standard_lsp !log_file
@@ -841,7 +864,7 @@ let cmd_parse =
             ; options = compile_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no file provided"
+  | [] -> Common.Error.fatal_no_pos "No file provided."
   | files ->
     let handle file = ignore (Parsing.Parser.parse_file file) in
     List.iter handle files
@@ -853,21 +876,23 @@ let cmd_parse =
 let require = ref []
 
 let opt_require =
-  { opt_name = "--require="
+  { opt_name = "--require"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> require := s::!require)
+  ; opt_handle = Next("FILE", fun s -> require := s::!require)
   ; opt_desc = "FILE to be required before starting the search." }
 
 let sig_state_of_require() =
   List.fold_left
     (fun ss r ->
-       Parsing.Package.set_root_path (Filename.concat (Sys.getcwd()) r);
+       Parsing.Package.set_root_path (Filename.dirname r);
        Handle.Command.handle Handle.Compile.compile ss
          (Common.Pos.none
             (Parsing.Syntax.P_require
                (Some false,
                 [Common.Pos.none (Parsing.Parser.path_of_string r)]))))
     Core.Sig_state.dummy !require
+
+let search_options = opt_require :: compile_options
 
 let cmd_search =
   let summary = "Query a database file." in
@@ -876,18 +901,15 @@ let cmd_search =
             ; args = "[OPTION …] QUERY"
             ; summary
             ; desc = summary
-            ; options = opt_require :: compile_options } in
+            ; options = search_options } in
   fun args ->
   match parse_options c.options args with
-  | [] -> Common.Error.fatal_no_pos "no query provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | [] -> Common.Error.fatal_no_pos "No query provided."
+  | _::_::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [s] ->
-    set_lib_root();
-    Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
-    let dbpath = !Tool.Indexing.the_dbpath in
-    Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss ~dbpath) s
+    Lplib.Base.sout "%a@." (Tool.Indexing.search_cmd_txt ss) s
 
 (*-------------------------------------------------------------------------*)
 (** uninstall command *)
@@ -896,39 +918,32 @@ let cmd_search =
 let cmd_uninstall =
   let summary =
     "Uninstall the files corresponding to the given package file." in
-  let _ = add_command
+  let c = add_command
             { name = "uninstall"
-            ; args = "[OPTION …] FILE.pkg"
+            ; args = "[OPTION …] [FILE.pkg]"
             ; summary
             ; desc = summary
             ; options = opt_dry_run :: general_options } in
-  function
-  | [] -> Common.Error.fatal_no_pos "no package file provided"
-  | _::_::_ -> Common.Error.fatal_no_pos "too many arguments"
-  | [s] ->
-    set_lib_root();
-    let p = Parsing.Package.read s in
-    (* Compute the expected installation directory. *)
-    let lib_root =
-      match !Common.Library.lib_root with
-      | None -> assert false
-      | Some p -> p
-    in
-    let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
-    let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
-    (* Check that a package is indeed installed there. *)
-    if not (Sys.file_exists pkg_file) then
-      Common.Error.fatal_no_pos "Specified package is not installed.";
-    (* Check that the installed package has the expected name. *)
-    let installed_name = Parsing.Package.((read pkg_file).package_name) in
-    if p.package_name <> installed_name then
-      Common.Error.fatal_no_pos
-        "Unexpected package [%s] installed under the same \
-         root path intended for specified package [%s]."
-        installed_name p.package_name;
-    (* Do the actual uninstallation. *)
-    let cmd = "rm -r " ^ Filename.quote pkg_dir in
-    run_command !dry_run cmd
+  fun args ->
+    match parse_options c.options args with
+    | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
+    | [] ->
+      let p = Parsing.Package.read (Parsing.Package.pkg_file) in
+      (* Compute the installation directory. *)
+      let lib_root = Common.Library.get_lib_root() in
+      let pkg_dir = List.fold_left Filename.concat lib_root p.root_path in
+      let pkg_file = Filename.concat pkg_dir Parsing.Package.pkg_file in
+      (* Check that a package is indeed installed there. *)
+      if not (Sys.file_exists pkg_file) then
+        Common.Error.fatal_no_pos "The specified package is not installed.";
+      (* Check that the installed package has the expected name. *)
+      let installed_name = Parsing.Package.((read pkg_file).package_name) in
+      if p.package_name <> installed_name then
+        Common.Error.fatal_no_pos
+          {|The installed package has name "%s" and not "%s".|}
+          installed_name p.package_name;
+      (* Do the actual uninstallation. *)
+      run_command !dry_run ("rm -r "^Filename.quote pkg_dir)
 
 (*-------------------------------------------------------------------------*)
 (** websearch command *)
@@ -937,17 +952,17 @@ let cmd_uninstall =
 let header = ref None
 
 let opt_header =
-  { opt_name = "--header="
+  { opt_name = "--header"
   ; opt_short = None
-  ; opt_handle = Suffix("FILE", fun s -> header := Some s)
+  ; opt_handle = Next("FILE", fun s -> header := Some s)
   ; opt_desc = "html file to use as header of the server web page." }
 
 let url = ref ""
 
 let opt_url =
-  { opt_name = "--url="
+  { opt_name = "--url"
   ; opt_short = None
-  ; opt_handle = Suffix("STRING", fun s -> url := s)
+  ; opt_handle = Next("STRING", fun s -> url := s)
   ; opt_desc = "Path prefixes accepted by the server." }
 
 let port = ref 8080
@@ -959,11 +974,10 @@ let opt_port =
   ; opt_desc = "Port used by the server (default is 8080)." }
 
 let websearch_options =
-  opt_require
-  ::opt_header
+  opt_header
   ::opt_url
   ::opt_port
-  ::general_options
+  ::search_options
 
 let cmd_websearch =
   let summary = "Start a webserver to search the index." in
@@ -975,27 +989,20 @@ let cmd_websearch =
             ; options = websearch_options } in
   fun args ->
   match parse_options c.options args with
-  | _::_ -> Common.Error.fatal_no_pos "too many arguments"
+  | _::_ -> Common.Error.fatal_no_pos "Too many arguments."
   | [] ->
-    set_lib_root();
-    Tool.Indexing.load_rewriting_rules !rule_files;
     Tool.Indexing.force_meta_rules_loading();
     let ss = sig_state_of_require() in
     let header =
       match !header with
       | None ->
-        let file =
-          match Ressources.Mysites.Sites.server_resources with
-          | [] -> assert false
-          | x :: _ -> x
-        in
-        Lplib.String.string_of_file (file ^ "/default/description.html")
+        Lplib.String.string_of_file
+          (Filename.concat Common.Library.resources_dir "description.html")
       | Some file -> Lplib.String.string_of_file file
     in
     let port = !port in
-    let dbpath = !Tool.Indexing.the_dbpath in
     let path_in_url = !url in
-    Tool.Websearch.start ~header ss ~port ~dbpath ~path_in_url ()
+    Tool.Websearch.start ~header ss ~port ~path_in_url ()
 
 (*-------------------------------------------------------------------------*)
 (** main procedure *)
@@ -1029,6 +1036,7 @@ let main = function
   | "check"::args -> cmd_check args
   | "decision-tree"::args -> cmd_dtree args
   | "deindex"::args -> cmd_deindex args
+  | "depend"::args -> cmd_depend args
   | "export"::args -> cmd_export args
   | "index"::args -> cmd_index args
   | "init"::args -> cmd_init args
@@ -1038,34 +1046,26 @@ let main = function
   | "search"::args -> cmd_search args
   | "uninstall"::args -> cmd_uninstall args
   | "websearch"::args -> cmd_websearch args
-  | s::_ -> Common.Error.fatal_no_pos "unknown command: %s" s
+  | s::_ -> Common.Error.fatal_no_pos "Unknown command: %s." s
 
 let _ =
   let args = List.tl (Array.to_list Sys.argv) in
-  let handler =
+  let handler msg desc =
     match args with
     | "lsp" :: _ ->
-      fun err_desc error_msg ->
-        Lsp.Lsp_io.notify_failure (error_msg ^ "\n" ^ err_desc);
-        exit 1
+      Lsp.Lsp_io.notify_failure (msg ^ "\n" ^ desc);
+      exit 1
     | _ ->
-      fun err_desc ->
-        Lplib.Color.update_with_color Format.err_formatter;
-        Format.kfprintf
-          (fun _ ->
-             Lplib.Color.update_with_color Format.err_formatter;
-             Format.kfprintf (fun _ -> exit 1)
-               Format.err_formatter "%s" err_desc
-          )
-          Format.err_formatter
-          (Lplib.Color.red ("%s" ^^ "@."))
+      Lplib.Color.update_with_color Format.err_formatter;
+      Format.eprintf (Lplib.Color.red "%s" ^^ "@.%s") msg desc;
+      exit 1
   in
   try main args
   with
-  | Common.Error.Fatal(None, msg, desc) -> handler desc msg
+  | Common.Error.Fatal(None, msg, desc) -> handler msg desc
   | Common.Error.Fatal(Some p, msg, desc) ->
-    handler desc (Common.Pos.popt_to_string p ^ msg)
+    handler (Format.asprintf "[%a] %s" Common.Pos.pp p msg) desc
   | e ->
-    handler "" (Printf.sprintf "Uncaught [%s].\n%s"
-                  (Printexc.to_string e)
-                  (Printexc.get_backtrace()))
+    handler
+      ("Uncaught exception: " ^ Printexc.to_string e ^ ".")
+      (Printexc.get_backtrace())

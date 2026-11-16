@@ -61,29 +61,25 @@ let read : string -> config_data = fun fname ->
   let root_path = Parser.path_of_string (get "root_path") in
   {package_name; root_path}
 
-(** [find fname] looks for a configuration file above [fname], which is
-    typically a source file or an object file (it can also be a directory). If
-    there is no configuration file in the same directory as [fname], then we
-    look in the parent directory and so on, up to the root or as long as no
-    [Sys_error] is raised. Note that [fname] is first normalized with a call
-    to [Filename.realpath]. *)
-let find : string -> string option = fun fname ->
+(** [find d] looks for a configuration file in the directory [d] or one of its
+    parent directory. [d] must be an existing directory. *)
+let find : string -> string option =
   let rec find dir =
     let file = Filename.concat dir pkg_file in
-    match Sys.file_exists file with
-    | true                   -> Some(file)
-    | false                  -> if dir = "/" then None else
-                                find (Filename.dirname dir)
-    | exception Sys_error(_) -> None
+    if Sys.file_exists file then Some file
+    else if dir = "/" then None
+    else find (Filename.dirname dir)
   in
-  find (Filename.normalize fname)
+  fun d -> find (Unix.realpath d)
 
-(** [set_root_path fname] attempts to find a configuration file from the
-   directory or file [fname], and applies the corresponding configuration. *)
-let set_root_path : string -> unit = fun fname ->
-  match find fname with
-  | None           -> wrn None "Found no file \"%s\"." pkg_file
-  | Some(cfg_file) ->
-  let {root_path; _} = read cfg_file in
-  let root = Filename.dirname cfg_file in
-  Library.add_mapping (root_path, root)
+(** [set_root_path d] attempts to find a configuration file from the
+   directory [d], and applies the corresponding configuration. *)
+let set_root_path : string -> unit = fun d ->
+  assert (Sys.is_directory d);
+  match find d with
+  | None -> fatal_no_pos {|Found no file "%s".|} pkg_file
+  | Some cfg_file ->
+  let {root_path=rp; _} = read cfg_file in
+  Common.Library.root_path := rp;
+  let dir = Filename.dirname cfg_file in
+  Library.add_mapping (rp, dir)

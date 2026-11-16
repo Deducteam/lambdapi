@@ -44,11 +44,6 @@ let get : sig_state -> popt -> Path.t -> string -> sym =
           fatal pos "Unknown builtin \"%a.%s\"." Path.pp p s
       end
 
-(** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to
-   the builtin [name], and [None] otherwise. *)
-let get_opt : sig_state -> string -> sym option = fun ss name ->
-  try Some (StrMap.find name ss.builtins) with Not_found -> None
-
 (** Type of functions checking the validity of a builtin symbol in a given
     signature state. The [pos] argument is used for error reporting. *)
 type check = sig_state -> popt -> sym -> unit
@@ -200,6 +195,7 @@ let _ =
 
 (* Additional builtins for rewrite tactic. *)
 let eq = builtin "eq"
+let encoded_arr = builtin "arr"
 
 let _ =
   (* Π a:Set, El a → El a → Prop *)
@@ -219,7 +215,25 @@ let _ =
                  arr (app prf (apps eq [var a; var x; var y]))
                    (prod (arr (elt (var a)) prop) (fun p ->
                         arr (app prf (app (var p) (var y)))
-                          (app prf (app (var p) (var x)))))))))
+                          (app prf (app (var p) (var x)))))))));
+  (* Set → Set → Set *)
+  register_typ "arr" (arr set (arr set set));
+  (* Π a b:Set, Π f g:El (arr a b),
+     (Π x:El a, Prf (eq b (f x) (g x))) → Prf (eq (arr a b) f g) *)
+  register_typ "funExt"
+    (prod set (fun a ->
+         prod set (fun b ->
+             let ab = apps encoded_arr [var a; var b] in
+             prod (elt ab) (fun f ->
+                 prod (elt ab) (fun g ->
+                     arr
+                       (prod (elt (var a)) (fun x ->
+                            app prf
+                              (apps eq
+                                 [ var b
+                                 ; app (var f) (var x)
+                                 ; app (var g) (var x) ])))
+                       (app prf (apps eq [ab; var f; var g])))))))
 
 (* Additional builtins for eval tactic. *)
 let tac = builtin "Tactic"

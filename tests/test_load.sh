@@ -2,49 +2,31 @@
 
 set -e
 
-dune build
+dir=/tmp/test_load
+rm -rf $dir
+mkdir -p $dir/tests/OK
 
-clean () { rm -f tests/OK/*.lpo; }
-trap clean ERR
+cp tests/OK/*.lp $dir/tests/OK
+cp resources/Makefile tests/lambdapi.pkg $dir/tests
 
-lambdapi='_build/install/default/bin/lambdapi'
-mk=/tmp/lpo.mk
-jobs=$(nproc)
-TIMEFORMAT="%Es"
+# excluded files
+cd $dir/tests/OK
+rm -f why3.lp # because it requires why3
+rm -f perf_rw_engine.lp # because it takes too long
+rm -f escape_path.lp req.file.with.dot.lp require_symbol.lp # because of irregular names
 
-# excluded test files
-for f in why3 perf_rw_engine tutorial escape_path req.file.with.dot
-do
-    exclude="-a ! -name $f.lp $exclude"
-done
-FILES=`find tests/OK -maxdepth 1 -name '*.lp' $exclude | xargs`
+cd $dir/tests
+cat >> Makefile <<'__END__'
+.PHONY: load
+load: $(LPO:%.lpo=%.load)
 
-# generate Makefile $mk
-cat > $mk <<__END__
-LAMBDAPI := $lambdapi check -w -v 0
-FILES := $FILES
-lpo: \$(FILES:%.lp=%.lpo)
-%.lpo: %.lp
-	@echo generate \$*.lpo ...
-	@\$(LAMBDAPI) -c \$*.lp
-load: \$(FILES:%.lp=%.load)
-%.load: %.lp
-	@echo load \$*.lpo ...
-	@\$(LAMBDAPI) \$*.lp
+%.load: %.lpo
+	@echo lambdapi load $< ...
+	@lambdapi check -v 0 -w $<
 __END__
 
-# add file dependencies
-for f in $FILES
-do
-    s=`awk -f tests/deps.awk $f`;
-    if test -n "$s"; then echo ${f}o: $s >> $mk; fi
-done
-
-# remove lpo files
-clean
-
 echo "############ compile tests/OK files ############"
-time make -j$jobs -f $mk lpo
+time make LP_OPTIONS='-c -v 0 -w'
 
 echo "############ load tests/OK files ############"
-time make -j$jobs -f $mk load
+time make load LP_OPTIONS='-c -v 0 -w'

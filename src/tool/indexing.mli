@@ -1,16 +1,16 @@
 open Core open Sig_state
 open Parsing open Syntax
 
+val rwpaths : string list ref
 val the_dbpath : string ref
 
 (* indexing *)
 val empty : unit -> unit
-val load_rewriting_rules: string list -> unit
 val force_meta_rules_loading: unit -> unit
 val index_sign : Sign.t -> unit
 val parse_source_map : string -> unit (* the name of the file *)
 val deindex_path : string -> unit
-val dump : dbpath:string -> unit -> unit
+val dump : unit -> unit
 
 val preserving_index : ('a -> 'b) -> 'a -> 'b
 
@@ -18,10 +18,10 @@ val preserving_index : ('a -> 'b) -> 'a -> 'b
 val lsp_input : ((*uri*)string * (*text*)string) ref
 
 (* search command used by cli *)
-val search_cmd_txt_query: sig_state -> dbpath:string -> search Lplib.Base.pp
+val search_cmd_txt_query: sig_state -> search Lplib.Base.pp
 
 (* search command used by websearch *)
-val search_cmd_html: sig_state -> from:int -> how_many:int -> dbpath:string
+val search_cmd_html: sig_state -> from:int -> how_many:int
     -> string Lplib.Base.pp
 
-val search_cmd_txt: sig_state -> dbpath:string -> string Lplib.Base.pp
+val search_cmd_txt: sig_state -> string Lplib.Base.pp

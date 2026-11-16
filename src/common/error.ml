@@ -19,7 +19,7 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
   | None   -> fprintf !err_fmt (Color.yel fmt ^^ "@.")
   | Some _ ->
-    fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt) ^^ "@.") Pos.pp pos
+    fprintf !err_fmt (Color.yel ("[%a] " ^^ fmt) ^^ "@.") Pos.pp pos
 
 (** [no_wrn f x] disables warnings before executing [f x] and then restores
     the initial state of warnings. The result of [f x] is returned. *)
@@ -32,11 +32,11 @@ let no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
   res
 
 (** Exception raised in case of failure. Note that we use an optional optional
-    source position. [None] is used on errors that are independant from source
+    source position. [None] is used on errors that are independent from source
     code position (e.g., errors related to command-line arguments parsing). In
-    cases where positions are expected [Some None] may be used to indicate the
-    abscence of a position. This may happen when terms are generated (e.g., by
-    a  form of desugaring). The last argument is  used to provide  an optional
+    cases where positions are expected [Some None] is used to indicate the
+    absence of a position. This may happen when terms are generated (e.g., by
+    a form of desugaring). The last argument is used to provide an optional
     description of the error, displayed differently from the error itself. *)
 exception Fatal of Pos.popt option * string * string
 
@@ -53,9 +53,9 @@ let fatal_msg : 'a outfmt -> 'a =
     instead of red color. *)
 let fatal : Pos.popt -> ?err_desc:string -> ('a,'b) koutfmt -> 'a =
   fun pos ?(err_desc="") fmt ->
-  let err_desc _ =
+  let cont _ =
     raise (Fatal(Some(pos), Format.flush_str_formatter (), err_desc)) in
-  Format.kfprintf err_desc Format.str_formatter fmt
+  Format.kfprintf cont Format.str_formatter fmt
 
 (** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
     error that has no precise attached source code position. *)

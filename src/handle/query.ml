@@ -139,6 +139,18 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     return (fun ppf -> out ppf "prover \"%s\";") !Why3_tactic.default_prover
   | P_query_print Prover_timeout ->
     return (fun ppf -> out ppf "prover_timeout %d;") !Why3_tactic.timeout
+  | P_query_print Notation ->
+    let print_sym ppf s =
+      match !(s.sym_nota) with
+      | NoNotation | Succ _ | Zero -> ()
+      | _ -> out ppf "notation %a %a;@." Print.sym s
+               (Print.notation float) !(s.sym_nota)
+    in
+    let print_sign ppf _ sign =
+      if sign != Sign.Ghost.sign then
+      Extra.StrMap.iter (fun _ s -> print_sym ppf s) !(sign.Sign.sign_symbols)
+    in
+    return (fun ppf -> Path.Map.iter (print_sign ppf)) !Sign.loaded
   | P_query_print (String s) -> return string s
   | P_query_print Coerce_rule -> return (rules sym_rule) Coercion.coerce
   | P_query_print Unif_rule ->
@@ -192,7 +204,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let decl ppf s =
           let rules ppf s =
             if !(s.sym_rules) <> [] then out ppf "@.%a" (rules sym_rule) s in
-          out ppf "%a%a%asymbol %a : %a%a;%a%a"
+          out ppf "%a%a%asymbol %a: %a%a;%a%a"
             expo s.sym_expo prop s.sym_prop match_strat s.sym_mstrat
             sym s sym_type s def !(s.sym_def) notation s rules s
         in
@@ -223,8 +235,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | P_query_search q ->
-      let dbpath = Path.default_dbpath in
-      return (Tool.Indexing.search_cmd_txt_query ss ~dbpath) q
+      return (Tool.Indexing.search_cmd_txt_query ss) q
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
       let t = scope pt and a = scope ~typ:true pa in
       let ctxt = Env.to_ctxt env in

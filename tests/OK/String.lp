@@ -1,4 +1,4 @@
-// builtin type of strings
+// builtin string type
 
 require open tests.OK.Set;
 

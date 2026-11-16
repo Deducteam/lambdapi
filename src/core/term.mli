@@ -327,12 +327,9 @@ val get_args : term -> term * term list
     of the list of arguments. *)
 val get_args_len : term -> term * term list * int
 
-(** Total order on terms (modulo alpha-equivalence). *)
+(** Total order on terms. /!\ The comparison of two alpha-equivalent terms may
+    be <> 0. For testing alpha-equivalence, use LibTerm.eq_alpha. *)
 val cmp : term cmp
-
-(** Equality on terms (modulo alpha-equivalence) and rules. *)
-val eq : term eq
-val eq_lhs : rule eq
 
 (** Construction functions of the private type term. They ensure some
    invariants:

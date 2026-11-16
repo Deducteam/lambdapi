@@ -1,16 +1,6 @@
 TODO
 ====
 
-Minor fixes after [indexing_BO](https://github.com/Deducteam/lambdapi/pull/1290) merge 
-----------------
-
-[X] parsing was ignoring trailing characters after query
-[X] notation was not working any more (Pratter was) because of bad way of requiring
-  files in cli/lambdapi.ml
-[X] added position in error messages from query commands
-[X] in case of syntax error the websearch now does not return the page
-
-
 Index and search
 ----------------
 
@@ -75,20 +65,9 @@ Performance improvements
 Documentation
 -------------
 
-* document the Coq syntax:  ~ /\ \/ -> = forall exists fun
-
-* fix the doc: --require can now be repeated
-
 * fix the doc: not only "anywhere" but also "type" can be paired
   only with ">="; maybe make it explicit that to match exactly the
   type of a constant one should use "spine ="
-
-* document new features, e.g. -sources (and find better
-  terminology), deindex
-
-* document require ... as Foo: using Foo.X in the query already
-  works (pure magic!); of course it does not work when using
-  regular expressions [ check before! ]
 
 * Misleading output for:
 

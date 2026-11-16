@@ -62,6 +62,17 @@ let concat_map f l =
        aux f (rev_append xs acc) l
   in aux f [] l
 
+(** [drop n l] removes the first [n] elements of [l], or all elements if
+    [n] exceeds the list length. Raises [Invalid_argument] if [n] is negative.
+    Copied from OCaml 5.3's standard library. *)
+let drop n l =
+  let rec aux i = function
+    | _x::l when i < n -> aux (i + 1) l
+    | rest -> rest
+  in
+  if n < 0 then invalid_arg "List.drop";
+  aux 0 l
+
 (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but it
     only traverses the list once and is tail-recursive. *)
 let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
@@ -171,11 +182,11 @@ let destruct : 'a list -> int -> 'a list * 'a * 'a list =
 let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
   L.rev_append l (m @ r)
 
-(** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
+(** [init n f] creates a list with [f 0] up to [f(n-1)] as its elements. Note
    that [Invalid_argument] is raised if [n] is negative. *)
 let init : int -> (int -> 'a) -> 'a list = fun n f ->
   if n < 0 then invalid_arg "Extra.List.init";
-  let rec loop k = if k > n then [] else f k :: loop (k + 1) in
+  let rec loop k = if k >= n then [] else f k :: loop (k + 1) in
   loop 0
 
 (** [mem_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is

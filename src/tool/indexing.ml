@@ -20,7 +20,7 @@ let re_matches_sym_name re sym_name =
   true
  with Not_found -> false
 
- let (@) = Lplib.List.(@)
+let (@) = Lplib.List.(@)
 
 let name_of_sym s = (s.sym_path, s.sym_name)
 
@@ -29,20 +29,6 @@ let dump_to ~filename i =
  output_string ch index_version;
  Marshal.to_channel ch i [] ;
  close_out ch
-
-let restore_from ~filename =
-  let ch = open_in_bin filename in
-
-  let buffer = Bytes.create (String.length index_version) in
-  really_input ch buffer 0 (String.length index_version);
-  if Bytes.unsafe_to_string buffer <> index_version then
-    Error.fatal_no_pos "Wrong search index version!
-      Please (re)move or regenerate the index DB
-      (default is ~/.LPSearch.db)";
-
-  let i = Marshal.from_channel ch in
-  close_in ch ;
-  i
 
 (* discrimination tree *)
 (* substitution trees would be best *)
@@ -318,16 +304,38 @@ module DB = struct
 
  (* disk persistence *)
 
- let the_dbpath : string Stdlib.ref = Stdlib.ref Path.default_dbpath
+ let default_dbfile = ".LPSearch.db"
+
+ let the_dbpath : string Stdlib.ref =
+   Stdlib.ref
+     (match Sys.getenv_opt "HOME" with
+      | Some s -> Filename.concat s default_dbfile
+      | None -> default_dbfile)
 
  let rwpaths = Stdlib.ref []
 
- let restore_from_disk () =
-  try restore_from ~filename:Stdlib.(!the_dbpath)
-  with Sys_error msg ->
-     Common.Error.wrn None "%s.\n\
-      Type \"lambdapi index --help\" to learn how to create the index." msg ;
-     Sym_nameMap.empty, Index.empty
+ let restore_from ~filename =
+  if Sys.file_exists filename then
+    begin
+      let ch = open_in_bin filename in
+      let buffer = Bytes.create (String.length index_version) in
+      really_input ch buffer 0 (String.length index_version);
+      if Bytes.unsafe_to_string buffer <> index_version then
+        Error.fatal_no_pos
+          "Wrong index file version. Please (re)move or regenerate \"%s\"."
+          filename;
+      let i = Marshal.from_channel ch in
+      close_in ch ;
+      i
+    end
+  else
+    begin
+      Common.Error.wrn None "Index file \"%s\" not found (will be created)."
+        filename;
+      Sym_nameMap.empty, Index.empty
+    end
+
+ let restore_from_disk() = restore_from ~filename:Stdlib.(!the_dbpath)
 
  (* The persistent database.
  Please increment the value of [index_version] in the header of this file
@@ -376,8 +384,8 @@ module DB = struct
   set_of_list ~generalize k
    (Index.search ~generalize (snd (Lazy.force !db)) k)
 
- let dump ~dbpath () =
-  dump_to ~filename:dbpath (Lazy.force !db)
+ let dump () =
+  dump_to ~filename:Stdlib.(!the_dbpath) (Lazy.force !db)
 
  let locate_name name =
   let k = Term.mk_Wild (* dummy, unused *) in
@@ -407,7 +415,7 @@ module DB = struct
          raise
           (Common.Error.Fatal
             (None,"wrong file format for source map file", ""))
-   done ;
+   done
   with
    | Failure _ as exn ->
       close_in ch;
@@ -416,7 +424,6 @@ module DB = struct
          Printexc.to_string exn, ""))
    | End_of_file -> close_in ch) ;
   db := lazy (!sidx,idx)
-
 
  type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
 
@@ -785,9 +792,6 @@ let index_sym ~path sym =
 
 let _ = Stdlib.(Core.Sign.add_symbol_callback := index_sym)
 
-let load_rewriting_rules rwrules =
- Stdlib.(DB.rwpaths := rwrules)
-
 let index_sign sign =
  (*Console.set_flag "print_domains" true ;
  Console.set_flag "print_implicits" true ;
@@ -921,8 +925,7 @@ module UserLevelQueries = struct
       Lplib.Base.out fmt "%s"
        (fail None (Format.asprintf "Error: %s@." (Printexc.to_string exn)))
 
-  let search_cmd_txt_query ss ~dbpath fmt q =
-  Stdlib.(the_dbpath := dbpath);
+  let search_cmd_txt_query ss fmt q =
   search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun pos ?err_desc x ->
           Common.Error.fatal_optional_position pos ?err_desc "%s" x)
@@ -950,9 +953,8 @@ module UserLevelQueries = struct
     assert (transform_ascii_to_unicode "forall.x, y" = "Π.x, y");
     assert (transform_ascii_to_unicode "((forall x, y" = "((Π x, y")
 
- let search_cmd_html ss ~from ~how_many ~dbpath fmt s =
-  Stdlib.(the_dbpath := dbpath);
-    search_cmd_gen_string ss ~from ~how_many
+ let search_cmd_html ss ~from ~how_many fmt s =
+   search_cmd_gen_string ss ~from ~how_many
       ~fail:(fun pos ?err_desc x -> "<font color=\"red\">" ^ x ^ "</font>"
           ^ (match pos with None -> "" | Some p -> popt_to_string p)
           ^ Option.value err_desc ~default:"")
@@ -961,9 +963,8 @@ module UserLevelQueries = struct
       fmt
       s
 
- let search_cmd_txt ss ~dbpath (fmt:Format.formatter) s =
+ let search_cmd_txt ss (fmt:Format.formatter) s =
     let s = transform_ascii_to_unicode s in
-  Stdlib.(the_dbpath := dbpath);
     search_cmd_gen_string ss ~from:0 ~how_many:999999
       ~fail:(fun pos ?err_desc x ->
           Common.Error.fatal_optional_position pos ?err_desc "%s" x)

@@ -1,6 +1,8 @@
 #!/bin/bash
 
-SRC="https://deducteam.github.io/data/libraries/matita.tar.gz"
+set -e
+
+SRC="https://raw.githubusercontent.com/Deducteam/dedukti.github.io/master/data/libraries/matita.tar.gz"
 DIR="matita"
 
 # Cleaning command (clean and exit).
@@ -59,12 +61,8 @@ if [[ ! -f ${DIR}/matita.dk ]]; then
   # comment the proof of le_fact_10 in matita_arithmetic_factorial
   FILE=${DIR}/matita_arithmetics_factorial
   awk -f matita.awk ${FILE}.dk > ${FILE}.aux
-  mv -f ${FILE}.aux ${FILE}.dk 
-  echo "OK"
-
-  # Cleaning up.
-  echo -n "  - cleaning up...      "
-  rm ${DIR}/Makefile
+  mv -f ${FILE}.aux ${FILE}.dk
+  cp ../tests/lambdapi.pkg ../resources/Makefile ${DIR}
   echo "OK"
 
   # All done.
@@ -74,5 +72,4 @@ fi
 
 # Checking the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings -c matita.dk
+\time -f "Finished in %E at %P with %MKb of RAM" make LP_OPTIONS='-c -v 0 -w'

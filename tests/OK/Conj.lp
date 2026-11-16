@@ -1,7 +1,6 @@
-/* Library on Meta-Theorems for Conjunctions
+// varyadic conjunction
 
--------------------
-
+/*
 The library proves the following meta-theorems:
 
 ** n-ary Natural Deduction rules:
@@ -28,7 +27,7 @@ notation ∈ₙ infix right 40;
 
 symbol clause ≔ nth ⊥;
 
-opaque symbol clause_ext (l: 𝕃 o) (l0 : τ o) (n: τ nat) : 
+opaque symbol clause_ext (l: 𝕃 o) (l0 : τ o) (n: τ nat) :
     π (clause l n) → π (clause (l0 ⸬ l) (n +1)) ≔
 begin
     assume l l0 n h1;
@@ -40,34 +39,34 @@ end;
 
 symbol conj : 𝕃 o → τ o;
 rule conj ($l1 ⸬ ($c ⸬ $l)) ↪ $l1 ∧ conj ($c ⸬ $l)
-with conj ($l1 ⸬ □) ↪ $l1 
+with conj ($l1 ⸬ □) ↪ $l1
 with conj □ ↪ ⊤;
 
 assert l0 l1 l2 ⊢ π (conj (l0 ⸬ l1 ⸬ l2  ⸬ l1 ⸬ □)) ≡ π (l0 ∧ (l1 ∧ (l2  ∧ l1)));
 
-opaque symbol conj_head (c0 : τ o) (c : 𝕃 o) : 
+opaque symbol conj_head (c0 : τ o) (c : 𝕃 o) :
      π (conj (c0 ⸬ c)) → π c0 ≔
 begin
     assume c0;
     induction
         {assume h1;
-        refine h1}   
+        refine h1}
         {assume x0 c1 h1 h2;
         refine ∧ₑ₁ h2}
-end; 
+end;
 
-opaque symbol conj_tail (c0 : τ o) (c : 𝕃 o) : 
+opaque symbol conj_tail (c0 : τ o) (c : 𝕃 o) :
      π (conj (c0 ⸬ c)) → π (conj c) ≔
 begin
     assume c0;
     induction
         {assume h1;
-        refine ⊤ᵢ}   
-        {assume x0 c1 h1 h2; 
+        refine ⊤ᵢ}
+        {assume x0 c1 h1 h2;
         refine ∧ₑ₂ h2}
-end; 
+end;
 
-opaque symbol conj_correct (c0 : τ o) (c : 𝕃 o) : 
+opaque symbol conj_correct (c0 : τ o) (c : 𝕃 o) :
     π (conj (c0 ⸬ c)) → π (c0 ∧ conj c) ≔
 begin
     assume c0;
@@ -78,7 +77,7 @@ begin
         refine h2}
 end;
 
-opaque symbol conj_sound (c0 : τ o) (c : 𝕃 o) : 
+opaque symbol conj_sound (c0 : τ o) (c : 𝕃 o) :
     π (c0 ∧ conj c) →  π (conj (c0 ⸬ c)) ≔
 begin
     assume c0;
@@ -92,8 +91,8 @@ end;
 ///////////////////////////////// meta-theorems ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// ∧ᵢₙ 
-opaque symbol ∧ᵢₙ (c0 : 𝕃 o) (c1 : 𝕃 o) : 
+// ∧ᵢₙ
+opaque symbol ∧ᵢₙ (c0 : 𝕃 o) (c1 : 𝕃 o) :
     π (conj c0) → π (conj c1) → π (conj (c0 ++ c1))≔
 begin
     induction
@@ -106,14 +105,14 @@ begin
             {refine h0 l1 (conj_tail x0 l0 h1) h2}}
 end;
 
-// ∧ₑₙ 
-opaque symbol ∧ₑₙ (id : τ nat) (cnf: 𝕃 o) : 
+// ∧ₑₙ
+opaque symbol ∧ₑₙ (id : τ nat) (cnf: 𝕃 o) :
     π (id ∈ₙ indexes cnf) → π (conj cnf) → π (clause cnf id) ≔
 begin
-    induction 
+    induction
         {induction
             {assume h0 h1; refine h0}
-            {assume x cnf h0 h1 h2; 
+            {assume x cnf h0 h1 h2;
             refine conj_head x cnf h2}}
         {assume id h0;
         induction

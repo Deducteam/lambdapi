@@ -137,7 +137,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       let i = fresh_index () in
       mk_Patt (Some i, string_of_int i, ts)
 
-(* used in desugaring decimal notations *)
+(* used in parsing decimal notations *)
 let strint = Array.init 11 string_of_int
 
 (** [scope ~find_sym ~typ k md ss env t] turns a parser-level term [t] into an
@@ -239,6 +239,7 @@ and scope_domain : ?find_sym:find_sym ->
   match a, md with
   | (Some {elt=P_Wild;_}|None), (M_LHS data | M_SearchPatt (_,data)) ->
       fresh_patt data None (Env.to_terms env)
+  | (Some {elt=P_Wild;_}|None), M_Patt -> mk_Wild
   | (Some {elt=P_Wild;_}|None), _ -> mk_Plac true
   | Some a, _ -> scope ?find_sym ~typ:true k md ss env a
 
@@ -256,7 +257,11 @@ and scope_binder :
         begin
           match t with
           | Some t -> scope ?find_sym ~typ (k+1) md ss env t
-          | None -> mk_Plac true
+          | None ->
+              begin match md with
+              | M_Patt -> mk_Wild
+              | _ -> mk_Plac true
+              end
         end
     | (idopts,typopt,_implicit)::params_list ->
       let dom = scope_domain ?find_sym (k+1) md ss env typopt in
@@ -300,28 +305,37 @@ and scope_head : ?find_sym:find_sym ->
       end
 
   | (P_NLit(p,s), _) ->
-      let neg, s =
-        let neg = s.[0] = '-' in
-        let s = if neg then String.sub s 1 (String.length s - 1) else s in
-        neg, s
-      in
+      let start = ref 0 in
+      (* skip minus character if any *)
+      let neg = (s.[0] = '-') in
+      if neg then incr start;
+      (* skip redundant leading zeros *)
+      let n = String.length s in
+      while !start < n && s.[!start] = '0' do incr start done;
+      if !start >= n then decr start;
+      (* get builtin symbols *)
+      let sym = Array.make 11 mk_Kind in
+      let has_zero = ref true in
       let sym_of s = mk_Symb (Builtin.get ss pos p s) in
-      let sym = Array.map sym_of strint in
-      let digit = function
-        | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
-        | '4' -> sym.(4) | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7)
-        | '8' -> sym.(8) | '9' -> sym.(9) | _ -> assert false
-      in
+      begin try sym.(0) <- sym_of strint.(0) with _ -> has_zero := false end;
+      for i = 1 to 10 do sym.(i) <- sym_of strint.(i) done;
       let sym_add = sym_of "+" in
       let add x y = mk_Appl(mk_Appl(sym_add,x),y) in
       let sym_mul = sym_of "*" in
       let mul x y = mk_Appl(mk_Appl(sym_mul,x),y) in
-      let rec unsugar i =
-        if i <= 0 then digit s.[0]
-        else add (digit s.[i]) (mul sym.(10) (unsugar (i-1)))
+      let digit = function
+        | '0' when !has_zero -> sym.(0)
+        | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3) | '4' -> sym.(4)
+        | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7) | '8' -> sym.(8)
+        | '9' -> sym.(9) | _ -> assert false
       in
-      let n = unsugar (String.length s - 1) in
-      if neg then mk_Appl(sym_of "-",n) else n
+      let rec term_of_index i =
+        if i <= !start then digit s.[i]
+        else if s.[i] = '0' then mul sym.(10) (term_of_index (i-1))
+        else add (digit s.[i]) (mul sym.(10) (term_of_index (i-1)))
+      in
+      let t = term_of_index (n-1) in
+      if neg then mk_Appl(sym_of "-",t) else t
 
   | (P_Wild, M_URHS(data)) ->
     let i = data.m_urhs_vars_nb in
@@ -426,23 +440,18 @@ and scope_head : ?find_sym:find_sym ->
 
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
 
-  | (P_Arro(_,_), M_Patt) ->
-      fatal pos "Arrows are not allowed in patterns."
   | (P_Arro(a,b), _) ->
     mk_Arro (scope ?find_sym ~typ:true (k+1) md ss env a,
              scope ?find_sym ~typ:true (k+1) md ss env b)
 
-  | (P_Abst(_,_), M_Patt) ->
-      fatal pos "Abstractions are not allowed in patterns."
   | (P_Abst(xs,t), _) ->
       scope_binder ?find_sym k md ss mk_Abst env xs (Some t)
 
-  | (P_Prod(_,_), M_Patt) ->
-      fatal pos "Dependent products are not allowed in patterns."
   | (P_Prod(xs,b), _) ->
     scope_binder ?find_sym ~typ:true k md ss mk_Prod env xs (Some b)
 
-  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _)) ->
+  | (P_LLet(x,xs,a,t,u),
+     (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _|M_Patt)) ->
       let a = scope_binder ?find_sym ~typ:true (k+1) md ss mk_Prod env xs a in
       let t = scope_binder ?find_sym (k+1) md ss mk_Abst env xs (Some(t)) in
       let v = new_var x.elt in
@@ -453,8 +462,6 @@ and scope_head : ?find_sym:find_sym ->
       mk_LLet (a, t, bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
       fatal pos "Let-bindings are not allowed in a LHS."
-  | (P_LLet(_), M_Patt) ->
-      fatal pos "Let-bindings are not allowed in patterns."
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->

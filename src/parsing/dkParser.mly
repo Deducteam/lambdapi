@@ -17,7 +17,8 @@
 
     let p_qident_of_id (lps, s) = make_pos lps ([], s)
 
-    let p_qident_of_qid (lps, m, s) = make_pos lps ([m], s)
+    let p_qident_of_qid (lps, m, s) =
+      make_pos lps (!Common.Library.root_path @ [m], s)
 
     let iden lps p_qid = make_pos lps (P_Iden (p_qid, false))
 
@@ -78,7 +79,9 @@
 
     let query lps q = make_pos lps (P_query q)
 
-    let require (lps,id) = make_pos lps (P_require(None,[make_pos lps [id]]))
+    let require (lps,id) =
+      make_pos lps
+        (P_require(None, [make_pos lps (!Common.Library.root_path @ [id])]))
 
     let arrow lps a b = make_pos lps (P_Arro (a, b))
     let binary lps a = arrow lps a (arrow lps a a)

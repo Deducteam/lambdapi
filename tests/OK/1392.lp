@@ -22,7 +22,7 @@ notation ⇔ infix right 5;
 opaque ⇔;
 
 rule π ($p ⇔ $q) ↪ π (($p ⇒ $q) ∧ ($q ⇒ $p));
-unif_rule ($p ⇔ $q) ≡ ($r1 ∧ $r2) ↪ [$r1 ≡ @⇒ $p $q; $r2 ≡ @⇒ $q $p];
+unif_rule $p ⇔ $q ≡ $r1 ∧ $r2 ↪ [$r1 ≡ @⇒ $p $q; $r2 ≡ @⇒ $q $p];
 
 constant symbol Set: TYPE;
 injective symbol τ: Set → TYPE;
