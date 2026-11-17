@@ -96,7 +96,7 @@ Overview of directories and files
 
   * ``src/export/``: export to other rule/proof formats
 
-    * ``coq.ml``: export to Rocq
+    * ``rocq.ml``: export to Rocq
     * ``dk.ml``: export to Dedukti (after scoping and type-checking)
     * ``hrs.ml``: export to the .hrs format of the confluence competition
     * ``lean.ml``: export to Lean
