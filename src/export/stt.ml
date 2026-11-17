@@ -159,6 +159,46 @@ let list elt sep oc xs =
   | [] -> ()
   | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
 
+
+(** Parametrisation by a theory class/record.
+    The translation is parametrised by a Lean type class or Rocq record having
+    one field per symbol of the theory, so that it is independent of an
+    alignment: a symbol is translated to the field of the class bearing its
+    name, never to an expression of some target library. The class is fixed
+    here because the translation is done once, while the alignments
+    instantiating it may change. *)
+
+let parametrised = ref false
+let theory_class = "HOLTheory"
+let class_var = "T"
+
+let implicit_class = ref true
+
+(** Instance of the class bound by every generated declaration. *)
+let add_class_param (args : p_params list) =
+  if !parametrised
+  then let pos = match args with
+    | (Some ({elt=_;pos})::_,_,_)::_ -> pos
+    | _ -> None
+    in ([Some {elt=class_var;pos}],
+        Some {elt=P_Iden({elt=([],theory_class);pos},false);pos},
+        !implicit_class) :: args
+  else args
+
+
+(** [is_class_field id] tells whether [id] denotes a field of the class [T],
+    taking the instance [T] as its first argument when it is applied
+    explicitly (with @). All do except for the structural symbols of STT,
+    which are the builtins. *)
+let is_class_field id = !parametrised &&
+  match QidMap.find_opt ([],id) !encoding with
+  (* Set, Prop, Arr and All all have a behavior that cannot simply be encoded
+     using record/class fields (Set and Prop's elements must be types and
+     Arr and All elements can be applied), so they are already mapped to the
+     corresponding type constructors. *)
+  | Some (Set|Prop|Arr|El|Prf|Imp|All) -> false
+  | _ -> true
+
 (** Translation of identifiers. *)
 
 let check : (popt -> string -> unit) Stdlib.ref = ref (fun _ _ -> ())
@@ -183,7 +223,7 @@ let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
 let alias = Stdlib.ref StrMap.empty
 
-let rec qident oc {elt=((mp,id) as qid);pos} =
+let rec raw_qident oc {elt=((mp,id) as qid);pos} =
   match mp with
   | [] ->
     begin match QidMap.find_opt (!current_mp,id) !mapping with
@@ -196,7 +236,7 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     end
   | [p] ->
     begin match StrMap.find_opt p !alias with
-      | Some mp -> qident oc {elt=(mp,id);pos}
+      | Some mp -> raw_qident oc {elt=(mp,id);pos}
       | None ->
         match QidMap.find_opt qid !mapping with
         | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
@@ -207,6 +247,12 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
     | Some s -> string oc s
     end
+
+let qident oc explicit (qid : p_qident) =
+  let is_class_field = is_class_field (snd qid.elt) in
+  if is_class_field || explicit then char oc '@';
+  raw_qident oc qid;
+  if is_class_field then string oc (" " ^ class_var)
 
 (** Translation of terms. *)
 
