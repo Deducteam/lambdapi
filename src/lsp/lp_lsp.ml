@@ -33,8 +33,36 @@ let odict_field name dict =
 module LIO = Lsp_io
 module LSP = Lsp_base
 
+(* Walks a nested path of keys in a json; returns the corresponding value
+   or [None] if any segment is missing / has the wrong shape. *)
+let json_value_by_path (json : J.t) (path : string list) : J.t option =
+  List.fold_left
+    (fun json key ->
+       match json with
+       | Some (`Assoc fields) -> List.assoc_opt key fields
+       | _ -> None)
+    (Some json) path
+
+(* set to true if the client understands hierarchical [DocumentSymbol[]]
+   responses [textDocument.documentSymbol.hierarchicalDocumentSymbolSupport].
+   false elsewhere*)
+let hierarchical_document_symbol_support = ref false
+
 (* Request Handling: The client expects a reply *)
-let do_initialize ofmt ~id _params =
+let do_initialize ofmt ~id params =
+  (* Read clientCapabilities for features we gate on client support. *)
+  let client_caps =
+    Option.get `Null (List.assoc_opt "capabilities" params) in
+  let is_capability_supported capability_path =
+    match json_value_by_path client_caps capability_path with
+    | Some (`Bool b) -> b
+    | _ -> false
+  in
+
+  hierarchical_document_symbol_support :=
+    is_capability_supported
+      ["textDocument"; "documentSymbol";
+       "hierarchicalDocumentSymbolSupport"];
   let msg = LSP.mk_reply ~id ~result:(
       `Assoc ["capabilities",
        `Assoc [
@@ -163,7 +191,7 @@ let document_symbols_of_nodes (nodes : Lp_doc.doc_node list) : J.t list =
     | None -> []
     | Some cmd_pos ->
       let cmd_range = LSP.mk_range cmd_pos in
-      match Pure.Command.get_elt cmd with
+      match Pure.Command.get_ast_command cmd with
       | P_symbol s ->
         let sel = range_or_fallback s.p_sym_nam.pos cmd_range in
         [ mk_document_symbol
@@ -195,7 +223,7 @@ let do_symbols ofmt ~id params =
     LIO.send_json ofmt msg
   | Some ss ->
     let result =
-      if !hierarchical_symbols then
+      if !hierarchical_document_symbol_support then
         (* Built from the parsed AST alone; no signature state needed. *)
         `List (document_symbols_of_nodes doc.Lp_doc.nodes)
       else
