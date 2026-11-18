@@ -191,6 +191,7 @@ let add_class_param (args : p_params list) =
     explicitly (with @). All do except for the structural symbols of STT,
     which are the builtins. *)
 let is_class_field id = !parametrised &&
+  id <> theory_class &&
   match QidMap.find_opt ([],id) !encoding with
   (* Set, Prop, Arr and All all have a behavior that cannot simply be encoded
      using record/class fields (Set and Prop's elements must be types and
