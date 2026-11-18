@@ -662,9 +662,9 @@ let cmd_export =
       | _ -> Parsing.Package.set_root_path (Filename.dirname file)
     end;
     let parse = Parsing.Parser.parse_file in
-    match output with
+    begin match output with
     | ParamSttRocq | ParamSttLean -> Export.Stt.parametrised := true
-    | _ -> () ;
+    | _ -> () end;
     match output with
     | Lp -> Parsing.Pretty.commands Format.std_formatter (parse file)
     | Dk -> Export.Dk.sign (compile file)
