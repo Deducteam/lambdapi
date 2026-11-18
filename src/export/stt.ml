@@ -249,11 +249,12 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
     | Some s -> string oc s
     end
 
-let qident oc explicit (qid : p_qident) =
+let qident oc b (qid : p_qident) =
   let is_class_field = is_class_field (snd qid.elt) in
-  if is_class_field || explicit then char oc '@';
+  if b then char oc '@';
   raw_qident oc qid;
-  if is_class_field then string oc (" " ^ class_var)
+  if is_class_field && (b || not !implicit_class)
+  then string oc (" " ^ class_var)
 
 (** Translation of terms. *)
 

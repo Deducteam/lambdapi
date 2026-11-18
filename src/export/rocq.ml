@@ -56,7 +56,9 @@ let rec term oc t =
     string oc " := "; term oc u; string oc " in "; term oc v
   | P_Wrap u -> term oc u
   | P_Appl _ ->
-      let default h ts = paren oc h; char oc ' '; list paren " " oc ts in
+      let default h ts = paren oc h; char oc ' ';
+        list (paren ~apparg:true) " " oc ts
+      in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
@@ -81,15 +83,16 @@ and abst oc xs u =
 and prod oc xs u =
   string oc "forall"; params_list_in_abs oc xs; string oc ", "; term oc u
 
-and paren oc t =
+and paren ?(apparg = false) oc t =
   let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
+  | P_Iden({elt=(_,n);_},_) when apparg && is_class_field n -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
           match builtin, ts with
-          | (El|Prf), [u] -> paren oc u
+          | (El|Prf), [u] -> paren ~apparg oc u
           | _ -> default())
   | _ -> term oc t
 
