@@ -447,7 +447,7 @@ let do_definition ofmt ~id params =
        covers regions the checker never reached (mid-edit text, code
        past a parse error). *)
     let def_fallback () =
-      match RangeMap.find pt doc.path_map with
+      match RangeMap.find pt doc.module_path_map with
       | Some (_, path) ->
         let file = Library.(file_of_path path ^ lp_src_extension) in
         mk_definfo file (Pos.file_start file)
