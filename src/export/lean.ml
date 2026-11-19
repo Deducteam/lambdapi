@@ -52,7 +52,7 @@ let rec term oc t =
   | P_Wild -> char oc '_'
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
-  | P_Iden(qid,b) -> qident oc b qid
+  | P_Iden(qid,b) -> qident StrSet.empty oc b qid
   | P_Arro(u,v) -> arrow oc u v
   | P_Abst(xs,u) -> abst oc xs u
   | P_Prod(xs,u) -> prod oc xs u
@@ -99,7 +99,8 @@ and paren ?(apparg=false) oc t =
   let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt=(_,n);_},b) when apparg && b && is_class_field n -> default()
+  | P_Iden({elt=(_,n);_},b) when apparg && b &&
+    is_class_field StrSet.empty n -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
