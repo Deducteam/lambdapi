@@ -158,11 +158,13 @@ let mk_definfo file pos =
     ; "range", LSP.mk_range pos
         ]
 
-(* No LSP SymbolKind matches lambdapi's notions (axiom, constructor,
-   definable symbol, theorem, …), so we do not classify: every symbol
-   is reported as Function, the least surprising icon. (SymbolKind is
-   a mandatory field; completions simply omit their optional one.) *)
-let symbol_kind = 12                                       (* Function *)
+(* No LSP SymbolKind matches lambdapi's notions axiom, constructor,
+   definable symbol, theorem, … so we do not classify these. Symbols
+   are reported as Functions and inductives are reported as Enums with
+   constructors as EnumMembers *)
+let function_symbolkind   = 12                           (* Function *)
+let enum_symbolkind       = 10                               (* Enum *)
+let enumMember_symbolkind = 22                         (* EnumMember *)
 
 let mk_document_symbol ?(children=[]) ~name ~kind ~range ~selection_range ()
   : J.t =
@@ -193,24 +195,24 @@ let document_symbols_of_nodes (nodes : Lp_doc.doc_node list) : J.t list =
       let cmd_range = LSP.mk_range cmd_pos in
       match Pure.Command.get_ast_command cmd with
       | P_symbol s ->
-        let sel = range_or_fallback s.p_sym_nam.pos cmd_range in
+        let selection_range = range_or_fallback s.p_sym_nam.pos cmd_range in
         [ mk_document_symbol
-            ~name:s.p_sym_nam.elt ~kind:symbol_kind
-            ~range:cmd_range ~selection_range:sel () ]
+            ~name:s.p_sym_nam.elt ~kind:function_symbolkind
+            ~range:cmd_range ~selection_range () ]
       | P_inductive (_, _, _, inds) ->
         List.map (fun (ind : p_inductive) ->
           let (iname, _, cons) = ind.Pos.elt in
           let ind_range = range_or_fallback ind.Pos.pos cmd_range in
-          let sel = range_or_fallback iname.pos ind_range in
+          let selection_range = range_or_fallback iname.pos ind_range in
           let children = List.map (fun (cname, _ctyp) ->
-            let crange = range_or_fallback cname.Pos.pos ind_range in
+            let child_range = range_or_fallback cname.Pos.pos ind_range in
             mk_document_symbol
-              ~name:cname.Pos.elt ~kind:22   (* EnumMember *)
-              ~range:crange ~selection_range:crange ()
+              ~name:cname.Pos.elt ~kind:enumMember_symbolkind (* EnumMember *)
+              ~range:child_range ~selection_range:child_range ()
           ) cons in
           mk_document_symbol
-            ~name:iname.elt ~kind:10         (* Enum *)
-            ~range:ind_range ~selection_range:sel ~children ()
+            ~name:iname.elt ~kind:enum_symbolkind                (* Enum *)
+            ~range:ind_range ~selection_range ~children ()
         ) inds
       | _ -> []
   ) (List.rev nodes)
@@ -224,7 +226,6 @@ let do_symbols ofmt ~id params =
   | Some ss ->
     let result =
       if !hierarchical_document_symbol_support then
-        (* Built from the parsed AST alone; no signature state needed. *)
         `List (document_symbols_of_nodes doc.Lp_doc.nodes)
       else
         let () = Pure.restore_time ss in
@@ -236,7 +237,7 @@ let do_symbols ofmt ~id params =
               Option.map_default
                 (fun p ->
                   mk_syminfo file
-                    (s.sym_name, s.sym_path, symbol_kind, p) :: l)
+                    (s.sym_name, s.sym_path, function_symbolkind, p) :: l)
                 l s.sym_pos)
             sym [] in
         `List syms
