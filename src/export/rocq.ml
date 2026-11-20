@@ -98,7 +98,7 @@ and paren ~ctx ?(apparg = false) oc t =
   let default() = char oc '('; term ~ctx oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt=(_,n);_},_) when apparg && is_class_field ctx n -> default()
+  | P_Iden({elt;_},_) when apparg && is_class_field ctx elt -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->

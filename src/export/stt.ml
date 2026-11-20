@@ -190,16 +190,10 @@ let add_class_param (args : p_params list) =
     taking the instance [T] as its first argument when it is applied
     explicitly (with @). All do except for the structural symbols of STT,
     which are the builtins. *)
-let is_class_field ctx id = !parametrised &&
-  id <> theory_class &&
-  not (StrSet.mem id ctx) &&
-  match QidMap.find_opt ([],id) !encoding with
-  (* Set, Prop, Arr and All all have a behavior that cannot simply be encoded
-     using record/class fields (Set and Prop's elements must be types and
-     Arr and All elements can be applied), so they are already mapped to the
-     corresponding type constructors. *)
-  | Some (Set|Prop|Arr|El|Prf|Imp|All) -> false
-  | _ -> true
+let is_class_field ctx ((path,name) as qid) = !parametrised &&
+  qid <> ([],theory_class) &&
+  not (List.is_empty path && StrSet.mem name ctx) &&
+  not (QidMap.mem qid !mapping)
 
 (** Translation of identifiers. *)
 
@@ -251,7 +245,7 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
     end
 
 let qident ctx oc b (qid : p_qident) =
-  let is_class_field = is_class_field ctx (snd qid.elt) in
+  let is_class_field = is_class_field ctx qid.elt in
   if b then char oc '@';
   raw_qident oc qid;
   if is_class_field && (b || not !implicit_class)

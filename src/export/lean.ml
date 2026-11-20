@@ -99,8 +99,8 @@ and paren ?(apparg=false) oc t =
   let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt=(_,n);_},b) when apparg && b &&
-    is_class_field StrSet.empty n -> default()
+  | P_Iden({elt;_},b) when apparg && b &&
+    is_class_field StrSet.empty elt -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
