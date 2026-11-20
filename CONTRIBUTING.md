@@ -78,6 +78,7 @@ following files:
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `misc/lambdapi.tex`
 - the User Manual files in the `doc/` repository (do `make doc` to generate and check the Sphynx documentation).
+- https://github.com/Deducteam/sublime-lambdapi/blob/main/syntaxes/lp.tmLanguage.json
 
 Adding a tactic
 ---------------
