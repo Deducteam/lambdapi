@@ -192,7 +192,7 @@ let add_class_param (args : p_params list) =
     which are the builtins. *)
 let is_class_field ctx ((path,name) as qid) = !parametrised &&
   qid <> ([],theory_class) &&
-  not (List.is_empty path && StrSet.mem name ctx) &&
+  not (path = [] && StrSet.mem name ctx) &&
   not (QidMap.mem qid !mapping)
 
 (** Translation of identifiers. *)
