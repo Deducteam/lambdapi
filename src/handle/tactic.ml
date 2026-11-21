@@ -368,6 +368,20 @@ let new_name (prefix:string) (env:Env.t): string =
     !s
   else prefix
 
+(* [poly_tac_ty level univ typ tac] builds the term
+   PI (l:level), PI (p: univ l), typ l p -> tac *)
+let poly_tac_ty level univ typ tac =
+  let l = new_var "l" in
+  let p = new_var "p" in
+  let u l = mk_Appl (univ, l) in
+  let eps l u = add_args typ [l;u] in
+
+  mk_Prod (
+      level,
+      bind_var l
+        (mk_Prod (u (mk_Vari l),
+                  bind_var p (mk_Arro (eps (mk_Vari l) (mk_Vari p), tac)))))
+
 (** [handle ss sym_pos priv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
 let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
@@ -536,6 +550,19 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   (* Function for checking that an identifier is not already in use. *)
   let check id =
     if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
+  (* tries to apply tactic t on context variable v *)
+  let apply_hyp ps c g v t level univ n args =
+    let u l = mk_Appl (univ, l) in
+    let p = new_problem() in
+    let ml = mk_Meta(LibMeta.fresh p level 0,[||]) in
+    let mt = mk_Meta(LibMeta.fresh p (Env.to_prod env (u ml)) n, args) in
+    let t = add_args t [ml; mt; mk_Vari v] in
+    match Infer.infer_noexn p c t with
+    | Some _ ->
+        if Unif.solve_noexn p && !p.unsolved = [] then
+          let ps, t = p_tactic ps g env pos t in handle ps t
+        else fatal pos "Typing error in tactic application on hyp"
+    | _ -> fatal pos "Typing error in tactic application on hyp" in
   match elt with
   | P_tac_fail
   | P_tac_query _
@@ -545,17 +572,26 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
   | P_tac_admit -> tac_admit ss sym_pos ps gt
   | P_tac_all_hyps t ->
     let t = scope t in
-    let l = mk_Symb (Builtin.get ss pos [] "Level") in
-    let try_assumption (ps: proof_state) (_,(v,a,_)): proof_state =
+    let c = Env.to_ctxt env in
+    let level = mk_Symb (Builtin.get ss pos [] "Level") in
+    let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let typ = mk_Symb (Builtin.get ss pos [] "Type") in
+    let tac = mk_Symb (Builtin.get ss pos [] "Tactic") in
+    let ty = poly_tac_ty level univ typ tac in
+    let p = new_problem () in
+    let t = match Infer.check_noexn p c t ty with
+      | None -> fatal pos "Type error in all_hyps (%a)." term t
+      | Some u when Unif.solve_noexn p && !p.unsolved=[] -> u
+      | Some u ->
+          fatal pos "Type error in all_hyps: %a\n%a." term u problem p
+    in
+    let n = List.length env in
+    let args = Env.to_terms env in
+    let try_assumption (ps: proof_state) (_,(v,_,_)): proof_state =
       match ps.proof_goals with
       | [] -> fatal pos "all_hyps called on empty goal list."
       | g :: _ ->
-        let p = new_problem() in
-        let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
-        let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
-        try let ps, t = p_tactic ps g env pos t in handle ps t
-        with Fatal _ -> ps
-    in
+          try apply_hyp ps c g v t level univ n args with Fatal _ -> ps in
     let ps' = List.fold_left try_assumption ps gt.goal_hyps in
     if ps' == ps then
       fatal pos "(all_hyps %a) fails on all assumptions." term t
@@ -612,13 +648,23 @@ let handle (ss:Sig_state.t) (sym_pos:popt) (priv:bool)
       end
   | P_tac_first_hyp pt ->
     let t = scope pt in
-    let l = mk_Symb (Builtin.get ss pos [] "Level") in
-    let f (_,(v,a,_)) =
-      let p = new_problem() in
-      let m = mk_Meta(LibMeta.fresh p l 0,[||]) in
-      let t = mk_Appl(mk_Appl(mk_Appl(t,m),a),mk_Vari v) in
-      let ps, t = p_tactic ps g env pos t in progress ps t
+    let c = Env.to_ctxt env in
+    let level = mk_Symb (Builtin.get ss pos [] "Level") in
+    let univ = mk_Symb (Builtin.get ss pos [] "Univ") in
+    let typ = mk_Symb (Builtin.get ss pos [] "Type") in
+    let tac = mk_Symb (Builtin.get ss pos [] "Tactic") in
+    let ty = poly_tac_ty level univ typ tac in
+    let n = List.length env in
+    let args = Env.to_terms env in
+    let p = new_problem () in
+    let t = match Infer.check_noexn p c t ty with
+      | None -> fatal pos "Type error in first_hyp (%a)." term t
+      | Some u when Unif.solve_noexn p -> u
+      | Some u ->
+          fatal pos "Type error in first_hyp: %a\n%a." term u problem p
     in
+    let f (_,(v,_,_)) =
+      try Some (apply_hyp ps c g v t level univ n args) with _ -> None in
     begin match List.find_map f gt.goal_hyps with
     | None -> fatal pos "(first_hyp %a) fails on all assumptions." term t
     | Some new_ps -> new_ps
