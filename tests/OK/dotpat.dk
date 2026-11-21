@@ -1,13 +1,13 @@
 N: Type.
 Z: N.
-S: N->N.
+S: N -> N.
 
-def plus: N->N->N.
+def plus: N -> N -> N.
 [y] plus Z     y --> y
 [x,y] plus (S x) y --> S (plus x y).
 
 
-V:   N->Type.
+V:   N -> Type.
 Nil: V Z.
 Con: n:N -> V n -> N -> V (S n).
 

@@ -132,7 +132,7 @@ def pred : Nat -> Nat.
 def plus : Nat -> Nat -> Nat.
 [n] plus 0 n --> n
 [m, n] plus (S m) n --> S (plus m n)
-[n] plus n 0--> n
+[n] plus n 0 --> n
 [m, n] plus m (S n) --> S (plus m n).
 
 def plus_rec_term : Nat -> Nat -> Nat.
