@@ -140,9 +140,9 @@ let rec term : bool -> term pp = fun b ppf t ->
 (* Dedukti only accepts the following declarations:
 def s : A := t
 thm s : A := t
-
 injective s : A
 private s : A
+private def s : A
 private injective s : A
 def s : A
 defac s [A]
@@ -161,7 +161,7 @@ let sym_decl_only : sym pp = fun ppf s ->
     (match s.sym_prop with
      | AC _ -> "defac "
      | Injec -> "injective "
-     | Defin -> if s.sym_expo = Protec then "" else "def "
+     | Defin -> "def "
      | Assoc _ | Commu -> assert false
      | Const -> "")
     ident s.sym_name sym_type s
@@ -173,7 +173,7 @@ let sym_decl : sym pp = fun ppf s ->
       (* in case of an AC, injective or protected symbol, we need to give the
          definition in a rule after the declaration *)
       if is_modulo s || s.sym_prop = Injec || s.sym_expo = Protec then
-        out ppf "%a[]%s --> %a.@." sym_decl_only s s.sym_name (term true) d
+        out ppf "%a[] %s --> %a.@." sym_decl_only s s.sym_name (term true) d
       else
         out ppf "%s%a : %a := %a.@."
           (if !(s.sym_opaq) then "thm " else "def ")

@@ -260,7 +260,8 @@ let print : string -> p_commands -> unit =
       ["linter.style.header"
       ;"linter.style.missingEnd"
       ;"linter.unusedVariables"
-      ;"linter.style.longLine"];
+      ;"linter.style.longLine"
+      ;"linter.style.nameCheck"];
     if !openings <> [] then newline oc;
     List.iter (open_mod oc) (List.rev !openings);
     string oc "\nnamespace ";

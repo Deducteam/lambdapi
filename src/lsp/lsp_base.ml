@@ -26,8 +26,17 @@ let _parse_uri str =
   let l = String.length str - 7 in
   String.(sub str 7 l)
 
+(* [id] is the request's "id" member verbatim: JSON-RPC allows numbers
+   AND strings, and a reply must echo back exactly what came in. *)
 let mk_reply ~id ~result =
-  `Assoc [ "jsonrpc", `String "2.0"; "id",     `Int id;   "result", result ]
+  `Assoc [ "jsonrpc", `String "2.0"; "id", id; "result", result ]
+
+(* JSON-RPC error reply. Codes follow the JSON-RPC 2.0 spec. See also
+   LSP §error-codes *)
+let mk_error_reply ~id ~code ~msg =
+  `Assoc [ "jsonrpc", `String "2.0";
+           "id",      id;
+           "error",   `Assoc ["code", `Int code; "message", `String msg] ]
 
 let mk_event m p   =
   `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]

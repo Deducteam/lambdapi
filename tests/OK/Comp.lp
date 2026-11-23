@@ -1,6 +1,4 @@
-/* Comparison datatype
-
-By Quentin Garchery (May 2021). */
+// comparison datatype
 
 require open tests.OK.Bool;
 
@@ -74,7 +72,7 @@ with opp Gt ↪ Lt;
 
 opaque symbol opp_idem c : π (opp (opp c) = c) ≔
 begin
-  induction { reflexivity; } { reflexivity; } { reflexivity; }
+  induction { reflexivity } { reflexivity } { reflexivity }
 end;
 
 // Conditional

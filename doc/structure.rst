@@ -48,7 +48,6 @@ Overview of directories and files
     * ``rangeMap_intf.ml``: module type of abstract maps on intervals
     * ``rangeMap.ml``: instance of ``rangeMap_intf`` using ``range``
     * ``range.ml``: instance of ``range_intf`` with integer intervals
-    * ``realpath.c``: C implementation of ``Filename.realpath``
 
   * ``src/common/``: basic libraries
 

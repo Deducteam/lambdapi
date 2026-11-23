@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 4.0.0 (2026-11-05)
 
 ### Added
 
@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Lambdapi does not use Cmdliner anymore.
 - When no argument is given to the CLI commands `install` and `uninstall`
 use the local lambdapi.pkg and lp files.
+- The init command does not create a directory anymore: lambdapi.pkg and Makefile are created in the current directory (and the directory name is used as package name).
 
 ### Fixed
 

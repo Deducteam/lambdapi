@@ -16,7 +16,7 @@ The available commands are:
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
 * ``index``: create an index of symbols and rules of input files.
-* ``init``: create a new Lambdapi package (see :doc:`getting_started`).
+* ``init``: create a Lambdapi package and Makefile in the current directory (see :doc:`getting_started`).
 * ``install``: install the specified files according to package configuration.
 * ``lsp``: run the Lambdapi LSP server.
 * ``parse``: parse the input files.
@@ -58,7 +58,7 @@ occurrence is taken into account.
 
 * ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
-* ``--db <FILE.db>`` tells lambdapi to use ``<FILE.db>`` as index file.
+* ``--db <FILE.db>`` tells lambdapi to use ``<FILE.db>`` as index file instead of ``~/.LPSearch.db``.
 
 * ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
@@ -73,8 +73,6 @@ occurrence is taken into account.
 * ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
 
 * ``-v <NUM>``, ``--verbose <NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
-
-* ``--db <FILE.db>`` tells lambdapi to search in ``<FILE.db>`` instead of ``~/.LPSearch.db``.
 
 .. _decision-tree:
 
@@ -105,8 +103,8 @@ export
   - ``raw_dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-  - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-  - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``raw_coq``: `Rocq <https://rocq-prover.org/>`__ format
+  - ``stt_coq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
   - ``raw_lean``: `Lean <https://lean-lang.org/>`__ format
   - ``stt_lean``: `Lean <https://lean-lang.org/>`__ format assuming that the input file is in an encoding of simple type theory
 
@@ -114,7 +112,7 @@ export
 
 The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
 For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
 
@@ -159,11 +157,11 @@ It instructs Lambdapi to replace any occurrence of the unqualified identifier ``
 
 if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`__.
 
-* ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
+* ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``expr`` therefore needs to be defined in the Rocq standard library or in the Rocq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
 
-* ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
+* ``--use-notations`` instructs Lambdapi to use the usual Rocq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
-Examples of libraries exported to Coq:
+Examples of libraries exported to Rocq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.
   - See in `hol2dk <https://github.com/Deducteam/hol2dk>`__ how to export the Lambdapi library obtained from HOL-Light.
 
@@ -184,6 +182,8 @@ index
    rule cic.lift _ _ $x ↪ $x;
 
 * ``--source <FILE>`` indicates the path to the file containing the mapping to additional sources (for instance, Rocq sources corresponding to indexed ones). These sources will also be displayed by the websearch engine when showing the results.
+  Every line in the file containing the mapping has to respect a specific format described as follows :
+  `path_to_source_file start_line end_line qualified_name_in_source_file qualified_name_in_LP_file` 
 
 .. _install:
 
@@ -207,6 +207,7 @@ search/websearch
 ----------------
 
 * ``--require <FILE.lp>`` requires and opens ``<FILE.lp>`` when starting the search engine. The file can be used for example to specify implicit arguments for symbols used in the queries.
+   If needed, ``--require <FILE.lp>`` can be repeated to require multiple files.
 
 .. _websearch:
 

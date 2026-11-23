@@ -26,7 +26,7 @@ include $(LPO_MK)
 
 $(LPO_MK): lambdapi.pkg $(LP)
 	@echo create/update $@ ...
-	@lambdapi depend > $@
+	@lambdapi depend > $@ || (rm -f $@; exit 1)
 
 .PHONY: clean
 clean:
