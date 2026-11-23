@@ -99,8 +99,6 @@ and paren ?(apparg=false) oc t =
   let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt;_},b) when apparg && b &&
-    is_class_field StrSet.empty elt -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
@@ -113,6 +111,9 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
+  | true, Some{elt=P_Iden({elt=(_,sym_name);_},_);_}
+    when sym_name = theory_class && !parametrised ->
+      char oc '['; raw_params oc x; char oc ']'
   | true, _ -> char oc '{'; raw_params oc x; char oc '}'
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
