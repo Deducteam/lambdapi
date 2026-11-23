@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+### Changed
+- Outline : the LSP server now supports the hierarchical description of the document. Not all Lambdapi notions have there counterpart in Symbolkind. Thus, only `symbols` and `inductives` are included in the outline as `Function`s and `Enum`s
+
 ## 4.0.0 (2026-11-05)
 
 ### Added
