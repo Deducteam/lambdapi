@@ -305,14 +305,13 @@ let get_node_at_pos doc line pos =
       in_range ?loc (line,pos)
     ) doc.Lp_doc.nodes
 
-(* Identifier-ish token at the (0-based) [line]/[col] of [doc]'s text:
-   the maximal run of non-delimiter code points around the cursor.
-   Columns are counted in code points, matching the position handling
-   in the rest of the server. Being text-based, it also works in
-   regions the checker never reached (mid-edit text, code past a
-   parse error). *)
-(* Byte offset of each code point of [str], with the total length as
-   a final sentinel. *)
+(* Returns the byte offset of each Unicode code point in [str],
+   along with the total byte length of the string as a final sentinel.
+   This mapping allows positions expressed in code points to be
+   translated into byte offsets, regardless of the UTF-8 encoding
+   length of individual characters. Being text-based, it also works in
+   regions the checker never reached (mid-edit text, code past
+   *a parse error). *)
 let codepoint_offsets (str : string) : int array =
   let offs = ref [] and i = ref 0 in
   let n = String.length str in
