@@ -108,6 +108,26 @@ begin
   { simplify; assume h0 h1; refine h1 }
 end;
 
+symbol istrue_not_isfalse p : π (istrue p ⇒ ¬ (isfalse p)) ≔
+begin
+  induction { assume p h; refine h} { assume p; refine (⊥ₑ p);};
+end;
+
+symbol isfalse_not_istrue p : π (isfalse p ⇒ ¬ (istrue p)) ≔
+begin
+  induction {assume p h; refine p} { assume p h; refine h};
+end;
+
+symbol not_istrue_isfalse p : π (¬ istrue p ⇒ isfalse p) ≔
+begin
+  induction { assume p; refine p ⊤ᵢ}{ assume p; refine ⊤ᵢ};
+end;
+
+symbol not_isfalse_istrue p : π (¬ isfalse p ⇒ istrue p) ≔
+begin
+  induction { assume p; refine ⊤ᵢ}{ assume p; refine p ⊤ᵢ};
+end;
+
 opaque symbol notK b : π (not (not b) = b) ≔
 begin
   induction

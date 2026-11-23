@@ -905,7 +905,8 @@ begin
   { assume Hbot Hbotbot; refine Hbot }
   { assume H H2; refine H2 H }
   { assume Hbot Hbotbot; refine Hbot };
-  assume H1; refine (e H1);
+  assume H1 H2;
+  refine (e H1 (isfalse_not_istrue _ H2));
 end;
 
 opaque symbol <_¬_≥ x y : π (x < y ⇒ ¬ (x ≥ y)) ≔
@@ -1002,7 +1003,7 @@ begin
   simplify;
   assume contra;
   apply contra;
-  refine (λ x, x);
+  refine ⊤ᵢ;
 end;
 
 opaque symbol =_≤ x y : π (x = y ⇒ x ≤ y) ≔
@@ -1093,14 +1094,20 @@ begin
       { refine (λ x, x) }
       { assume H1 H2; refine H1 H2 }
       { refine (λ x, x) } };
-    refine e }
+    assume h;
+    refine not_istrue_isfalse _ (e h);
+    }
   { have e : π (¬ (istrue (isGt (y ≐ x))) ⇒ ¬ (istrue (isLt (x ≐ y))))
     { rewrite ≐_com y x;
       refine ind_Comp (λ c, ¬ (istrue (isGt (opp c))) ⇒ ¬ (istrue (isLt c))) _ _ _ (x ≐ y)
       { refine (λ x, x) }
       { assume H1 H2; refine H1 H2 }
       { refine (λ x, x) } };
-    refine e };
+    simplify;
+    assume h1 h2;
+    refine (e _ h2);
+    refine isfalse_not_istrue _ h1;
+    };
 end;
 
 opaque symbol <_> x y : π (x < y ⇔ y > x) ≔
@@ -1113,22 +1120,30 @@ begin
       { assume contra; apply ⊥ₑ contra }
       { assume contra; apply ⊥ₑ contra }
       { assume islt ngt; refine ngt islt } };
-    refine e }
+    assume h1 h2;
+    refine e h1 _;
+    refine isfalse_not_istrue _ h2;
+    }
   { have e : π (¬ ¬ istrue (isGt (y ≐ x)) ⇒ istrue (isLt (x ≐ y)))
     { rewrite ≐_com;
       refine ind_Comp (λ c, ¬ (¬ (istrue (isGt (opp c)))) ⇒ istrue (isLt c)) _ _ _ (x ≐ y)
       { assume H; refine H (λ x, x) }
       { assume H; apply ⊤ᵢ }
       { assume H; refine H (λ x, x) } };
-    refine e }
+    assume h1;
+    refine e _;
+    assume h2;
+    refine h1 _;
+    refine not_istrue_isfalse _ h2;
+     }
 end;
 
 opaque symbol >_≥ x y : π (x > y ⇒ x ≥ y) ≔
 begin
   assume x y;
-  refine ind_Comp (λ c, ¬ (¬ (istrue (isGt c))) ⇒ ¬ istrue (isLt c)) _ _ _ (x ≐ y)
+  refine ind_Comp (λ c, ¬ ( (isfalse (isGt c))) ⇒ ¬ istrue (isLt c)) _ _ _ (x ≐ y)
   { assume H; refine (λ x, x) }
-  { assume H H2; refine H (λ x, x) }
+  { assume H H2; refine H ⊤ᵢ }
   { assume H; refine (λ x, x) }
 end;
 
@@ -1153,18 +1168,19 @@ end;
 
 opaque symbol ≤_opp x y : π (x ≥ y ⇔ (— x ≤ — y)) ≔
 begin
+simplify;
+
   assume x y;
-  simplify;
   rewrite ≐_opp x y;
   apply ∧ᵢ
-  { refine ind_Comp (λ c, (istrue (isLt c) ⇒ ⊥) ⇒ (istrue (isGt (opp c)) ⇒ ⊥)) _ _ _ (x ≐ y)
-    { assume H; refine H }
-    { assume H1 H2; refine H1 H2 }
-    { assume H; refine H } }
-  { refine ind_Comp (λ c, (istrue (isGt (opp c)) ⇒ ⊥) ⇒ (istrue (isLt c) ⇒ ⊥)) _ _ _ (x ≐ y)
-    { assume H; refine H }
-    { assume H1 H2; refine H1 H2 }
-    { assume H; refine H } }
+  { refine ind_Comp (λ c, (istrue (isLt c) ⇒ ⊥) ⇒ isfalse (isGt (opp c)) ) _ _ _ (x ≐ y)
+    { assume H; refine ⊤ᵢ; }
+    { assume H; refine H ⊤ᵢ; }
+    { assume H; refine ⊤ᵢ } }
+  {  refine ind_Comp (λ c, isfalse (isGt (opp c)) ⇒ (istrue (isLt c)) ⇒ ⊥) _ _ _ (x ≐ y)
+    { assume H1 H2; refine ⊥ₑ H2; }
+    { assume H1 H2; refine H1 }
+    { assume H1 H2; refine H2 } }
 end;
 
 opaque symbol <_opp x y : π (x > y ⇔ (— x < — y)) ≔
@@ -1173,14 +1189,15 @@ begin
   simplify;
   rewrite ≐_opp x y;
   apply ∧ᵢ
-  { refine ind_Comp (λ c, ((istrue (isGt c) ⇒ ⊥) ⇒ ⊥) ⇒ istrue (isLt (opp c))) _ _ _ (x ≐ y)
-    { assume H; refine H (λ x, x) }
-    { assume H; refine H (λ x, x) }
-    { assume H; apply ⊤ᵢ } }
-  { refine ind_Comp (λ c, istrue (isLt (opp c)) ⇒ ((istrue (isGt c) ⇒ ⊥) ⇒ ⊥)) _ _ _ (x ≐ y)
-    { assume contra H; apply contra }
-    { assume contra H; apply contra }
-    { assume Hislt Hngt; refine Hngt Hislt } }
+  { refine ind_Comp (λ c, (isfalse (isGt c) ⇒ ⊥) ⇒ istrue (isLt (opp c))) _ _ _ (x ≐ y)
+    { assume H; refine ⊥ₑ _; }
+    { refine H ⊤ᵢ; }
+    { assume H; refine ⊥ₑ (H ⊤ᵢ); } }
+  {assume H; refine ⊤ᵢ;};
+  refine ind_Comp (λ c, istrue (isLt (opp c)) ⇒ isfalse (isGt c) ⇒ ⊥) _ _ _ (x ≐ y)
+    { assume H; refine ⊥ₑ H; }
+    { assume H1 H2; refine H1 }
+    { assume Hislt Hngt; refine Hngt }
 end;
 
 // Comparison with the successor
