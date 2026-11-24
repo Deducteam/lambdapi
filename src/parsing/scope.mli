@@ -18,7 +18,7 @@ val scope_term :
   ?mok:(int -> meta option) -> bool -> sig_state -> env -> p_term -> term
 
 (** [scope_search_pattern ~find_sym ~typ prv ss env t] turns a pterm [t] meant
-    to be a search patter into a term in the signature state [ss]
+    to be a search pattern into a term in the signature state [ss]
     and environment [env] (for bound variables). If [~typ] is [true],
     then [t] must be a type (defaults to [false]). No {b new} metavariables
     may appear in [t], but metavariables in the image of [mok] may be used.
