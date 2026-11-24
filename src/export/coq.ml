@@ -178,8 +178,12 @@ let print : p_commands -> unit = fun cs ->
   if !Stt.only_check_names then
     begin
       Stream.iter check_names cs;
-      StrSet.iter print_endline !invalid_names;
-      if not (StrSet.is_empty !invalid_names) then exit 1
+      if not (StrSet.is_empty !invalid_names) then
+        begin
+          fatal_msg "%a:\n" Path.pp !current_mp;
+          StrSet.iter (fatal_msg "%s\n") !invalid_names;
+          exit 1
+        end
     end
   else
     begin
