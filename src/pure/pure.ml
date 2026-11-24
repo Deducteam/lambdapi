@@ -22,6 +22,7 @@ module Command = struct
   (* TODO: Fixme not to use generic equality *)
   let equal_with_pos = (=)
   let get_pos c = Pos.(c.pos)
+  let get_ast_command (c : t) : Syntax.p_command_aux = c.Pos.elt
   let keyword_pos = Syntax.command_keyword_pos
   let print = Util.located Pretty.command
 end
