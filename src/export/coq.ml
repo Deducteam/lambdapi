@@ -26,9 +26,14 @@ let is_valid_letter =
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
 
+let invalid_names = ref StrSet.empty
+
 let _ =
   Stt.check := fun pos s ->
-    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier: %s" s
+    if not (is_valid_rocq_id s) then
+      if !Stt.only_check_names then
+        invalid_names := StrSet.add s !invalid_names
+      else fatal pos "invalid Rocq identifier: %s" s
 
 (** Translation of terms. *)
 
@@ -161,9 +166,12 @@ let command oc {elt; pos} =
 let commands oc = Stream.iter (command oc)
 
 let print : p_commands -> unit = fun cs ->
-  let oc = stdout in
+  let oc = if !Stt.only_check_names then open_out "/dev/null" else stdout in
   begin match !require with
   | Some f -> string oc ("Require Import "^f^".\n")
   | None -> ()
   end;
-  commands oc cs
+  commands oc cs;
+  if !Stt.only_check_names then
+    StrSet.iter (Printf.eprintf "invalid Rocq identifier: %s\n")
+      !invalid_names

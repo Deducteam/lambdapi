@@ -611,8 +611,18 @@ let opt_use_notations =
                      Export.Stt.use_notations := true)
   ; opt_desc = "Generate Rocq code using notations for connectors." }
 
+let opt_only_check_names =
+  { opt_name = "--only-check-names"
+  ; opt_short = None
+  ; opt_handle = NoArg(fun () ->
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
+                     Export.Stt.only_check_names := true;
+                     Common.Error.no_warnings := true)
+  ; opt_desc = "Do not generate anything; only check identifiers validity." }
+
 let export_options =
   opt_output
+  :: opt_only_check_names
   :: opt_encoding
   :: opt_mapping
   :: opt_renaming
@@ -778,7 +788,7 @@ let opt_dry_run =
   ; opt_short = None
   ; opt_handle = NoArg(fun () -> dry_run := true)
   ; opt_desc =
-{|Do not install anything, only print the command that would be
+{|Do not install anything, only print the commands that would be
   executed if the option was not given.|} }
 
 let cmd_install =

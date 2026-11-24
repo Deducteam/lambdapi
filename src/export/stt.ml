@@ -8,6 +8,8 @@ open Core
 let log = Logger.make 'x' "xprt" "export"
 let log = log.pp
 
+let only_check_names = ref false
+
 module Qid = struct type t = Term.qident let compare = Stdlib.compare end
 module QidMap = Map.Make(Qid)
 
