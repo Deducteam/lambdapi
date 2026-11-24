@@ -116,6 +116,13 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
+let check_names {elt;_} =
+  match elt with
+  | P_symbol{p_sym_nam;_} when not (is_mapped p_sym_nam.elt)
+                            && not (is_valid_rocq_id p_sym_nam.elt) ->
+    invalid_names := StrSet.add p_sym_nam.elt !invalid_names
+  | _ -> ()
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,true,ps) ->
@@ -166,14 +173,18 @@ let command oc {elt; pos} =
 let commands oc = Stream.iter (command oc)
 
 let print : p_commands -> unit = fun cs ->
-  let oc = if !Stt.only_check_names then open_out "/dev/null" else stdout in
-  begin match !require with
-  | Some f -> string oc ("Require Import "^f^".\n")
-  | None -> ()
-  end;
-  commands oc cs;
-  if !Stt.only_check_names && not (StrSet.is_empty !invalid_names) then
+  if !Stt.only_check_names then
     begin
-      Printf.eprintf "invalid Rocq identifiers:\n";
-      StrSet.iter (Printf.eprintf "%s\n") !invalid_names
+      Stream.iter check_names cs;
+      StrSet.iter print_endline !invalid_names;
+      if not (StrSet.is_empty !invalid_names) then exit 1
+    end
+  else
+    begin
+      let oc = stdout in
+      begin match !require with
+      | Some f -> string oc ("Require Import "^f^".\n")
+      | None -> ()
+      end;
+      Stream.iter (command oc) cs
     end
