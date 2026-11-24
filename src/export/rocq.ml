@@ -29,10 +29,10 @@ let is_valid_letter =
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
 
-let _ =
+let misc_setup() =
   Stt.check := fun pos s ->
-    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"(*;
-  implicit_class := false*)
+    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier";
+  implicit_class := false
 
 (** Translation of terms. *)
 

@@ -673,8 +673,10 @@ let cmd_export =
     | Xtc -> Export.Xtc.sign Format.std_formatter (compile file)
     | RawRocq ->
       Option.iter Export.Stt.set_renaming !renaming;
+      Export.Rocq.misc_setup();
       Export.Rocq.print (parse file)
     | SttRocq | ParamSttRocq ->
+      Export.Rocq.misc_setup();
       Export.Stt.stt := true;
       Option.iter Export.Stt.set_renaming !renaming;
       Option.iter Export.Stt.set_encoding !encoding;
