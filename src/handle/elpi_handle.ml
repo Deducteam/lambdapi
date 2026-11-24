@@ -82,22 +82,19 @@ let lpq : Quotation.quotation = fun ~language st loc text ->
 
 let () = Quotation.set_default_quotation lpq
 
-(** Elpi constant for the type of goals *)
-let goalc = RawData.Constants.declare_global_symbol "goal"
+let goal_constructors = Sym_decl.init()
 
-(** Elpi constant, constructor for the [goal] type*)
-let nablac = RawData.Constants.declare_global_symbol "nabla"
+(** Elpi constant, constructor for the goal type
+    holding a type and a fodder term of that type. *)
+let goalc = Sym_decl.add "goal" goal_constructors
 
-(** Elpi constant, constructor for the [goal] type*)
-let sealc = RawData.Constants.declare_global_symbol "seal"
+(** Elpi constant, constructor for the sealed-goal type of
+    goals with a context *)
+let nablac = Sym_decl.add "nabla" goal_constructors
 
-(** Elpi constant for the type class solver function [msolve]
-    from tcsolver.elpi *)
-let msolvec = RawData.Constants.declare_global_symbol "msolve"
-
-(** Elpi constant for the type class instance compiler function [compile]
-    from tcsolver.elpi *)
-let compilec = RawData.Constants.declare_global_symbol "compile"
+(** Elpi constant, constructor for the sealed-goal type of
+    goals with a context *)
+let sealc = Sym_decl.add "seal" goal_constructors
 
 (** [embed_goal pos ~depth st m] translates the Lambdapi type of the
     metavariable [m] to an Elpi term of type [goal], returning the updated
@@ -132,9 +129,17 @@ let embed_goal : Common.Pos.popt -> Term.meta Conversion.embedding =
 let goal : Term.meta Conversion.t = {
   Conversion.embed = embed_goal None;
   readback = (fun ~depth:_ _ _ -> assert false);
-  pp_doc = (fun fmt _ -> Format.fprintf fmt "Lambdapi goal metavariable");
+  pp_doc = (fun fmt _ -> Format.fprintf fmt {|
+data sealed-goal.
+symb nabla : term -> (term -> sealed-goal) -> sealed-goal = "lp.0".
+symb seal  : goal -> sealed-goal = "lp.0".
+
+data goal.
+symb goal  : term -> term -> goal = "lp.0".
+  |});
   pp = Print.meta;
-  ty = Conversion.TyName "sealed-goal"
+  ty = Conversion.TyName "sealed-goal";
+  constants = Sym_decl.content goal_constructors
 }
 
 let pp2string pp x =
@@ -143,6 +148,14 @@ let pp2string pp x =
   Format.pp_set_margin fmt 80;
   Format.fprintf fmt "%a%!" pp x;
   Buffer.contents b
+
+(** Elpi constant for the type class solver function [msolve]
+    from tcsolver.elpi *)
+let msolvec = RawData.Constants.declare_global_symbol "msolve"
+
+(** Elpi constant for the type class instance compiler function [compile]
+    from tcsolver.elpi *)
+let compilec = RawData.Constants.declare_global_symbol "compile"
 
 (** APIs (data types and predicates) exposed to Elpi.
     If changed, documentation must be updated using the
@@ -158,17 +171,17 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
 
   MLData sym;
   MLData term;
+  MLData goal;
+(*  MLConstants [msolvec;compilec];
+
   LPCode {|
-data sealed-goal.
-builtin symb nabla : term -> (term -> sealed-goal) -> sealed-goal = "0".
-builtin symb seal  : goal -> sealed-goal = "0".
+%tries to compile a symbol's type into a typeclass instance rule
+pred compile i:symbol o:prop.
 
-data goal.
-builtin symb goal  : term -> term -> goal = "0".
-
-builtin pred msolve i:list sealed-goal.
-
+pred msolve i:list sealed-goal.
 |};
+*)
+
 
   LPDoc "---- Builtin predicates ----";
 
@@ -274,6 +287,8 @@ let document path =
     BuiltIn.declare ~file_name:full_path lambdapi_builtin_declarations
   in BuiltIn.document_file ~header:"% automatically generated" file
 
+let () = document "."
+
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
 
@@ -330,7 +345,7 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym ->
     let st, v = Elpi.API.FlexibleData.Elpi.make ~name:"Result" st in
     let v = mkUnifVar v ~args:[] st in
     let st, arg, gls = Elpi_lambdapi.sym.Conversion.embed ~depth:0 st sym in
-    st, mkAppGlobal compilec arg [v] , gls in
+    st, mkAppGlobal compilec arg [v], gls in
   let query = ElpiError.compile_raw_term tc_solver_prog query in
   match Execute.once (Elpi.API.Compile.optimize query) with
   | Execute.Success { pp_ctx; assignments; _} ->

@@ -24,6 +24,28 @@ module Elpi_AUX = struct
     s, l
 end
 
+module Sym_decl = struct
+  type t = Data.constant list ref
+  let content (decl : t) : Data.constant list = !decl
+
+  (** [Sym_decl.init_decl()] Initializes a list of elpi declarations
+      which can then be accumulated with {!term:Symb.add} *)
+  let init() : t = ref []
+
+  (** Elpi variant used to identify lambdapi symbol declarations *)
+  let variant = "lp.0"
+
+  (** [Sym_decl.single_decl s] declares a new Elpi symbol name [s] then
+      returns it. *)
+  let single_decl s = RawData.Constants.declare_global_symbol ~variant s
+
+  (** [Sym_decl.add symb decl] declares a new Elpi symbol named [symb],
+      adds it to the list of declarations [decl], then returns
+      the new symbol. *)
+  let add symb (decl : t) : Data.constant =
+    let res = single_decl symb in decl := !decl @ [res]; res
+end
+
 (** Tools to convert pos/locs to allow Elpi and Lambdapi to raise errors
     about each other's files. *)
 module Loc = struct
@@ -126,23 +148,25 @@ let (csym, sym) : Term.sym RawOpaqueData.cdata * Term.sym Conversion.t =
 (* Allocate Elpi symbols for the term constructors (type and kind are Elpi
    keywords, hence typ and kin) *)
 
+let term_constructors = Sym_decl.init()
+
 (** Elpi constant for the constructor {!term:Term.Type} *)
-let typec = RawData.Constants.declare_global_symbol "typ"
+let typec = Sym_decl.add "typ" term_constructors
 
 (** Elpi constant for the constructor {!term:Term.Kind} *)
-let kindc = RawData.Constants.declare_global_symbol "kin"
+let kindc = Sym_decl.add "kin" term_constructors
 
 (** Elpi constant for the constructor {!term:Term.Symb} *)
-let symc = RawData.Constants.declare_global_symbol "sym"
+let symc = Sym_decl.add "sym" term_constructors
 
 (** Elpi constant for the constructor {!term:Term.Prod} *)
-let prodc = RawData.Constants.declare_global_symbol "prod"
+let prodc = Sym_decl.add "prod" term_constructors
 
 (** Elpi constant for the constructor {!term:Term.Abst} *)
-let abstc = RawData.Constants.declare_global_symbol "abst"
+let abstc = Sym_decl.add "abst" term_constructors
 
 (** Elpi constant for the constructor {!term:Term.Appl} *)
-let applc = RawData.Constants.declare_global_symbol "appl"
+let applc = Sym_decl.add "appl" term_constructors
 
 (* A two way map linking Elpi's unification variable and Terms.meta.
    An instance of this map is part of the Elpi state (threaded by many
@@ -169,16 +193,11 @@ let pb = State.declare_component ~name:"elpi:problem"
   ) ~init:Term.new_problem ~start:(fun x -> x)
   ()
 
-(** [embed_term ?pats ?ctx pos ~depth st t] translates the Lambdapi
+(** [embed_term ?ctx pos ~depth st t] translates the Lambdapi
     {!type:Term.term} [t] to Elpi, returning the updated Elpi state [st],
     the translated Elpi term and an (I believe necessarily empty) list of
-    conversion goals. *)
-(*  [ctx] stores a map between Lambdapi free variables and Elpi De Bruijn
-    indices. [pats] is a map of affectations of pattern variables ($x $y ...)
-    to (the name of) a corresponding Elpi unification variable, allowing
-    possibly non-linear user written pattern holes. Currently unused,
-    however. It is also not clear how such a map should be obtained in the
-    first place. *)
+    conversion goals. [ctx] stores a map between Lambdapi free variables and
+    Elpi De Bruijn indices. *)
 let embed_term : ?ctx:RawData.constant Term.actxt -> Common.Pos.popt ->
   Term.term Conversion.embedding =
   fun ?(ctx=[]) pos ~depth st t ->
@@ -318,15 +337,16 @@ let term : Term.term Conversion.t = {
   pp = Print.term;
   pp_doc = (fun fmt () -> Format.fprintf fmt {|
 data term.
-builtin symb typ :  term = "0".
-builtin symb kin :  term = "0".
-builtin symb sym :  symbol -> term = "0".
-builtin symb appl:  term -> term -> term = "0".
-builtin symb abst:  term -> (term -> term) -> term = "0".
-builtin symb prod:  term -> (term -> term) -> term = "0".
+symb typ :  term = "lp.0".
+symb kin :  term = "lp.0".
+symb sym :  symbol -> term = "lp.0".
+symb appl:  term -> term -> term = "lp.0".
+symb abst:  term -> (term -> term) -> term = "lp.0".
+symb prod:  term -> (term -> term) -> term = "lp.0".
   |});
   readback = readback_term None;
   embed = embed_term ?ctx:None None;
+  constants = Sym_decl.content term_constructors
 }
 
 (** Assignments to Elpi's unification variables are a spine of lambdas
