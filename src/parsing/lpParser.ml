@@ -620,7 +620,7 @@ and command (lb:'token lexbuf) : p_command =
        let cmd = match elt with
          | P_opaq -> P_opaque i
          | P_typeclass -> P_cmd_typeclass i
-         | P_instance -> P_cmd_typeclass_instance i
+         | P_instance -> P_cmd_instance i
          | _ -> assert false
        in
        extend_pos lb (*__FUNCTION__*) pos1 cmd

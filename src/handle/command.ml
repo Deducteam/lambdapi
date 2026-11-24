@@ -261,7 +261,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_cmd_typeclass qid ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
     Sig_state.add_tc ss sym, None, None
-  | P_cmd_typeclass_instance qid ->
+  | P_cmd_instance qid ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss qid in
     Sig_state.add_tci ss sym pos, None, None
   | P_query(q) -> (ss, None, Query.handle ss None q)

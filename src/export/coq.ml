@@ -186,7 +186,7 @@ let command oc {elt; pos} =
         end in List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) modifiers
   | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
   | P_cmd_typeclass qid -> add_modifier oc qid {elt=P_typeclass;pos}
-  | P_cmd_typeclass_instance qid ->
+  | P_cmd_instance qid ->
     add_modifier oc qid {elt=P_instance;pos}
   | _ -> wrn pos "Command not translated."
   end

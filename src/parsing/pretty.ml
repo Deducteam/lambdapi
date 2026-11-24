@@ -424,7 +424,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
   | P_cmd_typeclass qid -> out ppf "typeclass %a" qident qid
-  | P_cmd_typeclass_instance qid -> out ppf "instance %a" qident qid
+  | P_cmd_instance qid -> out ppf "instance %a" qident qid
   end;
   out ppf ";"
 

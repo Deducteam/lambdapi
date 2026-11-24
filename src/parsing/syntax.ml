@@ -428,7 +428,7 @@ type p_command_aux =
   | P_open of (*"open" keyword position*)Pos.popt
               * (*private?*)bool * p_path list
   | P_cmd_typeclass of p_qident
-  | P_cmd_typeclass_instance of p_qident
+  | P_cmd_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of (*"inductive" keyword position*)Pos.popt
@@ -466,7 +466,7 @@ let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
   | P_query q -> prefix (query_keyword q)
   | P_opaque _ -> prefix "opaque"
   | P_cmd_typeclass _ -> prefix "typeclass"
-  | P_cmd_typeclass_instance _ -> prefix "instance"
+  | P_cmd_instance _ -> prefix "instance"
 
 (** Top level data structure returned by the parser. *)
 type p_commands = p_command Stream.t
@@ -819,7 +819,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_require_as (_, _)
     | P_open _
     | P_cmd_typeclass _
-    | P_cmd_typeclass_instance _ -> a
+    | P_cmd_instance _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_opaque qid
     | P_builtin (_, qid)

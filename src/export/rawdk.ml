@@ -241,7 +241,7 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_require(Some _,_)
   | P_symbol{p_sym_prf=Some _; _}
   | P_cmd_typeclass _
-  | P_cmd_typeclass_instance _
+  | P_cmd_instance _
     -> fatal pos "Cannot be translated: %a" Pretty.command c
 
 let commands : p_commands pp = fun ppf -> Stream.iter (command ppf)
