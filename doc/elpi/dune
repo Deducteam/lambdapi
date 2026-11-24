@@ -1,0 +1,15 @@
+(executable
+ (name gen_builtin_doc)
+ (libraries lambdapi.handle))
+
+(rule
+ (target lambdapi-builtins.elpi)
+ (deps gen_builtin_doc.exe)
+ (mode promote)
+ (action (run ./gen_builtin_doc.exe)))
+
+(install
+ (files
+  lambdapi-builtins.elpi)
+ (section doc)
+ (package lambdapi))

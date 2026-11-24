@@ -172,16 +172,15 @@ let lambdapi_builtin_declarations : BuiltIn.declaration list =
   MLData sym;
   MLData term;
   MLData goal;
-(*  MLConstants [msolvec;compilec];
+  MLConstants [msolvec;compilec];
 
-  LPCode {|
-%tries to compile a symbol's type into a typeclass instance rule
+  LPCode
+{|%tries to compile a symbol's type into a typeclass instance rule
 pred compile i:symbol o:prop.
 
-pred msolve i:list sealed-goal.
-|};
-*)
-
+%calls the typeclass solver on a list of goals,
+%instantiating elpi variables associated with the
+pred msolve i:list sealed-goal.|};
 
   LPDoc "---- Builtin predicates ----";
 
@@ -270,22 +269,14 @@ let elpi_path =
   try List.hd Resources.Mysites.Sites.resources
   with Failure _ -> Common.Error.fatal_no_pos "path to elpi files not found"
 
-(** The file containing our built-in Elpi functions (in addition to
-    standard elpi ones) *)
-let builtins_file = Filename.concat elpi_path "doc/lambdapi-builtins.elpi"
+(** File containing elpi builtin declarations. *)
+let lambdapi_builtins = BuiltIn.declare ~file_name:"lambdapi-builtins.elpi"
+  lambdapi_builtin_declarations
 
-(** Expose them to Elpi. *)
-let lambdapi_builtins =
-  BuiltIn.declare ~file_name:builtins_file lambdapi_builtin_declarations
-
-(** After changing or adding builtin functions for Elpi,
-    use "let () = document [path_to_lambdapi]"
-    to update documentation *)
-let document path =
-  let full_path = Filename.concat path "doc/lambdapi-builtins.elpi" in
-  let file =
-    BuiltIn.declare ~file_name:full_path lambdapi_builtin_declarations
-  in BuiltIn.document_file ~header:"% automatically generated" file
+(** Run during dune build, generates the documentation of
+    available builtin elpi symbols in doc/elpi/lambdapi-builtins.elpi. *)
+let document_builtins() =
+  BuiltIn.document_file ~header:"% automatically generated" lambdapi_builtins
 
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
