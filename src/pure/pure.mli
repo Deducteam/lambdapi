@@ -10,6 +10,10 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  (** [get_ast c] returns the parser-level AST payload of command [c],
+      without its source location. so clients (LSP, MCP, …) can
+      pattern-match on declaration forms (e.g. to build outlines). *)
+  val get_ast_command : t -> Parsing.Syntax.p_command_aux
   val keyword_pos : t -> Pos.popt
   (** Position of the keyword introducing the command ("symbol", "rule",
       "require", …), which is not always at its start: modifiers or
