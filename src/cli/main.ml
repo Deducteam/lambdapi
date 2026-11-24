@@ -647,6 +647,16 @@ let cmd_export =
       | RawDk | Lp | SttCoq | RawCoq -> ()
       | _ -> Parsing.Package.set_root_path (Filename.dirname file)
     end;
+    begin
+      match output with
+      | SttCoq | SttLean ->
+        Export.Stt.current_mp :=
+          if Filename.extension file = ".lp" then
+            (* remove the root_path from the module path *)
+            List.tl (Common.Library.path_of_file Parsing.LpLexer.escape file)
+          else [Filename.basename (Filename.chop_extension file)]
+      | _ -> ()
+    end;
     let parse = Parsing.Parser.parse_file in
     match output with
     | Lp -> Parsing.Pretty.commands Format.std_formatter (parse file)
