@@ -172,7 +172,7 @@ The command ``instance`` allows to declare as typeclass instance (see **Typeclas
 
 ::
 
-   symbol bool_zero : zero_class bool ≔ is_zero true; // true is neutral for or/xor
+   symbol bool_zero : zero_class bool ≔ is_zero true; // true is neutral for and
    instance bool_zero;
 
 .. _notation:
