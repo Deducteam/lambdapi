@@ -28,7 +28,7 @@ let is_valid_rocq_id s =
 
 let _ =
   Stt.check := fun pos s ->
-    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"
+    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier: %s" s
 
 (** Translation of terms. *)
 

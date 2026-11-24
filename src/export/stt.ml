@@ -108,16 +108,16 @@ let add_encoding qid b = encoding := QidMap.add qid b !encoding
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,({elt=qid;_} as lp_qid));pos} ->
+    | {elt=P_builtin(n,lp_qid);pos} ->
         begin match index_of_name n with
         | Some i ->
             if Logger.log_enabled() then
               log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
-            builtin.(i) <- qid;
+            builtin.(i) <- lp_qid.elt;
             found.(i) <- true;
             let b = builtin_of_index i in
-            add_encoding qid b;
-            if b = El || b = Prf then add_mapping lp_qid n
+            add_encoding lp_qid.elt b;
+            add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
