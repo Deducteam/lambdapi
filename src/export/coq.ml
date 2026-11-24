@@ -118,9 +118,11 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let check_names {elt;_} =
   match elt with
-  | P_symbol{p_sym_nam;_} when not (is_mapped p_sym_nam.elt)
-                            && not (is_valid_rocq_id p_sym_nam.elt) ->
-    invalid_names := StrSet.add p_sym_nam.elt !invalid_names
+  | P_symbol{p_sym_nam={elt=n;_};_}
+    when not (is_mapped n)
+      && not (StrMap.mem n !rmap)
+      && not (is_valid_rocq_id n) ->
+    invalid_names := StrSet.add n !invalid_names
   | _ -> ()
 
 let command oc {elt; pos} =
