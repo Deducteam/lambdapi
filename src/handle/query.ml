@@ -15,11 +15,7 @@ let infer : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
       let term = term_in (Ctxt.names ctx) in
       fatal pos "%a is not typable." term t
   | Some (t, a) ->
-      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
-      let ctxtmap =
-        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
-      in
-      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
+      if Elpi_handle.solve_with_tc ctx ss pos p then
         begin
           if !p.unsolved = [] then (t, a)
           else
@@ -42,11 +38,7 @@ let check : Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term ->
   in
   match Infer.check_noexn p ctx t a with
   | Some t ->
-    let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
-      let ctxtmap =
-        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
-      in
-    if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
+    if Elpi_handle.solve_with_tc ctx ss pos p then
       begin
         if !p.unsolved = [] then t else
           (List.iter (wrn pos "Cannot solve %a." constr) !p.unsolved;
@@ -63,11 +55,7 @@ let check_sort : Sig_state.t -> Pos.popt -> problem -> ctxt -> term ->
       let term = term_in (Ctxt.names ctx) in
       fatal pos "[%a] is not typable by a sort." term t
   | Some (t,s) ->
-      let addmapping m = Elpi_lambdapi.IntMap.add m.meta_key ctx in
-      let ctxtmap =
-        MetaSet.fold addmapping !p.metas Elpi_lambdapi.IntMap.empty
-      in
-      if Elpi_handle.solve_with_tc ~ctxtmap ss pos p then
+      if Elpi_handle.solve_with_tc ctx ss pos p then
         begin
           if !p.unsolved = [] then (t, s) else
             begin

@@ -355,15 +355,14 @@ let add_tc_instance : Sig_state.t -> Common.Pos.popt -> Term.sym ->
   | NoMoreSteps -> assert false
 
 (* we set the state, Elpi.API.Query lacks this function *)
-(** [solve_with_tc ?ctxmap ss pos p] tries to solve problem [p]
+(** [solve_with_tc ctx ss pos p] tries to solve problem [p]
     by repeatedly calling {!val:Unif.solve_noexn} and the
     typeclass solver from tcsolver.elpi until no progress can
     be made. It returns [false] if it finds a constraint it
-    cannot satisfy. [ctxmap] maps meta_keys with the associated
-    meta's context *)
-let solve_with_tc : ?ctxtmap: Term.ctxt IntMap.t ->
-    Sig_state.t -> Common.Pos.popt -> Term.problem -> bool =
-  fun ?(ctxtmap=IntMap.empty) ss pos p ->
+    cannot satisfy. [ctx] holds the problem's context. *)
+let solve_with_tc : Term.ctxt -> Sig_state.t ->
+  Common.Pos.popt -> Term.problem -> bool =
+  fun ctx ss pos p ->
     let open Timed in
     let open Term in
     let res = ref true in
@@ -404,8 +403,7 @@ let solve_with_tc : ?ctxtmap: Term.ctxt IntMap.t ->
                 (mbinder_names b)
               in
               let res = msubst b vs in
-              let c = ref (Option.value ~default:[]
-                (IntMap.find_opt m.meta_key ctxtmap)) in
+              let c = ref ctx in
               let ty = Array.fold_left (function
               | Prod(vty,b) -> fun v ->
                 c := begin match v with

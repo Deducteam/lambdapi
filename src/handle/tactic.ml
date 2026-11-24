@@ -84,18 +84,13 @@ let tac_solve : popt -> Sig_state.t -> proof_state -> proof_state =
   (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
-  let ctxtmap = ref Elpi_lambdapi.IntMap.empty in
   let add_meta ms = function
-    | Unif _ -> ms
-    | Typ gt as g ->
-      ctxtmap := Elpi_lambdapi.IntMap.add gt.goal_meta.meta_key
-        (Env.to_ctxt (Goal.env g)) !ctxtmap;
-      MetaSet.add gt.goal_meta ms
+    | Unif _ -> assert false
+    | Typ gt -> MetaSet.add gt.goal_meta ms
   in
-  let ctxtmap = !ctxtmap in
   p := {!p with metas = List.fold_left add_meta MetaSet.empty gs_typ
               ; to_solve = List.rev_map get_constr gs_unif};
-  if not (Elpi_handle.solve_with_tc ~ctxtmap ss pos p) then
+  if not (Elpi_handle.solve_with_tc [] ss pos p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* compute the new list of goals by preserving the order of initial goals
      and adding the new goals at the end *)
