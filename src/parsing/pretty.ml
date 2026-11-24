@@ -423,8 +423,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
-  | P_type_class qid -> out ppf "typeclass %a" qident qid
-  | P_type_class_instance qid -> out ppf "instance %a" qident qid
+  | P_cmd_typeclass qid -> out ppf "typeclass %a" qident qid
+  | P_cmd_typeclass_instance qid -> out ppf "instance %a" qident qid
   end;
   out ppf ";"
 
