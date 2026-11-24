@@ -287,8 +287,6 @@ let document path =
     BuiltIn.declare ~file_name:full_path lambdapi_builtin_declarations
   in BuiltIn.document_file ~header:"% automatically generated" file
 
-let () = document "."
-
 (** The runtime of Elpi (we need only one I guess) *)
 let elpi = ref None
 
