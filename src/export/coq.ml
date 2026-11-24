@@ -172,6 +172,8 @@ let print : p_commands -> unit = fun cs ->
   | None -> ()
   end;
   commands oc cs;
-  if !Stt.only_check_names then
-    StrSet.iter (Printf.eprintf "invalid Rocq identifier: %s\n")
-      !invalid_names
+  if !Stt.only_check_names && not (StrSet.is_empty !invalid_names) then
+    begin
+      Printf.eprintf "invalid Rocq identifiers:\n";
+      StrSet.iter (Printf.eprintf "%s\n") !invalid_names
+    end
