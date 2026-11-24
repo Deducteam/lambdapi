@@ -39,9 +39,6 @@ safe-dest-app (appl HD ARG) H AS :- !,
   std.append A [ARG] AS.
 safe-dest-app X X [].
 
-%tries to compile a symbol's type into a typeclass instance rule
-external pred compile i:symbol o:prop.
-
 compile S RES :- comp tt {lp.sig S} [] (sym S) RES.
 
 %if first argument is true, errors are fatal.
