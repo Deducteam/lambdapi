@@ -327,15 +327,19 @@ let token_at_pos (doc : Lp_doc.t) line col : string option =
   | Some str ->
     let offs = codepoint_offsets str in
     let ncp = Array.length offs - 1 in
-    (* Delimiters are ASCII; a multi-byte code point (first byte
-       [>= '\x80']) always belongs to a token. *)
     let is_delim k =
       match str.[offs.(k)] with
       | ' ' | '\t' | '\r' | '(' | ')' | '[' | ']' | '{' | '}'
       | ';' | ',' | '"' | '.' | ':' | '@' -> true
       | _ -> false
     in
-    if col < 0 || col >= ncp || is_delim col then None
+    if col < 0 then
+      let _ = LIO.log_error
+        "token_at_pos"
+        ("invalide position: " ^ string_of_int col)  in
+      None
+    else
+    if is_delim col || col >= ncp then None
     else
       let s = ref col and e = ref col in
       while !s > 0 && not (is_delim (!s - 1)) do decr s done;
