@@ -155,7 +155,7 @@ let handle_modifiers :
         get_modifiers (props, e::expos, strats, opaq, tc, tci) ms
     | {elt=P_mstrat _;_} as s::ms ->
         get_modifiers (props, expos, s::strats, opaq, tc, tci) ms
-    | {elt=P_opaq;_}::ms ->
+    | {elt=P_opaque;_}::ms ->
         get_modifiers (props, expos, strats, true, tc, tci) ms
   in
   let props, expos, strats, opaq, tc, tci =
@@ -253,7 +253,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
-  | P_opaque qid ->
+  | P_cmd_opaque qid ->
     let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
     if !(s.sym_opaq) then fatal pos "Symbol already opaque.";
     s.sym_opaq := true;

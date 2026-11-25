@@ -115,7 +115,7 @@ let pqid_of_pid {elt; pos} = {elt=([],elt); pos}
 
 let add_modifier oc name (md : p_modifier) =
   let prefix = match md.elt with
-  | P_opaq -> Some "Opaque "
+  | P_opaque -> Some "Opaque "
   | P_typeclass -> Some "Existing Class "
   | P_instance -> Some "Existing Instance "
   | _ -> None
@@ -184,7 +184,7 @@ let command oc {elt; pos} =
             res
           | _ -> wrn pos "Command not translated."; []
         end in List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) modifiers
-  | P_opaque qid -> add_modifier oc qid {elt=P_opaq;pos}
+  | P_cmd_opaque qid -> add_modifier oc qid {elt=P_opaque;pos}
   | P_cmd_typeclass qid -> add_modifier oc qid {elt=P_typeclass;pos}
   | P_cmd_instance qid ->
     add_modifier oc qid {elt=P_instance;pos}

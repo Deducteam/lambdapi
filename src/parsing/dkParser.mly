@@ -44,7 +44,7 @@
     let inj lps = make_pos lps (P_prop Injec)
     let ac lps = make_pos lps (P_prop (AC false))
 
-    let opaq lps = make_pos lps P_opaq
+    let opaq lps = make_pos lps P_opaque
     let protec lps = make_pos lps (P_expo Protec)
 
     let symbol lps p_sym_mod i ps p_sym_typ p_sym_trm =

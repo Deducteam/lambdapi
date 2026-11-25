@@ -167,7 +167,7 @@ let _ =
 let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
   match partition_modifiers ms with
   | [], [], [], [] -> out ppf "def "
-  | [], [], [], [P_opaq] when p_sym_typ <> None -> out ppf "thm "
+  | [], [], [], [P_opaque] when p_sym_typ <> None -> out ppf "thm "
   (*https://github.com/Deducteam/Dedukti/issues/319*)
   | [Commu;Assoc _], [], [], [] -> out ppf "defac "
   | [Commu;Assoc _], [Protec], [], [] -> out ppf "private defac "
@@ -237,7 +237,7 @@ let command : p_command pp = fun ppf ({elt; pos} as c) ->
   | P_open _
   | P_require_as _
   | P_notation _
-  | P_opaque _
+  | P_cmd_opaque _
   | P_require(Some _,_)
   | P_symbol{p_sym_prf=Some _; _}
   | P_cmd_typeclass _

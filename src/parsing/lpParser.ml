@@ -612,13 +612,13 @@ and command (lb:'token lexbuf) : p_command =
  let p_sym_mod = list modifier_tks modifier lb in
  try begin
  match p_sym_mod with
- | [{elt=P_opaq|P_typeclass|P_instance as elt;_}] ->
+ | [{elt=P_opaque|P_typeclass|P_instance as elt;_}] ->
     begin match current_token lb with
     | UID _
     | QID _ ->
        let i = qid lb in
        let cmd = match elt with
-         | P_opaq -> P_opaque i
+         | P_opaque -> P_cmd_opaque i
          | P_typeclass -> P_cmd_typeclass i
          | P_instance -> P_cmd_instance i
          | _ -> assert false
@@ -815,7 +815,7 @@ and modifier (lb:'token lexbuf): p_modifier =
   | OPAQUE ->
       let pos1 = current_pos lb in
       consume_token lb;
-      extend_pos lb (*__FUNCTION__*) pos1 P_opaq
+      extend_pos lb (*__FUNCTION__*) pos1 P_opaque
   | TYPECLASS ->
       let pos1 = current_pos lb in
       consume_token lb;
