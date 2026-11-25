@@ -695,6 +695,7 @@ let cmd_export =
       Option.iter Export.Stt.set_requiring !requiring;
       Option.iter Export.Stt.set_tvs_map !tvs_file;
       Export.Lean.print file (parse file)
+
 (*-------------------------------------------------------------------------*)
 (** index command *)
 (*-------------------------------------------------------------------------*)
