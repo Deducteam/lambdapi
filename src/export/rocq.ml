@@ -29,9 +29,14 @@ let is_valid_letter =
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
 
+let invalid_names = ref StrSet.empty
+
 let set_name_check_function() =
   Stt.check := fun pos s ->
-    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"
+    if not (is_valid_rocq_id s) then
+      if !Stt.only_check_names then
+        invalid_names := StrSet.add s !invalid_names
+      else fatal pos "invalid Rocq identifier: %s" s
 
 (** Translation of terms. *)
 
@@ -142,6 +147,15 @@ and typopt ~ctx oc t = Option.iter (prefix " : " (term ~ctx) oc) t
 
 (** Translation of commands. *)
 
+let check_names {elt;_} =
+  match elt with
+  | P_symbol{p_sym_nam={elt=n;_};_}
+    when not (is_mapped n)
+      && not (StrMap.mem n !rmap)
+      && not (is_valid_rocq_id n) ->
+    invalid_names := StrSet.add n !invalid_names
+  | _ -> ()
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,true,ps) ->
@@ -194,9 +208,18 @@ let command oc {elt; pos} =
 let commands oc = Stream.iter (command oc)
 
 let print : p_commands -> unit = fun cs ->
-  let oc = stdout in
-  begin match !require with
-  | Some f -> string oc ("Require Import "^f^".\n")
-  | None -> ()
-  end;
-  commands oc cs
+  if !Stt.only_check_names then
+    begin
+      Stream.iter check_names cs;
+      StrSet.iter (Format.eprintf "%s\n") !invalid_names;
+      if not (StrSet.is_empty !invalid_names) then exit 1
+    end
+  else
+    begin
+      let oc = stdout in
+      begin match !require with
+      | Some f -> string oc ("Require Import "^f^".\n")
+      | None -> ()
+      end;
+      Stream.iter (command oc) cs
+    end
