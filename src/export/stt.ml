@@ -193,7 +193,7 @@ let add_class_param (args : p_params list) =
 (** [is_parametrized_sym id] tells whether [id] needs to be applied to
     parameter [T] (only with option --parametrized). Exceptions are
     mapped objects, free variables and [HOLTheory]. *)
-let parametrized_sym ctx ((path,name) as qid) = !parametrized &&
+let is_parametrized_sym ctx ((path,name) as qid) = !parametrized &&
   qid <> ([],theory_class) &&
   not (path = [] && StrSet.mem name ctx) &&
   not (QidMap.mem qid !mapping)
@@ -247,10 +247,10 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
     | Some s -> string oc s
     end
 
-(* [ctx] holds the free variable context required by [parametrized_sym]. *)
+(* [ctx] holds the free variable context required by [is_parametrized_sym]. *)
 let qident ctx oc b (qid : p_qident) =
   if b then char oc '@'; raw_qident oc qid;
-  if parametrized_sym ctx qid.elt && (b || not !implicit_class) then
+  if is_parametrized_sym ctx qid.elt && (b || not !implicit_class) then
     (char oc ' '; string oc class_var)
 
 (** Translation of terms. *)
