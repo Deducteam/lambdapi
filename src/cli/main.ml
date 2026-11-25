@@ -652,11 +652,8 @@ let cmd_export =
       | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
-    begin
-      match output with
-      | RawDk | Lp | SttCoq | RawCoq -> ()
-      | _ -> Parsing.Package.set_root_path (Filename.dirname file)
-    end;
+    if Filename.extension file = ".lp" then
+      Parsing.Package.set_root_path (Filename.dirname file);
     begin
       match output with
       | SttCoq | SttLean ->
