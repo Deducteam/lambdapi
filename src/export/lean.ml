@@ -69,7 +69,7 @@ let rec term oc t =
             let l1,l2 = List.cut ts n in
             l1 @ List.init n (fun _ -> P.wild) @ l2
         in
-        list (paren ~apparg:true) " " oc ts
+        list paren " " oc ts
       in
       app t default
         (fun h ts expl builtin ->
@@ -95,7 +95,7 @@ and abst oc xs u =
 and prod oc xs u =
   string oc "∀"; params_list_in_prod oc xs; string oc ", "; term oc u
 
-and paren ?(apparg=false) oc t =
+and paren oc t =
   let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
@@ -103,7 +103,7 @@ and paren ?(apparg=false) oc t =
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
           match builtin, ts with
-          | (El|Prf), [u] -> paren ~apparg oc u
+          | (El|Prf), [u] -> paren oc u
           | _ -> default())
   | _ -> term oc t
 
