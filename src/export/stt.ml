@@ -249,7 +249,7 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
 let qident ctx oc b (qid : p_qident) =
   if b then char oc '@'; raw_qident oc qid;
   if parametrized_sym ctx qid.elt && (b || not !implicit_class) then
-  char oc ' '; string oc class_var
+    (char oc ' '; string oc class_var)
 
 (** Translation of terms. *)
 
