@@ -29,17 +29,20 @@ let is_valid_letter =
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
 
-let misc_setup() =
+let set_name_check_function() =
   Stt.check := fun pos s ->
-    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier";
-  implicit_class := false
+    if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier"
 
 (** Translation of terms. *)
 
 let add_params ctx ((ids,_,_) : p_params) =
   List.fold_left (Option.fold (fun ctx x -> StrSet.add x.elt ctx)) ctx ids
 
-let rec term ?(ctx=StrSet.empty) oc t =
+(** [term ~ctx oc t] writes the translation of term t on oc.
+    ctx, only used with option --parametrized, holds the free
+    variable context to distinguish them from previous symbols
+    which need to be applied to the new parameter. *)
+let rec term ~ctx oc t =
   (*if Logger.log_enabled() then
     log "pp %a" (*Pos.short t.pos*) Pretty.term t;*)
   match t.elt with
@@ -94,11 +97,15 @@ and prod ~ctx oc xs u =
   string oc "forall"; let ctx = params_list_in_abs ~ctx oc xs in
   string oc ", "; term ~ctx oc u
 
+(* With option --parametrized, arguments of an application which
+   are simple identifiers can be transformed into an application to
+   the new parameter, so [apparg] is there to identify these cases
+   and add parentheses  *)
 and paren ~ctx ?(apparg = false) oc t =
   let default() = char oc '('; term ~ctx oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt;_},_) when apparg && is_class_field ctx elt -> default()
+  | P_Iden({elt;_},_) when apparg && parametrized_sym ctx elt -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
@@ -107,6 +114,8 @@ and paren ~ctx ?(apparg = false) oc t =
           | _ -> default())
   | _ -> term ~ctx oc t
 
+(* The following functions now return the free variable context
+   updated with the parameters it reads. *)
 and raw_params ~ctx oc ((ids,t,_) as x) =
   param_ids oc ids; typopt ~ctx oc t; add_params ctx x
 
@@ -119,7 +128,7 @@ and params ~ctx oc ((ids,t,b) as x) =
   | false, None -> param_ids oc ids; add_params ctx x
 
 (* starts with a space if the list is not empty. returns updated context. *)
-and params_list ?(ctx=StrSet.empty) oc l =
+and params_list ~ctx oc l =
   List.fold_left (fun ctx x -> char oc ' '; params ~ctx oc x) ctx l
 
 (* starts with a space if the list is not empty *)
@@ -160,23 +169,23 @@ let command oc {elt; pos} =
                translated as Lemma's so that their definition is loaded in
                memory only when it is necessary. *)
             string oc "Lemma "; ident oc p_sym_nam;
-            let ctx = params_list oc p_sym_arg in
+            let ctx = params_list ~ctx:StrSet.empty oc p_sym_arg in
             string oc " : "; term ~ctx oc a; string oc ".\nProof. exact (";
             term ~ctx oc t; string oc "). Qed.\n"
           | true, Some t, _, _ ->
             string oc "Definition "; ident oc p_sym_nam;
-            let ctx = params_list oc p_sym_arg in typopt ~ctx oc p_sym_typ;
-            string oc " := "; term ~ctx oc t;
+            let ctx = params_list ~ctx:StrSet.empty oc p_sym_arg in
+            typopt ~ctx oc p_sym_typ; string oc " := "; term ~ctx oc t;
             if List.exists is_opaq p_sym_mod then
               (string oc ".\nOpaque "; ident oc p_sym_nam);
             string oc ".\n"
           | false, _, [], Some t ->
             string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc ".\n"
+            term ~ctx:StrSet.empty oc t; string oc ".\n"
           | false, _, _, Some t ->
             string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
-            let ctx = params_list oc p_sym_arg in string oc ", ";
-            term ~ctx oc t; string oc ".\n"
+            let ctx = params_list ~ctx:StrSet.empty oc p_sym_arg in
+            string oc ", "; term ~ctx oc t; string oc ".\n"
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."

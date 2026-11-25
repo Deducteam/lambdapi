@@ -160,24 +160,26 @@ let list elt sep oc xs =
   | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
 
 
-(** Parametrisation by a theory class/record.
-    The translation is parametrised by a Lean type class or Rocq record having
-    one field per symbol of the theory, so that it is independent of an
-    alignment: a symbol is translated to the field of the class bearing its
-    name, never to an expression of some target library. The class is fixed
-    here because the translation is done once, while the alignments
-    instantiating it may change. *)
+(* parametrization by a theory class/record.
+   The translation is parametrized by a Lean type class or Rocq record having
+   one field per symbol of the theory, so that it is independent of an
+   alignment: a symbol is translated to the field of the class bearing its
+   name, never to an expression of some target library. The class is fixed
+   here because the translation is done once, while the alignments
+   instantiating it may change. *)
 
-let parametrised = ref false
+(** The --parametrized option. **)
+let parametrized = ref false
 let theory_class = "HOLTheory"
 let class_var = "T"
 
+(** Whether the additional argument should be explicit (like in Rocq)
+    or implicit (like in Lean, with type class inference) *)
 let implicit_class = ref true
 
-(** Instance of the class bound by every generated declaration. *)
+(** Adds an argument [T] of type [HOLTheory] to a symbol's p_sym_args. *)
 let add_class_param (args : p_params list) =
-  if !parametrised
-  then let pos = match args with
+  if !parametrized then let pos = match args with
     | (Some ({elt=_;pos})::_,_,_)::_ -> pos
     | _ -> None
     in ([Some {elt=class_var;pos}],
@@ -186,11 +188,10 @@ let add_class_param (args : p_params list) =
   else args
 
 
-(** [is_class_field id] tells whether [id] denotes a field of the class [T],
-    taking the instance [T] as its first argument when it is applied
-    explicitly (with @). All do except for the structural symbols of STT,
-    which are the builtins. *)
-let is_class_field ctx ((path,name) as qid) = !parametrised &&
+(** [is_parametrized_sym id] tells whether [id] needs to be applied to
+    parameter [T] (only with option --parametrized). Exceptions are
+    mapped objects, free variables and [HOLTheory]. *)
+let parametrized_sym ctx ((path,name) as qid) = !parametrized &&
   qid <> ([],theory_class) &&
   not (path = [] && StrSet.mem name ctx) &&
   not (QidMap.mem qid !mapping)
@@ -244,12 +245,11 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
     | Some s -> string oc s
     end
 
+(* [ctx] holds the free variable context required by [parametrized_sym]. *)
 let qident ctx oc b (qid : p_qident) =
-  let is_class_field = is_class_field ctx qid.elt in
-  if b then char oc '@';
-  raw_qident oc qid;
-  if is_class_field && (b || not !implicit_class)
-  then string oc (" " ^ class_var)
+  if b then char oc '@'; raw_qident oc qid;
+  if parametrized_sym ctx qid.elt && (b || not !implicit_class) then
+  char oc ' '; string oc class_var
 
 (** Translation of terms. *)
 

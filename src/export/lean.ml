@@ -112,7 +112,7 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 and params oc ((ids,t,b) as x) =
   match b, t with
   | true, Some{elt=P_Iden({elt=(_,sym_name);_},_);_}
-    when sym_name = theory_class && !parametrised ->
+    when sym_name = theory_class && !parametrized ->
       char oc '['; raw_params oc x; char oc ']'
   | true, _ -> char oc '{'; raw_params oc x; char oc '}'
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
