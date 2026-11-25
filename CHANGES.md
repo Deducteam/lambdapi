@@ -6,9 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## Unreleased
 
 ### Added
-
-### Changed
-- Outline : the LSP server now supports the hierarchical description of the document. Not all Lambdapi notions have there counterpart in Symbolkind. Thus, only `symbols` and `inductives` are included in the outline as `Function`s and `Enum`s
+- Outline : the LSP server now supports the hierarchical description of the document. Not all Lambdapi notions have there counterparts in Symbolkind. Thus, only `symbols` and `inductives` are included in the outline as `Function`s and `Enum`s
+- New option `--only-check-names` to check the validity of names for Rocq export.
 
 ## 4.0.0 (2026-11-05)
 
