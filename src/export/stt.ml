@@ -219,10 +219,13 @@ let app t default cases =
   let h, ts = p_get_args t in
   if !stt then
     match h.elt with
-    | P_Iden({elt;_},expl) ->
-        begin match QidMap.find_opt elt !encoding with
+    | P_Iden({elt=(_,id);_},expl) ->
+        (* We assume that there is no non-encoding symbol with the same name
+           as an encoding symbol, and that encoding symbols are not
+           qualified in the file passed as argument of --encoding. *)
+        begin match QidMap.find_opt ([],id) !encoding with
+        | Some b -> cases h ts expl b
         | None -> default h ts
-        | Some builtin -> cases h ts expl builtin
         end
     | _ -> default h ts
   else default h ts
