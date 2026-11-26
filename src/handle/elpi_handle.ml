@@ -305,7 +305,7 @@ let tc_solver_prog =
   let elpi = ensure_initialized() in
   let file = "tcsolver.elpi" in
   let ast = ElpiError.handle (Parse.program ~elpi file) in
-  let flags = Elpi.API.Compile.default_flags in
+  let flags = {Elpi.API.Compile.default_flags with max_errors=max_int} in
   match ElpiError.handle (Elpi.API.Compile.scope_ast ~flags ~elpi ast) with
   | [ x ] ->
     let base = Elpi.API.Compile.(empty_base ~elpi) in
