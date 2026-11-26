@@ -409,8 +409,10 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
   let rec msubst t =
-(*    if Logger.log_enabled() then
-      log "msubst %a %a" (D.array term) vs term t;*)
+(*
+    if Logger.log_enabled() then
+      log "msubst %a %a" (D.array term) vs term t;
+*)
     match unfold t with
     | Bvar (InSub p) -> assert bi.mbinder_bound.(p); vs.(p)
     | Bvar (InEnv p) -> env.(p)
@@ -419,11 +421,11 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,env) vs ->
        in the closure environment *)
     | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, Array.map msubst e))
     | Prod(a,(n,u,e)) -> Prod(msubst a, (n, u, Array.map msubst e))
-    | LLet(a,t,(n,u,e)) ->
+    | LLet(a,t,(n,u,e)) -> 
         LLet(msubst a, msubst t, (n, u, Array.map msubst e))
     | Meta(m,ts) -> Meta(m, Array.map msubst ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map msubst ts)
-    | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
+    | (Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _) as t' -> t'
   in
   let r =
     if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0

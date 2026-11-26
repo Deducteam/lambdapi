@@ -19,6 +19,7 @@
     "generalize"
     "have"
     "induction"
+    "lia_find"
     "orelse"
     "refine"
     "reflexivity"
@@ -123,6 +124,7 @@
               ("generalize" ident)
               ("have" ident ":" term)
               ("induction")
+              ("lia_find")
               ("orelse" tactic)
               ("refine" term)
               ("reflexivity")
@@ -214,7 +216,6 @@
   "Indentation rule for case KIND and token TOKEN."
   (pcase (cons kind token)
     (`(:elem . basic) 0)
-
     (`(:after . "begin") lambdapi-indent-basic)
     (`(:before . "end") (smie-rule-parent))
     (`(:after . ":") lambdapi-indent-basic)

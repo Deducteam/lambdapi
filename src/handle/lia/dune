@@ -1,0 +1,6 @@
+(library
+ (name lia)
+ (public_name lambdapi.handle_lia)
+ (modules :standard)
+ (libraries zarith lambdapi.core lambdapi.lplib)
+ (wrapped false))

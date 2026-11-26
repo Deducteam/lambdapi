@@ -17,6 +17,7 @@
     "focus"
     "generalize"
     "have"
+    "lia_find"
     "orelse"
     "refine"
     "reflexivity"

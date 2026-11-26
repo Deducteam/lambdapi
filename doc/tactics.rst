@@ -86,6 +86,13 @@ If the focused goal is of the form ``Π x:I …, …`` with ``I`` an
 inductive type, then ``induction`` refines it by applying the
 induction principle of ``I``.
 
+.. _lia_find:
+
+``lia_find``
+------------
+
+The tactic ``lia_find`` tries to find a linear combination of arithmetic hypotheses that is unsatisfiable and adds it to the current goal.
+
 .. _refine:
 
 ``refine``

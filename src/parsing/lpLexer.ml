@@ -68,6 +68,7 @@ type token =
   | INFIX
   | INJECTIVE
   | LET
+  | LIA_FIND
   | NOTATION
   | OPAQUE
   | OPEN
@@ -354,6 +355,7 @@ let rec token ~allow_rocq_syntax lb =
   | "injective" -> INJECTIVE
   | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
+  | "lia_find" -> LIA_FIND
   | "notation" -> NOTATION
   | "off" -> SWITCH(false)
   | "on" -> SWITCH(true)

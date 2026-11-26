@@ -13,5 +13,6 @@ end;
 symbol test2 T (a b: τ T): π (P a) → π (P b) → π (P a) ≔
 begin
   assume T a b h1 h2;
-  first_hyp (λ _ _ ph, #apply ph);
+debug +tu;
+  first_hyp (λ l p ph, #apply [l]  ph);
 end;

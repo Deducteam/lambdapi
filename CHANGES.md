@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Binders in selector patterns passed to `rewrite`.
 - Builtins `arr` and `funExt` required to justify `rewrite` targeting enclosing bound variables.
 - CLI command `depend` to compute file dependencies.
+- Tactic `lia_find` tries to add to the goal a linear combinaison of arithmetic hypotheses thats reduces to false
 
 ### Changed
 
