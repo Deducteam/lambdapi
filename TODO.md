@@ -17,6 +17,30 @@ Typeclasses
 * It would be useful to have some form of record syntax, goes well with typeclasses.
   - See tests/OK/elpi_isa_test.lp, would look much better with record syntax.
 
+Elpi
+----------------
+
+* With the Elpi integration, almost everything needed to add Elpi as a tactic
+  language is here.
+* One main issue could be tactic argument parsing: distinguish integers,
+  lambdapi terms, strings.
+* Elpi advantages for tactics:
+  - HOAS and term quotation make it very easy to work with Lambdapi terms.
+  - It is a full programming language, with easy possibility to define
+    data structures, a standard library, and access to builtin functions
+    from Ocaml for integers, strings, sets...
+  - Lambda prolog means full support for backtracking and automated search.
+  - Since Lambdapi's code is quite short, and thanks to Elpi's foreign
+    function interface, it is quite easy to give access to interaction
+    with most features of Lambdapi. Already included: typing computation,
+    reduction (modulo rewriting), raising warnings and errors.
+  - Since version 4.1., Elpi has a plugin and package system, where one can
+    load Elpi files (and thus tactics) from another opam package.
+  - It could be possible to copy code from Rocq tactics written in Elpi and
+    adapt them.
+    + This includes for example the lra, nra, psatz and ring tactics
+      written partially in Elpi in the mathcomp library.
+
 Index and search
 ----------------
 
