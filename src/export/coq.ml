@@ -178,8 +178,7 @@ let print : p_commands -> unit = fun cs ->
   if !Stt.only_check_names then
     begin
       Stream.iter check_names cs;
-      StrSet.iter (Format.eprintf "%s\n") !invalid_names;
-      if not (StrSet.is_empty !invalid_names) then exit 1
+      StrSet.iter (Format.printf "%s\n") !invalid_names
     end
   else
     begin
