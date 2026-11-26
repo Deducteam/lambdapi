@@ -67,7 +67,7 @@ let rec term ctx oc t =
   | P_Wrap u -> term ctx oc u
   | P_Appl _ ->
       let default h ts = paren ctx oc h; char oc ' ';
-        list (paren ctx ~apparg:true) " " oc ts
+        list (paren_argument ctx) " " oc ts
       in
       app t default
         (fun h ts expl builtin ->
@@ -101,18 +101,23 @@ and prod ctx oc xs u =
 
 (* With option --parametrized, arguments of an application which
    are simple identifiers can be transformed into an application to
-   the new parameter, so [apparg] is there to identify these cases
-   and add parentheses  *)
-and paren ctx ?(apparg = false) oc t =
+   the new parameter, so paren_argument adds parentheses in that case *)
+and paren_argument ctx oc t =
+  match t.elt with
+  | P_Iden(qid, _) when is_parametrized_sym ctx qid.elt ->
+    char oc '('; raw_qident oc qid ; char oc ' ';
+    string oc class_var; char oc ')'
+  | _ -> paren ctx oc t
+
+and paren ctx oc t =
   let default() = char oc '('; term ctx oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
-  | P_Iden({elt;_},_) when apparg && is_parametrized_sym ctx elt -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
           match builtin, ts with
-          | (El|Prf), [u] -> paren ctx ~apparg oc u
+          | (El|Prf), [u] -> paren ctx oc u
           | _ -> default())
   | _ -> term ctx oc t
 
