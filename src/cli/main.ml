@@ -612,8 +612,18 @@ let opt_use_notations =
                      Export.Stt.use_notations := true)
   ; opt_desc = "Generate Rocq code using notations for connectors." }
 
+let opt_only_check_names =
+  { opt_name = "--only-check-names"
+  ; opt_short = None
+  ; opt_handle = NoArg(fun () ->
+                     check_output [SttCoq;RawCoq;SttLean;RawLean];
+                     Export.Stt.only_check_names := true;
+                     Common.Error.no_warnings := true)
+  ; opt_desc = "Do not generate anything; only check identifiers validity." }
+
 let export_options =
   opt_output
+  :: opt_only_check_names
   :: opt_encoding
   :: opt_mapping
   :: opt_renaming
@@ -643,10 +653,17 @@ let cmd_export =
       | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
+    if Filename.extension file = ".lp" then
+      Parsing.Package.set_root_path (Filename.dirname file);
     begin
       match output with
-      | RawDk | Lp | SttCoq | RawCoq -> ()
-      | _ -> Parsing.Package.set_root_path (Filename.dirname file)
+      | SttCoq | SttLean ->
+        Export.Stt.current_mp :=
+          if Filename.extension file = ".lp" then
+            (* remove the root_path from the module path *)
+            List.tl (Common.Library.path_of_file Parsing.LpLexer.escape file)
+          else [Filename.basename (Filename.chop_extension file)]
+      | _ -> ()
     end;
     let parse = Parsing.Parser.parse_file in
     match output with
@@ -676,6 +693,7 @@ let cmd_export =
       Option.iter Export.Stt.set_requiring !requiring;
       Option.iter Export.Stt.set_tvs_map !tvs_file;
       Export.Lean.print file (parse file)
+
 (*-------------------------------------------------------------------------*)
 (** index command *)
 (*-------------------------------------------------------------------------*)
@@ -769,7 +787,7 @@ let opt_dry_run =
   ; opt_short = None
   ; opt_handle = NoArg(fun () -> dry_run := true)
   ; opt_desc =
-{|Do not install anything, only print the command that would be
+{|Do not install anything, only print the commands that would be
   executed if the option was not given.|} }
 
 let cmd_install =
