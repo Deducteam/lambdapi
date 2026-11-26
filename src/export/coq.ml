@@ -17,7 +17,7 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
-(** Valid Rocq identifiers (excluding unicode characters). *)
+(** Valid Rocq identifiers (excluding unicode characters and keywords). *)
 
 let is_valid_first_letter =
   function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
