@@ -181,22 +181,24 @@ let implicit_class = ref true
 
 (** Adds an argument [T] of type [HOLTheory] to a symbol's p_sym_args. *)
 let add_class_param (args : p_params list) =
-  if !parametrized then let pos = match args with
-    | (Some ({elt=_;pos})::_,_,_)::_ -> pos
-    | _ -> None
-    in ([Some {elt=class_var;pos}],
-        Some {elt=P_Iden({elt=([],theory_class);pos},false);pos},
-        !implicit_class) :: args
+  if !parametrized then
+    let pos =
+      match args with
+      | (Some ({elt=_;pos})::_,_,_)::_ -> pos
+      | _ -> None
+    in
+    ([Some{elt=class_var;pos}],
+     Some{elt=P_Iden({elt=([],theory_class);pos},false);pos},
+     !implicit_class) :: args
   else args
-
 
 (** [is_parametrized_sym id] tells whether [id] needs to be applied to
     parameter [T] (only with option --parametrized). Exceptions are
     mapped objects, free variables and [HOLTheory]. *)
-let is_parametrized_sym ctx ((path,name) as qid) = !parametrized &&
-  qid <> ([],theory_class) &&
-  not (path = [] && StrSet.mem name ctx) &&
-  not (QidMap.mem qid !mapping)
+let is_parametrized_sym ctx ((path,name) as qid) =
+  !parametrized && qid <> ([],theory_class)
+  && not (path = [] && StrSet.mem name ctx)
+  && not (QidMap.mem qid !mapping)
 
 (** Translation of identifiers. *)
 

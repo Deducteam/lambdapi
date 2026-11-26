@@ -617,7 +617,7 @@ let opt_use_notations =
   ; opt_handle = NoArg(fun () ->
                      check_output [SttRocq;RawRocq;SttLean;RawLean];
                      Export.Stt.use_notations := true)
-  ; opt_desc = "Generate Rocq or Lean code using notations for connectors." }
+  ; opt_desc = "Generate code using notations." }
 
 let opt_only_check_names =
   { opt_name = "--only-check-names"
