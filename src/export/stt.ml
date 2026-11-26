@@ -224,8 +224,8 @@ let app t default cases =
            as an encoding symbol, and that encoding symbols are not
            qualified in the file passed as argument of --encoding. *)
         begin match QidMap.find_opt ([],id) !encoding with
-        | Some b -> cases h ts expl b
         | None -> default h ts
+        | Some builtin -> cases h ts expl builtin
         end
     | _ -> default h ts
   else default h ts
