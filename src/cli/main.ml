@@ -608,7 +608,11 @@ let opt_class_var =
   ; opt_short = None
   ; opt_handle = Next("VAR",
                         fun s -> check_output [SttRocq;SttLean];
-                        Export.Stt.class_var := s)
+                        if !Export.Stt.parametrized then
+                          Common.Error.fatal_no_pos "%s %s"
+                            "option --parametrized"
+                            "must appear before option --class-var"
+                        else Export.Stt.class_var := s)
   ; opt_desc = "Name to use for the extra parameter" }
 
 let opt_no_implicits =
