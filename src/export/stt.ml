@@ -95,26 +95,28 @@ let current_mp = Stdlib.ref []
 let is_mapped id =
   QidMap.mem ([],id) !mapping || QidMap.mem (!current_mp,id) !mapping
 
-(** Set encoding. *)
+(** Set encoding map. *)
 
-let encoding = ref QidMap.empty
+let encoding = ref StrMap.empty
 
-let add_encoding qid b = encoding := QidMap.add qid b !encoding
+let add_encoding id b = encoding := StrMap.add id b !encoding
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,lp_qid);pos} ->
-        begin match index_of_name n with
+    | {elt=P_builtin(n,({elt=(p,id);_} as lp_qid));pos} ->
+      begin
+        if p <> [] then
+          fatal lp_qid.pos "Qualified identifiers are not allowed here.";
+        match index_of_name n with
         | Some i ->
-            if Logger.log_enabled() then
-              log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
+            if Logger.log_enabled() then log "builtin \"%s\" = %s" n id;
             found.(i) <- true;
             let b = builtin_of_index i in
-            add_encoding lp_qid.elt b;
+            add_encoding id b;
             add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
-        end
+      end
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f);
@@ -229,7 +231,7 @@ let app t default cases =
            symbols are qualified (e.g. in Dedukti files) and the case where
            they are unqualified (i.e. when the modules where they are defined
            are open). *)
-        begin match QidMap.find_opt ([],id) !encoding with
+        begin match StrMap.find_opt id !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
         end

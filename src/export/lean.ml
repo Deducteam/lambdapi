@@ -27,8 +27,8 @@ let typ_arity h =
       end
   | _ -> 0
 
-let is_Set id =
-  match QidMap.find_opt id.elt !encoding with
+let is_Set {elt=(_,id);_} =
+  match StrMap.find_opt id !encoding with
   | Some Set -> true
   | _ -> false
 
