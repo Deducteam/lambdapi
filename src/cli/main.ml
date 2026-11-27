@@ -608,7 +608,7 @@ let opt_class_var =
   ; opt_short = None
   ; opt_handle = Next("VAR",
                         fun s -> check_output [SttRocq;SttLean];
-                        if !Export.Stt.parametrized then
+                        if not !Export.Stt.parametrized then
                           Common.Error.fatal_no_pos "%s %s"
                             "option --parametrized"
                             "must appear before option --class-var"
