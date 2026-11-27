@@ -50,12 +50,6 @@ let _ = (* sanity check *)
     assert (index_of_name (name_of_index i) = Some i)
   done
 
-let builtin : Term.qident array =
-  let path = ["STTfa"] in
-  Array.init nb_builtins (fun i -> path, name_of_index i)
-
-let sym b = builtin.(index_of_builtin b)
-
 (** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
@@ -115,7 +109,6 @@ let set_encoding : string -> unit = fun f ->
         | Some i ->
             if Logger.log_enabled() then
               log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
-            builtin.(i) <- lp_qid.elt;
             found.(i) <- true;
             let b = builtin_of_index i in
             add_encoding lp_qid.elt b;
@@ -130,9 +123,6 @@ let set_encoding : string -> unit = fun f ->
       if not b then
         fatal None(*FIXME*) "Builtin %s undefined." (name_of_index i))
     found
-
-let is_encoded id =
-  QidMap.mem ([],id) !encoding || QidMap.mem (!current_mp,id) !encoding
 
 (** Map from symbol name to number of type variables (>0). A symbol with no
     entry is not polymorphic (arity =0). *)
@@ -229,8 +219,11 @@ let app t default cases =
   let h, ts = p_get_args t in
   if !stt then
     match h.elt with
-    | P_Iden({elt;_},expl) ->
-        begin match QidMap.find_opt elt !encoding with
+    | P_Iden({elt=(_,id);_},expl) ->
+        (* We assume that there is no non-encoding symbol with the same name
+           as an encoding symbol, and that encoding symbols are not
+           qualified in the file passed as argument of --encoding. *)
+        begin match QidMap.find_opt ([],id) !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
         end

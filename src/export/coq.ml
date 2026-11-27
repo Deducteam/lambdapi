@@ -17,7 +17,7 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
-(** Valid Rocq identifiers (excluding unicode characters). *)
+(** Valid Rocq identifiers (excluding unicode characters and keywords). *)
 
 let is_valid_first_letter =
   function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
@@ -178,8 +178,7 @@ let print : p_commands -> unit = fun cs ->
   if !Stt.only_check_names then
     begin
       Stream.iter check_names cs;
-      StrSet.iter (Format.eprintf "%s\n") !invalid_names;
-      if not (StrSet.is_empty !invalid_names) then exit 1
+      StrSet.iter (Format.printf "%s\n") !invalid_names
     end
   else
     begin
