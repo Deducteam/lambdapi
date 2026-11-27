@@ -158,6 +158,27 @@ let check_names {elt;_} =
     invalid_names := StrSet.add n !invalid_names
   | _ -> ()
 
+let pqid_of_pid {elt; pos} = {elt=([],elt); pos}
+
+let add_modifier oc name (md : p_modifier) =
+  let prefix = match md.elt with
+  | P_opaque -> Some "Opaque "
+  | P_typeclass -> Some "Existing Class "
+  | P_instance -> Some "Existing Instance "
+  | _ -> None
+  in
+  let with_prefix prefix =
+    string oc prefix; raw_qident oc name; string oc ".\n"
+  in
+  Option.iter with_prefix prefix
+
+let get_instance l prefix =
+  let res = List.filter (fun {elt;_} -> elt != P_instance) l in
+  let is_instance = res != l in
+  let prefix = if is_instance then "Instance " else prefix in
+  let suffix = if is_instance then ".\nAdmitted.\n" else ".\n" in
+  (res, prefix, suffix)
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,true,ps) ->
@@ -179,31 +200,43 @@ let command oc {elt; pos} =
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
       if not (is_mapped p_sym_nam.elt) then
         let p_sym_arg = add_class_param p_sym_arg in
+        let modifiers =
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are
                translated as Lemma's so that their definition is loaded in
                memory only when it is necessary. *)
-            string oc "Lemma "; ident oc p_sym_nam;
+            let mods_left = List.filter (fun m -> not (is_lem m)) p_sym_mod in
+            let res,prefix,_ = get_instance mods_left "Lemma " in
+            string oc prefix; ident oc p_sym_nam;
             let ctx = params_list StrSet.empty oc p_sym_arg in
             string oc " : "; term ctx oc a; string oc ".\nProof. exact (";
-            term ctx oc t; string oc "). Qed.\n"
+            term ctx oc t; string oc "). Qed.\n";
+            res
           | true, Some t, _, _ ->
-            string oc "Definition "; ident oc p_sym_nam;
+            let res,prefix,_ = if Option.is_none p_sym_typ
+              then (p_sym_mod,"Definition ","")
+              else get_instance p_sym_mod "Definition " in
+            string oc prefix; ident oc p_sym_nam;
             let ctx = params_list StrSet.empty oc p_sym_arg in
             typopt ctx oc p_sym_typ; string oc " := "; term ctx oc t;
-            if List.exists is_opaq p_sym_mod then
-              (string oc ".\nOpaque "; ident oc p_sym_nam);
-            string oc ".\n"
+            string oc ".\n"; res
           | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term StrSet.empty oc t; string oc ".\n"
+            let res,prefix,suffix = get_instance p_sym_mod "Axiom " in
+            string oc prefix; ident oc p_sym_nam; string oc " : ";
+            term StrSet.empty oc t; string oc suffix;
+            res
           | false, _, _, Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
+            let res,prefix,suffix = get_instance p_sym_mod "Axiom " in
+            string oc prefix; ident oc p_sym_nam; string oc " : forall";
             let ctx = params_list StrSet.empty oc p_sym_arg in
-            string oc ", "; term ctx oc t; string oc ".\n"
-          | _ -> wrn pos "Command not translated."
-        end
+            string oc ", "; term ctx oc t; string oc suffix;
+            res
+          | _ -> wrn pos "Command not translated."; []
+        end in List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) modifiers
+  | P_cmd_opaque qid -> add_modifier oc qid {elt=P_opaque;pos}
+  | P_cmd_typeclass qid -> add_modifier oc qid {elt=P_typeclass;pos}
+  | P_cmd_instance qid -> add_modifier oc qid {elt=P_instance;pos}
   | _ -> wrn pos "Command not translated."
   end
 

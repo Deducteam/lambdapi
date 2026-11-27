@@ -66,6 +66,8 @@ exclude 298_lp 262_parsing tail 698_abst_impl 330 330b 1035 varmatch patt freeva
 exclude 547
 # aborted proof
 exclude simp_beta
+# type classes
+exclude elpi_isa_test elpitest
 
 cd $dir
 cat > Makefile <<'__END__'

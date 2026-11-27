@@ -555,6 +555,26 @@ let patt_vars : p_term -> (string * int) list * string list =
   in
   patt_vars ([],[])
 
+(** [scope_term_w_pats] is the same as {!val:scope_term} but it accepts
+    first-order pattern variables. *)
+let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term =
+  fun ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->
+    let arities,pats = patt_vars t in
+    let assert_arity_0 (id,ar) = if ar <> 0
+      then Error.fatal t.pos "Forbidden higher-order pattern variable $s." id
+    in
+    List.iter assert_arity_0 arities;
+    let md = M_LHS {
+      m_lhs_prv = false;
+      m_lhs_indices = Hashtbl.create 1;
+      m_lhs_arities = Hashtbl.create 1;
+      m_lhs_names = Hashtbl.create 1;
+      m_lhs_size = 0;
+      m_lhs_in_env = pats
+    } in
+    scope ~typ 0 md ss env t
+
 (** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
     or a unification rule if [ur] is true, into a pre-rewriting rule. *)
 let scope_rule :

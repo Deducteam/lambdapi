@@ -18,7 +18,7 @@ val scope_term :
   ?mok:(int -> meta option) -> bool -> sig_state -> env -> p_term -> term
 
 (** [scope_search_pattern ~find_sym ~typ prv ss env t] turns a pterm [t] meant
-    to be a search patter into a term in the signature state [ss]
+    to be a search pattern into a term in the signature state [ss]
     and environment [env] (for bound variables). If [~typ] is [true],
     then [t] must be a type (defaults to [false]). No {b new} metavariables
     may appear in [t], but metavariables in the image of [mok] may be used.
@@ -27,6 +27,12 @@ val scope_term :
 val scope_search_pattern :
   ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option) ->
   sig_state -> env -> p_term -> term
+
+(** [scope_term_w_pats] is the same as {!val:scope_term} but it accepts
+    pattern variables. *)
+val scope_term_w_pats :
+  ?typ:bool (* default: false *) ->
+  ?mok:(int -> meta option) -> bool -> sig_state -> env -> p_term -> term
 
 (** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
     or a unification rule if [ur] is true, into a pre-rewriting rule.

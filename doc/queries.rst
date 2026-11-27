@@ -56,6 +56,7 @@ available flags by using the command ``flag`` with no argument.
 
 ::
 
+   flag "elpi_trace" on; // default is off
    flag "eta_equality" on; // default is off
    flag "print_implicits" on; // default is off
    flag "print_contexts" on; // default is off

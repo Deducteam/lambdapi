@@ -1,0 +1,1 @@
+let () = Handle.Elpi_handle.document_builtins()

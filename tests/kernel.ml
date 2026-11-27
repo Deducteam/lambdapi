@@ -13,7 +13,7 @@ let open_sign_default () =
     Sign.add_symbol sign Term.Public Term.Defin Term.Eager false
       (Pos.none "foo") None Term.mk_Type []
   in
-  let ss = Sig_state.of_sign sign in
+  let ss = Handle.Elpi_handle.Sig_state.of_sign sign in
   Alcotest.(check unit)
     "find_sym succeeds"
     (ignore @@ Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none ([], "foo")))

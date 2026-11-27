@@ -394,7 +394,9 @@ type p_modifier_aux =
   | P_mstrat of Term.match_strat (** pattern matching strategy *)
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
-  | P_opaq (** opacity *)
+  | P_opaque (** opacity *)
+  | P_typeclass (** typeclass *)
+  | P_instance (** typeclass instance *)
 
 type p_modifier = p_modifier_aux loc
 
@@ -403,7 +405,7 @@ let eq_p_modifier { elt = m1; _} {elt = m2; _} =
   m1 = m2
 
 let is_prop {elt; _} = match elt with P_prop _ -> true | _ -> false
-let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
+let is_opaq {elt; _} = match elt with P_opaque -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo _ -> true | _ -> false
 let is_mstrat {elt; _} = match elt with P_mstrat _ -> true | _ -> false
 let is_priv {elt; _} = match elt with P_expo Privat -> true | _ -> false
@@ -425,6 +427,8 @@ type p_command_aux =
   | P_require_as of p_path * p_ident
   | P_open of (*"open" keyword position*)Pos.popt
               * (*private?*)bool * p_path list
+  | P_cmd_typeclass of p_qident
+  | P_cmd_instance of p_qident
   | P_symbol of p_symbol
   | P_rules of p_rule list
   | P_inductive of (*"inductive" keyword position*)Pos.popt
@@ -434,7 +438,7 @@ type p_command_aux =
   | P_unif_rule of p_rule
   | P_coercion of p_rule
   | P_query of p_query
-  | P_opaque of p_qident
+  | P_cmd_opaque of p_qident
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
@@ -460,7 +464,9 @@ let command_keyword_pos : p_command -> Pos.popt = fun {elt; pos} ->
   | P_unif_rule _ -> prefix "unif_rule"
   | P_coercion _ -> prefix "coerce_rule"
   | P_query q -> prefix (query_keyword q)
-  | P_opaque _ -> prefix "opaque"
+  | P_cmd_opaque _ -> prefix "opaque"
+  | P_cmd_typeclass _ -> prefix "typeclass"
+  | P_cmd_instance _ -> prefix "instance"
 
 (** Top level data structure returned by the parser. *)
 type p_commands = p_command Stream.t
@@ -811,9 +817,11 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     match elt with
     | P_require (_, _)
     | P_require_as (_, _)
-    | P_open _ -> a
+    | P_open _
+    | P_cmd_typeclass _
+    | P_cmd_instance _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
-    | P_opaque qid
+    | P_cmd_opaque qid
     | P_builtin (_, qid)
     | P_notation (qid, _) -> f a qid
     | P_coercion r
