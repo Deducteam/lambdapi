@@ -187,7 +187,7 @@ module P  = struct
   let wrap t = Pos.none (P_Wrap t)
 end
 
-(** Rewrite selection forms based on Coq/SSReflect, with Lambdapi binder
+(** Rewrite selection forms based on Rocq/SSReflect, with Lambdapi binder
     terms allowed inside each term component. See "A Small Scale
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,

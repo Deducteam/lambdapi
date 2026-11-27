@@ -103,18 +103,18 @@ export
   - ``raw_dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-  - ``raw_coq``: `Rocq <https://rocq-prover.org/>`__ format
-  - ``stt_coq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``raw_rocq``: `Rocq <https://rocq-prover.org/>`__ format
+  - ``stt_rocq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
   - ``raw_lean``: `Lean <https://lean-lang.org/>`__ format
   - ``stt_lean``: `Lean <https://lean-lang.org/>`__ format assuming that the input file is in an encoding of simple type theory
 
-**WARNING**: With the formats ``raw_coq``, ``stt_coq``, ``raw_lean``, ``stt_lean`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
+**WARNING**: With the formats ``raw_rocq``, ``stt_rocq``, ``raw_lean``, ``stt_lean`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
 
 The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_rocq``, ``stt_rocq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
-For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
+For the formats ``stt_rocq`` and ``stt_lean``, several other options are available:
 
 * ``--encoding <FILE.lp>`` (mandatory option) where ``<FILE.lp>`` contains the following sequence of builtin declarations:
 
@@ -142,6 +142,10 @@ WARNING: We assume that there is no two symbols (in two different files) having 
 The first argument ``a`` of the symbols corresponding to the builtins ``"eq"``, ``"all"`` and ``"ex"`` need not be declared as implicit.
 
 In symbol declarations or definitions, parameters with no type are assumed to be of type the term associated with the builtin ``"Set"``.
+
+* ``--parametrized`` instructs Lambdapi that all non-mapped symbols must have an extra parameter of type ``HOLTheory``.
+
+* ``--class-var <NAME>`` instructs Lambdapi to use ``<NAME>`` for the extra parameter of type ``HOLTheory`` (by default, Lambdapi uses ``HOLT``).
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 

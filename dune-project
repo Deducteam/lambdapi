@@ -24,7 +24,7 @@ for Emacs is available on MELPA. An extension for VSCode is available
 on the VSCode Marketplace. Lambdapi can read Dedukti files. It
 includes checkers for local confluence and subject reduction. It also
 provides commands to export Lambdapi files to other formats or
-systems: Dedukti, Coq, HRS, CPF.")
+systems: Dedukti, Rocq, HRS, CPF.")
  (depends
   (ocaml (>= 4.14))
   (dream-pure (>= 1.0.0))

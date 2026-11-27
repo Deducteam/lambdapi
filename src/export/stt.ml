@@ -153,6 +153,46 @@ let list elt sep oc xs =
   | [] -> ()
   | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
 
+
+(* parametrization by a theory class/record.
+   The translation is parametrized by a Lean type class or Rocq record having
+   one field per symbol of the theory, so that it is independent of an
+   alignment: a symbol is translated to the field of the class bearing its
+   name, never to an expression of some target library. The class is fixed
+   here because the translation is done once, while the alignments
+   instantiating it may change. *)
+
+(** The --parametrized option. **)
+let parametrized = ref false
+let theory_class = "HOLTheory"
+let default_class_var = "HOLT"
+let class_var = ref default_class_var
+
+(** Whether the additional argument should be explicit (like in Rocq)
+    or implicit (like in Lean, with type class inference) *)
+let implicit_class = ref true
+
+(** Adds an argument [T] of type [HOLTheory] to a symbol's p_sym_args. *)
+let add_class_param (args : p_params list) =
+  if !parametrized then
+    let pos =
+      match args with
+      | (Some ({elt=_;pos})::_,_,_)::_ -> pos
+      | _ -> None
+    in
+    ([Some{elt= !class_var;pos}],
+     Some{elt=P_Iden({elt=([],theory_class);pos},false);pos},
+     !implicit_class) :: args
+  else args
+
+(** [is_parametrized_sym id] tells whether [id] needs to be applied to
+    parameter [T] (only with option --parametrized). Exceptions are
+    mapped objects, free variables and [HOLTheory]. *)
+let is_parametrized_sym ctx ((path,name) as qid) =
+  !parametrized && qid <> ([],theory_class)
+  && not (path = [] && StrSet.mem name ctx)
+  && not (QidMap.mem qid !mapping)
+
 (** Translation of identifiers. *)
 
 let translate_ident {elt=s;_}: string =
@@ -173,7 +213,7 @@ let p_path oc p = path oc p.elt
 
 let alias = Stdlib.ref StrMap.empty
 
-let rec qident oc {elt=((mp,id) as qid);pos} =
+let rec raw_qident oc {elt=((mp,id) as qid);pos} =
   match mp with
   | [] ->
     begin match QidMap.find_opt (!current_mp,id) !mapping with
@@ -186,7 +226,7 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     end
   | [p] ->
     begin match StrMap.find_opt p !alias with
-      | Some mp -> qident oc {elt=(mp,id);pos}
+      | Some mp -> raw_qident oc {elt=(mp,id);pos}
       | None ->
         match QidMap.find_opt qid !mapping with
         | None -> path oc mp; char oc '.'; ident oc {elt=id;pos}
@@ -197,6 +237,12 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     | None -> path oc mp; char oc '.'; ident oc {elt=id;pos}
     | Some s -> string oc s
     end
+
+(* [ctx] holds the free variable context required by [is_parametrized_sym]. *)
+let qident ctx oc b (qid : p_qident) =
+  if b then char oc '@'; raw_qident oc qid;
+  if is_parametrized_sym ctx qid.elt && (b || not !implicit_class) then
+    (char oc ' '; string oc !class_var)
 
 (** Translation of terms. *)
 

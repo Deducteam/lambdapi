@@ -27,7 +27,7 @@ Overview of directories and files
 
   * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added at the beginning of a Dedukti file
   * ``example.tex``: example of LaTeX file including Lambdapi code
-  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can be parametrised
+  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can be parametrized
   * ``gen_version.ml``: script used by dune to generate ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
   * ``git_hook_helper.sh``: script to run once to add a git hook to call ``sanity_check?sh`` before committing
   * ``lambdapi.tex``: setup of the LaTeX package `listings <https://www.ctan.org/pkg/listings>`__ for including Lambdapi code into a LaTeX document
@@ -96,7 +96,7 @@ Overview of directories and files
 
   * ``src/export/``: export to other rule/proof formats
 
-    * ``coq.ml``: export to Rocq
+    * ``rocq.ml``: export to Rocq
     * ``dk.ml``: export to Dedukti (after scoping and type-checking)
     * ``hrs.ml``: export to the .hrs format of the confluence competition
     * ``lean.ml``: export to Lean

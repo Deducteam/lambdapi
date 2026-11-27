@@ -52,7 +52,7 @@ let rec term oc t =
   | P_Wild -> char oc '_'
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_SLit _ -> wrn t.pos "TODO"; assert false
-  | P_Iden(qid,b) -> if b then char oc '@'; qident oc qid
+  | P_Iden(qid,b) -> qident StrSet.empty oc b qid
   | P_Arro(u,v) -> arrow oc u v
   | P_Abst(xs,u) -> abst oc xs u
   | P_Prod(xs,u) -> prod oc xs u
@@ -111,6 +111,9 @@ and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
 and params oc ((ids,t,b) as x) =
   match b, t with
+  | true, Some{elt=P_Iden({elt=(_,sym_name);_},_);_}
+    when sym_name = theory_class && !parametrized ->
+      char oc '['; raw_params oc x; char oc ']'
   | true, _ -> char oc '{'; raw_params oc x; char oc '}'
   | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
   | false, None -> param_ids oc ids
@@ -185,6 +188,7 @@ let command oc {elt; pos} =
   | P_symbol { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
                p_sym_trm; p_sym_prf=_; p_sym_def } ->
     if not (is_mapped p_sym_nam.elt) then
+        let p_sym_arg = add_class_param p_sym_arg in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             string oc "nonrec theorem "; ident oc p_sym_nam;
