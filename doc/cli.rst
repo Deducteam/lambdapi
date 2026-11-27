@@ -114,7 +114,7 @@ The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive`
 
 The formats ``raw_rocq``, ``stt_rocq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
-For the formats ``stt_rocq`` and ``stt_lean`` several other options are available:
+For the formats ``stt_rocq`` and ``stt_lean``, several other options are available:
 
 * ``--encoding <FILE.lp>`` (mandatory option) where ``<FILE.lp>`` contains the following sequence of builtin declarations:
 
