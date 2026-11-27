@@ -137,9 +137,9 @@ It tells Lambdapi which symbols of the input files are used for the encoding. Ex
 
 In symbol declarations or definitions, parameters with no type are assumed to be of type the term associated with the builtin ``"Set"``.
 
-* ``--parametrized`` instructs Lambdapi that all non-mapped symbols must have an extra parameter (in first position) of type ``HOLTheory``.
+* ``--parametrized`` instructs Lambdapi that all non-mapped symbols must have an extra parameter of type ``HOLTheory``.
 
-* ``--class-var <VAR>`` uses ``<VAR>`` as the extra parameter name.
+* ``--class-var <NAME>`` instructs Lambdapi to use ``<NAME>`` for the extra parameter of type ``HOLTheory`` (by default, Lambdapi uses ``HOLT``).
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 

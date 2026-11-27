@@ -606,14 +606,13 @@ let opt_parametrized =
 let opt_class_var =
   { opt_name = "--class-var"
   ; opt_short = None
-  ; opt_handle = Next("VAR",
-                        fun s -> check_output [SttRocq;SttLean];
-                        if not !Export.Stt.parametrized then
-                          Common.Error.fatal_no_pos "%s %s"
-                            "option --parametrized"
-                            "must appear before option --class-var"
-                        else Export.Stt.class_var := s)
-  ; opt_desc = "Name to use for the extra parameter" }
+  ; opt_handle =
+      Next("NAME",
+           fun s -> check_output [SttRocq;SttLean];
+             Export.Stt.class_var := s)
+  ; opt_desc =
+      "Name of the parameter added by the option --parametrized (default: "
+      ^Export.Stt.default_class_var^")."}
 
 let opt_no_implicits =
   { opt_name = "--no-implicits"
