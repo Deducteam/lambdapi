@@ -443,12 +443,11 @@ let do_definition ofmt ~id params =
         let pos = Option.get (Pos.file_start file) s.Term.sym_pos in
         mk_definfo file pos
     in
-    (* Fallback when the identifier RangeMap has no resolvable entry
-       at the cursor: the module paths of require/open commands (jump
-       to the start of that module's file), then the raw token under
-       the cursor against the in-scope symbol table — the latter also
-       covers regions the checker never reached (mid-edit text, code
-       past a parse error). *)
+    (* Fallback when the identifier map has no resolvable entry:
+       jump to the module file for a parsed require/open path;
+       otherwise, look up the token under the cursor in the in-scope
+       symbol table. This can resolve symbols in text not reached by
+       parsing (e.g. during editing or after a parse error). *)
     let def_fallback () =
       match RangeMap.find pt doc.module_path_map with
       | Some (_, path) ->
