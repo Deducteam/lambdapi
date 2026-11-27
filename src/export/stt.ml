@@ -173,7 +173,7 @@ let list elt sep oc xs =
 (** The --parametrized option. **)
 let parametrized = ref false
 let theory_class = "HOLTheory"
-let class_var = "T"
+let class_var = ref "HOLT"
 
 (** Whether the additional argument should be explicit (like in Rocq)
     or implicit (like in Lean, with type class inference) *)
@@ -187,7 +187,7 @@ let add_class_param (args : p_params list) =
       | (Some ({elt=_;pos})::_,_,_)::_ -> pos
       | _ -> None
     in
-    ([Some{elt=class_var;pos}],
+    ([Some{elt= !class_var;pos}],
      Some{elt=P_Iden({elt=([],theory_class);pos},false);pos},
      !implicit_class) :: args
   else args
@@ -253,7 +253,7 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
 let qident ctx oc b (qid : p_qident) =
   if b then char oc '@'; raw_qident oc qid;
   if is_parametrized_sym ctx qid.elt && (b || not !implicit_class) then
-    (char oc ' '; string oc class_var)
+    (char oc ' '; string oc (!class_var))
 
 (** Translation of terms. *)
 

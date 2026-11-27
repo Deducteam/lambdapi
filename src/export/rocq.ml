@@ -106,7 +106,7 @@ and paren_argument ctx oc t =
   match t.elt with
   | P_Iden(qid, _) when is_parametrized_sym ctx qid.elt ->
     char oc '('; raw_qident oc qid ; char oc ' ';
-    string oc class_var; char oc ')'
+    string oc (!class_var); char oc ')'
   | _ -> paren ctx oc t
 
 and paren ctx oc t =

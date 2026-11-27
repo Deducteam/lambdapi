@@ -601,7 +601,15 @@ let opt_parametrized =
   ; opt_handle = NoArg(fun () -> check_output [SttRocq;SttLean];
                        Export.Stt.parametrized := true)
   ; opt_desc =
-{|parametrize all non-mapped symbols with an argument of type HOLTheory.|} }
+{|Parametrize all non-mapped symbols with an argument of type HOLTheory.|} }
+
+let opt_class_var =
+  { opt_name = "--class-var"
+  ; opt_short = None
+  ; opt_handle = Next("VAR",
+                        fun s -> check_output [SttRocq;SttLean];
+                        Export.Stt.class_var := s)
+  ; opt_desc = "Name to use for the extra parameter" }
 
 let opt_no_implicits =
   { opt_name = "--no-implicits"
@@ -637,6 +645,7 @@ let export_options =
   :: opt_requiring
   :: opt_arities
   :: opt_parametrized
+  :: opt_class_var
   :: opt_no_implicits
   :: opt_use_notations
   :: compile_options
