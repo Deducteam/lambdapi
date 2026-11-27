@@ -34,7 +34,7 @@ Some users
 ----------
 
 - Melanie Taprogge: extension of the LEO-III automated theorem prover for higher-order logic producing Lambdapi proofs [[github]](https://github.com/melanie-taprogge/Leo-III/tree/LPverification) [[2024 MSc thesis]](https://inria.hal.science/hal-04733263)
-- [Frédéric Blanqui](https://blanqui.gitlabpages.inria.fr/): translation of HOL-Light proofs to Coq [[github]](https://github.com/Deducteam/hol2dk) [[LPAR'24]](https://doi.org/10.29007/6k4x)
+- [Frédéric Blanqui](https://blanqui.gitlabpages.inria.fr/): translation of HOL-Light proofs to Rocq [[github]](https://github.com/Deducteam/hol2dk) [[LPAR'24]](https://doi.org/10.29007/6k4x)
 - [Alessio Coltellacci](https://github.com/NotBad4U) and [Stephan Merz](https://members.loria.fr/Stephan.Merz/): extension of the Alethe proof verifier Carcara for SMT solvers producing Lambdapi proofs [[github]](https://github.com/NotBad4U/carcara) [[SMT'24]](https://ceur-ws.org/Vol-3725/paper8.pdf) [[FroCoS'25]](https://doi.org/10.1007/978-3-032-04167-8_20)
 - [Geoff Sutcliffe](https://www.cs.miami.edu/home/geoff/): translator from TSTP to Lambdapi [[github]](https://github.com/TPTPWorld/GDV) [[FLAIRS'25]](https://doi.org/10.32473/flairs.38.1.138642)
 - [Guillaume Burel](http://web4.ensiie.fr/~guillaume.burel/) and [Frédéric Blanqui](https://blanqui.gitlabpages.inria.fr/): ZenonModulo automated theorem prover for first-order logic producing Lambdapi proofs [[github]](https://github.com/Deducteam/zenon_modulo/)

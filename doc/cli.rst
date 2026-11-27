@@ -103,18 +103,18 @@ export
   - ``raw_dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-  - ``raw_coq``: `Rocq <https://rocq-prover.org/>`__ format
-  - ``stt_coq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``raw_rocq``: `Rocq <https://rocq-prover.org/>`__ format
+  - ``stt_rocq``: `Rocq <https://rocq-prover.org/>`__ format assuming that the input file is in an encoding of simple type theory
   - ``raw_lean``: `Lean <https://lean-lang.org/>`__ format
   - ``stt_lean``: `Lean <https://lean-lang.org/>`__ format assuming that the input file is in an encoding of simple type theory
 
-**WARNING**: With the formats ``raw_coq``, ``stt_coq``, ``raw_lean``, ``stt_lean`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
+**WARNING**: With the formats ``raw_rocq``, ``stt_rocq``, ``raw_lean``, ``stt_lean`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
 
 The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-The formats ``raw_coq``, ``stt_coq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_rocq``, ``stt_rocq``, ``raw_lean`` and ``stt_lean`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Rocq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
-For the formats ``stt_coq`` and ``stt_lean``, several other options are available:
+For the formats ``stt_rocq`` and ``stt_lean``, several other options are available:
 
 * ``--encoding <FILE.lp>`` (mandatory option) where ``<FILE.lp>`` contains the following sequence of builtin declarations:
 
@@ -133,9 +133,19 @@ For the formats ``stt_coq`` and ``stt_lean``, several other options are availabl
    builtin "all" ≔ …; // : Π [a : Set], (El a → El prop) → El prop
    builtin "ex" ≔ …; // : Π [a : Set], (El a → El prop) → El prop
 
-It tells Lambdapi which symbols of the input files are used for the encoding. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`__. The first argument ``a`` of the symbols corresponding to the builtins ``"eq"``, ``"all"`` and ``"ex"`` need not be declared as implicit.
+where each … must be a non-qualified symbol. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`__.
+
+It tells Lambdapi which symbols of the input files are used for the encoding.
+
+WARNING: We assume that there is no two symbols (in two different files) having the same name as a symbol declared as an encoding symbol. Moreover, a qualified symbol ``a.b.c`` is considered to be an encoding symbol if ``c`` is declared to be so (paths are ignored).
+
+The first argument ``a`` of the symbols corresponding to the builtins ``"eq"``, ``"all"`` and ``"ex"`` need not be declared as implicit.
 
 In symbol declarations or definitions, parameters with no type are assumed to be of type the term associated with the builtin ``"Set"``.
+
+* ``--parametrized`` instructs Lambdapi that all non-mapped symbols must have an extra parameter of type ``HOLTheory``.
+
+* ``--class-var <NAME>`` instructs Lambdapi to use ``<NAME>`` for the extra parameter of type ``HOLTheory`` (by default, Lambdapi uses ``HOLT``).
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 
@@ -160,6 +170,8 @@ if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` 
 * ``--mapping <FILE.lp>`` where ``<FILE.lp>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``expr`` therefore needs to be defined in the Rocq standard library or in the Rocq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
 
 * ``--use-notations`` instructs Lambdapi to use the usual Rocq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
+
+* ``--only-check-names`` instructs Lambdapi to not translate anything but instead output on stdout the identifiers that are invalid in the target system and need to be renamed.
 
 Examples of libraries exported to Rocq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.

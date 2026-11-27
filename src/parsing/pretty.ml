@@ -80,10 +80,7 @@ let _ = let open LpLexer in
     ; "why3", WHY3
     ; "with", WITH ]
 
-let raw_ident : string pp = fun ppf s ->
-  string ppf (if is_keyword s then Escape.escape s else s)
-
-let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
+let ident : p_ident pp = fun ppf {elt;_} -> string ppf elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -92,13 +89,11 @@ let param_id : p_ident option pp = fun ppf idopt ->
 
 let param_ids : p_ident option list pp = List.pp param_id " "
 
-let raw_path : Path.t pp = List.pp raw_ident "."
-
-let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
+let path : p_path pp = fun ppf {elt;_} -> Path.pp ppf elt
 
 let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
-  if mp = [] || mp = Sign.Ghost.path then raw_ident ppf s
-  else out ppf "%a.%a" raw_path mp raw_ident s
+  if mp = [] || mp = Sign.Ghost.path then string ppf s
+  else out ppf "%a.%a" Path.pp mp string s
 
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
@@ -132,7 +127,7 @@ let rec term : bool -> p_term pp = fun ec ppf t ->
   | P_Patt(idopt,ts) ->
     out ppf "$%a%a" param_id idopt (env ec) ts
   | P_NLit([],i) -> out ppf "%s" i
-  | P_NLit(p,i) -> out ppf "%a.%s" raw_path p i
+  | P_NLit(p,i) -> out ppf "%a.%s" Path.pp p i
   | P_SLit s -> string ppf s
   | P_Wrap t -> out ppf "(@[<hv2>%a@])" (term ec) t
   | P_Expl t -> out ppf "[@[<hv2>%a@]]" (term ec) t

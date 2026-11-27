@@ -17,7 +17,7 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Stt
 
-(** Valid Rocq identifiers (excluding unicode characters). *)
+(** Valid Rocq identifiers (excluding unicode characters and keywords). *)
 
 let is_valid_first_letter =
   function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
@@ -28,7 +28,7 @@ let is_valid_rocq_id s =
 
 let invalid_names = ref StrSet.empty
 
-let _ =
+let set_name_check_function() =
   Stt.check := fun pos s ->
     if not (is_valid_rocq_id s) then
       if !Stt.only_check_names then
@@ -37,7 +37,14 @@ let _ =
 
 (** Translation of terms. *)
 
-let rec term oc t =
+let add_params ctx ((ids,_,_) : p_params) =
+  List.fold_left (Option.fold (fun ctx x -> StrSet.add x.elt ctx)) ctx ids
+
+(** [term ctx oc t] writes the translation of term t on oc.
+    ctx, only used with option --parametrized, holds the free
+    variable context to distinguish them from previous symbols
+    which need to be applied to the new parameter. *)
+let rec term ctx oc t =
   (*if Logger.log_enabled() then
     log "pp %a" (*Pos.short t.pos*) Pretty.term t;*)
   match t.elt with
@@ -48,71 +55,97 @@ let rec term oc t =
   | P_NLit _ -> wrn t.pos "TODO"; assert false
   | P_Type -> string oc "Type"
   | P_Wild -> char oc '_'
-  | P_Iden(qid,b) -> if b then char oc '@'; qident oc qid
-  | P_Arro(u,v) -> arrow oc u v
-  | P_Abst(xs,u) -> abst oc xs u
-  | P_Prod(xs,u) -> prod oc xs u
+  | P_Iden(qid,b) -> qident ctx oc b qid
+  | P_Arro(u,v) -> arrow ctx oc u v
+  | P_Abst(xs,u) -> abst ctx oc xs u
+  | P_Prod(xs,u) -> prod ctx oc xs u
   | P_LLet(x,xs,a,u,v) ->
-    string oc "let "; ident oc x; params_list oc xs; typopt oc a;
-    string oc " := "; term oc u; string oc " in "; term oc v
-  | P_Wrap u -> term oc u
+    string oc "let "; ident oc x;
+    let ctx' = params_list ctx oc xs in typopt ctx' oc a;
+    string oc " := "; term ctx' oc u; string oc " in ";
+    term (StrSet.add x.elt ctx) oc v
+  | P_Wrap u -> term ctx oc u
   | P_Appl _ ->
-      let default h ts = paren oc h; char oc ' '; list paren " " oc ts in
+      let default h ts = paren ctx oc h; char oc ' ';
+        list (paren_argument ctx) " " oc ts
+      in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
-          | _, _, (El|Prf), [u] -> term oc u
-          | _, _, (Arr|Imp), [u;v] -> arrow oc u v
+          | _, _, (El|Prf), [u] -> term ctx oc u
+          | _, _, (Arr|Imp), [u;v] -> arrow ctx oc u v
           | _, _, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
           | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
-            -> prod oc xs u
+            -> prod ctx oc xs u
           | _, _, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
           | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
-              string oc "exists "; raw_params oc x; string oc ", "; term oc u
+              string oc "exists "; let ctx = raw_params ctx oc x in
+              string oc ", "; term ctx oc u
           | true, _, Eq, [_;u;v]
-          | true, true, Eq, [u;v] -> paren oc u; string oc " = "; paren oc v
-          | true, _, Or, [u;v] -> paren oc u; string oc " \\/ "; paren oc v
-          | true, _, And, [u;v] ->  paren oc u; string oc " /\\ "; paren oc v
-          | true, _, Not, [u] -> string oc "~ "; paren oc u
+          | true, true, Eq, [u;v] ->
+            paren ctx oc u; string oc " = "; paren ctx oc v
+          | true, _, Or, [u;v] ->
+            paren ctx oc u; string oc " \\/ "; paren ctx oc v
+          | true, _, And, [u;v] ->
+            paren ctx oc u; string oc " /\\ "; paren ctx oc v
+          | true, _, Not, [u] -> string oc "~ "; paren ctx oc u
           | _ -> default h ts)
 
-and arrow oc u v = paren oc u; string oc " -> "; term oc v
-and abst oc xs u =
-  string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
-and prod oc xs u =
-  string oc "forall"; params_list_in_abs oc xs; string oc ", "; term oc u
+and arrow ctx oc u v = paren ctx oc u; string oc " -> "; term ctx oc v
+and abst ctx oc xs u =
+  string oc "fun"; let ctx = params_list_in_abs ctx oc xs in
+  string oc " => "; term ctx oc u
+and prod ctx oc xs u =
+  string oc "forall"; let ctx = params_list_in_abs ctx oc xs in
+  string oc ", "; term ctx oc u
 
-and paren oc t =
-  let default() = char oc '('; term oc t; char oc ')' in
+(* With option --parametrized, arguments of an application which
+   are simple identifiers can be transformed into an application to
+   the new parameter, so paren_argument adds parentheses in that case *)
+and paren_argument ctx oc t =
+  match t.elt with
+  | P_Iden(qid, _) when is_parametrized_sym ctx qid.elt ->
+    char oc '('; raw_qident oc qid ; char oc ' ';
+    string oc !class_var; char oc ')'
+  | _ -> paren ctx oc t
+
+and paren ctx oc t =
+  let default() = char oc '('; term ctx oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
           match builtin, ts with
-          | (El|Prf), [u] -> paren oc u
+          | (El|Prf), [u] -> paren ctx oc u
           | _ -> default())
-  | _ -> term oc t
+  | _ -> term ctx oc t
 
-and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
+(* The following functions now return the free variable context
+   updated with the parameters it reads. *)
+and raw_params ctx oc ((ids,t,_) as x) =
+  param_ids oc ids; typopt ctx oc t; add_params ctx x
 
-and params oc ((ids,t,b) as x) =
+and params ctx oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ -> char oc '{'; raw_params oc x; char oc '}'
-  | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
-  | false, None -> param_ids oc ids
+  | true, _ -> char oc '{';
+    let ctx = raw_params ctx oc x in char oc '}'; ctx
+  | false, Some _ -> char oc '(';
+    let ctx = raw_params ctx oc x in char oc ')'; ctx
+  | false, None -> param_ids oc ids; add_params ctx x
+
+(* starts with a space if the list is not empty. returns updated context. *)
+and params_list ctx oc l =
+  List.fold_left (fun ctx x -> char oc ' '; params ctx oc x) ctx l
 
 (* starts with a space if the list is not empty *)
-and params_list oc = List.iter (prefix " " params oc)
-
-(* starts with a space if the list is not empty *)
-and params_list_in_abs oc l =
+and params_list_in_abs ctx oc l =
   match l with
-  | [ids,t,false] -> char oc ' '; param_ids oc ids; typopt oc t
-  | _ -> params_list oc l
+  | [(_,_,false) as x] -> char oc ' '; raw_params ctx oc x
+  | _ -> params_list ctx oc l
 
 (* starts with a space if <> None *)
-and typopt oc t = Option.iter (prefix " : " term oc) t
+and typopt ctx oc t = Option.iter (prefix " : " (term ctx) oc) t
 
 (** Translation of commands. *)
 
@@ -135,7 +168,7 @@ let add_modifier oc name (md : p_modifier) =
   | _ -> None
   in
   let with_prefix prefix =
-    string oc prefix; qident oc name; string oc ".\n"
+    string oc prefix; raw_qident oc name; string oc ".\n"
   in
   Option.iter with_prefix prefix
 
@@ -165,7 +198,9 @@ let command oc {elt; pos} =
   | P_symbol
     { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      if not (is_mapped p_sym_nam.elt) then let modifiers =
+      if not (is_mapped p_sym_nam.elt) then
+        let p_sym_arg = add_class_param p_sym_arg in
+        let modifiers =
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
             (* If they have a type, opaque or private defined symbols are
@@ -173,35 +208,35 @@ let command oc {elt; pos} =
                memory only when it is necessary. *)
             let mods_left = List.filter (fun m -> not (is_lem m)) p_sym_mod in
             let res,prefix,_ = get_instance mods_left "Lemma " in
-            string oc prefix; ident oc p_sym_nam; params_list oc p_sym_arg;
-            string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed.\n";
+            string oc prefix; ident oc p_sym_nam;
+            let ctx = params_list StrSet.empty oc p_sym_arg in
+            string oc " : "; term ctx oc a; string oc ".\nProof. exact (";
+            term ctx oc t; string oc "). Qed.\n";
             res
           | true, Some t, _, _ ->
             let res,prefix,_ = if Option.is_none p_sym_typ
               then (p_sym_mod,"Definition ","")
               else get_instance p_sym_mod "Definition " in
             string oc prefix; ident oc p_sym_nam;
-            params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t; string oc ".\n";
-            res
+            let ctx = params_list StrSet.empty oc p_sym_arg in
+            typopt ctx oc p_sym_typ; string oc " := "; term ctx oc t;
+            string oc ".\n"; res
           | false, _, [], Some t ->
             let res,prefix,suffix = get_instance p_sym_mod "Axiom " in
             string oc prefix; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc suffix;
+            term StrSet.empty oc t; string oc suffix;
             res
           | false, _, _, Some t ->
             let res,prefix,suffix = get_instance p_sym_mod "Axiom " in
             string oc prefix; ident oc p_sym_nam; string oc " : forall";
-            params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc suffix;
+            let ctx = params_list StrSet.empty oc p_sym_arg in
+            string oc ", "; term ctx oc t; string oc suffix;
             res
           | _ -> wrn pos "Command not translated."; []
         end in List.iter (add_modifier oc (pqid_of_pid p_sym_nam)) modifiers
   | P_cmd_opaque qid -> add_modifier oc qid {elt=P_opaque;pos}
   | P_cmd_typeclass qid -> add_modifier oc qid {elt=P_typeclass;pos}
-  | P_cmd_instance qid ->
-    add_modifier oc qid {elt=P_instance;pos}
+  | P_cmd_instance qid -> add_modifier oc qid {elt=P_instance;pos}
   | _ -> wrn pos "Command not translated."
   end
 
@@ -211,8 +246,7 @@ let print : p_commands -> unit = fun cs ->
   if !Stt.only_check_names then
     begin
       Stream.iter check_names cs;
-      StrSet.iter (Format.eprintf "%s\n") !invalid_names;
-      if not (StrSet.is_empty !invalid_names) then exit 1
+      StrSet.iter (Format.printf "%s\n") !invalid_names
     end
   else
     begin

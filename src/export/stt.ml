@@ -50,12 +50,6 @@ let _ = (* sanity check *)
     assert (index_of_name (name_of_index i) = Some i)
   done
 
-let builtin : Term.qident array =
-  let path = ["STTfa"] in
-  Array.init nb_builtins (fun i -> path, name_of_index i)
-
-let sym b = builtin.(index_of_builtin b)
-
 (** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
@@ -101,27 +95,28 @@ let current_mp = Stdlib.ref []
 let is_mapped id =
   QidMap.mem ([],id) !mapping || QidMap.mem (!current_mp,id) !mapping
 
-(** Set encoding. *)
+(** Set encoding map. *)
 
-let encoding = ref QidMap.empty
+let encoding = ref StrMap.empty
 
-let add_encoding qid b = encoding := QidMap.add qid b !encoding
+let add_encoding id b = encoding := StrMap.add id b !encoding
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,lp_qid);pos} ->
-        begin match index_of_name n with
+    | {elt=P_builtin(n,({elt=(p,id);_} as lp_qid));pos} ->
+      begin
+        if p <> [] then
+          fatal lp_qid.pos "Qualified identifiers are not allowed here.";
+        match index_of_name n with
         | Some i ->
-            if Logger.log_enabled() then
-              log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
-            builtin.(i) <- lp_qid.elt;
+            if Logger.log_enabled() then log "builtin \"%s\" = %s" n id;
             found.(i) <- true;
             let b = builtin_of_index i in
-            add_encoding lp_qid.elt b;
+            add_encoding id b;
             add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
-        end
+      end
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f);
@@ -130,9 +125,6 @@ let set_encoding : string -> unit = fun f ->
       if not b then
         fatal None(*FIXME*) "Builtin %s undefined." (name_of_index i))
     found
-
-let is_encoded id =
-  QidMap.mem ([],id) !encoding || QidMap.mem (!current_mp,id) !encoding
 
 (** Map from symbol name to number of type variables (>0). A symbol with no
     entry is not polymorphic (arity =0). *)
@@ -161,6 +153,46 @@ let list elt sep oc xs =
   | [] -> ()
   | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
 
+
+(* parametrization by a theory class/record.
+   The translation is parametrized by a Lean type class or Rocq record having
+   one field per symbol of the theory, so that it is independent of an
+   alignment: a symbol is translated to the field of the class bearing its
+   name, never to an expression of some target library. The class is fixed
+   here because the translation is done once, while the alignments
+   instantiating it may change. *)
+
+(** The --parametrized option. **)
+let parametrized = ref false
+let theory_class = "HOLTheory"
+let default_class_var = "HOLT"
+let class_var = ref default_class_var
+
+(** Whether the additional argument should be explicit (like in Rocq)
+    or implicit (like in Lean, with type class inference) *)
+let implicit_class = ref true
+
+(** Adds an argument [T] of type [HOLTheory] to a symbol's p_sym_args. *)
+let add_class_param (args : p_params list) =
+  if !parametrized then
+    let pos =
+      match args with
+      | (Some ({elt=_;pos})::_,_,_)::_ -> pos
+      | _ -> None
+    in
+    ([Some{elt= !class_var;pos}],
+     Some{elt=P_Iden({elt=([],theory_class);pos},false);pos},
+     !implicit_class) :: args
+  else args
+
+(** [is_parametrized_sym id] tells whether [id] needs to be applied to
+    parameter [T] (only with option --parametrized). Exceptions are
+    mapped objects, free variables and [HOLTheory]. *)
+let is_parametrized_sym ctx ((path,name) as qid) =
+  !parametrized && qid <> ([],theory_class)
+  && not (path = [] && StrSet.mem name ctx)
+  && not (QidMap.mem qid !mapping)
+
 (** Translation of identifiers. *)
 
 let check : (popt -> string -> unit) Stdlib.ref = ref (fun _ _ -> ())
@@ -185,7 +217,7 @@ let path oc {elt;pos} = list (path_elt pos) "." oc elt
 
 let alias = Stdlib.ref StrMap.empty
 
-let rec qident oc {elt=((mp,id) as qid);pos} =
+let rec raw_qident oc {elt=((mp,id) as qid);pos} =
   match mp with
   | [] ->
     begin match QidMap.find_opt (!current_mp,id) !mapping with
@@ -198,7 +230,7 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     end
   | [p] ->
     begin match StrMap.find_opt p !alias with
-      | Some mp -> qident oc {elt=(mp,id);pos}
+      | Some mp -> raw_qident oc {elt=(mp,id);pos}
       | None ->
         match QidMap.find_opt qid !mapping with
         | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
@@ -209,6 +241,12 @@ let rec qident oc {elt=((mp,id) as qid);pos} =
     | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
     | Some s -> string oc s
     end
+
+(* [ctx] holds the free variable context required by [is_parametrized_sym]. *)
+let qident ctx oc b (qid : p_qident) =
+  if b then char oc '@'; raw_qident oc qid;
+  if is_parametrized_sym ctx qid.elt && (b || not !implicit_class) then
+    (char oc ' '; string oc !class_var)
 
 (** Translation of terms. *)
 
@@ -229,8 +267,17 @@ let app t default cases =
   let h, ts = p_get_args t in
   if !stt then
     match h.elt with
-    | P_Iden({elt;_},expl) ->
-        begin match QidMap.find_opt elt !encoding with
+    | P_Iden({elt=(_,id);_},expl) ->
+        (* We assume that the encoding symbols in the file passed as argument
+           of --encoding are all unqualified, and that there is no
+           non-encoding symbol with the same name as an encoding symbol. In
+           this case, to determine whether a symbol a.b.c is an encoding
+           symbol, we can ignore its path a.b and only check whether c is an
+           encoding symbol. This allows to handle both the case where encoding
+           symbols are qualified (e.g. in Dedukti files) and the case where
+           they are unqualified (i.e. when the modules where they are defined
+           are open). *)
+        begin match StrMap.find_opt id !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
         end
