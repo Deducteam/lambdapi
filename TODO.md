@@ -6,7 +6,7 @@ Index and search
 
 * @abdelghani include in HOL2DK_indexing git sub-repos of
   coq-hol-light-real-with-N and coq-hol-light
-  and automatize the generation of the file to output Coq sources
+  and automatize the generation of the file to output Rocq sources
 
 * @abdelghani
   - (maybe?) allow an --add-examples=FNAME to include in the
@@ -27,7 +27,7 @@ Index and search
 Think about
 -----------
 
-* what notations for Coq should websearch know about;
+* what notations for Rocq should websearch know about;
   right now they are in:
    - notation.lp file
      problem: if you want to add a lot of them, you need to

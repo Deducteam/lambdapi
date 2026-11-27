@@ -1,5 +1,5 @@
 // dk/lp symbols (on the right) the declarations of which are removed
-// and whose uses are replaced by the given Coq expressions (on the left)
+// and whose uses are replaced by the given Rocq expressions (on the left)
 
 builtin "Type" ≔ hol.typ;
 builtin "Prop" ≔ hol.bool;

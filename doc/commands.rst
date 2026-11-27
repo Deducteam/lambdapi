@@ -384,7 +384,7 @@ and ``y`` are the only variables in scope, then ``_`` is equivalent to
 
 In rule left-hand sides, λ-expressions cannot have type annotations.
 
-**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
+**Important**. In contrast to languages like OCaml, Rocq, Agda, etc. rule
 left-hand sides can contain defined symbols:
 
 ::

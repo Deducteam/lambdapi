@@ -1907,7 +1907,7 @@ with split ($x ⸬ □) ↪ ($x ⸬ □) ‚ □
 with split ($x ⸬ $y ⸬ $l) ↪
     let res ≔ split $l in ($x ⸬ (res ₁)) ‚ ($y ⸬ (res ₂));
 
-// merge and mergesort are parametrised by a boolean ordering on the elements
+// merge and mergesort are parametrized by a boolean ordering on the elements
 
 symbol merge [a] : (τ a → τ a → 𝔹) → 𝕃 a → 𝕃 a → 𝕃 a;
 

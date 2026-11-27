@@ -44,7 +44,7 @@ let eta_equality : bool Timed.ref = Console.register_flag "eta_equality" false
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Stdlib.ref = Stdlib.ref 0
 
-(** {1 Define reduction functions parametrised by {!whnf}} *)
+(** {1 Define reduction functions parametrized by {!whnf}} *)
 
 (** [hnf whnf t] computes a hnf of [t] using [whnf]. *)
 let hnf : (term -> term) -> (term -> term) = fun whnf ->
