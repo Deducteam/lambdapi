@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Outline : the LSP server now supports the hierarchical description of the document. Not all Lambdapi notions have there counterparts in Symbolkind. Thus, only `symbols` and `inductives` are included in the outline as `Function`s and `Enum`s
 - New option `--only-check-names` to check the validity of names for Rocq export.
 - New option `--parametrized` to add an extra argument to all non-mapped symbols for STT export and `--class-var` to name the argument
+- Go-to-definition of require/open modules. Jump to the start of that module's file.
+- Go-to-definition of in-scope symbols in code past a parse error.
 
 ## 4.0.0 (2026-11-05)
 
