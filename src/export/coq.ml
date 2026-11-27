@@ -26,29 +26,6 @@ let is_valid_letter =
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
 
-let invalid_names = ref StrSet.empty
-
-let check_name pos s =
-  if not (is_valid_rocq_id s) then
-    if !Stt.only_check_names then
-      invalid_names := StrSet.add s !invalid_names
-    else fatal pos "invalid Rocq identifier: %s" s
-
-let check_path p = List.iter (check_name p.pos) p.elt
-
-let check_ident id = check_name id.pos id.elt
-
-let check_names {elt;_} =
-  match elt with
-  | P_require(_,ps) -> List.iter check_path ps
-  | P_require_as(p,i) -> check_path p; check_ident i
-  | P_symbol{p_sym_nam={elt=n;_};_}
-    when not (is_mapped n)
-      && not (StrMap.mem n !rmap)
-      && not (is_valid_rocq_id n) ->
-    invalid_names := StrSet.add n !invalid_names
-  | _ -> ()
-
 (** Translation of terms. *)
 
 let rec term oc t =
@@ -130,6 +107,13 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
+let check_name pos s =
+  if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier: %s" s
+
+let check_ident id = check_name id.pos id.elt
+
+let check_path p = List.iter (check_name p.pos) p.elt
+
 let command oc {elt; pos} =
   begin match elt with
   | P_open(_,true,ps) ->
@@ -182,7 +166,27 @@ let command oc {elt; pos} =
   | _ -> wrn pos "Command not translated."
   end
 
-let commands oc = Stream.iter (command oc)
+(** Checking names only. *)
+
+let invalid_names = ref StrSet.empty
+
+let add_invalid_name n = invalid_names := StrSet.add n !invalid_names
+
+let check_name s = if not (is_valid_rocq_id s) then add_invalid_name s
+
+let check_path p = List.iter check_name p.elt
+
+let check_names {elt;_} =
+  match elt with
+  | P_require(_,ps) -> List.iter check_path ps
+  | P_require_as(p,i) -> check_path p; check_name i.elt
+  | P_symbol{p_sym_nam={elt=n;_};_}
+    when not (is_mapped n)
+      && not (StrMap.mem n !rmap)
+      && not (is_valid_rocq_id n) -> add_invalid_name n
+  | _ -> ()
+
+(** Main function. *)
 
 let print : p_commands -> unit = fun cs ->
   if !Stt.only_check_names then
