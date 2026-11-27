@@ -140,8 +140,8 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
-let req_mod oc p = string oc "import "; path oc p; newline oc
-let open_mod oc p = string oc "open "; path oc p; newline oc
+let req_mod oc p = string oc "import "; p_path oc p; newline oc
+let open_mod oc p = string oc "open "; p_path oc p; newline oc
 
 let openings = ref []
 
