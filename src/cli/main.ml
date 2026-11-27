@@ -618,7 +618,7 @@ let opt_only_check_names =
                      check_output [SttCoq;RawCoq;SttLean;RawLean];
                      Export.Stt.only_check_names := true;
                      Common.Error.no_warnings := true)
-  ; opt_desc = "Do not generate anything; only check identifiers validity." }
+  ; opt_desc = "Output on stdout the identifiers that need to be renamed." }
 
 let export_options =
   opt_output

@@ -220,9 +220,15 @@ let app t default cases =
   if !stt then
     match h.elt with
     | P_Iden({elt=(_,id);_},expl) ->
-        (* We assume that there is no non-encoding symbol with the same name
-           as an encoding symbol, and that encoding symbols are not
-           qualified in the file passed as argument of --encoding. *)
+        (* We assume that the encoding symbols in the file passed as argument
+           of --encoding are all unqualified, and that there is no
+           non-encoding symbol with the same name as an encoding symbol. In
+           this case, to determine whether a symbol a.b.c is an encoding
+           symbol, we can ignore its path a.b and only check whether c is an
+           encoding symbol. This allows to handle both the case where encoding
+           symbols are qualified (e.g. in Dedukti files) and the case where
+           they are unqualified (i.e. when the modules where they are defined
+           are open). *)
         begin match QidMap.find_opt ([],id) !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
