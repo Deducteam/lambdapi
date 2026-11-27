@@ -195,12 +195,9 @@ let is_parametrized_sym ctx ((path,name) as qid) =
 
 (** Translation of identifiers. *)
 
-let check : (popt -> string -> unit) Stdlib.ref = ref (fun _ _ -> ())
-
-let translate_ident {elt=s;pos}: string =
+let translate_ident {elt=s;_}: string =
   try StrMap.find s !rmap
-  with Not_found ->
-    if StrSet.mem s !codom then s^"__alt__" else (!check pos s; s)
+  with Not_found -> if StrSet.mem s !codom then s^"__alt__" else s
 
 let ident oc id = string oc (translate_ident id)
 
@@ -211,9 +208,8 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let path_elt pos oc id = !check pos id; string oc id
-
-let path oc {elt;pos} = list (path_elt pos) "." oc elt
+let path = list string "."
+let p_path oc p = path oc p.elt
 
 let alias = Stdlib.ref StrMap.empty
 
@@ -233,12 +229,12 @@ let rec raw_qident oc {elt=((mp,id) as qid);pos} =
       | Some mp -> raw_qident oc {elt=(mp,id);pos}
       | None ->
         match QidMap.find_opt qid !mapping with
-        | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
+        | None -> path oc mp; char oc '.'; ident oc {elt=id;pos}
         | Some s -> string oc s
     end
   | _::mp ->
     begin match QidMap.find_opt (mp,id) !mapping with
-    | None -> path oc {elt=mp;pos}; char oc '.'; ident oc {elt=id;pos}
+    | None -> path oc mp; char oc '.'; ident oc {elt=id;pos}
     | Some s -> string oc s
     end
 
