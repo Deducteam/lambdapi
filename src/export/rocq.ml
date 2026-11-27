@@ -170,10 +170,11 @@ let command oc {elt; pos} =
   | P_symbol
     { p_sym_mod; p_sym_kw=_; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-    check_ident p_sym_nam;
     if not (is_mapped p_sym_nam.elt) then
-      let p_sym_arg = add_class_param p_sym_arg in
-      begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+      begin
+        check_ident p_sym_nam;
+        let p_sym_arg = add_class_param p_sym_arg in
+        match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
         | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
           (* If they have a type, opaque or private defined symbols are
              translated as Lemma's so that their definition is loaded in
