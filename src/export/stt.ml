@@ -95,26 +95,28 @@ let current_mp = Stdlib.ref []
 let is_mapped id =
   QidMap.mem ([],id) !mapping || QidMap.mem (!current_mp,id) !mapping
 
-(** Set encoding. *)
+(** Set encoding map. *)
 
-let encoding = ref QidMap.empty
+let encoding = ref StrMap.empty
 
-let add_encoding qid b = encoding := QidMap.add qid b !encoding
+let add_encoding id b = encoding := StrMap.add id b !encoding
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,lp_qid);pos} ->
-        begin match index_of_name n with
+    | {elt=P_builtin(n,({elt=(p,id);_} as lp_qid));pos} ->
+      begin
+        if p <> [] then
+          fatal lp_qid.pos "Qualified identifiers are not allowed here.";
+        match index_of_name n with
         | Some i ->
-            if Logger.log_enabled() then
-              log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
+            if Logger.log_enabled() then log "builtin \"%s\" = %s" n id;
             found.(i) <- true;
             let b = builtin_of_index i in
-            add_encoding lp_qid.elt b;
+            add_encoding id b;
             add_mapping lp_qid n
         | None -> fatal pos "Unknown builtin."
-        end
+      end
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f);
@@ -220,10 +222,16 @@ let app t default cases =
   if !stt then
     match h.elt with
     | P_Iden({elt=(_,id);_},expl) ->
-        (* We assume that there is no non-encoding symbol with the same name
-           as an encoding symbol, and that encoding symbols are not
-           qualified in the file passed as argument of --encoding. *)
-        begin match QidMap.find_opt ([],id) !encoding with
+        (* We assume that the encoding symbols in the file passed as argument
+           of --encoding are all unqualified, and that there is no
+           non-encoding symbol with the same name as an encoding symbol. In
+           this case, to determine whether a symbol a.b.c is an encoding
+           symbol, we can ignore its path a.b and only check whether c is an
+           encoding symbol. This allows to handle both the case where encoding
+           symbols are qualified (e.g. in Dedukti files) and the case where
+           they are unqualified (i.e. when the modules where they are defined
+           are open). *)
+        begin match StrMap.find_opt id !encoding with
         | None -> default h ts
         | Some builtin -> cases h ts expl builtin
         end
