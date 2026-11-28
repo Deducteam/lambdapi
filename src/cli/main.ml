@@ -673,16 +673,13 @@ let cmd_export =
       | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
-    if Filename.extension file = ".lp" then
-      Parsing.Package.set_root_path (Filename.dirname file);
+    Parsing.Package.set_root_path (Filename.dirname file);
     begin
       match output with
       | SttRocq | SttLean ->
         Export.Stt.current_mp :=
-          if Filename.extension file = ".lp" then
-            (* remove the root_path from the module path *)
-            List.tl (Common.Library.path_of_file Parsing.LpLexer.escape file)
-          else [Filename.basename (Filename.chop_extension file)]
+          (* remove the root_path from the module path *)
+          List.tl (Common.Library.path_of_file Parsing.LpLexer.escape file)
       | _ -> ()
     end;
     let parse = Parsing.Parser.parse_file in

@@ -23,8 +23,19 @@ let is_valid_first_letter =
   function 'a'..'z' | 'A'..'Z' | '_' -> true | _ -> false
 let is_valid_letter =
   function 'a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '\'' -> true | _ -> false
+let keywords =
+  List.fold_left (fun acc s -> StrSet.add s acc) StrSet.empty
+    (* https://rocq-prover.org/refman/language/core/basic.html *)
+    (* We remove "_" from the list because, in both Lambdapi and Rocq, "_" can
+       only be used as an (unbindable) variable name. *)
+    [(*"_";*) "Axiom"; "CoFixpoint"; "Definition"; "Fixpoint"; "Hypothesis"
+    ; "Parameter"; "Prop"; "SProp"; "Set"; "Theorem"; "Type"; "Variable"
+    ; "as"; "at"; "cofix"; "else"; "end"; "fix"; "for"; "forall"; "fun"
+    ; "if"; "in"; "is"; "let"; "match"; "of"; "return"; "then"; "where"
+    ; "with"; "by"; "exists"; "exists2"; "using"]
 let is_valid_rocq_id s =
   s <> "" && is_valid_first_letter s.[0] && String.for_all is_valid_letter s
+  && not (StrSet.mem s keywords)
 
 (** Translation of terms. *)
 
@@ -141,7 +152,8 @@ and typopt ctx oc t = Option.iter (prefix " : " (term ctx) oc) t
 (** Translation of commands. *)
 
 let check_name pos s =
-  if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier: %s" s
+  if not (StrMap.mem s !rmap) && not (is_valid_rocq_id s) then
+    fatal pos "invalid Rocq identifier: %s" s
 
 let check_ident id = check_name id.pos id.elt
 
