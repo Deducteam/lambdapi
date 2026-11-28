@@ -673,8 +673,8 @@ let cmd_export =
       | None -> Common.Error.fatal_no_pos "No output format given."
       | Some o -> o
     in
-    if Filename.extension file = ".lp" then
-      Parsing.Package.set_root_path (Filename.dirname file);
+    Parsing.Package.set_root_path (Filename.dirname file);
+    Export.Stt.add_root_path := Filename.extension file = ".dk";
     begin
       match output with
       | SttRocq | SttLean ->

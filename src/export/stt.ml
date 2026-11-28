@@ -208,7 +208,11 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let path = list string "."
+let add_root_path = ref false
+
+let path oc p = list string "." oc
+    (if !add_root_path then !Common.Library.root_path @ p else p)
+
 let p_path oc p = path oc p.elt
 
 let alias = Stdlib.ref StrMap.empty
