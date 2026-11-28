@@ -208,10 +208,7 @@ let param_id oc idopt =
 
 let param_ids = list param_id " "
 
-let add_root_path = ref false
-
 let path = list string "."
-
 let p_path oc p = path oc p.elt
 
 let alias = Stdlib.ref StrMap.empty
