@@ -141,7 +141,8 @@ and typopt ctx oc t = Option.iter (prefix " : " (term ctx) oc) t
 (** Translation of commands. *)
 
 let check_name pos s =
-  if not (is_valid_rocq_id s) then fatal pos "invalid Rocq identifier: %s" s
+  if not (StrMap.mem s !rmap) && not (is_valid_rocq_id s) then
+    fatal pos "invalid Rocq identifier: %s" s
 
 let check_ident id = check_name id.pos id.elt
 
