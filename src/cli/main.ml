@@ -674,7 +674,6 @@ let cmd_export =
       | Some o -> o
     in
     Parsing.Package.set_root_path (Filename.dirname file);
-    Export.Stt.add_root_path := Filename.extension file = ".dk";
     begin
       match output with
       | SttRocq | SttLean ->

@@ -210,8 +210,7 @@ let param_ids = list param_id " "
 
 let add_root_path = ref false
 
-let path oc p = list string "." oc
-    (if !add_root_path then !Common.Library.root_path @ p else p)
+let path = list string "."
 
 let p_path oc p = path oc p.elt
 
